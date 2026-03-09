@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+
 namespace Rollocracy.Domain.Entities
 {
     public class Session
@@ -15,6 +16,8 @@ namespace Rollocracy.Domain.Entities
         public Guid GameSystemId { get; set; }
 
         public string SessionName { get; set; } = string.Empty;
+
+        public string SessionCode { get; set; } = string.Empty;
 
         public bool IsActive { get; set; }
 
