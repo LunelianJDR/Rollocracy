@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Rollocracy.Domain/Rollocracy.Domain.csproj" />
+  <Project Path="Rollocracy.Infrastructure/Rollocracy.Infrastructure.csproj" />
+  <Project Path="Rollocracy/Rollocracy.Client/Rollocracy.Client.csproj" />
+  <Project Path="Rollocracy/Rollocracy/Rollocracy.csproj" />
+</Solution>
