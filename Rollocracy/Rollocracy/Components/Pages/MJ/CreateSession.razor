@@ -1,0 +1,43 @@
+﻿@page "/mj/create-session"
+@inject Rollocracy.Domain.Interfaces.ISessionService SessionService
+@inject NavigationManager Navigation
+
+@rendermode InteractiveServer
+
+<h3>Créer une session</h3>
+
+<input @bind="SessionName" placeholder="Nom de la session" />
+<button @onclick="HandleCreateSession">Créer</button>
+
+@if (!string.IsNullOrEmpty(Message))
+{
+    <p>@Message</p>
+}
+
+@code {
+    private string SessionName = string.Empty;
+    private string Message = string.Empty;
+
+    private async Task HandleCreateSession()
+    {
+        try
+        {
+            Console.WriteLine("Bouton cliqué !");
+            // Pour l'instant on crée un MJ "dummy", plus tard le streamer connecté
+            var streamerId = Guid.NewGuid();
+            var gameSystemId = Guid.NewGuid();
+
+            var session = await SessionService.CreateSessionAsync(streamerId, gameSystemId, SessionName);
+
+            Message = $"Session créée ! Code : {session.SessionCode}";
+
+            // Redirection vers la page de session MJ
+            Navigation.NavigateTo($"/mj/session/{session.Id}");
+            
+        }
+        catch (Exception ex)
+        {
+            Message = $"Erreur : {ex.Message}";
+        }
+    }
+}

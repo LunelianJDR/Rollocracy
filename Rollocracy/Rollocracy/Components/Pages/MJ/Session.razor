@@ -1,0 +1,70 @@
+﻿@page "/mj/session/{SessionId:guid}"
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
+@inject Rollocracy.Domain.Interfaces.ISessionService SessionService
+
+@rendermode InteractiveServer
+
+<h3>Session MJ</h3>
+
+<p>Session ID : @SessionId</p>
+
+@if (Players is null)
+{
+    <p>Chargement...</p>
+}
+else if (Players.Count == 0)
+{
+    <p>Aucun joueur pour l'instant</p>
+}
+else
+{
+    <ul>
+        @foreach (var p in Players)
+        {
+            <li>@p.PlayerName @(p.IsGameMaster ? "(MJ)" : "")</li>
+        }
+    </ul>
+}
+
+<button @onclick="RefreshPlayers">Rafraîchir la liste</button>
+
+@code {
+    [Parameter] public Guid SessionId { get; set; }
+    private HubConnection? hubConnection;
+    private List<Rollocracy.Domain.Entities.PlayerSession> Players = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPlayers();
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/sessionhub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On<PlayerSession>("PlayerJoined", async player =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadPlayers();
+                StateHasChanged();
+            });
+        });
+
+        await hubConnection.StartAsync();
+
+        await hubConnection.SendAsync("JoinSessionGroup", SessionId.ToString());
+    }
+
+    private async Task LoadPlayers()
+    {
+        Players = await SessionService.GetPlayersAsync(SessionId);
+    }
+
+    private async Task RefreshPlayers()
+    {
+        await LoadPlayers();
+        await InvokeAsync(StateHasChanged);
+    }
+}

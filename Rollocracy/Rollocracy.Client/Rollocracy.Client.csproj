@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -10,6 +10,12 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.24" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.24" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Rollocracy.Domain\Rollocracy.Domain.csproj" />
+    <ProjectReference Include="..\..\Rollocracy.Infrastructure\Rollocracy.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
