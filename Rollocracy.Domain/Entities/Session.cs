@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 
 namespace Rollocracy.Domain.Entities
 {
@@ -11,13 +6,17 @@ namespace Rollocracy.Domain.Entities
     {
         public Guid Id { get; set; }
 
-        public Guid StreamerId { get; set; }
+        public Guid GameMasterUserAccountId { get; set; }
 
-        public Guid GameSystemId { get; set; }
+        // Nullable : une session peut être créée avant qu'un système soit choisi
+        public Guid? GameSystemId { get; set; }
 
         public string SessionName { get; set; } = string.Empty;
 
-        public string SessionCode { get; set; } = string.Empty;
+        public string SessionSlug { get; set; } = string.Empty;
+
+        // Mot de passe de session optionnel
+        public string SessionPassword { get; set; } = string.Empty;
 
         public bool IsActive { get; set; }
 

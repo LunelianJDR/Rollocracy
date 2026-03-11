@@ -1,0 +1,423 @@
+﻿@page "/mj/gamesystems/{GameSystemId:guid}"
+@rendermode InteractiveServer
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Rollocracy.Domain.Entities
+@using Rollocracy.Domain.GameRules
+@inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<h3>Édition du système de jeu</h3>
+
+@if (!IsLoaded)
+{
+    <p>Chargement...</p>
+}
+else if (CurrentSystem is null)
+{
+    <p>Système introuvable.</p>
+}
+else
+{
+    <h4>Informations générales</h4>
+
+    <div>
+        <label>Nom</label><br />
+        <input @bind="CurrentSystemName" />
+    </div>
+
+    <div>
+        <label>Description</label><br />
+        <input @bind="CurrentSystemDescription" />
+    </div>
+
+    <div>
+        <label>Mode de résolution</label><br />
+        <select @bind="CurrentResolutionMode">
+            <option value="@TestResolutionMode.SuccessThreshold">Seuil de Réussite</option>
+            <option value="@TestResolutionMode.RollUnderAttribute">Inférieur à la caractéristique</option>
+        </select>
+    </div>
+
+    <button @onclick="SaveGeneralInfo">Enregistrer</button>
+
+    <hr />
+
+    <h4>Caractéristiques numériques</h4>
+
+    <div>
+        <label>Nom</label><br />
+        <input @bind="NewAttributeName" />
+    </div>
+
+    <div>
+        <label>Min</label><br />
+        <input type="number" @bind="NewAttributeMin" />
+    </div>
+
+    <div>
+        <label>Max</label><br />
+        <input type="number" @bind="NewAttributeMax" />
+    </div>
+
+    <div>
+        <label>Valeur par défaut</label><br />
+        <input type="number" @bind="NewAttributeDefault" />
+    </div>
+
+    <button @onclick="AddAttribute">Ajouter la caractéristique</button>
+
+    @if (AttributeDefinitions.Count == 0)
+    {
+        <p>Aucune caractéristique pour le moment.</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var attributeDefinition in AttributeDefinitions)
+            {
+                <li>@attributeDefinition.Name (min: @attributeDefinition.MinValue, max: @attributeDefinition.MaxValue, défaut: @attributeDefinition.DefaultValue)</li>
+            }
+        </ul>
+    }
+
+    <hr />
+
+    <h4>Attributs à choix</h4>
+
+    <div>
+        <label>Nom du type d'attribut</label><br />
+        <input @bind="NewTraitDefinitionName" />
+    </div>
+
+    <button @onclick="AddTraitDefinition">Ajouter le type</button>
+
+    @if (TraitDefinitions.Count == 0)
+    {
+        <p>Aucun attribut à choix pour le moment.</p>
+    }
+    else
+    {
+        @foreach (var traitDefinition in TraitDefinitions)
+        {
+            <div style="margin-bottom: 1rem;">
+                <strong>@traitDefinition.Name</strong>
+
+                <div>
+                    <input @bind="NewTraitOptionNames[traitDefinition.Id]" placeholder="Nouvelle option" />
+                    <button @onclick="() => AddTraitOption(traitDefinition.Id)">Ajouter une option</button>
+                </div>
+
+                @if (TraitOptionsByDefinition.ContainsKey(traitDefinition.Id) && TraitOptionsByDefinition[traitDefinition.Id].Count > 0)
+                {
+                    <ul>
+                        @foreach (var option in TraitOptionsByDefinition[traitDefinition.Id])
+                        {
+                            <li>@option.Name</li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p>Aucune option pour ce type.</p>
+                }
+            </div>
+        }
+    }
+
+    <hr />
+
+    <h4>Jauges</h4>
+
+    <div>
+        <label>Nom</label><br />
+        <input @bind="NewGaugeName" />
+    </div>
+
+    <div>
+        <label>Min</label><br />
+        <input type="number" @bind="NewGaugeMin" />
+    </div>
+
+    <div>
+        <label>Max</label><br />
+        <input type="number" @bind="NewGaugeMax" />
+    </div>
+
+    <div>
+        <label>Valeur par défaut</label><br />
+        <input type="number" @bind="NewGaugeDefault" />
+    </div>
+
+    <div>
+        <label>
+            <input type="checkbox" @bind="NewGaugeIsHealthGauge" />
+            Jauge de santé ?
+        </label>
+    </div>
+
+    <button @onclick="AddGauge">Ajouter la jauge</button>
+
+    @if (GaugeDefinitions.Count == 0)
+    {
+        <p>Aucune jauge pour le moment.</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var gauge in GaugeDefinitions)
+            {
+                <li>
+                    @gauge.Name
+                    (min: @gauge.MinValue, max: @gauge.MaxValue, défaut: @gauge.DefaultValue,
+                    létale: @(gauge.IsHealthGauge ? "oui" : "non"))
+                </li>
+            }
+        </ul>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p>@Message</p>
+    }
+}
+
+@code {
+    [Parameter] public Guid GameSystemId { get; set; }
+
+    private bool IsLoaded;
+    private Guid CurrentUserId;
+    private string Message = string.Empty;
+
+    private GameSystem? CurrentSystem;
+
+    private string CurrentSystemName = string.Empty;
+    private string CurrentSystemDescription = string.Empty;
+    private TestResolutionMode CurrentResolutionMode;
+
+    private string NewAttributeName = string.Empty;
+    private int NewAttributeMin = 0;
+    private int NewAttributeMax = 20;
+    private int NewAttributeDefault = 10;
+
+    private string NewTraitDefinitionName = string.Empty;
+
+    private string NewGaugeName = string.Empty;
+    private int NewGaugeMin = 0;
+    private int NewGaugeMax = 10;
+    private int NewGaugeDefault = 10;
+    private bool NewGaugeIsHealthGauge = false;
+
+    private List<AttributeDefinition> AttributeDefinitions = new();
+    private List<TraitDefinition> TraitDefinitions = new();
+    private List<GaugeDefinition> GaugeDefinitions = new();
+    private Dictionary<Guid, List<TraitOption>> TraitOptionsByDefinition = new();
+    private Dictionary<Guid, string> NewTraitOptionNames = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+        var isGameMasterValue = user.FindFirst("IsGameMaster")?.Value;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(isGameMasterValue) || !bool.Parse(isGameMasterValue))
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(userIdValue))
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+
+        await LoadGameSystem();
+
+        IsLoaded = true;
+    }
+
+    private async Task LoadGameSystem()
+    {
+        Message = string.Empty;
+
+        CurrentSystem = await GameSystemService.GetGameSystemByIdAsync(GameSystemId, CurrentUserId);
+
+        if (CurrentSystem is null)
+            return;
+
+        CurrentSystemName = CurrentSystem.Name;
+        CurrentSystemDescription = CurrentSystem.Description;
+        CurrentResolutionMode = CurrentSystem.TestResolutionMode;
+
+        AttributeDefinitions = await GameSystemService.GetAttributeDefinitionsAsync(GameSystemId, CurrentUserId);
+        TraitDefinitions = await GameSystemService.GetTraitDefinitionsAsync(GameSystemId, CurrentUserId);
+        GaugeDefinitions = await GameSystemService.GetGaugeDefinitionsAsync(GameSystemId, CurrentUserId);
+
+        TraitOptionsByDefinition.Clear();
+        NewTraitOptionNames.Clear();
+
+        foreach (var traitDefinition in TraitDefinitions)
+        {
+            TraitOptionsByDefinition[traitDefinition.Id] =
+                await GameSystemService.GetTraitOptionsAsync(traitDefinition.Id, CurrentUserId);
+
+            NewTraitOptionNames[traitDefinition.Id] = string.Empty;
+        }
+    }
+
+    private async Task SaveGeneralInfo()
+    {
+        try
+        {
+            await GameSystemService.UpdateGameSystemAsync(
+                GameSystemId,
+                CurrentUserId,
+                CurrentSystemName,
+                CurrentSystemDescription,
+                CurrentResolutionMode);
+
+            await LoadGameSystem();
+            Message = "Informations générales enregistrées.";
+        }
+        catch (Exception ex)
+        {
+            Message = $"Erreur : {ex.Message}";
+        }
+    }
+
+    private async Task AddAttribute()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(NewAttributeName))
+            {
+                Message = "Le nom de la caractéristique est obligatoire.";
+                return;
+            }
+
+            await GameSystemService.AddAttributeDefinitionAsync(
+                GameSystemId,
+                CurrentUserId,
+                NewAttributeName,
+                NewAttributeMin,
+                NewAttributeMax,
+                NewAttributeDefault);
+
+            NewAttributeName = string.Empty;
+            NewAttributeMin = 0;
+            NewAttributeMax = 20;
+            NewAttributeDefault = 10;
+
+            await LoadGameSystem();
+            Message = "Caractéristique ajoutée.";
+        }
+        catch (Exception ex)
+        {
+            Message = $"Erreur : {ex.Message}";
+        }
+    }
+
+    private async Task AddTraitDefinition()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(NewTraitDefinitionName))
+            {
+                Message = "Le nom du type d'attribut est obligatoire.";
+                return;
+            }
+
+            await GameSystemService.AddTraitDefinitionAsync(
+                GameSystemId,
+                CurrentUserId,
+                NewTraitDefinitionName);
+
+            NewTraitDefinitionName = string.Empty;
+
+            await LoadGameSystem();
+            Message = "Type d'attribut ajouté.";
+        }
+        catch (Exception ex)
+        {
+            Message = $"Erreur : {ex.Message}";
+        }
+    }
+
+    private async Task AddTraitOption(Guid traitDefinitionId)
+    {
+        try
+        {
+            if (!NewTraitOptionNames.ContainsKey(traitDefinitionId))
+                return;
+
+            var optionName = NewTraitOptionNames[traitDefinitionId];
+
+            if (string.IsNullOrWhiteSpace(optionName))
+            {
+                Message = "Le nom de l'option est obligatoire.";
+                return;
+            }
+
+            await GameSystemService.AddTraitOptionAsync(
+                traitDefinitionId,
+                CurrentUserId,
+                optionName);
+
+            NewTraitOptionNames[traitDefinitionId] = string.Empty;
+
+            await LoadGameSystem();
+            Message = "Option ajoutée.";
+        }
+        catch (Exception ex)
+        {
+            Message = $"Erreur : {ex.Message}";
+        }
+    }
+
+    private async Task AddGauge()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(NewGaugeName))
+            {
+                Message = "Le nom de la jauge est obligatoire.";
+                return;
+            }
+
+            await GameSystemService.AddGaugeDefinitionAsync(
+                GameSystemId,
+                CurrentUserId,
+                NewGaugeName,
+                NewGaugeMin,
+                NewGaugeMax,
+                NewGaugeDefault,
+                NewGaugeIsHealthGauge);
+
+            NewGaugeName = string.Empty;
+            NewGaugeMin = 0;
+            NewGaugeMax = 10;
+            NewGaugeDefault = 10;
+            NewGaugeIsHealthGauge = false;
+
+            await LoadGameSystem();
+            Message = "Jauge ajoutée.";
+        }
+        catch (Exception ex)
+        {
+            Message = $"Erreur : {ex.Message}";
+        }
+    }
+}

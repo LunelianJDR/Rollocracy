@@ -1,0 +1,37 @@
+﻿@page "/login"
+@inject NavigationManager Navigation
+
+<h3>Connexion</h3>
+
+@if (HasError)
+{
+    <p style="color:red;">Pseudo ou mot de passe invalide.</p>
+}
+
+<form method="post" action="/auth/login">
+    <div>
+        <label for="username">Pseudo</label><br />
+        <input id="username" name="Username" />
+    </div>
+
+    <div>
+        <label for="password">Mot de passe</label><br />
+        <input id="password" name="Password" type="password" />
+    </div>
+
+    <button type="submit">Se connecter</button>
+</form>
+
+@code {
+    private bool HasError;
+
+    protected override void OnInitialized()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+
+        if (!string.IsNullOrWhiteSpace(uri.Query) && uri.Query.Contains("error=1"))
+        {
+            HasError = true;
+        }
+    }
+}

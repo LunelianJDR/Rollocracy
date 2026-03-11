@@ -1,42 +1,163 @@
 ﻿@page "/mj/session/{SessionId:guid}"
+@rendermode InteractiveServer
 @using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.Components.Authorization
+@using Rollocracy.Domain.Entities
+@using DomainSession = Rollocracy.Domain.Entities.Session
 @inject NavigationManager Navigation
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
-
-@rendermode InteractiveServer
+@inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <h3>Session MJ</h3>
 
-<p>Session ID : @SessionId</p>
-
-@if (Players is null)
+@if (!IsLoaded)
 {
     <p>Chargement...</p>
 }
-else if (Players.Count == 0)
+else if (CurrentSession is null)
 {
-    <p>Aucun joueur pour l'instant</p>
+    <p>Session introuvable.</p>
 }
 else
 {
-    <ul>
-        @foreach (var p in Players)
-        {
-            <li>@p.PlayerName @(p.IsGameMaster ? "(MJ)" : "")</li>
-        }
-    </ul>
-}
+    <p><strong>Nom de la session :</strong> @CurrentSession.SessionName</p>
+    <p><strong>Slug :</strong> @CurrentSession.SessionSlug</p>
 
-<button @onclick="RefreshPlayers">Rafraîchir la liste</button>
+    <p><strong>URL de jointure :</strong></p>
+    <p>
+        <code>@JoinUrl</code>
+    </p>
+
+    <p>
+        <strong>Mot de passe de la session :</strong>
+        @if (string.IsNullOrWhiteSpace(CurrentSession.SessionPassword))
+        {
+            <span>aucun</span>
+        }
+        else if (ShowSessionPassword)
+        {
+            <code>@CurrentSession.SessionPassword</code>
+        }
+        else
+        {
+            <code>****</code>
+        }
+    </p>
+
+    @if (!string.IsNullOrWhiteSpace(CurrentSession.SessionPassword))
+    {
+        <button @onclick="ToggleSessionPasswordVisibility">
+            @(ShowSessionPassword ? "Masquer le mot de passe de la session" : "Afficher le mot de passe de la session")
+        </button>
+    }
+
+    <hr />
+
+    <h4>Système de jeu de la session</h4>
+
+    @if (OwnedGameSystems.Count == 0)
+    {
+        <p>Vous n'avez encore créé aucun système de jeu.</p>
+        <button @onclick="GoToCreateGameSystem">Créer un système</button>
+    }
+    else
+    {
+        <div>
+            <label>Choisir un système</label><br />
+            <select @bind="SelectedGameSystemId">
+                <option value="">-- Aucun système sélectionné --</option>
+                @foreach (var gameSystem in OwnedGameSystems)
+                {
+                    <option value="@gameSystem.Id.ToString()">@gameSystem.Name</option>
+                }
+            </select>
+        </div>
+
+        <button @onclick="AssignSelectedGameSystem">Associer ce système à la session</button>
+        <button @onclick="GoToCreateGameSystem">Créer un système</button>
+
+        @if (AssignedGameSystem is not null)
+        {
+            <p><strong>Système actuellement lié :</strong> @AssignedGameSystem.Name</p>
+
+            @if (AssignedGameSystem.LockedToSessionId == SessionId)
+            {
+                <button @onclick="EditAssignedGameSystem">Éditer le système de cette session</button>
+            }
+            else
+            {
+                <button @onclick="CloneAndEditAssignedGameSystem">Dupliquer et éditer pour cette session</button>
+            }
+        }
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p>@Message</p>
+    }
+
+    <hr />
+
+    <p><strong>Session ID :</strong> @SessionId</p>
+
+    @if (Players.Count == 0)
+    {
+        <p>Aucun joueur pour l'instant</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var p in Players)
+            {
+                <li>@p.PlayerName @(p.IsGameMaster ? "(MJ)" : "")</li>
+            }
+        </ul>
+    }
+
+    <button @onclick="RefreshPlayers">Rafraîchir la liste</button>
+}
 
 @code {
     [Parameter] public Guid SessionId { get; set; }
+
     private HubConnection? hubConnection;
-    private List<Rollocracy.Domain.Entities.PlayerSession> Players = new();
+
+    private DomainSession? CurrentSession;
+    private GameSystem? AssignedGameSystem;
+    private List<GameSystem> OwnedGameSystems = new();
+    private List<PlayerSession> Players = new();
+
+    private bool IsLoaded;
+    private bool ShowSessionPassword;
+
+    private Guid CurrentUserId;
+    private string CurrentUsername = string.Empty;
+    private string JoinUrl = string.Empty;
+    private string Message = string.Empty;
+
+    private string SelectedGameSystemId = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var userIdValue = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        CurrentUsername = user.Identity?.Name ?? string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(userIdValue))
+        {
+            CurrentUserId = Guid.Parse(userIdValue);
+        }
+
+        await LoadSessionData();
         await LoadPlayers();
+
+        if (CurrentSession is not null && !string.IsNullOrWhiteSpace(CurrentUsername))
+        {
+            JoinUrl = $"{Navigation.BaseUri}{CurrentUsername}/{CurrentSession.SessionSlug}";
+        }
 
         hubConnection = new HubConnectionBuilder()
             .WithUrl(Navigation.ToAbsoluteUri("/sessionhub"))
@@ -53,8 +174,28 @@ else
         });
 
         await hubConnection.StartAsync();
-
         await hubConnection.SendAsync("JoinSessionGroup", SessionId.ToString());
+
+        IsLoaded = true;
+    }
+
+    private async Task LoadSessionData()
+    {
+        CurrentSession = await SessionService.GetSessionByIdAsync(SessionId);
+        OwnedGameSystems = await GameSystemService.GetGameSystemsByOwnerAsync(CurrentUserId);
+
+        AssignedGameSystem = null;
+        SelectedGameSystemId = string.Empty;
+
+        if (CurrentSession?.GameSystemId is Guid gameSystemId)
+        {
+            AssignedGameSystem = await GameSystemService.GetGameSystemByIdAsync(gameSystemId, CurrentUserId);
+
+            if (AssignedGameSystem is not null && AssignedGameSystem.LockedToSessionId == null)
+            {
+                SelectedGameSystemId = AssignedGameSystem.Id.ToString();
+            }
+        }
     }
 
     private async Task LoadPlayers()
@@ -66,5 +207,83 @@ else
     {
         await LoadPlayers();
         await InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleSessionPasswordVisibility()
+    {
+        ShowSessionPassword = !ShowSessionPassword;
+    }
+
+    private void GoToCreateGameSystem()
+    {
+        Navigation.NavigateTo("/mj/gamesystems");
+    }
+
+    private async Task AssignSelectedGameSystem()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(SelectedGameSystemId))
+            {
+                Message = "Veuillez choisir un système.";
+                return;
+            }
+
+            var gameSystemId = Guid.Parse(SelectedGameSystemId);
+
+            await SessionService.AssignGameSystemToSessionAsync(SessionId, CurrentUserId, gameSystemId);
+
+            await LoadSessionData();
+            Message = "Système associé à la session.";
+        }
+        catch (Exception ex)
+        {
+            Message = $"Erreur : {ex.Message}";
+        }
+    }
+
+    private void EditAssignedGameSystem()
+    {
+        if (AssignedGameSystem is null)
+            return;
+
+        Navigation.NavigateTo($"/mj/gamesystems/{AssignedGameSystem.Id}");
+    }
+
+    private async Task CloneAndEditAssignedGameSystem()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            if (AssignedGameSystem is null)
+            {
+                Message = "Aucun système n'est lié à cette session.";
+                return;
+            }
+
+            var clonedSystem = await GameSystemService.CloneGameSystemForSessionAsync(
+                AssignedGameSystem.Id,
+                CurrentUserId,
+                SessionId);
+
+            await SessionService.AssignGameSystemToSessionAsync(SessionId, CurrentUserId, clonedSystem.Id);
+
+            Navigation.NavigateTo($"/mj/gamesystems/{clonedSystem.Id}");
+        }
+        catch (Exception ex)
+        {
+            Message = $"Erreur : {ex.Message}";
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
     }
 }

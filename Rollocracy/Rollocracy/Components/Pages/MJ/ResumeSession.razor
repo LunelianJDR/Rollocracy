@@ -1,0 +1,149 @@
+﻿@page "/mj/sessions"
+@rendermode InteractiveServer
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using DomainSession = Rollocracy.Domain.Entities.Session
+@inject Rollocracy.Domain.Interfaces.ISessionService SessionService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<h3>Mes sessions</h3>
+
+@if (!IsLoaded)
+{
+    <p>Chargement...</p>
+}
+else if (SessionSummaries.Count == 0)
+{
+    <p>Vous n'avez encore créé aucune session.</p>
+}
+else
+{
+    <ul>
+        @foreach (var item in SessionSummaries)
+        {
+            <li style="margin-bottom: 1rem;">
+                <div><strong>Nom :</strong> @item.Session.SessionName</div>
+                <div><strong>Personnages vivants :</strong> @item.AliveCharacterCount</div>
+                <div><strong>Session active :</strong> @(item.Session.IsActive ? "Oui" : "Non")</div>
+
+                @if (item.Session.IsActive)
+                {
+                    <div>
+                        <strong>URL :</strong>
+                        <code>@($"{Navigation.BaseUri}{CurrentUsername}/{item.Session.SessionSlug}")</code>
+                    </div>
+                }
+                else
+                {
+                    <div><strong>URL :</strong> session inactive</div>
+                }
+
+                <button @onclick="() => OpenSession(item.Session.Id)">Ouvrir</button>
+
+                @if (item.Session.IsActive)
+                {
+                    <button @onclick="() => ToggleSessionState(item.Session.Id, false)">Désactiver</button>
+                }
+                else
+                {
+                    <button @onclick="() => ToggleSessionState(item.Session.Id, true)">Activer</button>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <p>@Message</p>
+}
+
+@code {
+    private Guid CurrentUserId;
+    private string CurrentUsername = string.Empty;
+    private bool IsLoaded;
+    private string Message = string.Empty;
+
+    private List<SessionSummary> SessionSummaries = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+        var isGameMasterValue = user.FindFirst("IsGameMaster")?.Value;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(isGameMasterValue) || !bool.Parse(isGameMasterValue))
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(userIdValue))
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+        CurrentUsername = user.Identity?.Name ?? string.Empty;
+
+        await LoadSessions();
+
+        IsLoaded = true;
+    }
+
+    private async Task LoadSessions()
+    {
+        Message = string.Empty;
+        SessionSummaries.Clear();
+
+        var sessions = await SessionService.GetSessionsByGameMasterAsync(CurrentUserId);
+
+        foreach (var session in sessions)
+        {
+            var aliveCount = await SessionService.GetAliveCharacterCountAsync(session.Id);
+
+            SessionSummaries.Add(new SessionSummary
+            {
+                Session = session,
+                AliveCharacterCount = aliveCount
+            });
+        }
+    }
+
+    private void OpenSession(Guid sessionId)
+    {
+        Navigation.NavigateTo($"/mj/session/{sessionId}");
+    }
+
+    private async Task ToggleSessionState(Guid sessionId, bool isActive)
+    {
+        try
+        {
+            await SessionService.SetSessionActiveStateAsync(sessionId, CurrentUserId, isActive);
+            await LoadSessions();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Message = $"Erreur : {ex.Message}";
+        }
+    }
+
+    private class SessionSummary
+    {
+        public DomainSession Session { get; set; } = new();
+
+        public int AliveCharacterCount { get; set; }
+    }
+}

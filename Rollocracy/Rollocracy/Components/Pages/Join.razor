@@ -1,0 +1,47 @@
+﻿@page "/join"
+@rendermode InteractiveServer
+@inject NavigationManager Navigation
+
+<h3>Rejoindre une session</h3>
+
+<p>Entrez le pseudo du MJ et le nom technique de la session.</p>
+
+<div>
+    <label>Pseudo du MJ</label><br />
+    <input @bind="GameMasterUsername" />
+</div>
+
+<div>
+    <label>Nom technique de la session</label><br />
+    <input @bind="SessionSlug" />
+</div>
+
+<button @onclick="GoToSession">Accéder à la session</button>
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <p>@Message</p>
+}
+
+@code {
+    private string GameMasterUsername = string.Empty;
+    private string SessionSlug = string.Empty;
+    private string Message = string.Empty;
+
+    private void GoToSession()
+    {
+        if (string.IsNullOrWhiteSpace(GameMasterUsername))
+        {
+            Message = "Le pseudo du MJ est obligatoire.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SessionSlug))
+        {
+            Message = "Le nom technique de la session est obligatoire.";
+            return;
+        }
+
+        Navigation.NavigateTo($"/{GameMasterUsername.Trim()}/{SessionSlug.Trim()}");
+    }
+}

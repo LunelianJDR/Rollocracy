@@ -12,12 +12,15 @@ namespace Rollocracy.Controllers
         private readonly ISessionService _sessionService;
         private readonly IHubContext<SessionHub> _hub;
 
-        public SessionController(ISessionService sessionService,IHubContext<SessionHub> hub)
+        public SessionController(
+            ISessionService sessionService,
+            IHubContext<SessionHub> hub)
         {
             _sessionService = sessionService;
             _hub = hub;
         }
 
+        // Retourne un joueur par son identifiant
         [HttpGet("player/{playerId}")]
         public async Task<IActionResult> GetPlayer(Guid playerId)
         {
@@ -35,33 +38,5 @@ namespace Rollocracy.Controllers
                 return BadRequest(ex.Message);
             }
         }
-
-        [HttpPost("join")]
-        public async Task<IActionResult> JoinSession([FromBody] JoinSessionRequest request)
-        {
-            try
-            {
-                var player = await _sessionService.JoinSessionAsync(request.SessionCode, request.PlayerName);
-
-                await _hub.Clients
-                    .Group(player.SessionId.ToString())
-                    .SendAsync("PlayerJoined", player);
-
-                return Ok(player);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
-
-
-    }
-
-    public class JoinSessionRequest
-    {
-        public string SessionCode { get; set; } = string.Empty;
-
-        public string PlayerName { get; set; } = string.Empty;
     }
 }

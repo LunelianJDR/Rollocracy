@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Rollocracy.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Rollocracy.Infrastructure.Persistence;
 namespace Rollocracy.Infrastructure.Migrations
 {
     [DbContext(typeof(RollocracyDbContext))]
-    partial class RollocracyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260310145716_SessionPasswordPlainText")]
+    partial class SessionPasswordPlainText
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -31,8 +34,20 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("Experience")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Health")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsAlive")
                         .HasColumnType("boolean");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("MaxHealth")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -56,21 +71,12 @@ namespace Rollocracy.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<Guid?>("LockedToSessionId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<Guid>("OwnerUserAccountId")
                         .HasColumnType("uuid");
-
-                    b.Property<Guid?>("SourceGameSystemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("TestResolutionMode")
-                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -116,7 +122,7 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<Guid>("GameMasterUserAccountId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("GameSystemId")
+                    b.Property<Guid>("GameSystemId")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("IsActive")
@@ -156,10 +162,6 @@ namespace Rollocracy.Infrastructure.Migrations
 
                     b.Property<bool>("IsTwitchLinked")
                         .HasColumnType("boolean");
-
-                    b.Property<string>("Language")
-                        .IsRequired()
-                        .HasColumnType("text");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -225,112 +227,6 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("CharacterAttributeValues");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.CharacterGaugeValue", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CharacterId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("GaugeDefinitionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Value")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("CharacterGaugeValues");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.CharacterTraitValue", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CharacterId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TraitDefinitionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TraitOptionId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("CharacterTraitValues");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.GaugeDefinition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("DefaultValue")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("GameSystemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsHealthGauge")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("MaxValue")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("MinValue")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("GaugeDefinitions");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.TraitDefinition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("GameSystemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("TraitDefinitions");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.TraitOption", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("TraitDefinitionId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("TraitOptions");
                 });
 
             modelBuilder.Entity("Rollocracy.Domain.GameTests.GameTest", b =>

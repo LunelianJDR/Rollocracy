@@ -1,0 +1,151 @@
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Mvc;
+using Rollocracy.Domain.Interfaces;
+
+namespace Rollocracy.Controllers
+{
+    [ApiController]
+    [Route("api/auth")]
+    public class AuthController : ControllerBase
+    {
+        private readonly IAuthService _authService;
+
+        public AuthController(IAuthService authService)
+        {
+            _authService = authService;
+        }
+
+        // API d'inscription
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        {
+            try
+            {
+                var user = await _authService.RegisterAsync(
+                    request.Username,
+                    request.Password,
+                    request.IsGameMaster);
+
+                return Ok(new
+                {
+                    user.Id,
+                    user.Username,
+                    user.IsGameMaster,
+                    user.Language
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        // API de login
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] LoginRequest request)
+        {
+            var success = await SignInUserAsync(request.Username, request.Password);
+
+            if (!success)
+                return Unauthorized("Pseudo ou mot de passe invalide");
+
+            return Ok();
+        }
+
+        // Login navigateur via formulaire HTML
+        [HttpPost("/auth/login")]
+        public async Task<IActionResult> LoginForm([FromForm] LoginRequest request)
+        {
+            var success = await SignInUserAsync(request.Username, request.Password);
+
+            if (!success)
+                return Redirect("/login?error=1");
+
+            return Redirect("/");
+        }
+
+        // Logout navigateur
+        [HttpGet("/auth/logout")]
+        public async Task<IActionResult> LogoutPage()
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return Redirect("/login");
+        }
+
+        // Logout API
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return Ok();
+        }
+
+        // Retourne l'utilisateur connecté
+        [HttpGet("me")]
+        public IActionResult Me()
+        {
+            if (User?.Identity?.IsAuthenticated != true)
+                return Unauthorized();
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var username = User.Identity?.Name;
+            var isGameMaster = User.FindFirst("IsGameMaster")?.Value;
+            var language = User.FindFirst("Language")?.Value;
+
+            return Ok(new
+            {
+                UserId = userId,
+                Username = username,
+                IsGameMaster = isGameMaster,
+                Language = language
+            });
+        }
+
+        // Crée le cookie d'authentification avec les claims utiles
+        private async Task<bool> SignInUserAsync(string username, string password)
+        {
+            var user = await _authService.ValidateLoginAsync(username, password);
+
+            if (user == null)
+                return false;
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.Username),
+                new Claim("IsGameMaster", user.IsGameMaster.ToString()),
+                new Claim("Language", user.Language)
+            };
+
+            var identity = new ClaimsIdentity(
+                claims,
+                CookieAuthenticationDefaults.AuthenticationScheme);
+
+            var principal = new ClaimsPrincipal(identity);
+
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                principal);
+
+            return true;
+        }
+    }
+
+    public class RegisterRequest
+    {
+        public string Username { get; set; } = string.Empty;
+
+        public string Password { get; set; } = string.Empty;
+
+        public bool IsGameMaster { get; set; }
+    }
+
+    public class LoginRequest
+    {
+        public string Username { get; set; } = string.Empty;
+
+        public string Password { get; set; } = string.Empty;
+    }
+}

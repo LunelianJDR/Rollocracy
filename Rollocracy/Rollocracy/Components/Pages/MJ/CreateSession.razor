@@ -1,39 +1,127 @@
 ﻿@page "/mj/create-session"
-@inject Rollocracy.Domain.Interfaces.ISessionService SessionService
-@inject NavigationManager Navigation
-
 @rendermode InteractiveServer
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@inject Rollocracy.Domain.Interfaces.ISessionService SessionService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
 
 <h3>Créer une session</h3>
 
-<input @bind="SessionName" placeholder="Nom de la session" />
-<button @onclick="HandleCreateSession">Créer</button>
-
-@if (!string.IsNullOrEmpty(Message))
+@if (!IsLoaded)
 {
-    <p>@Message</p>
+    <p>Chargement...</p>
+}
+else
+{
+    <div>
+        <label>Nom de la session</label><br />
+        <input @bind="SessionName" />
+    </div>
+
+    <div>
+        <label>Mot de passe de session (optionnel)</label><br />
+        <input @bind="SessionPassword" />
+    </div>
+
+    <button @onclick="HandleCreateSession">Créer</button>
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p>@Message</p>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(CreatedJoinUrl))
+    {
+        <p><strong>URL :</strong> <code>@CreatedJoinUrl</code></p>
+
+        @if (string.IsNullOrWhiteSpace(CreatedSessionPassword))
+        {
+            <p><strong>Mot de passe :</strong> aucun</p>
+        }
+        else
+        {
+            <p><strong>Mot de passe :</strong> <code>@CreatedSessionPassword</code></p>
+        }
+    }
 }
 
 @code {
     private string SessionName = string.Empty;
+    private string SessionPassword = string.Empty;
     private string Message = string.Empty;
+
+    private string CreatedJoinUrl = string.Empty;
+    private string CreatedSessionPassword = string.Empty;
+
+    private bool IsLoaded;
+
+    private Guid CurrentUserId;
+    private string CurrentUsername = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var isGameMasterValue = user.FindFirst("IsGameMaster")?.Value;
+
+        if (string.IsNullOrWhiteSpace(userIdValue))
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(isGameMasterValue) || !bool.Parse(isGameMasterValue))
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+        CurrentUsername = user.Identity?.Name ?? string.Empty;
+
+        IsLoaded = true;
+    }
 
     private async Task HandleCreateSession()
     {
         try
         {
-            Console.WriteLine("Bouton cliqué !");
-            // Pour l'instant on crée un MJ "dummy", plus tard le streamer connecté
-            var streamerId = Guid.NewGuid();
+            Message = string.Empty;
+            CreatedJoinUrl = string.Empty;
+            CreatedSessionPassword = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(SessionName))
+            {
+                Message = "Le nom de session est obligatoire.";
+                return;
+            }
+
+            // Temporaire en V1
             var gameSystemId = Guid.NewGuid();
 
-            var session = await SessionService.CreateSessionAsync(streamerId, gameSystemId, SessionName);
+            var session = await SessionService.CreateSessionAsync(
+                CurrentUserId,
+                gameSystemId,
+                SessionName,
+                SessionPassword);
 
-            Message = $"Session créée ! Code : {session.SessionCode}";
+            CreatedJoinUrl = $"{Navigation.BaseUri}{CurrentUsername}/{session.SessionSlug}";
+            CreatedSessionPassword = SessionPassword;
 
-            // Redirection vers la page de session MJ
+            Message = "Session créée avec succès.";
+
             Navigation.NavigateTo($"/mj/session/{session.Id}");
-            
         }
         catch (Exception ex)
         {

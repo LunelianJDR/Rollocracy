@@ -1,0 +1,143 @@
+﻿@page "/{mjUsername}/{sessionSlug}"
+@rendermode InteractiveServer
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.SignalR
+@using Rollocracy.Domain.Entities
+@using Rollocracy.Hubs
+@inject Rollocracy.Domain.Interfaces.ISessionService SessionService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IHubContext<SessionHub> SessionHubContext
+
+<h3>Rejoindre une session</h3>
+
+<p>MJ : @mjUsername</p>
+<p>Session : @sessionSlug</p>
+
+@if (!IsLoaded)
+{
+    <p>Chargement...</p>
+}
+else if (!IsAuthenticated)
+{
+    <p>Vous devez être connecté pour rejoindre une session.</p>
+}
+else if (Session is null)
+{
+    <p>Session introuvable.</p>
+}
+else if (!Session.IsActive)
+{
+    <p>Cette session est actuellement inactive.</p>
+}
+else
+{
+    @if (RequiresPassword)
+    {
+        <div>
+            <label>Mot de passe de session</label><br />
+            <input @bind="SessionPassword" />
+        </div>
+    }
+    else
+    {
+        <p>Cette session ne nécessite pas de mot de passe.</p>
+    }
+
+    <button @onclick="HandleJoinSession">Rejoindre</button>
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p>@Message</p>
+    }
+}
+
+@code {
+    [Parameter] public string mjUsername { get; set; } = string.Empty;
+    [Parameter] public string sessionSlug { get; set; } = string.Empty;
+
+    private Session? Session;
+
+    private bool IsLoaded;
+    private bool IsAuthenticated;
+    private bool RequiresPassword;
+
+    private Guid CurrentUserId;
+    private string CurrentUsername = string.Empty;
+    private bool CurrentUserIsGameMaster;
+
+    private string SessionPassword = string.Empty;
+    private string Message = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        IsAuthenticated = user.Identity?.IsAuthenticated == true;
+
+        if (IsAuthenticated)
+        {
+            var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var isGameMasterValue = user.FindFirst("IsGameMaster")?.Value;
+
+            if (!string.IsNullOrWhiteSpace(userIdValue))
+            {
+                CurrentUserId = Guid.Parse(userIdValue);
+            }
+
+            CurrentUsername = user.Identity?.Name ?? string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(isGameMasterValue))
+            {
+                CurrentUserIsGameMaster = bool.Parse(isGameMasterValue);
+            }
+
+            Session = await SessionService.GetSessionByOwnerAndSlugAsync(mjUsername, sessionSlug);
+
+            if (Session is not null)
+            {
+                RequiresPassword = !string.IsNullOrWhiteSpace(Session.SessionPassword);
+            }
+        }
+
+        IsLoaded = true;
+    }
+
+    private async Task HandleJoinSession()
+    {
+        try
+        {
+            if (Session is null)
+            {
+                Message = "Session introuvable.";
+                return;
+            }
+
+            if (!Session.IsActive)
+            {
+                Message = "Cette session est actuellement inactive.";
+                return;
+            }
+
+            var playerSession = await SessionService.JoinSessionAsync(
+                mjUsername,
+                sessionSlug,
+                SessionPassword,
+                CurrentUserId,
+                CurrentUsername,
+                CurrentUserIsGameMaster);
+
+            await SessionHubContext.Clients
+                .Group(playerSession.SessionId.ToString())
+                .SendAsync("PlayerJoined", playerSession);
+
+            Navigation.NavigateTo($"/player/room/{playerSession.Id}");
+        }
+        catch (Exception ex)
+        {
+            Message = $"Erreur : {ex.Message}";
+        }
+    }
+}

@@ -1,0 +1,162 @@
+﻿@page "/mj/gamesystems"
+@rendermode InteractiveServer
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Rollocracy.Domain.Entities
+@inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<h3>Mes systèmes de jeu</h3>
+
+@if (!IsLoaded)
+{
+    <p>Chargement...</p>
+}
+else
+{
+    <div>
+        <label>Nom du nouveau système</label><br />
+        <input @bind="NewSystemName" />
+    </div>
+
+    <div>
+        <label>Description</label><br />
+        <input @bind="NewSystemDescription" />
+    </div>
+
+    <div>
+        <label>Mode de résolution</label><br />
+        <select @bind="NewSystemResolutionMode">
+            <option value="@Rollocracy.Domain.GameRules.TestResolutionMode.SuccessThreshold">Seuil de Réussite</option>
+            <option value="@Rollocracy.Domain.GameRules.TestResolutionMode.RollUnderAttribute">Inférieur à la caractéristique</option>
+        </select>
+    </div>
+
+    <button @onclick="CreateGameSystem">Créer le système</button>
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p>@Message</p>
+    }
+
+    <hr />
+
+    @if (OwnedGameSystems.Count == 0)
+    {
+        <p>Vous n'avez encore créé aucun système.</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var system in OwnedGameSystems)
+            {
+                <li style="margin-bottom: 1rem;">
+                    <div><strong>Nom :</strong> @system.Name</div>
+                    <div><strong>Description :</strong> @system.Description</div>
+                    <div><strong>Mode :</strong> @GetResolutionLabel(system.TestResolutionMode)</div>
+                    <button @onclick="() => EditSystem(system.Id)">Éditer</button>
+                </li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    private bool IsLoaded;
+    private Guid CurrentUserId;
+    private string Message = string.Empty;
+
+    private string NewSystemName = string.Empty;
+    private string NewSystemDescription = string.Empty;
+    private Rollocracy.Domain.GameRules.TestResolutionMode NewSystemResolutionMode =
+        Rollocracy.Domain.GameRules.TestResolutionMode.SuccessThreshold;
+
+    private List<GameSystem> OwnedGameSystems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+        var isGameMasterValue = user.FindFirst("IsGameMaster")?.Value;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(isGameMasterValue) || !bool.Parse(isGameMasterValue))
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(userIdValue))
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+
+        await LoadGameSystems();
+
+        IsLoaded = true;
+    }
+
+    private async Task LoadGameSystems()
+    {
+        OwnedGameSystems = await GameSystemService.GetGameSystemsByOwnerAsync(CurrentUserId);
+    }
+
+    private async Task CreateGameSystem()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(NewSystemName))
+            {
+                Message = "Le nom du système est obligatoire.";
+                return;
+            }
+
+            var system = await GameSystemService.CreateGameSystemAsync(
+                CurrentUserId,
+                NewSystemName,
+                NewSystemDescription,
+                NewSystemResolutionMode);
+
+            NewSystemName = string.Empty;
+            NewSystemDescription = string.Empty;
+            NewSystemResolutionMode = Rollocracy.Domain.GameRules.TestResolutionMode.SuccessThreshold;
+
+            await LoadGameSystems();
+
+            Navigation.NavigateTo($"/mj/gamesystems/{system.Id}");
+        }
+        catch (Exception ex)
+        {
+            Message = $"Erreur : {ex.Message}";
+        }
+    }
+
+    private void EditSystem(Guid systemId)
+    {
+        Navigation.NavigateTo($"/mj/gamesystems/{systemId}");
+    }
+
+    private string GetResolutionLabel(Rollocracy.Domain.GameRules.TestResolutionMode mode)
+    {
+        return mode switch
+        {
+            Rollocracy.Domain.GameRules.TestResolutionMode.SuccessThreshold => "Seuil de Réussite",
+            Rollocracy.Domain.GameRules.TestResolutionMode.RollUnderAttribute => "Inférieur à la caractéristique",
+            _ => mode.ToString()
+        };
+    }
+}

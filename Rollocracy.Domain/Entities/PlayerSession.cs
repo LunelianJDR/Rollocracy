@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Rollocracy.Domain.Entities
 {
@@ -11,6 +7,8 @@ namespace Rollocracy.Domain.Entities
         public Guid Id { get; set; }
 
         public Guid SessionId { get; set; }
+
+        public Guid UserAccountId { get; set; }
 
         public string PlayerName { get; set; } = string.Empty;
 
