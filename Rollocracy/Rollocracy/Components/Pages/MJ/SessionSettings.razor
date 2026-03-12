@@ -1,0 +1,159 @@
+﻿@page "/mj/session/{SessionId:guid}/settings"
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Entities
+@using Rollocracy.Localization
+
+@inject Rollocracy.Domain.Interfaces.ISessionService SessionService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
+
+<h3>@L["SessionSettings_Title"]</h3>
+
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToHome)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (Settings is null)
+{
+    <p>@L["SessionSettings_NotFound"]</p>
+}
+else
+{
+    <div>
+        <label>@L["SessionSettings_Name"]</label><br />
+        <input @bind="SessionName" />
+    </div>
+
+    <div style="margin-top:12px;">
+        <label>@L["SessionSettings_Password"]</label><br />
+        <input @bind="SessionPassword" />
+    </div>
+
+    <div style="margin-top:12px;">
+        <label>
+            <input type="checkbox" @bind="UpdateJoinUrlSlug" />
+            @L["SessionSettings_UpdateJoinUrl"]
+        </label>
+    </div>
+
+    <div style="margin-top:12px;">
+        <p><strong>@L["SessionSettings_CurrentSlug"] :</strong> @Settings.SessionSlug</p>
+        <p><strong>@L["SessionSettings_CurrentJoinUrl"] :</strong> <code>@Settings.JoinUrl</code></p>
+        <p><strong>@L["SessionSettings_IsActive"] :</strong> @(Settings.IsActive? L["Common_Yes"] : L["Common_No"])</p>
+    </div>
+
+    <div style="margin-top:16px;">
+        <button @onclick="SaveSettings">@L["Common_Save"]</button>
+        <button @onclick="BackToSession">@L["SessionSettings_BackToSession"]</button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p style="margin-top:12px;">@Message</p>
+    }
+}
+
+@code {
+    [Parameter] public Guid SessionId { get; set; }
+
+    private bool IsLoaded;
+    private bool RedirectToHome;
+    private Guid CurrentUserId;
+    private SessionSettingsDto? Settings;
+    private string SessionName = string.Empty;
+    private string SessionPassword = string.Empty;
+    private bool UpdateJoinUrlSlug;
+    private string Message = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!isAuthenticated || string.IsNullOrWhiteSpace(userIdValue))
+        {
+            RedirectToHome = true;
+            IsLoaded = true;
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+
+        var canCreateSessions = await SessionService.CanUserCreateSessionsAsync(CurrentUserId);
+
+        if (!canCreateSessions)
+        {
+            RedirectToHome = true;
+            IsLoaded = true;
+            return;
+        }
+
+        await LoadSettings();
+        IsLoaded = true;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToHome)
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadSettings()
+    {
+        Message = string.Empty;
+        Settings = await SessionService.GetSessionSettingsAsync(SessionId, CurrentUserId, Navigation.BaseUri);
+
+        if (Settings is null)
+            return;
+
+        SessionName = Settings.SessionName;
+        SessionPassword = Settings.SessionPassword;
+        UpdateJoinUrlSlug = false;
+    }
+
+    private async Task SaveSettings()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            var updatedSession = await SessionService.UpdateSessionSettingsAsync(
+                SessionId,
+                CurrentUserId,
+                SessionName,
+                SessionPassword,
+                UpdateJoinUrlSlug);
+
+            await LoadSettings();
+
+            Message = UpdateJoinUrlSlug
+                ? L["SessionSettings_SavedWithUrlChange"]
+                : L["SessionSettings_Saved"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void BackToSession()
+    {
+        Navigation.NavigateTo($"/mj/session/{SessionId}");
+    }
+}

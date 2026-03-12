@@ -1109,4 +1109,136 @@
 	<data name="Backend_SessionIsFull" xml:space="preserve">
     <value>The session is full.</value>
   </data>
+	<data name="EditGameSystem_ApplyOnlyWhenConfirmed" xml:space="preserve">
+    <value>Local changes are not saved until you click “Apply changes”.</value>
+  </data>
+	<data name="EditGameSystem_DeletionResponsibilityWarning" xml:space="preserve">
+    <value>Deletions and their consequences are the GM's responsibility. However, the latest system change can still be undone, up to the last 5 backups.</value>
+  </data>
+	<data name="EditGameSystem_SharedWarningTitle" xml:space="preserve">
+    <value>Warning: shared system</value>
+  </data>
+	<data name="EditGameSystem_SharedWarningText" xml:space="preserve">
+    <value>Editing this system will also affect the following sessions currently using it. If you do not want to affect them, duplicate the system inside those sessions before editing it.</value>
+  </data>
+	<data name="EditGameSystem_SharedWarningContinueQuestion" xml:space="preserve">
+    <value>Do you really want to apply changes to this shared system?</value>
+  </data>
+	<data name="EditGameSystem_AddAttributeRow" xml:space="preserve">
+    <value>Add an attribute</value>
+  </data>
+	<data name="EditGameSystem_AddTraitTypeRow" xml:space="preserve">
+    <value>Add a trait type</value>
+  </data>
+	<data name="EditGameSystem_AddGaugeRow" xml:space="preserve">
+    <value>Add a gauge</value>
+  </data>
+	<data name="EditGameSystem_AddOptionRow" xml:space="preserve">
+    <value>Add an option</value>
+  </data>
+	<data name="EditGameSystem_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+	<data name="EditGameSystem_Restore" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+	<data name="EditGameSystem_PendingDeletion" xml:space="preserve">
+    <value>pending deletion</value>
+  </data>
+	<data name="EditGameSystem_ApplyChanges" xml:space="preserve">
+    <value>Apply changes</value>
+  </data>
+	<data name="EditGameSystem_UndoLastChange" xml:space="preserve">
+    <value>Undo last change</value>
+  </data>
+	<data name="EditGameSystem_ChangesApplied" xml:space="preserve">
+    <value>The system changes have been applied.</value>
+  </data>
+	<data name="EditGameSystem_LastChangeUndone" xml:space="preserve">
+    <value>The latest system change has been undone.</value>
+  </data>
+	<data name="Backend_GameSystemSharedEditConfirmationRequired" xml:space="preserve">
+    <value>This system is shared with existing sessions. Confirmation is required before applying changes.</value>
+  </data>
+	<data name="Backend_GameSystemMustKeepAtLeastOneHealthGauge" xml:space="preserve">
+    <value>The last health gauge cannot be deleted: a character must always have at least one IsHealthGauge.</value>
+  </data>
+	<data name="Backend_GameSystemNoSnapshotToUndo" xml:space="preserve">
+    <value>No system backup is available to undo.</value>
+  </data>
+	<data name="SessionSettings_Title" xml:space="preserve">
+    <value>Session settings</value>
+  </data>
+	<data name="SessionSettings_NotFound" xml:space="preserve">
+    <value>Session not found.</value>
+  </data>
+	<data name="SessionSettings_Name" xml:space="preserve">
+    <value>Session name</value>
+  </data>
+	<data name="SessionSettings_Password" xml:space="preserve">
+    <value>Session password</value>
+  </data>
+	<data name="SessionSettings_UpdateJoinUrl" xml:space="preserve">
+    <value>Also change the join URL</value>
+  </data>
+	<data name="SessionSettings_CurrentSlug" xml:space="preserve">
+    <value>Current slug</value>
+  </data>
+	<data name="SessionSettings_CurrentJoinUrl" xml:space="preserve">
+    <value>Current join URL</value>
+  </data>
+	<data name="SessionSettings_IsActive" xml:space="preserve">
+    <value>Session active</value>
+  </data>
+	<data name="SessionSettings_BackToSession" xml:space="preserve">
+    <value>Back to session</value>
+  </data>
+	<data name="SessionSettings_Saved" xml:space="preserve">
+    <value>The session settings have been saved.</value>
+  </data>
+	<data name="SessionSettings_SavedWithUrlChange" xml:space="preserve">
+    <value>The session settings have been saved and the join URL has been updated.</value>
+  </data>
+	<data name="ResumeSession_EditSettings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+	<data name="Backend_SessionNameRequired" xml:space="preserve">
+    <value>The session name is required.</value>
+  </data>
+	<data name="EditCharacter_Title" xml:space="preserve">
+    <value>Edit character sheet</value>
+  </data>
+	<data name="EditCharacter_NotFound" xml:space="preserve">
+    <value>Character not found.</value>
+  </data>
+	<data name="EditCharacter_PlayerName" xml:space="preserve">
+    <value>Player</value>
+  </data>
+	<data name="EditCharacter_Name" xml:space="preserve">
+    <value>Character name</value>
+  </data>
+	<data name="EditCharacter_Biography" xml:space="preserve">
+    <value>Biography</value>
+  </data>
+	<data name="EditCharacter_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+	<data name="EditCharacter_BackToSession" xml:space="preserve">
+    <value>Back to session</value>
+  </data>
+	<data name="EditCharacter_Saved" xml:space="preserve">
+    <value>The character sheet has been saved.</value>
+  </data>
+	<data name="EditCharacter_ResurrectionBlocked" xml:space="preserve">
+    <value>This player already has another living active character, so this character cannot be brought back to life.</value>
+  </data>
+	<data name="EditCharacter_HealthGauge" xml:space="preserve">
+    <value>health gauge</value>
+  </data>
+	<data name="SessionPage_EditCharacter" xml:space="preserve">
+    <value>Edit this character</value>
+  </data>
+	<data name="Backend_CharacterNotFoundForSession" xml:space="preserve">
+    <value>The requested character does not exist in this session.</value>
+  </data>
 </root>

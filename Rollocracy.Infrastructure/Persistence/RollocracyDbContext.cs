@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
-using Rollocracy.Domain.GameTests;
 using Rollocracy.Infrastructure.Events;
+using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Polls;
 
 namespace Rollocracy.Infrastructure.Persistence
@@ -16,21 +16,19 @@ namespace Rollocracy.Infrastructure.Persistence
 
         public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
         public DbSet<GameSystem> GameSystems => Set<GameSystem>();
+        public DbSet<GameSystemSnapshot> GameSystemSnapshots => Set<GameSystemSnapshot>();
 
         public DbSet<Session> Sessions => Set<Session>();
         public DbSet<PlayerSession> PlayerSessions => Set<PlayerSession>();
         public DbSet<Character> Characters => Set<Character>();
 
-        // Caractéristiques numériques
         public DbSet<AttributeDefinition> AttributeDefinitions => Set<AttributeDefinition>();
         public DbSet<CharacterAttributeValue> CharacterAttributeValues => Set<CharacterAttributeValue>();
 
-        // Attributs à choix
         public DbSet<TraitDefinition> TraitDefinitions => Set<TraitDefinition>();
         public DbSet<TraitOption> TraitOptions => Set<TraitOption>();
         public DbSet<CharacterTraitValue> CharacterTraitValues => Set<CharacterTraitValue>();
 
-        // Jauges
         public DbSet<GaugeDefinition> GaugeDefinitions => Set<GaugeDefinition>();
         public DbSet<CharacterGaugeValue> CharacterGaugeValues => Set<CharacterGaugeValue>();
 
@@ -41,7 +39,6 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<GameEvent> GameEvents => Set<GameEvent>();
         public DbSet<GameTestAppliedEffect> GameTestAppliedEffects => Set<GameTestAppliedEffect>();
 
-        // Sondages
         public DbSet<SessionPoll> SessionPolls => Set<SessionPoll>();
         public DbSet<SessionPollOption> SessionPollOptions => Set<SessionPollOption>();
         public DbSet<SessionPollVote> SessionPollVotes => Set<SessionPollVote>();
@@ -72,6 +69,14 @@ namespace Rollocracy.Infrastructure.Persistence
             modelBuilder.Entity<Session>()
                 .HasIndex(s => new { s.GameMasterUserAccountId, s.SessionSlug })
                 .IsUnique();
+
+            modelBuilder.Entity<GameSystemSnapshot>(entity =>
+            {
+                entity.HasIndex(x => new { x.GameSystemId, x.CreatedAtUtc });
+
+                entity.Property(x => x.SnapshotJson)
+                    .HasColumnType("text");
+            });
         }
     }
 }

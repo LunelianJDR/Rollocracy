@@ -725,7 +725,7 @@ else
     {
         <hr />
         <h4>@L["SessionPage_SelectedCharacterSheet"]</h4>
-
+        <button @onclick="EditSelectedCharacter">@L["SessionPage_EditCharacter"]</button>
         <p><strong>@L["PlayerRoom_CharacterName"] :</strong> @SelectedCharacterSheet.Name</p>
         <p><strong>@L["PlayerRoom_CharacterStatus"] :</strong> @(SelectedCharacterSheet.IsAlive? L["Common_Alive"] : L["Common_Dead"])</p>
 
@@ -1496,5 +1496,13 @@ else
         }
 
         return Task.CompletedTask;
+    }
+
+    private void EditSelectedCharacter()
+    {
+        if (SelectedCharacterSheet is null)
+            return;
+
+        Navigation.NavigateTo($"/mj/session/{SessionId}/characters/{SelectedCharacterSheet.CharacterId}/edit");
     }
 }

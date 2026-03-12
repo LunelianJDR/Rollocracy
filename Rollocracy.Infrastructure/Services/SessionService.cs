@@ -57,7 +57,7 @@ namespace Rollocracy.Infrastructure.Services
                 Id = Guid.NewGuid(),
                 GameMasterUserAccountId = gameMasterUserAccountId,
                 GameSystemId = null,
-                SessionName = sessionName,
+                SessionName = sessionName.Trim(),
                 SessionSlug = sessionSlug,
                 SessionPassword = sessionPassword.Trim(),
                 IsActive = true
@@ -65,7 +65,6 @@ namespace Rollocracy.Infrastructure.Services
 
             context.Sessions.Add(session);
 
-            // Le créateur est l'unique MJ de cette session.
             var gmPlayerSession = new PlayerSession
             {
                 Id = Guid.NewGuid(),
@@ -133,7 +132,6 @@ namespace Rollocracy.Infrastructure.Services
 
             var sessionCapacity = NormalizeSessionCapacity(gameMasterUser.MaxPlayersPerSession);
 
-            // JMS = 0 => session considérée comme pleine pour les nouveaux accès joueur.
             if (sessionCapacity <= 0)
                 throw new Exception(_localizer["Backend_SessionIsFull"]);
 
@@ -142,8 +140,6 @@ namespace Rollocracy.Infrastructure.Services
                 session.Id,
                 existingPlayerSession?.Id);
 
-            // Un nouveau joueur compte comme un slot potentiel.
-            // Un ancien joueur ne recompte que s'il revient avec un personnage vivant.
             var currentUserWouldConsumeASlot =
                 existingPlayerSession == null || existingPlayerHasAliveCharacter;
 
@@ -153,7 +149,6 @@ namespace Rollocracy.Infrastructure.Services
             if (existingPlayerSession != null)
                 return existingPlayerSession;
 
-            // Tous les rejoignants autres que le créateur sont des joueurs.
             var playerSession = new PlayerSession
             {
                 Id = Guid.NewGuid(),
@@ -308,6 +303,86 @@ namespace Rollocracy.Infrastructure.Services
                 throw new Exception(_localizer["Backend_UserAccountNotFound"]);
 
             return NormalizeSessionCapacity(user.MaxPlayersPerSession);
+        }
+
+        public async Task<SessionSettingsDto?> GetSessionSettingsAsync(Guid sessionId, Guid gameMasterUserAccountId, string baseUri)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s =>
+                    s.Id == sessionId &&
+                    s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (session == null)
+                return null;
+
+            var gameMasterUser = await context.UserAccounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == gameMasterUserAccountId);
+
+            if (gameMasterUser == null)
+                throw new Exception(_localizer["Backend_UserAccountNotFound"]);
+
+            var normalizedBaseUri = baseUri.EndsWith("/") ? baseUri : $"{baseUri}/";
+
+            return new SessionSettingsDto
+            {
+                SessionId = session.Id,
+                SessionName = session.SessionName,
+                SessionSlug = session.SessionSlug,
+                SessionPassword = session.SessionPassword,
+                IsActive = session.IsActive,
+                JoinUrl = $"{normalizedBaseUri}{gameMasterUser.Username}/{session.SessionSlug}"
+            };
+        }
+
+        public async Task<Session> UpdateSessionSettingsAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            string sessionName,
+            string sessionPassword,
+            bool updateJoinUrlSlug)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var session = await context.Sessions
+                .FirstOrDefaultAsync(s =>
+                    s.Id == sessionId &&
+                    s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (session == null)
+                throw new Exception(_localizer["Backend_SessionNotFound"]);
+
+            var trimmedSessionName = sessionName.Trim();
+
+            if (string.IsNullOrWhiteSpace(trimmedSessionName))
+                throw new Exception(_localizer["Backend_SessionNameRequired"]);
+
+            session.SessionName = trimmedSessionName;
+            session.SessionPassword = sessionPassword.Trim();
+
+            if (updateJoinUrlSlug)
+            {
+                var newSlug = GenerateSessionSlug(trimmedSessionName);
+
+                var slugAlreadyExists = await context.Sessions
+                    .AsNoTracking()
+                    .AnyAsync(s =>
+                        s.Id != sessionId &&
+                        s.GameMasterUserAccountId == gameMasterUserAccountId &&
+                        s.SessionSlug == newSlug);
+
+                if (slugAlreadyExists)
+                    throw new Exception(_localizer["Backend_SessionNameAlreadyExists"]);
+
+                session.SessionSlug = newSlug;
+            }
+
+            await context.SaveChangesAsync();
+
+            return session;
         }
 
         private async Task<int> GetOnlineLivingPlayersCountAsync(
