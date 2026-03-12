@@ -2,29 +2,32 @@
 @rendermode InteractiveServer
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Localization
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
 
-<h3>Créer une session</h3>
+<h3>@L["CreateSession_Title"]</h3>
 
 @if (!IsLoaded)
 {
-    <p>Chargement...</p>
+    <p>@L["Common_Loading"]</p>
 }
 else
 {
     <div>
-        <label>Nom de la session</label><br />
+        <label>@L["CreateSession_Name"]</label><br />
         <input @bind="SessionName" />
     </div>
 
     <div>
-        <label>Mot de passe de session (optionnel)</label><br />
+        <label>@L["CreateSession_PasswordOptional"]</label><br />
         <input @bind="SessionPassword" />
     </div>
 
-    <button @onclick="HandleCreateSession">Créer</button>
+    <button @onclick="HandleCreateSession">@L["CreateSession_Submit"]</button>
 
     @if (!string.IsNullOrWhiteSpace(Message))
     {
@@ -33,15 +36,15 @@ else
 
     @if (!string.IsNullOrWhiteSpace(CreatedJoinUrl))
     {
-        <p><strong>URL :</strong> <code>@CreatedJoinUrl</code></p>
+        <p><strong>@L["CreateSession_UrlLabel"] :</strong> <code>@CreatedJoinUrl</code></p>
 
         @if (string.IsNullOrWhiteSpace(CreatedSessionPassword))
         {
-            <p><strong>Mot de passe :</strong> aucun</p>
+            <p><strong>@L["CreateSession_PasswordLabel"] :</strong> @L["Common_None"]</p>
         }
         else
         {
-            <p><strong>Mot de passe :</strong> <code>@CreatedSessionPassword</code></p>
+            <p><strong>@L["CreateSession_PasswordLabel"] :</strong> <code>@CreatedSessionPassword</code></p>
         }
     }
 }
@@ -50,12 +53,9 @@ else
     private string SessionName = string.Empty;
     private string SessionPassword = string.Empty;
     private string Message = string.Empty;
-
     private string CreatedJoinUrl = string.Empty;
     private string CreatedSessionPassword = string.Empty;
-
     private bool IsLoaded;
-
     private Guid CurrentUserId;
     private string CurrentUsername = string.Empty;
 
@@ -103,11 +103,10 @@ else
 
             if (string.IsNullOrWhiteSpace(SessionName))
             {
-                Message = "Le nom de session est obligatoire.";
+                Message = L["CreateSession_NameRequired"];
                 return;
             }
 
-            // Temporaire en V1
             var gameSystemId = Guid.NewGuid();
 
             var session = await SessionService.CreateSessionAsync(
@@ -119,13 +118,13 @@ else
             CreatedJoinUrl = $"{Navigation.BaseUri}{CurrentUsername}/{session.SessionSlug}";
             CreatedSessionPassword = SessionPassword;
 
-            Message = "Session créée avec succès.";
+            Message = L["CreateSession_Success"];
 
             Navigation.NavigateTo($"/mj/session/{session.Id}");
         }
         catch (Exception ex)
         {
-            Message = $"Erreur : {ex.Message}";
+            Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
 }

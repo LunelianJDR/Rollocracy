@@ -1,25 +1,28 @@
 ﻿@page "/login"
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Localization
 @inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
 
-<h3>Connexion</h3>
+<h3>@L["Login_Title"]</h3>
 
 @if (HasError)
 {
-    <p style="color:red;">Pseudo ou mot de passe invalide.</p>
+    <p>@L["Login_InvalidCredentials"]</p>
 }
 
 <form method="post" action="/auth/login">
     <div>
-        <label for="username">Pseudo</label><br />
+        <label for="username">@L["Login_Username"]</label><br />
         <input id="username" name="Username" />
     </div>
 
     <div>
-        <label for="password">Mot de passe</label><br />
+        <label for="password">@L["Login_Password"]</label><br />
         <input id="password" name="Password" type="password" />
     </div>
 
-    <button type="submit">Se connecter</button>
+    <button type="submit">@L["Login_Submit"]</button>
 </form>
 
 @code {

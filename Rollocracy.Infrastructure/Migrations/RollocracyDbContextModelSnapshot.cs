@@ -28,7 +28,14 @@ namespace Rollocracy.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Biography")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DiedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsAlive")
@@ -342,40 +349,96 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<Guid>("AttributeDefinitionId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("Comparison")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DiceFormula")
+                    b.Property<string>("AttributeNameSnapshot")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("DurationSeconds")
+                    b.Property<DateTime>("AutoRollAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ClosedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DiceCount")
                         .HasColumnType("integer");
 
-                    b.Property<bool>("IsCancelled")
+                    b.Property<int>("DiceSides")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DifficultyValue")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsClosed")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("Modifier")
+                    b.Property<int>("ModifierMode")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ResolutionModeSnapshot")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("SessionId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("Status")
+                    b.Property<int?>("SuccessThreshold")
                         .HasColumnType("integer");
 
-                    b.Property<int>("TargetType")
+                    b.Property<int>("TargetScope")
                         .HasColumnType("integer");
 
-                    b.Property<int>("TargetValue")
+                    b.Property<int>("TraitFilterMode")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
                     b.ToTable("GameTests");
+                });
+
+            modelBuilder.Entity("Rollocracy.Domain.GameTests.GameTestAppliedEffect", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AppliedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CharacterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GameTestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("NewDiedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("NewIsAlive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("NewValue")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("PreviousDiedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("PreviousIsAlive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("PreviousValue")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TargetDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TargetKind")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("GameTestAppliedEffects");
                 });
 
             modelBuilder.Entity("Rollocracy.Domain.GameTests.GameTestConsequence", b =>
@@ -384,17 +447,24 @@ namespace Rollocracy.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("CharacterId")
-                        .HasColumnType("uuid");
+                    b.Property<int>("ApplyOn")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("GameTestId")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("PreviousValue")
+                    b.Property<int>("ModifierMode")
                         .HasColumnType("integer");
 
-                    b.Property<int>("Type")
+                    b.Property<Guid>("TargetDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TargetKind")
                         .HasColumnType("integer");
+
+                    b.Property<string>("TargetNameSnapshot")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int>("Value")
                         .HasColumnType("integer");
@@ -404,18 +474,60 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.ToTable("GameTestConsequences");
                 });
 
+            modelBuilder.Entity("Rollocracy.Domain.GameTests.GameTestTraitFilter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GameTestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TraitDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TraitOptionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("GameTestTraitFilters");
+                });
+
             modelBuilder.Entity("Rollocracy.Domain.GameTests.PlayerTestRoll", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("DiceDetails")
+                    b.Property<int>("AttributeValueSnapshot")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CharacterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CharacterNameSnapshot")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("DiceResultsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("DiceTotal")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EffectiveAttributeValue")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FinalValue")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("GameTestId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("HasRolled")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsAutoRolled")
                         .HasColumnType("boolean");
@@ -423,18 +535,202 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<bool>("IsSuccess")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("PlayerNameSnapshot")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<Guid>("PlayerSessionId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("RolledAt")
+                    b.Property<DateTime?>("RolledAtUtc")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("TotalResult")
-                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
                     b.ToTable("PlayerTestRolls");
+                });
+
+            modelBuilder.Entity("Rollocracy.Domain.Polls.SessionPoll", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ClosedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("ConsequencesApplied")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsClosed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SessionPolls");
+                });
+
+            modelBuilder.Entity("Rollocracy.Domain.Polls.SessionPollAppliedEffect", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AppliedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CharacterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("NewDiedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("NewIsAlive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("NewValue")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("PreviousDiedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("PreviousIsAlive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("PreviousValue")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SessionPollId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SessionPollOptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SessionPollVoteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TargetDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TargetKind")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SessionPollAppliedEffects");
+                });
+
+            modelBuilder.Entity("Rollocracy.Domain.Polls.SessionPollOption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SessionPollId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SessionPollOptions");
+                });
+
+            modelBuilder.Entity("Rollocracy.Domain.Polls.SessionPollOptionConsequence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ModifierMode")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SessionPollOptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TargetDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("TargetKind")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TargetNameSnapshot")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Value")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SessionPollOptionConsequences");
+                });
+
+            modelBuilder.Entity("Rollocracy.Domain.Polls.SessionPollVote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CharacterId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PlayerSessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SessionPollId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SessionPollOptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("VoteWeight")
+                        .HasColumnType("numeric");
+
+                    b.Property<DateTime>("VotedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SessionPollVotes");
+                });
+
+            modelBuilder.Entity("Rollocracy.Domain.Polls.SessionPollWeightRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SessionPollId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TraitDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TraitOptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("WeightBonus")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SessionPollWeightRules");
                 });
 
             modelBuilder.Entity("Rollocracy.Infrastructure.Events.GameEvent", b =>

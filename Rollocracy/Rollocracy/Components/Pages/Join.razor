@@ -1,22 +1,25 @@
 ﻿@page "/join"
 @rendermode InteractiveServer
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Localization
 @inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
 
-<h3>Rejoindre une session</h3>
+<h3>@L["Join_Title"]</h3>
 
-<p>Entrez le pseudo du MJ et le nom technique de la session.</p>
+<p>@L["Join_Description"]</p>
 
 <div>
-    <label>Pseudo du MJ</label><br />
+    <label>@L["Join_GameMasterUsername"]</label><br />
     <input @bind="GameMasterUsername" />
 </div>
 
 <div>
-    <label>Nom technique de la session</label><br />
+    <label>@L["Join_SessionSlug"]</label><br />
     <input @bind="SessionSlug" />
 </div>
 
-<button @onclick="GoToSession">Accéder à la session</button>
+<button @onclick="GoToSession">@L["Join_Submit"]</button>
 
 @if (!string.IsNullOrWhiteSpace(Message))
 {
@@ -32,13 +35,13 @@
     {
         if (string.IsNullOrWhiteSpace(GameMasterUsername))
         {
-            Message = "Le pseudo du MJ est obligatoire.";
+            Message = L["Join_GameMasterRequired"];
             return;
         }
 
         if (string.IsNullOrWhiteSpace(SessionSlug))
         {
-            Message = "Le nom technique de la session est obligatoire.";
+            Message = L["Join_SessionSlugRequired"];
             return;
         }
 

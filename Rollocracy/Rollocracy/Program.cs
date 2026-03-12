@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
 using Rollocracy.Client.Pages;
 using Rollocracy.Components;
@@ -6,11 +9,9 @@ using Rollocracy.Domain.Interfaces;
 using Rollocracy.Hubs;
 using Rollocracy.Infrastructure.Persistence;
 using Rollocracy.Infrastructure.Services;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Components.Authorization;
-using System.Globalization;
-using Microsoft.AspNetCore.Localization;
 using Rollocracy.Localization;
+using Rollocracy.Services;
+using System.Globalization;
 using System.Security.Claims;
 
 
@@ -63,6 +64,16 @@ builder.Services.AddCascadingAuthenticationState();
 // Active le système de localisation .NET
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
 
+builder.Services.AddScoped<ICharacterService, CharacterService>();
+
+builder.Services.AddSingleton<IPresenceTracker, PresenceTracker>();
+
+builder.Services.AddScoped<IGameTestService, GameTestService>();
+builder.Services.AddSingleton<GameTestAutoRollScheduler>();
+
+builder.Services.AddScoped<ISessionNotifier, SignalRSessionNotifier>();
+
+builder.Services.AddScoped<IPollService, PollService>();
 
 //////////////////////////
 

@@ -3,49 +3,52 @@
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.SignalR
+@using Microsoft.Extensions.Localization
 @using Rollocracy.Domain.Entities
 @using Rollocracy.Hubs
+@using Rollocracy.Localization
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @inject IHubContext<SessionHub> SessionHubContext
+@inject IStringLocalizer<SharedTexts> L
 
-<h3>Rejoindre une session</h3>
+<h3>@L["JoinSession_Title"]</h3>
 
-<p>MJ : @mjUsername</p>
-<p>Session : @sessionSlug</p>
+<p>@L["JoinSession_GameMasterLabel"] : @mjUsername</p>
+<p>@L["JoinSession_SessionLabel"] : @sessionSlug</p>
 
 @if (!IsLoaded)
 {
-    <p>Chargement...</p>
+    <p>@L["Common_Loading"]</p>
 }
 else if (!IsAuthenticated)
 {
-    <p>Vous devez être connecté pour rejoindre une session.</p>
+    <p>@L["JoinSession_MustBeLoggedIn"]</p>
 }
 else if (Session is null)
 {
-    <p>Session introuvable.</p>
+    <p>@L["JoinSession_NotFound"]</p>
 }
 else if (!Session.IsActive)
 {
-    <p>Cette session est actuellement inactive.</p>
+    <p>@L["JoinSession_Inactive"]</p>
 }
 else
 {
     @if (RequiresPassword)
     {
         <div>
-            <label>Mot de passe de session</label><br />
+            <label>@L["JoinSession_PasswordLabel"]</label><br />
             <input @bind="SessionPassword" />
         </div>
     }
     else
     {
-        <p>Cette session ne nécessite pas de mot de passe.</p>
+        <p>@L["JoinSession_NoPasswordRequired"]</p>
     }
 
-    <button @onclick="HandleJoinSession">Rejoindre</button>
+    <button @onclick="HandleJoinSession">@L["JoinSession_Submit"]</button>
 
     @if (!string.IsNullOrWhiteSpace(Message))
     {
@@ -58,7 +61,6 @@ else
     [Parameter] public string sessionSlug { get; set; } = string.Empty;
 
     private Session? Session;
-
     private bool IsLoaded;
     private bool IsAuthenticated;
     private bool RequiresPassword;
@@ -111,13 +113,13 @@ else
         {
             if (Session is null)
             {
-                Message = "Session introuvable.";
+                Message = L["JoinSession_NotFound"];
                 return;
             }
 
             if (!Session.IsActive)
             {
-                Message = "Cette session est actuellement inactive.";
+                Message = L["JoinSession_Inactive"];
                 return;
             }
 
@@ -137,7 +139,7 @@ else
         }
         catch (Exception ex)
         {
-            Message = $"Erreur : {ex.Message}";
+            Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
 }

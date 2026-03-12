@@ -147,4 +147,942 @@
   <data name="Home_WelcomeUser" xml:space="preserve">
     <value>Bienvenue {0} !</value>
   </data>
+	<data name="Register_Title" xml:space="preserve">
+  <value>Créer un compte</value>
+</data>
+	<data name="Register_Username" xml:space="preserve">
+  <value>Pseudo</value>
+</data>
+	<data name="Register_Password" xml:space="preserve">
+  <value>Mot de passe</value>
+</data>
+	<data name="Register_IsGameMaster" xml:space="preserve">
+  <value>Compte MJ</value>
+</data>
+	<data name="Register_Language" xml:space="preserve">
+  <value>Langue</value>
+</data>
+	<data name="Register_Submit" xml:space="preserve">
+  <value>Créer le compte</value>
+</data>
+	<data name="Register_Success" xml:space="preserve">
+  <value>Compte créé avec succès. Vous pouvez maintenant vous connecter.</value>
+</data>
+	<data name="Language_French" xml:space="preserve">
+  <value>Français</value>
+</data>
+	<data name="Language_English" xml:space="preserve">
+  <value>English</value>
+</data>
+	<data name="Common_Error" xml:space="preserve">
+  <value>Erreur</value>
+</data>
+	<data name="Login_Title" xml:space="preserve">
+  <value>Connexion</value>
+</data>
+	<data name="Login_Username" xml:space="preserve">
+  <value>Pseudo</value>
+</data>
+	<data name="Login_Password" xml:space="preserve">
+  <value>Mot de passe</value>
+</data>
+	<data name="Login_Submit" xml:space="preserve">
+  <value>Se connecter</value>
+</data>
+	<data name="Login_InvalidCredentials" xml:space="preserve">
+  <value>Pseudo ou mot de passe invalide.</value>
+</data>
+
+	<data name="Join_Title" xml:space="preserve">
+  <value>Rejoindre une session</value>
+</data>
+	<data name="Join_Description" xml:space="preserve">
+  <value>Entrez le pseudo du MJ et le nom technique de la session.</value>
+</data>
+	<data name="Join_GameMasterUsername" xml:space="preserve">
+  <value>Pseudo du MJ</value>
+</data>
+	<data name="Join_SessionSlug" xml:space="preserve">
+  <value>Nom technique de la session</value>
+</data>
+	<data name="Join_Submit" xml:space="preserve">
+  <value>Accéder à la session</value>
+</data>
+	<data name="Join_GameMasterRequired" xml:space="preserve">
+  <value>Le pseudo du MJ est obligatoire.</value>
+</data>
+	<data name="Join_SessionSlugRequired" xml:space="preserve">
+  <value>Le nom technique de la session est obligatoire.</value>
+</data>
+
+	<data name="JoinSession_Title" xml:space="preserve">
+  <value>Rejoindre une session</value>
+</data>
+	<data name="JoinSession_GameMasterLabel" xml:space="preserve">
+  <value>MJ</value>
+</data>
+	<data name="JoinSession_SessionLabel" xml:space="preserve">
+  <value>Session</value>
+</data>
+	<data name="JoinSession_MustBeLoggedIn" xml:space="preserve">
+  <value>Vous devez être connecté pour rejoindre une session.</value>
+</data>
+	<data name="JoinSession_NotFound" xml:space="preserve">
+  <value>Session introuvable.</value>
+</data>
+	<data name="JoinSession_Inactive" xml:space="preserve">
+  <value>Cette session est actuellement inactive.</value>
+</data>
+	<data name="JoinSession_PasswordLabel" xml:space="preserve">
+  <value>Mot de passe de session</value>
+</data>
+	<data name="JoinSession_NoPasswordRequired" xml:space="preserve">
+  <value>Cette session ne nécessite pas de mot de passe.</value>
+</data>
+	<data name="JoinSession_Submit" xml:space="preserve">
+  <value>Rejoindre</value>
+</data>
+
+	<data name="CreateSession_Title" xml:space="preserve">
+  <value>Créer une session</value>
+</data>
+	<data name="CreateSession_Name" xml:space="preserve">
+  <value>Nom de la session</value>
+</data>
+	<data name="CreateSession_PasswordOptional" xml:space="preserve">
+  <value>Mot de passe de session (optionnel)</value>
+</data>
+	<data name="CreateSession_Submit" xml:space="preserve">
+  <value>Créer</value>
+</data>
+	<data name="CreateSession_UrlLabel" xml:space="preserve">
+  <value>URL</value>
+</data>
+	<data name="CreateSession_PasswordLabel" xml:space="preserve">
+  <value>Mot de passe</value>
+</data>
+	<data name="CreateSession_NameRequired" xml:space="preserve">
+  <value>Le nom de session est obligatoire.</value>
+</data>
+	<data name="CreateSession_Success" xml:space="preserve">
+  <value>Session créée avec succès.</value>
+</data>
+
+	<data name="SessionPage_Title" xml:space="preserve">
+  <value>Session MJ</value>
+</data>
+	<data name="SessionPage_NotFound" xml:space="preserve">
+  <value>Session introuvable.</value>
+</data>
+	<data name="SessionPage_Name" xml:space="preserve">
+  <value>Nom de la session</value>
+</data>
+	<data name="SessionPage_Slug" xml:space="preserve">
+  <value>Slug</value>
+</data>
+	<data name="SessionPage_JoinUrl" xml:space="preserve">
+  <value>URL de jointure</value>
+</data>
+	<data name="SessionPage_Password" xml:space="preserve">
+  <value>Mot de passe de la session</value>
+</data>
+	<data name="SessionPage_ShowPassword" xml:space="preserve">
+  <value>Afficher le mot de passe de la session</value>
+</data>
+	<data name="SessionPage_HidePassword" xml:space="preserve">
+  <value>Masquer le mot de passe de la session</value>
+</data>
+	<data name="SessionPage_GameSystemSection" xml:space="preserve">
+  <value>Système de jeu de la session</value>
+</data>
+	<data name="SessionPage_NoGameSystems" xml:space="preserve">
+  <value>Vous n'avez encore créé aucun système de jeu.</value>
+</data>
+	<data name="SessionPage_CreateGameSystem" xml:space="preserve">
+  <value>Créer un système</value>
+</data>
+	<data name="SessionPage_SelectGameSystem" xml:space="preserve">
+  <value>Choisir un système</value>
+</data>
+	<data name="SessionPage_NoGameSystemSelected" xml:space="preserve">
+  <value>-- Aucun système sélectionné --</value>
+</data>
+	<data name="SessionPage_AssignGameSystem" xml:space="preserve">
+  <value>Associer ce système à la session</value>
+</data>
+	<data name="SessionPage_CurrentGameSystem" xml:space="preserve">
+  <value>Système actuellement lié</value>
+</data>
+	<data name="SessionPage_EditSessionGameSystem" xml:space="preserve">
+  <value>Éditer le système de cette session</value>
+</data>
+	<data name="SessionPage_CloneAndEditForSession" xml:space="preserve">
+  <value>Dupliquer et éditer pour cette session</value>
+</data>
+	<data name="SessionPage_SessionId" xml:space="preserve">
+  <value>Session ID</value>
+</data>
+	<data name="SessionPage_NoPlayers" xml:space="preserve">
+  <value>Aucun joueur pour l'instant</value>
+</data>
+	<data name="SessionPage_RefreshPlayers" xml:space="preserve">
+  <value>Rafraîchir la liste</value>
+</data>
+	<data name="SessionPage_SelectGameSystemRequired" xml:space="preserve">
+  <value>Veuillez choisir un système.</value>
+</data>
+	<data name="SessionPage_GameSystemAssigned" xml:space="preserve">
+  <value>Système associé à la session.</value>
+</data>
+	<data name="SessionPage_NoAssignedGameSystem" xml:space="preserve">
+  <value>Aucun système n'est lié à cette session.</value>
+</data>
+
+	<data name="ResumeSession_Title" xml:space="preserve">
+  <value>Mes sessions</value>
+</data>
+	<data name="ResumeSession_None" xml:space="preserve">
+  <value>Vous n'avez encore créé aucune session.</value>
+</data>
+	<data name="ResumeSession_Name" xml:space="preserve">
+  <value>Nom</value>
+</data>
+	<data name="ResumeSession_AliveCharacters" xml:space="preserve">
+  <value>Personnages vivants</value>
+</data>
+	<data name="ResumeSession_IsActive" xml:space="preserve">
+  <value>Session active</value>
+</data>
+	<data name="ResumeSession_Url" xml:space="preserve">
+  <value>URL</value>
+</data>
+	<data name="ResumeSession_InactiveUrl" xml:space="preserve">
+  <value>session inactive</value>
+</data>
+	<data name="ResumeSession_Open" xml:space="preserve">
+  <value>Ouvrir</value>
+</data>
+	<data name="ResumeSession_Deactivate" xml:space="preserve">
+  <value>Désactiver</value>
+</data>
+	<data name="ResumeSession_Activate" xml:space="preserve">
+  <value>Activer</value>
+</data>
+
+	<data name="GameSystems_Title" xml:space="preserve">
+  <value>Mes systèmes de jeu</value>
+</data>
+	<data name="GameSystems_NewName" xml:space="preserve">
+  <value>Nom du nouveau système</value>
+</data>
+	<data name="GameSystems_NewDescription" xml:space="preserve">
+  <value>Description</value>
+</data>
+	<data name="GameSystems_ResolutionMode" xml:space="preserve">
+  <value>Mode de résolution</value>
+</data>
+	<data name="GameSystems_Create" xml:space="preserve">
+  <value>Créer le système</value>
+</data>
+	<data name="GameSystems_None" xml:space="preserve">
+  <value>Vous n'avez encore créé aucun système.</value>
+</data>
+	<data name="GameSystems_Name" xml:space="preserve">
+  <value>Nom</value>
+</data>
+	<data name="GameSystems_Description" xml:space="preserve">
+  <value>Description</value>
+</data>
+	<data name="GameSystems_Mode" xml:space="preserve">
+  <value>Mode</value>
+</data>
+	<data name="GameSystems_Edit" xml:space="preserve">
+  <value>Éditer</value>
+</data>
+	<data name="GameSystems_NameRequired" xml:space="preserve">
+  <value>Le nom du système est obligatoire.</value>
+</data>
+
+	<data name="EditGameSystem_Title" xml:space="preserve">
+  <value>Édition du système de jeu</value>
+</data>
+	<data name="EditGameSystem_NotFound" xml:space="preserve">
+  <value>Système introuvable.</value>
+</data>
+	<data name="EditGameSystem_GeneralSection" xml:space="preserve">
+  <value>Informations générales</value>
+</data>
+	<data name="EditGameSystem_Name" xml:space="preserve">
+  <value>Nom</value>
+</data>
+	<data name="EditGameSystem_Description" xml:space="preserve">
+  <value>Description</value>
+</data>
+	<data name="EditGameSystem_ResolutionMode" xml:space="preserve">
+  <value>Mode de résolution</value>
+</data>
+	<data name="EditGameSystem_AttributesSection" xml:space="preserve">
+  <value>Caractéristiques numériques</value>
+</data>
+	<data name="EditGameSystem_AddAttribute" xml:space="preserve">
+  <value>Ajouter la caractéristique</value>
+</data>
+	<data name="EditGameSystem_NoAttributes" xml:space="preserve">
+  <value>Aucune caractéristique pour le moment.</value>
+</data>
+	<data name="EditGameSystem_TraitsSection" xml:space="preserve">
+  <value>Attributs à choix</value>
+</data>
+	<data name="EditGameSystem_TraitTypeName" xml:space="preserve">
+  <value>Nom du type d'attribut</value>
+</data>
+	<data name="EditGameSystem_AddTraitType" xml:space="preserve">
+  <value>Ajouter le type</value>
+</data>
+	<data name="EditGameSystem_NoTraitTypes" xml:space="preserve">
+  <value>Aucun attribut à choix pour le moment.</value>
+</data>
+	<data name="EditGameSystem_NewOptionPlaceholder" xml:space="preserve">
+  <value>Nouvelle option</value>
+</data>
+	<data name="EditGameSystem_AddOption" xml:space="preserve">
+  <value>Ajouter une option</value>
+</data>
+	<data name="EditGameSystem_NoOptionsForTrait" xml:space="preserve">
+  <value>Aucune option pour ce type.</value>
+</data>
+	<data name="EditGameSystem_GaugesSection" xml:space="preserve">
+  <value>Jauges</value>
+</data>
+	<data name="EditGameSystem_IsHealthGauge" xml:space="preserve">
+  <value>Jauge de santé ?</value>
+</data>
+	<data name="EditGameSystem_AddGauge" xml:space="preserve">
+  <value>Ajouter la jauge</value>
+</data>
+	<data name="EditGameSystem_NoGauges" xml:space="preserve">
+  <value>Aucune jauge pour le moment.</value>
+</data>
+	<data name="EditGameSystem_Lethal" xml:space="preserve">
+  <value>létale</value>
+</data>
+	<data name="EditGameSystem_GeneralSaved" xml:space="preserve">
+  <value>Informations générales enregistrées.</value>
+</data>
+	<data name="EditGameSystem_AttributeNameRequired" xml:space="preserve">
+  <value>Le nom de la caractéristique est obligatoire.</value>
+</data>
+	<data name="EditGameSystem_AttributeAdded" xml:space="preserve">
+  <value>Caractéristique ajoutée.</value>
+</data>
+	<data name="EditGameSystem_TraitTypeNameRequired" xml:space="preserve">
+  <value>Le nom du type d'attribut est obligatoire.</value>
+</data>
+	<data name="EditGameSystem_TraitTypeAdded" xml:space="preserve">
+  <value>Type d'attribut ajouté.</value>
+</data>
+	<data name="EditGameSystem_OptionNameRequired" xml:space="preserve">
+  <value>Le nom de l'option est obligatoire.</value>
+</data>
+	<data name="EditGameSystem_OptionAdded" xml:space="preserve">
+  <value>Option ajoutée.</value>
+</data>
+	<data name="EditGameSystem_GaugeNameRequired" xml:space="preserve">
+  <value>Le nom de la jauge est obligatoire.</value>
+</data>
+	<data name="EditGameSystem_GaugeAdded" xml:space="preserve">
+  <value>Jauge ajoutée.</value>
+</data>
+
+	<data name="Resolution_SuccessThreshold" xml:space="preserve">
+  <value>Seuil de Réussite</value>
+</data>
+	<data name="Resolution_RollUnderAttribute" xml:space="preserve">
+  <value>Inférieur à la caractéristique</value>
+</data>
+
+	<data name="Common_Save" xml:space="preserve">
+  <value>Enregistrer</value>
+</data>
+	<data name="Common_Name" xml:space="preserve">
+  <value>Nom</value>
+</data>
+	<data name="Common_Min" xml:space="preserve">
+  <value>Min</value>
+</data>
+	<data name="Common_Max" xml:space="preserve">
+  <value>Max</value>
+</data>
+	<data name="Common_DefaultValue" xml:space="preserve">
+  <value>Valeur par défaut</value>
+</data>
+	<data name="Common_Yes" xml:space="preserve">
+  <value>Oui</value>
+</data>
+	<data name="Common_No" xml:space="preserve">
+  <value>Non</value>
+</data>
+	<data name="Common_None" xml:space="preserve">
+  <value>aucun</value>
+</data>
+	<data name="Common_GameMasterShort" xml:space="preserve">
+  <value>MJ</value>
+</data>
+	<data name="Backend_UsernameAlreadyExists" xml:space="preserve">
+  <value>Ce pseudo existe déjà.</value>
+</data>
+	<data name="Backend_InvalidCredentials" xml:space="preserve">
+  <value>Pseudo ou mot de passe invalide.</value>
+</data>
+	<data name="Backend_UserAccountNotFound" xml:space="preserve">
+  <value>Compte utilisateur introuvable.</value>
+</data>
+	<data name="Backend_OnlyGameMastersCanCreateSession" xml:space="preserve">
+  <value>Seuls les comptes MJ peuvent créer une session.</value>
+</data>
+	<data name="Backend_SessionNameAlreadyExists" xml:space="preserve">
+  <value>Vous avez déjà une session avec ce nom.</value>
+</data>
+	<data name="Backend_GameMasterNotFound" xml:space="preserve">
+  <value>MJ introuvable.</value>
+</data>
+	<data name="Backend_SessionNotFound" xml:space="preserve">
+  <value>Session introuvable.</value>
+</data>
+	<data name="Backend_SessionInactive" xml:space="preserve">
+  <value>Cette session est actuellement inactive.</value>
+</data>
+	<data name="Backend_InvalidSessionPassword" xml:space="preserve">
+  <value>Mot de passe de session invalide.</value>
+</data>
+	<data name="Backend_GameSystemNotFound" xml:space="preserve">
+  <value>Système introuvable.</value>
+</data>
+	<data name="Backend_TraitDefinitionNotFound" xml:space="preserve">
+  <value>Attribut de choix introuvable.</value>
+</data>
+	<data name="Backend_GameSystemAccessDenied" xml:space="preserve">
+  <value>Accès refusé à ce système.</value>
+</data>
+	<data name="Backend_SourceGameSystemNotFound" xml:space="preserve">
+  <value>Système source introuvable.</value>
+</data>
+	<data name="Backend_PlayerNotFound" xml:space="preserve">
+  <value>Joueur introuvable.</value>
+</data>
+	<data name="Backend_PlayerSessionNotFound" xml:space="preserve">
+  <value>Session joueur introuvable.</value>
+</data>
+	<data name="Backend_SessionHasNoGameSystem" xml:space="preserve">
+  <value>Cette session n'a pas encore de système de jeu associé.</value>
+</data>
+	<data name="Backend_PlayerAlreadyHasAliveCharacter" xml:space="preserve">
+  <value>Vous avez déjà un personnage vivant dans cette session.</value>
+</data>
+	<data name="Backend_CharacterNameRequired" xml:space="preserve">
+  <value>Le nom du personnage est obligatoire.</value>
+</data>
+	<data name="Backend_MissingTraitSelection" xml:space="preserve">
+  <value>Une sélection d'attribut est manquante.</value>
+</data>
+	<data name="Backend_InvalidTraitSelection" xml:space="preserve">
+  <value>Sélection d'attribut invalide.</value>
+</data>
+
+	<data name="CreateCharacter_Title" xml:space="preserve">
+  <value>Créer un personnage</value>
+</data>
+	<data name="CreateCharacter_TemplateNotFound" xml:space="preserve">
+  <value>Modèle de création introuvable.</value>
+</data>
+	<data name="CreateCharacter_GameSystem" xml:space="preserve">
+  <value>Système de jeu</value>
+</data>
+	<data name="CreateCharacter_Name" xml:space="preserve">
+  <value>Nom du personnage</value>
+</data>
+	<data name="CreateCharacter_Biography" xml:space="preserve">
+  <value>Biographie</value>
+</data>
+	<data name="CreateCharacter_Attributes" xml:space="preserve">
+  <value>Caractéristiques</value>
+</data>
+	<data name="CreateCharacter_Traits" xml:space="preserve">
+  <value>Attributs</value>
+</data>
+	<data name="CreateCharacter_Submit" xml:space="preserve">
+  <value>Créer le personnage</value>
+</data>
+
+	<data name="PlayerRoom_Title" xml:space="preserve">
+  <value>Votre session</value>
+</data>
+	<data name="PlayerRoom_NotFound" xml:space="preserve">
+  <value>Informations de session introuvables.</value>
+</data>
+	<data name="PlayerRoom_ConnectedPlayers" xml:space="preserve">
+  <value>Joueurs connectés</value>
+</data>
+	<data name="PlayerRoom_AliveCharacters" xml:space="preserve">
+  <value>Personnages vivants</value>
+</data>
+	<data name="PlayerRoom_TotalCharacters" xml:space="preserve">
+  <value>Total des personnages</value>
+</data>
+	<data name="PlayerRoom_NoGameSystem" xml:space="preserve">
+  <value>Le MJ n'a pas encore choisi de système de jeu pour cette session.</value>
+</data>
+	<data name="PlayerRoom_YourCharacter" xml:space="preserve">
+  <value>Votre personnage</value>
+</data>
+	<data name="PlayerRoom_NoCharacterYet" xml:space="preserve">
+  <value>Vous n'avez pas encore de personnage dans cette session.</value>
+</data>
+	<data name="PlayerRoom_CreateCharacter" xml:space="preserve">
+  <value>Créer un personnage</value>
+</data>
+	<data name="PlayerRoom_OnlyDeadCharacters" xml:space="preserve">
+  <value>Vous n'avez plus de personnage vivant dans cette session.</value>
+</data>
+	<data name="PlayerRoom_CreateNewCharacter" xml:space="preserve">
+  <value>Créer un nouveau personnage</value>
+</data>
+	<data name="PlayerRoom_DeadCharacters" xml:space="preserve">
+  <value>Vos personnages morts</value>
+</data>
+	<data name="PlayerRoom_ViewDeadCharacter" xml:space="preserve">
+  <value>Voir la fiche</value>
+</data>
+	<data name="PlayerRoom_ViewedDeadCharacter" xml:space="preserve">
+  <value>Fiche du personnage mort</value>
+</data>
+	<data name="PlayerRoom_CharacterName" xml:space="preserve">
+  <value>Nom</value>
+</data>
+	<data name="PlayerRoom_CharacterStatus" xml:space="preserve">
+  <value>Statut</value>
+</data>
+	<data name="PlayerRoom_CharacterBiography" xml:space="preserve">
+  <value>Biographie</value>
+</data>
+	<data name="PlayerRoom_Attributes" xml:space="preserve">
+  <value>Caractéristiques</value>
+</data>
+	<data name="PlayerRoom_Traits" xml:space="preserve">
+  <value>Attributs</value>
+</data>
+	<data name="PlayerRoom_Gauges" xml:space="preserve">
+  <value>Jauges</value>
+</data>
+	<data name="PlayerRoom_ReadOnlyDeadCharacter" xml:space="preserve">
+  <value>Ce personnage est mort : consultation seule pour le moment.</value>
+</data>
+
+	<data name="Common_Alive" xml:space="preserve">
+  <value>Vivant</value>
+</data>
+	<data name="Common_Dead" xml:space="preserve">
+  <value>Mort</value>
+</data>
+	<data name="SessionPage_ConnectedPlayers" xml:space="preserve">
+  <value>Joueurs connectés</value>
+</data>
+	<data name="SessionPage_AliveCharactersCount" xml:space="preserve">
+  <value>Personnages vivants</value>
+</data>
+	<data name="SessionPage_TotalCharactersCount" xml:space="preserve">
+  <value>Total des personnages</value>
+</data>
+	<data name="SessionPage_CharactersSection" xml:space="preserve">
+  <value>Personnages de la session</value>
+</data>
+	<data name="SessionPage_ShowPlayerName" xml:space="preserve">
+  <value>Afficher le nom du joueur</value>
+</data>
+	<data name="SessionPage_ShowAttributes" xml:space="preserve">
+  <value>Afficher les caractéristiques</value>
+</data>
+	<data name="SessionPage_ShowTraits" xml:space="preserve">
+  <value>Afficher les attributs</value>
+</data>
+	<data name="SessionPage_ShowGauges" xml:space="preserve">
+  <value>Afficher les jauges</value>
+</data>
+	<data name="SessionPage_ShowOfflineCharacters" xml:space="preserve">
+  <value>Afficher les personnages hors-ligne</value>
+</data>
+	<data name="SessionPage_ShowDeadCharacters" xml:space="preserve">
+  <value>Afficher les personnages morts</value>
+</data>
+	<data name="SessionPage_NoCharactersToDisplay" xml:space="preserve">
+  <value>Aucun personnage à afficher.</value>
+</data>
+	<data name="SessionPage_PlayerName" xml:space="preserve">
+  <value>Nom du joueur</value>
+</data>
+	<data name="SessionPage_SelectedCharacterSheet" xml:space="preserve">
+  <value>Fiche complète du personnage</value>
+</data>
+
+	<data name="Common_Online" xml:space="preserve">
+  <value>En ligne</value>
+</data>
+	<data name="Common_Offline" xml:space="preserve">
+  <value>Hors-ligne</value>
+</data>
+	<data name="Backend_TestAlreadyActive" xml:space="preserve">
+  <value>Un test est déjà actif dans cette session.</value>
+</data>
+	<data name="Backend_AttributeDefinitionNotFound" xml:space="preserve">
+  <value>Caractéristique introuvable.</value>
+</data>
+	<data name="Backend_SuccessThresholdRequired" xml:space="preserve">
+  <value>Le seuil de réussite est obligatoire pour ce système.</value>
+</data>
+	<data name="Backend_NoEligibleCharactersForTest" xml:space="preserve">
+  <value>Aucun personnage vivant et connecté ne peut participer à ce test.</value>
+</data>
+	<data name="Backend_TestRollTargetNotFound" xml:space="preserve">
+  <value>Cible du test introuvable.</value>
+</data>
+	<data name="Backend_TestNotFound" xml:space="preserve">
+  <value>Test introuvable.</value>
+</data>
+	<data name="Backend_TestAlreadyClosed" xml:space="preserve">
+  <value>Ce test est déjà terminé.</value>
+</data>
+	<data name="Backend_InvalidDiceCount" xml:space="preserve">
+  <value>Le nombre de dés doit être compris entre 1 et 5.</value>
+</data>
+	<data name="Backend_InvalidDiceSides" xml:space="preserve">
+  <value>Le nombre de faces doit être compris entre 2 et 100.</value>
+</data>
+
+	<data name="GameTest_GameMasterSectionTitle" xml:space="preserve">
+  <value>Test de dés</value>
+</data>
+	<data name="GameTest_PlayerSectionTitle" xml:space="preserve">
+  <value>Test demandé par le MJ</value>
+</data>
+	<data name="GameTest_NoGameSystemForSession" xml:space="preserve">
+  <value>La session n'a pas encore de système de jeu.</value>
+</data>
+	<data name="GameTest_NoAttributeAvailable" xml:space="preserve">
+  <value>Aucune caractéristique disponible pour lancer un test.</value>
+</data>
+	<data name="GameTest_SelectAttribute" xml:space="preserve">
+  <value>-- Choisir une caractéristique --</value>
+</data>
+	<data name="GameTest_Attribute" xml:space="preserve">
+  <value>Caractéristique</value>
+</data>
+	<data name="GameTest_Dice" xml:space="preserve">
+  <value>Dés</value>
+</data>
+	<data name="GameTest_DiceCount" xml:space="preserve">
+  <value>Nombre de dés</value>
+</data>
+	<data name="GameTest_DiceSides" xml:space="preserve">
+  <value>Nombre de faces</value>
+</data>
+	<data name="GameTest_SuccessThreshold" xml:space="preserve">
+  <value>Seuil de réussite</value>
+</data>
+	<data name="GameTest_Create" xml:space="preserve">
+  <value>Lancer le test</value>
+</data>
+	<data name="GameTest_Created" xml:space="preserve">
+  <value>Test créé.</value>
+</data>
+	<data name="GameTest_AttributeRequired" xml:space="preserve">
+  <value>Veuillez choisir une caractéristique.</value>
+</data>
+	<data name="GameTest_TargetCount" xml:space="preserve">
+  <value>Participants ciblés</value>
+</data>
+	<data name="GameTest_RolledCount" xml:space="preserve">
+  <value>Jets effectués</value>
+</data>
+	<data name="GameTest_SuccessCount" xml:space="preserve">
+  <value>Réussites</value>
+</data>
+	<data name="GameTest_FailureCount" xml:space="preserve">
+  <value>Échecs</value>
+</data>
+	<data name="GameTest_SuccessRate" xml:space="preserve">
+  <value>Pourcentage de réussite</value>
+</data>
+	<data name="GameTest_BestRoll" xml:space="preserve">
+  <value>Meilleur lancé</value>
+</data>
+	<data name="GameTest_WorstRoll" xml:space="preserve">
+  <value>Pire lancé</value>
+</data>
+	<data name="GameTest_AverageRoll" xml:space="preserve">
+  <value>Moyenne des dés</value>
+</data>
+	<data name="GameTest_IndividualResults" xml:space="preserve">
+  <value>Résultats individuels</value>
+</data>
+	<data name="GameTest_Pending" xml:space="preserve">
+  <value>En attente...</value>
+</data>
+	<data name="GameTest_RollButton" xml:space="preserve">
+  <value>Lancer {0}</value>
+</data>
+	<data name="GameTest_DiceResults" xml:space="preserve">
+  <value>Résultats des dés</value>
+</data>
+	<data name="GameTest_DiceTotal" xml:space="preserve">
+  <value>Total des dés</value>
+</data>
+	<data name="GameTest_AttributeValue" xml:space="preserve">
+  <value>Valeur de caractéristique</value>
+</data>
+	<data name="GameTest_FinalValue" xml:space="preserve">
+  <value>Valeur finale</value>
+</data>
+	<data name="GameTest_Result" xml:space="preserve">
+  <value>Résultat</value>
+</data>
+	<data name="GameTest_Success" xml:space="preserve">
+  <value>Réussite !</value>
+</data>
+	<data name="GameTest_Failure" xml:space="preserve">
+  <value>Échec...</value>
+</data>
+	<data name="GameTest_AutoRolled" xml:space="preserve">
+  <value>Jet automatique</value>
+</data>
+	<data name="GameTest_AutoRolledNotice" xml:space="preserve">
+  <value>Le jet a été lancé automatiquement.</value>
+</data>
+	<data name="GameTest_LastTestPerformed" xml:space="preserve">
+  <value>Dernier test effectué</value>
+</data>
+	<data name="Backend_InvalidDifficultyValue" xml:space="preserve">
+  <value>La difficulté doit être un entier positif ou nul.</value>
+</data>
+	<data name="Backend_InvalidConsequenceTarget" xml:space="preserve">
+  <value>Cible de conséquence invalide.</value>
+</data>
+
+	<data name="GameTest_DifficultyMode" xml:space="preserve">
+  <value>Mode difficulté</value>
+</data>
+	<data name="GameTest_DifficultyValue" xml:space="preserve">
+  <value>Valeur de difficulté</value>
+</data>
+	<data name="GameTest_DifficultySummary" xml:space="preserve">
+  <value>Difficulté</value>
+</data>
+	<data name="GameTest_Bonus" xml:space="preserve">
+  <value>Bonus</value>
+</data>
+	<data name="GameTest_Malus" xml:space="preserve">
+  <value>Malus</value>
+</data>
+	<data name="GameTest_TargetScope" xml:space="preserve">
+  <value>Ciblage</value>
+</data>
+	<data name="GameTest_TargetOnlineLiving" xml:space="preserve">
+  <value>Joueurs en ligne uniquement</value>
+</data>
+	<data name="GameTest_TargetAllLiving" xml:space="preserve">
+  <value>Tous les personnages vivants</value>
+</data>
+	<data name="GameTest_TraitFilters" xml:space="preserve">
+  <value>Filtres par attributs</value>
+</data>
+	<data name="GameTest_NoTraitFilterAvailable" xml:space="preserve">
+  <value>Aucun attribut filtrable disponible.</value>
+</data>
+	<data name="GameTest_Consequences" xml:space="preserve">
+  <value>Conséquences</value>
+</data>
+	<data name="GameTest_AddSuccessConsequence" xml:space="preserve">
+  <value>Ajouter une conséquence de réussite</value>
+</data>
+	<data name="GameTest_AddFailureConsequence" xml:space="preserve">
+  <value>Ajouter une conséquence d'échec</value>
+</data>
+	<data name="GameTest_NoConsequence" xml:space="preserve">
+  <value>Aucune conséquence.</value>
+</data>
+	<data name="GameTest_When" xml:space="preserve">
+  <value>Quand</value>
+</data>
+	<data name="GameTest_OnSuccess" xml:space="preserve">
+  <value>En cas de réussite</value>
+</data>
+	<data name="GameTest_OnFailure" xml:space="preserve">
+  <value>En cas d'échec</value>
+</data>
+	<data name="GameTest_ConsequenceTargetKind" xml:space="preserve">
+  <value>Type de cible</value>
+</data>
+	<data name="GameTest_TargetGauge" xml:space="preserve">
+  <value>Jauge</value>
+</data>
+	<data name="GameTest_TargetAttribute" xml:space="preserve">
+  <value>Caractéristique</value>
+</data>
+	<data name="GameTest_TargetDefinition" xml:space="preserve">
+  <value>Cible</value>
+</data>
+	<data name="GameTest_EffectiveAttributeValue" xml:space="preserve">
+  <value>Valeur modifiée de caractéristique</value>
+</data>
+	<data name="Common_Remove" xml:space="preserve">
+  <value>Supprimer</value>
+</data>
+	<data name="GameTest_TraitFilterMode" xml:space="preserve">
+  <value>Mode de combinaison des filtres</value>
+</data>
+	<data name="GameTest_FilterModeAnd" xml:space="preserve">
+  <value>ET entre groupes</value>
+</data>
+	<data name="GameTest_FilterModeOr" xml:space="preserve">
+  <value>OU entre groupes</value>
+</data>
+	<data name="GameTest_RollbackLastTest" xml:space="preserve">
+  <value>Annuler le dernier test</value>
+</data>
+	<data name="GameTest_RollbackSuccess" xml:space="preserve">
+  <value>Le dernier test a été annulé et ses effets ont été restaurés.</value>
+</data>
+	<data name="PlayerRoom_CreateCharacterAvailableLater" xml:space="preserve">
+  <value>Vous pourrez créer un nouveau personnage à partir de {0}.</value>
+</data>
+	<data name="PlayerRoom_CreateCharacterCountdown" xml:space="preserve">
+  <value>Vous pourrez créer un nouveau personnage dans {0} seconde(s).</value>
+</data>
+	<data name="PlayerRoom_OldCharacterRestored" xml:space="preserve">
+  <value>La création de votre nouveau personnage a été annulée car votre ancien personnage a été ramené à la vie.</value>
+</data>
+	<data name="GameTest_RollbackConfirmQuestion" xml:space="preserve">
+  <value>Êtes-vous sûr de vouloir annuler le dernier test ?</value>
+</data>
+	<data name="Backend_PollAlreadyActive" xml:space="preserve">
+  <value>Un sondage est déjà actif dans cette session.</value>
+</data>
+	<data name="Backend_PollQuestionRequired" xml:space="preserve">
+  <value>La question du sondage est obligatoire.</value>
+</data>
+	<data name="Backend_PollNeedsTwoOptions" xml:space="preserve">
+  <value>Le sondage doit contenir au moins deux options.</value>
+</data>
+	<data name="Backend_PollNotFound" xml:space="preserve">
+  <value>Sondage introuvable.</value>
+</data>
+	<data name="Backend_PollAlreadyClosed" xml:space="preserve">
+  <value>Ce sondage est déjà clôturé.</value>
+</data>
+	<data name="Backend_NoAliveCharacterForVote" xml:space="preserve">
+  <value>Vous devez avoir un personnage vivant pour voter.</value>
+</data>
+	<data name="Backend_PollOptionNotFound" xml:space="preserve">
+  <value>Option de sondage introuvable.</value>
+</data>
+	<data name="Backend_PlayerAlreadyVoted" xml:space="preserve">
+  <value>Vous avez déjà voté à ce sondage.</value>
+</data>
+	<data name="Backend_NoActivePoll" xml:space="preserve">
+  <value>Aucun sondage actif à clôturer.</value>
+</data>
+
+	<data name="Poll_GameMasterSectionTitle" xml:space="preserve">
+  <value>Sondage</value>
+</data>
+	<data name="Poll_PlayerSectionTitle" xml:space="preserve">
+  <value>Sondage en cours</value>
+</data>
+	<data name="Poll_Question" xml:space="preserve">
+  <value>Question</value>
+</data>
+	<data name="Poll_Options" xml:space="preserve">
+  <value>Options</value>
+</data>
+	<data name="Poll_AddOption" xml:space="preserve">
+  <value>Ajouter une option</value>
+</data>
+	<data name="Poll_Create" xml:space="preserve">
+  <value>Créer le sondage</value>
+</data>
+	<data name="Poll_Created" xml:space="preserve">
+  <value>Sondage créé.</value>
+</data>
+	<data name="Poll_Close" xml:space="preserve">
+  <value>Clôturer le sondage</value>
+</data>
+	<data name="Poll_Closed" xml:space="preserve">
+  <value>Sondage clôturé.</value>
+</data>
+	<data name="Poll_TotalVotes" xml:space="preserve">
+  <value>Total des votes</value>
+</data>
+	<data name="Poll_VoteRegistered" xml:space="preserve">
+  <value>Votre vote a bien été enregistré.</value>
+</data>
+	<data name="Poll_YourVote" xml:space="preserve">
+  <value>Votre vote</value>
+</data>
+	<data name="Poll_LastPoll" xml:space="preserve">
+  <value>Dernier sondage</value>
+</data>
+	<data name="Poll_History" xml:space="preserve">
+  <value>Historique des sondages</value>
+</data>
+	<data name="Poll_CurrentOrLatest" xml:space="preserve">
+  <value>Actuel / dernier</value>
+</data>
+	<data name="Poll_Participation" xml:space="preserve">
+  <value>Participation</value>
+</data>
+	<data name="Poll_HideLiveResults" xml:space="preserve">
+  <value>Masquer les résultats en direct</value>
+</data>
+	<data name="Poll_ShowLiveResults" xml:space="preserve">
+  <value>Afficher les résultats en direct</value>
+</data>
+	<data name="Poll_VoteDetails" xml:space="preserve">
+  <value>Détail des votes</value>
+</data>
+	<data name="Poll_DisappearsIn" xml:space="preserve">
+  <value>Ce sondage disparaîtra dans {0} seconde(s).</value>
+</data>
+	<data name="Poll_ShowVoteDetails" xml:space="preserve">
+  <value>Afficher le détail des votes</value>
+</data>
+	<data name="Poll_HideVoteDetails" xml:space="preserve">
+  <value>Masquer le détail des votes</value>
+</data>
+	<data name="Backend_InvalidPollWeightBonus" xml:space="preserve">
+  <value>Le bonus de poids doit être positif ou nul.</value>
+</data>
+
+	<data name="Poll_WeightRules" xml:space="preserve">
+  <value>Règles de poids</value>
+</data>
+	<data name="Poll_AddWeightRule" xml:space="preserve">
+  <value>Ajouter une règle de poids</value>
+</data>
+	<data name="Poll_NoWeightRule" xml:space="preserve">
+  <value>Aucune règle de poids.</value>
+</data>
+	<data name="Poll_OptionConsequences" xml:space="preserve">
+  <value>Conséquences par option</value>
+</data>
+	<data name="Poll_AddOptionConsequence" xml:space="preserve">
+  <value>Ajouter une conséquence à cette option</value>
+</data>
+	<data name="Poll_OptionLabel" xml:space="preserve">
+  <value>Libellé de l'option</value>
+</data>
+	<data name="Poll_TotalWeightedVotes" xml:space="preserve">
+  <value>Total pondéré des votes</value>
+</data>
+	<data name="Poll_YourVoteWeight" xml:space="preserve">
+  <value>Poids de votre vote : {0}</value>
+</data>
 </root>

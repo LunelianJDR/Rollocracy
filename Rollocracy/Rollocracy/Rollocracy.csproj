@@ -11,6 +11,7 @@
     <ProjectReference Include="..\..\Rollocracy.Infrastructure\Rollocracy.Infrastructure.csproj" />
     <ProjectReference Include="..\Rollocracy.Client\Rollocracy.Client.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.24" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.25" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.13" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.13">
       <PrivateAssets>all</PrivateAssets>

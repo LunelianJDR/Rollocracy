@@ -1,4 +1,9 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Localization
+@inject IStringLocalizer<SharedTexts> L
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Rollocracy</a>
     </div>
@@ -6,7 +11,7 @@
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler')?.click()">
     <nav class="flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
@@ -14,30 +19,69 @@
             </NavLink>
         </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
+        <AuthorizeView>
+            <Authorizing>
+                <div class="nav-item px-3">
+                    <span class="nav-link">@L["Common_Loading"]</span>
+                </div>
+            </Authorizing>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
+            <NotAuthorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="login">
+                        <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span> @L["Home_Login"]
+                    </NavLink>
+                </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="mj/create-session">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Create Session
-            </NavLink>
-        </div>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="register">
+                        <span class="bi bi-person-plus" aria-hidden="true"></span> @L["Home_Register"]
+                    </NavLink>
+                </div>
+            </NotAuthorized>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="player/join">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Join
-            </NavLink>
-        </div>
+            <Authorized Context="authState">
+                <div class="nav-item px-3">
+                    <a class="nav-link" href="/auth/logout">
+                        <span class="bi bi-box-arrow-right" aria-hidden="true"></span> @L["Home_Logout"]
+                    </a>
+                </div>
 
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="join">
+                        <span class="bi bi-door-open" aria-hidden="true"></span> @L["Home_JoinSession"]
+                    </NavLink>
+                </div>
+
+                @if (IsGameMaster(authState.User))
+                {
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="mj/create-session">
+                            <span class="bi bi-plus-square" aria-hidden="true"></span> @L["Home_CreateSession"]
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="mj/sessions">
+                            <span class="bi bi-play-circle" aria-hidden="true"></span> @L["Home_ResumeSession"]
+                        </NavLink>
+                    </div>
+
+                    <div class="nav-item px-3">
+                        <NavLink class="nav-link" href="mj/gamesystems">
+                            <span class="bi bi-diagram-3" aria-hidden="true"></span> @L["Home_GameSystems"]
+                        </NavLink>
+                    </div>
+                }
+            </Authorized>
+        </AuthorizeView>
     </nav>
 </div>
 
+@code {
+    private bool IsGameMaster(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var value = user.FindFirst("IsGameMaster")?.Value;
+        return !string.IsNullOrWhiteSpace(value) && bool.TryParse(value, out var result) && result;
+    }
+}

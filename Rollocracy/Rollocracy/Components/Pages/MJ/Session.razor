@@ -2,38 +2,46 @@
 @rendermode InteractiveServer
 @using Microsoft.AspNetCore.SignalR.Client
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Characters
 @using Rollocracy.Domain.Entities
+@using Rollocracy.Domain.GameRules
+@using Rollocracy.Domain.GameTests
+@using Rollocracy.Localization
+@using Rollocracy.Domain.Polls
 @using DomainSession = Rollocracy.Domain.Entities.Session
 @inject NavigationManager Navigation
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
 @inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
+@inject Rollocracy.Domain.Interfaces.ICharacterService CharacterService
+@inject Rollocracy.Domain.Interfaces.IGameTestService GameTestService
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IStringLocalizer<SharedTexts> L
+@inject Rollocracy.Domain.Interfaces.IPollService PollService
 
-<h3>Session MJ</h3>
+<h3>@L["SessionPage_Title"]</h3>
 
 @if (!IsLoaded)
 {
-    <p>Chargement...</p>
+    <p>@L["Common_Loading"]</p>
 }
 else if (CurrentSession is null)
 {
-    <p>Session introuvable.</p>
+    <p>@L["SessionPage_NotFound"]</p>
 }
 else
 {
-    <p><strong>Nom de la session :</strong> @CurrentSession.SessionName</p>
-    <p><strong>Slug :</strong> @CurrentSession.SessionSlug</p>
+    <p><strong>@L["SessionPage_Name"] :</strong> @CurrentSession.SessionName</p>
+    <p><strong>@L["SessionPage_Slug"] :</strong> @CurrentSession.SessionSlug</p>
 
-    <p><strong>URL de jointure :</strong></p>
-    <p>
-        <code>@JoinUrl</code>
-    </p>
+    <p><strong>@L["SessionPage_JoinUrl"] :</strong></p>
+    <p><code>@JoinUrl</code></p>
 
     <p>
-        <strong>Mot de passe de la session :</strong>
+        <strong>@L["SessionPage_Password"] :</strong>
         @if (string.IsNullOrWhiteSpace(CurrentSession.SessionPassword))
         {
-            <span>aucun</span>
+            <span>@L["Common_None"]</span>
         }
         else if (ShowSessionPassword)
         {
@@ -48,25 +56,31 @@ else
     @if (!string.IsNullOrWhiteSpace(CurrentSession.SessionPassword))
     {
         <button @onclick="ToggleSessionPasswordVisibility">
-            @(ShowSessionPassword ? "Masquer le mot de passe de la session" : "Afficher le mot de passe de la session")
+            @(ShowSessionPassword? L["SessionPage_HidePassword"] : L["SessionPage_ShowPassword"])
         </button>
     }
 
     <hr />
 
-    <h4>Système de jeu de la session</h4>
+    <p><strong>@L["SessionPage_ConnectedPlayers"] :</strong> @SessionStats.ConnectedPlayersCount</p>
+    <p><strong>@L["SessionPage_AliveCharactersCount"] :</strong> @SessionStats.AliveCharactersCount</p>
+    <p><strong>@L["SessionPage_TotalCharactersCount"] :</strong> @SessionStats.TotalCharactersCount</p>
+
+    <hr />
+
+    <h4>@L["SessionPage_GameSystemSection"]</h4>
 
     @if (OwnedGameSystems.Count == 0)
     {
-        <p>Vous n'avez encore créé aucun système de jeu.</p>
-        <button @onclick="GoToCreateGameSystem">Créer un système</button>
+        <p>@L["SessionPage_NoGameSystems"]</p>
+        <button @onclick="GoToCreateGameSystem">@L["SessionPage_CreateGameSystem"]</button>
     }
     else
     {
         <div>
-            <label>Choisir un système</label><br />
+            <label>@L["SessionPage_SelectGameSystem"]</label><br />
             <select @bind="SelectedGameSystemId">
-                <option value="">-- Aucun système sélectionné --</option>
+                <option value="">@L["SessionPage_NoGameSystemSelected"]</option>
                 @foreach (var gameSystem in OwnedGameSystems)
                 {
                     <option value="@gameSystem.Id.ToString()">@gameSystem.Name</option>
@@ -74,22 +88,661 @@ else
             </select>
         </div>
 
-        <button @onclick="AssignSelectedGameSystem">Associer ce système à la session</button>
-        <button @onclick="GoToCreateGameSystem">Créer un système</button>
+        <button @onclick="AssignSelectedGameSystem">@L["SessionPage_AssignGameSystem"]</button>
+        <button @onclick="GoToCreateGameSystem">@L["SessionPage_CreateGameSystem"]</button>
 
         @if (AssignedGameSystem is not null)
         {
-            <p><strong>Système actuellement lié :</strong> @AssignedGameSystem.Name</p>
+            <p><strong>@L["SessionPage_CurrentGameSystem"] :</strong> @AssignedGameSystem.Name</p>
 
             @if (AssignedGameSystem.LockedToSessionId == SessionId)
             {
-                <button @onclick="EditAssignedGameSystem">Éditer le système de cette session</button>
+                <button @onclick="EditAssignedGameSystem">@L["SessionPage_EditSessionGameSystem"]</button>
             }
             else
             {
-                <button @onclick="CloneAndEditAssignedGameSystem">Dupliquer et éditer pour cette session</button>
+                <button @onclick="CloneAndEditAssignedGameSystem">@L["SessionPage_CloneAndEditForSession"]</button>
             }
         }
+    }
+
+    <hr />
+
+    <h4>@L["GameTest_GameMasterSectionTitle"]</h4>
+
+    @if (AssignedGameSystem is null)
+    {
+        <p>@L["GameTest_NoGameSystemForSession"]</p>
+    }
+    else if (AvailableAttributes.Count == 0)
+    {
+        <p>@L["GameTest_NoAttributeAvailable"]</p>
+    }
+    else
+    {
+        <div>
+            <label>@L["GameTest_Attribute"]</label><br />
+            <select @bind="SelectedAttributeId">
+                <option value="">@L["GameTest_SelectAttribute"]</option>
+                @foreach (var attributeDefinition in AvailableAttributes)
+                {
+                    <option value="@attributeDefinition.Id.ToString()">@attributeDefinition.Name</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label>@L["GameTest_DiceCount"]</label><br />
+            <input type="number" @bind="NewDiceCount" />
+        </div>
+
+        <div>
+            <label>@L["GameTest_DiceSides"]</label><br />
+            <input type="number" @bind="NewDiceSides" />
+        </div>
+
+        @if (AssignedGameSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold)
+        {
+            <div>
+                <label>@L["GameTest_SuccessThreshold"]</label><br />
+                <input type="number" @bind="NewSuccessThreshold" />
+            </div>
+        }
+
+        <div>
+            <label>@L["GameTest_DifficultyMode"]</label><br />
+            <select @bind="NewModifierMode">
+                <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
+                <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
+            </select>
+        </div>
+
+        <div>
+            <label>@L["GameTest_DifficultyValue"]</label><br />
+            <input type="number" @bind="NewDifficultyValue" />
+        </div>
+
+        <div>
+            <label>@L["GameTest_TargetScope"]</label><br />
+            <select @bind="NewTargetScope">
+                <option value="@TestTargetScope.OnlineLivingCharacters">@L["GameTest_TargetOnlineLiving"]</option>
+                <option value="@TestTargetScope.AllLivingCharacters">@L["GameTest_TargetAllLiving"]</option>
+            </select>
+        </div>
+
+        <div>
+            <label>@L["GameTest_TraitFilterMode"]</label><br />
+            <select @bind="NewTraitFilterMode">
+                <option value="@TestTraitFilterMode.AndBetweenGroups">@L["GameTest_FilterModeAnd"]</option>
+                <option value="@TestTraitFilterMode.OrBetweenGroups">@L["GameTest_FilterModeOr"]</option>
+            </select>
+        </div>
+
+        <h5>@L["GameTest_TraitFilters"]</h5>
+
+        @if (AvailableTraitDefinitions.Count == 0)
+        {
+            <p>@L["GameTest_NoTraitFilterAvailable"]</p>
+        }
+        else
+        {
+            @foreach (var traitDefinition in AvailableTraitDefinitions)
+            {
+                <div style="margin-bottom: 1rem;">
+                    <strong>@traitDefinition.Name</strong>
+
+                    @if (TraitOptionsByDefinition.TryGetValue(traitDefinition.Id, out var traitOptions))
+                    {
+                        @foreach (var option in traitOptions)
+                        {
+                            <div>
+                                <label>
+                                    <input type="checkbox"
+                                           checked="@SelectedTraitOptionIds.Contains(option.Id)"
+                                           @onchange="args => ToggleTraitFilter(option.Id, args.Value)" />
+                                    @option.Name
+                                </label>
+                            </div>
+                        }
+                    }
+                </div>
+            }
+        }
+
+        <h5>@L["GameTest_Consequences"]</h5>
+
+        <button @onclick="AddSuccessConsequence">@L["GameTest_AddSuccessConsequence"]</button>
+        <button @onclick="AddFailureConsequence">@L["GameTest_AddFailureConsequence"]</button>
+
+        @if (ConsequenceRows.Count == 0)
+        {
+            <p>@L["GameTest_NoConsequence"]</p>
+        }
+        else
+        {
+            @for (var i = 0; i < ConsequenceRows.Count; i++)
+            {
+                var row = ConsequenceRows[i];
+
+                <div style="border:1px solid #ccc; padding:0.5rem; margin-bottom:0.5rem;">
+                    <div>
+                        <label>@L["GameTest_When"]</label><br />
+                        <select @bind="row.ApplyOn">
+                            <option value="@TestConsequenceApplyOn.OnSuccess">@L["GameTest_OnSuccess"]</option>
+                            <option value="@TestConsequenceApplyOn.OnFailure">@L["GameTest_OnFailure"]</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label>@L["GameTest_ConsequenceTargetKind"]</label><br />
+                        <select @bind="row.TargetKind">
+                            <option value="@TestConsequenceTargetKind.Gauge">@L["GameTest_TargetGauge"]</option>
+                            <option value="@TestConsequenceTargetKind.Attribute">@L["GameTest_TargetAttribute"]</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label>@L["GameTest_TargetDefinition"]</label><br />
+                        @if (row.TargetKind == TestConsequenceTargetKind.Gauge)
+                        {
+                            <select @bind="row.TargetDefinitionId">
+                                @foreach (var gaugeDefinition in AvailableGaugeDefinitions)
+                                {
+                                    <option value="@gaugeDefinition.Id">@gaugeDefinition.Name</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <select @bind="row.TargetDefinitionId">
+                                @foreach (var attributeDefinition in AvailableAttributes)
+                                {
+                                    <option value="@attributeDefinition.Id">@attributeDefinition.Name</option>
+                                }
+                            </select>
+                        }
+                    </div>
+
+                    <div>
+                        <label>@L["GameTest_DifficultyMode"]</label><br />
+                        <select @bind="row.ModifierMode">
+                            <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
+                            <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label>@L["GameTest_DifficultyValue"]</label><br />
+                        <input type="number" @bind="row.Value" />
+                    </div>
+
+                    <button @onclick="() => RemoveConsequenceRow(row.RowId)">@L["Common_Remove"]</button>
+                </div>
+            }
+        }
+
+        @if (ActiveTest is null || ActiveTest.IsClosed)
+        {
+            <button @onclick="CreateGameTest">@L["GameTest_Create"]</button>
+        }
+
+        @if (ActiveTest is not null)
+        {
+            <hr />
+            <p><strong>@L["GameTest_Attribute"] :</strong> @ActiveTest.AttributeName</p>
+            <p><strong>@L["GameTest_Dice"] :</strong> @($"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}")</p>
+
+            @if (ActiveTest.ResolutionMode == TestResolutionMode.SuccessThreshold)
+            {
+                <p><strong>@L["GameTest_SuccessThreshold"] :</strong> @ActiveTest.SuccessThreshold</p>
+            }
+
+            <p>
+                <strong>@L["GameTest_DifficultySummary"] :</strong>
+                @(ActiveTest.ModifierMode == TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])
+                @(" ")
+                @ActiveTest.DifficultyValue
+            </p>
+
+            <p>
+                <strong>@L["GameTest_TargetScope"] :</strong>
+                @(ActiveTest.TargetScope == TestTargetScope.OnlineLivingCharacters
+                    ? L["GameTest_TargetOnlineLiving"]
+                    : L["GameTest_TargetAllLiving"])
+            </p>
+
+            <p>
+                <strong>@L["GameTest_TraitFilterMode"] :</strong>
+                @(ActiveTest.TraitFilterMode == TestTraitFilterMode.AndBetweenGroups
+                    ? L["GameTest_FilterModeAnd"]
+                    : L["GameTest_FilterModeOr"])
+            </p>
+
+            @if (ActiveTest.IsClosed)
+            {
+                <p><em>@L["GameTest_LastTestPerformed"]</em></p>
+            }
+
+            <p><strong>@L["GameTest_TargetCount"] :</strong> @ActiveTest.TargetCount</p>
+            <p><strong>@L["GameTest_RolledCount"] :</strong> @ActiveTest.RolledCount</p>
+            <p><strong>@L["GameTest_SuccessCount"] :</strong> @ActiveTest.SuccessCount</p>
+            <p><strong>@L["GameTest_FailureCount"] :</strong> @ActiveTest.FailureCount</p>
+            <p><strong>@L["GameTest_SuccessRate"] :</strong> @($"{ActiveTest.SuccessRatePercent:F1}%")</p>
+            <p><strong>@L["GameTest_BestRoll"] :</strong> @(ActiveTest.BestDiceTotal?.ToString() ?? "-")</p>
+            <p><strong>@L["GameTest_WorstRoll"] :</strong> @(ActiveTest.WorstDiceTotal?.ToString() ?? "-")</p>
+            <p><strong>@L["GameTest_AverageRoll"] :</strong> @(ActiveTest.AverageDiceTotal?.ToString("F2") ?? "-")</p>
+
+            @if (ActiveTest is not null)
+            {
+                @if (!ConfirmRollbackVisible)
+                {
+                    <button @onclick="ShowRollbackConfirmation">@L["GameTest_RollbackLastTest"]</button>
+                }
+                else
+                {
+                    <p>@L["GameTest_RollbackConfirmQuestion"]</p>
+                    <button @onclick="RollbackLatestTestConfirmed">@L["Common_Yes"]</button>
+                    <button @onclick="CancelRollback">@L["Common_No"]</button>
+                }
+            }
+
+            <h5>@L["GameTest_IndividualResults"]</h5>
+
+            <ul>
+                @foreach (var resultLine in ActiveTest?.Results ?? Enumerable.Empty<GameMasterGameTestResultLineDto>())
+                {
+                    <li style="margin-bottom: 1rem;">
+                        <strong>@resultLine.CharacterName</strong> (@resultLine.PlayerName)
+                        -
+                        @if (!resultLine.HasRolled)
+                        {
+                            <span>@L["GameTest_Pending"]</span>
+                        }
+                        else
+                        {
+                            <span>@(resultLine.IsSuccess? L["GameTest_Success"] : L["GameTest_Failure"])</span>
+
+                            <div>@L["GameTest_DiceResults"] : @string.Join(" - ", resultLine.DiceResults)</div>
+                            <div>@L["GameTest_DiceTotal"] : @resultLine.DiceTotal</div>
+                            <div>@L["GameTest_AttributeValue"] : @resultLine.AttributeValue</div>
+                            <div>@L["GameTest_EffectiveAttributeValue"] : @resultLine.EffectiveAttributeValue</div>
+                            <div>@L["GameTest_FinalValue"] : @resultLine.FinalValue</div>
+
+                            @if (resultLine.IsAutoRolled)
+                            {
+                                <div>@L["GameTest_AutoRolled"]</div>
+                            }
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    }
+
+    <hr />
+
+    <h4>@L["Poll_GameMasterSectionTitle"]</h4>
+
+    @if (LatestPoll is null || LatestPoll.IsClosed)
+    {
+        <div>
+            <label>@L["Poll_Question"]</label><br />
+            <input @bind="NewPollQuestion" />
+        </div>
+
+        <h5>@L["Poll_Options"]</h5>
+
+        @for (var i = 0; i < NewPollOptions.Count; i++)
+        {
+            var optionIndex = i;
+            var optionRow = NewPollOptions[optionIndex];
+
+            <div style="margin-bottom: 1rem; border:1px solid #ccc; padding:0.5rem;">
+                <input @bind="NewPollOptions[optionIndex].Label" placeholder="@L["Poll_OptionLabel"]" />
+
+                @if (NewPollOptions.Count > 2)
+                {
+                    <button @onclick="() => RemovePollOption(optionIndex)">
+                        @L["Common_Remove"]
+                    </button>
+                }
+
+                <div style="margin-top: 0.5rem;">
+                    <strong>@L["Poll_OptionConsequences"]</strong>
+                </div>
+
+                <button @onclick="() => AddPollOptionConsequence(optionIndex)">
+                    @L["Poll_AddOptionConsequence"]
+                </button>
+
+                @foreach (var consequence in optionRow.Consequences)
+                {
+                    <div style="margin-top:0.5rem;">
+                        <select @bind="consequence.TargetKind">
+                            <option value="@TestConsequenceTargetKind.Gauge">@L["GameTest_TargetGauge"]</option>
+                            <option value="@TestConsequenceTargetKind.Attribute">@L["GameTest_TargetAttribute"]</option>
+                        </select>
+
+                        @if (consequence.TargetKind == TestConsequenceTargetKind.Gauge)
+                        {
+                            <select @bind="consequence.TargetDefinitionId">
+                                @foreach (var gaugeDefinition in AvailableGaugeDefinitions)
+                                {
+                                    <option value="@gaugeDefinition.Id">@gaugeDefinition.Name</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <select @bind="consequence.TargetDefinitionId">
+                                @foreach (var attributeDefinition in AvailableAttributes)
+                                {
+                                    <option value="@attributeDefinition.Id">@attributeDefinition.Name</option>
+                                }
+                            </select>
+                        }
+
+                        <select @bind="consequence.ModifierMode">
+                            <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
+                            <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
+                        </select>
+
+                        <input type="number" @bind="consequence.Value" />
+
+                        <button @onclick="() => RemovePollOptionConsequence(optionIndex, consequence.RowId)">
+                            @L["Common_Remove"]
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+
+        <button @onclick="AddPollOption">@L["Poll_AddOption"]</button>
+
+        <h5>@L["Poll_WeightRules"]</h5>
+
+        <button @onclick="AddPollWeightRule">@L["Poll_AddWeightRule"]</button>
+
+        @if (PollWeightRuleRows.Count == 0)
+        {
+            <p>@L["Poll_NoWeightRule"]</p>
+        }
+        else
+        {
+            @foreach (var rule in PollWeightRuleRows)
+            {
+                <div style="margin-top:0.5rem;">
+                    <select @bind="rule.TraitDefinitionId" @bind:after="LoadTraitOptionForWeightRule">
+                        @foreach (var traitDefinition in AvailableTraitDefinitions)
+                        {
+                            <option value="@traitDefinition.Id">@traitDefinition.Name</option>
+                        }
+                    </select>
+
+                    @if (TraitOptionsByDefinition.TryGetValue(rule.TraitDefinitionId, out var traitOptions))
+                    {
+                        <select @bind="rule.TraitOptionId">
+                            @foreach (var option in traitOptions)
+                            {
+                                <option value="@option.Id">@option.Name</option>
+                            }
+                        </select>
+                    }
+
+                    <input type="number" step="0.01" min="0" @bind="rule.WeightBonus" />
+
+                    <button @onclick="() => RemovePollWeightRule(rule.RowId)">
+                        @L["Common_Remove"]
+                    </button>
+                </div>
+            }
+        }
+
+        <button @onclick="CreatePoll">@L["Poll_Create"]</button>
+    }
+
+    @if (RecentPolls.Count > 0)
+    {
+        <div>
+            <label>@L["Poll_History"]</label><br />
+            <select @bind="SelectedPollHistoryId" @bind:after="LoadPollHistory">
+                <option value="">@L["Poll_CurrentOrLatest"]</option>
+                @foreach (var poll in RecentPolls)
+                {
+                    <option value="@poll.PollId">@poll.Question</option>
+                }
+            </select>
+        </div>
+    }
+
+    @if (LatestPoll is not null)
+    {
+        <hr />
+
+        <p><strong>@L["Poll_Question"] :</strong> @LatestPoll.Question</p>
+        <p><strong>@L["Poll_TotalVotes"] :</strong> @LatestPoll.TotalVotes</p>
+        <p><strong>@L["Poll_TotalWeightedVotes"] :</strong> @LatestPoll.TotalWeightedVotes.ToString("F2")</p>
+        <p>
+            <strong>@L["Poll_Participation"] :</strong>
+            @LatestPoll.TotalVotes / @LatestPoll.OnlinePlayersCount
+            (@($"{LatestPoll.ParticipationPercent:F1}%"))
+        </p>
+
+        @if (LatestPoll.IsClosed)
+        {
+            <p><em>@L["Poll_LastPoll"]</em></p>
+        }
+        else
+        {
+            <button @onclick="ClosePoll">@L["Poll_Close"]</button>
+            <button @onclick="ToggleLivePollResults">
+                @(ShowLivePollResults? L["Poll_HideLiveResults"] : L["Poll_ShowLiveResults"])
+            </button>
+        }
+
+        @if (LatestPoll.IsClosed || ShowLivePollResults)
+        {
+            <ul>
+                @foreach (var option in LatestPoll.Options)
+                {
+        //            <li>
+         //               @option.Label : @option.VoteCount (@($"{option.VotePercent:F1}%"))
+         //           </li>
+                    <li>
+                        @option.Label :
+                        @option.VoteCount (@($"{option.VotePercent:F1}%"))
+                        -
+                        @option.WeightedVoteTotal.ToString("F2") (@($"{option.WeightedVotePercent:F1}%"))
+                    </li>
+                }
+            </ul>
+        }
+
+        @if (LatestPoll.Votes.Count > 0)
+        {
+            <button @onclick="TogglePollVoteDetails">
+                @(ShowPollVoteDetails? L["Poll_HideVoteDetails"] : L["Poll_ShowVoteDetails"])
+            </button>
+
+            @if (ShowPollVoteDetails)
+            {
+                <h5>@L["Poll_VoteDetails"]</h5>
+                <ul>
+                    @foreach (var voteLine in LatestPoll.Votes)
+                    {
+                 //       <li>@voteLine.PlayerName - @voteLine.CharacterName : @voteLine.OptionLabel</li>
+                        <li>@voteLine.PlayerName - @voteLine.CharacterName : @voteLine.OptionLabel (@voteLine.VoteWeight.ToString("F2"))</li>
+                    }
+                </ul>
+            }
+        }
+
+        @if (LatestPoll.WeightRules.Count > 0)
+        {
+            <h5>@L["Poll_WeightRules"]</h5>
+            <ul>
+                @foreach (var rule in LatestPoll.WeightRules)
+                {
+                    <li>@rule.TraitDefinitionName : @rule.TraitOptionName => +@rule.WeightBonus.ToString("F2")</li>
+                }
+            </ul>
+        }
+
+        @if (LatestPoll.Consequences.Count > 0)
+        {
+            <h5>@L["Poll_OptionConsequences"]</h5>
+            <ul>
+                @foreach (var consequence in LatestPoll.Consequences)
+                {
+                    <li>
+                        @consequence.OptionLabel :
+                        @(consequence.TargetKind == TestConsequenceTargetKind.Gauge ? L["GameTest_TargetGauge"] : L["GameTest_TargetAttribute"])
+                        @(" ")
+                        @consequence.TargetName
+                        @(" ")
+                        @(consequence.ModifierMode == TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])
+                        @(" ")
+                        @consequence.Value
+                    </li>
+                }
+            </ul>
+        }
+    }
+
+    <hr />
+
+    <h4>@L["SessionPage_CharactersSection"]</h4>
+
+    <div>
+        <label>
+            <input type="checkbox" @bind="ShowPlayerName" />
+            @L["SessionPage_ShowPlayerName"]
+        </label>
+    </div>
+
+    <div>
+        <label>
+            <input type="checkbox" @bind="ShowAttributes" />
+            @L["SessionPage_ShowAttributes"]
+        </label>
+    </div>
+
+    <div>
+        <label>
+            <input type="checkbox" @bind="ShowTraits" />
+            @L["SessionPage_ShowTraits"]
+        </label>
+    </div>
+
+    <div>
+        <label>
+            <input type="checkbox" @bind="ShowGauges" />
+            @L["SessionPage_ShowGauges"]
+        </label>
+    </div>
+
+    <div>
+        <label>
+            <input type="checkbox" @bind="IncludeOffline" @bind:after="RefreshCharacterSection" />
+            @L["SessionPage_ShowOfflineCharacters"]
+        </label>
+    </div>
+
+    <div>
+        <label>
+            <input type="checkbox" @bind="IncludeDead" @bind:after="RefreshCharacterSection" />
+            @L["SessionPage_ShowDeadCharacters"]
+        </label>
+    </div>
+
+    @if (Characters.Count == 0)
+    {
+        <p>@L["SessionPage_NoCharactersToDisplay"]</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var character in Characters)
+            {
+                <li style="margin-bottom: 1rem;">
+                    <button @onclick="() => LoadCharacterDetails(character.CharacterId)">
+                        @character.CharacterName
+                    </button>
+
+                    <span>
+                        - @(character.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                        - @(character.IsOnline? L["Common_Online"] : L["Common_Offline"])
+                    </span>
+
+                    @if (ShowPlayerName)
+                    {
+                        <div><strong>@L["SessionPage_PlayerName"] :</strong> @character.PlayerName</div>
+                    }
+
+                    @if (ShowAttributes && character.Attributes.Count > 0)
+                    {
+                        <div>
+                            <strong>@L["PlayerRoom_Attributes"] :</strong>
+                            @string.Join(" | ", character.Attributes.Select(a => $"{a.Name}: {a.Value}"))
+                        </div>
+                    }
+
+                    @if (ShowTraits && character.Traits.Count > 0)
+                    {
+                        <div>
+                            <strong>@L["PlayerRoom_Traits"] :</strong>
+                            @string.Join(" | ", character.Traits.Select(t => $"{t.TraitName}: {t.OptionName}"))
+                        </div>
+                    }
+
+                    @if (ShowGauges && character.Gauges.Count > 0)
+                    {
+                        <div>
+                            <strong>@L["PlayerRoom_Gauges"] :</strong>
+                            @string.Join(" | ", character.Gauges.Select(g => $"{g.Name}: {g.Value}/{g.MaxValue}"))
+                        </div>
+                    }
+                </li>
+            }
+        </ul>
+    }
+
+    @if (SelectedCharacterSheet is not null)
+    {
+        <hr />
+        <h4>@L["SessionPage_SelectedCharacterSheet"]</h4>
+
+        <p><strong>@L["PlayerRoom_CharacterName"] :</strong> @SelectedCharacterSheet.Name</p>
+        <p><strong>@L["PlayerRoom_CharacterStatus"] :</strong> @(SelectedCharacterSheet.IsAlive? L["Common_Alive"] : L["Common_Dead"])</p>
+
+        @if (!string.IsNullOrWhiteSpace(SelectedCharacterSheet.Biography))
+        {
+            <p><strong>@L["PlayerRoom_CharacterBiography"] :</strong> @SelectedCharacterSheet.Biography</p>
+        }
+
+        <h5>@L["PlayerRoom_Attributes"]</h5>
+        <ul>
+            @foreach (var attributeLine in SelectedCharacterSheet.Attributes)
+            {
+                <li>@attributeLine.Name : @attributeLine.Value</li>
+            }
+        </ul>
+
+        <h5>@L["PlayerRoom_Traits"]</h5>
+        <ul>
+            @foreach (var traitLine in SelectedCharacterSheet.Traits)
+            {
+                <li>@traitLine.TraitName : @traitLine.OptionName</li>
+            }
+        </ul>
+
+        <h5>@L["PlayerRoom_Gauges"]</h5>
+        <ul>
+            @foreach (var gaugeLine in SelectedCharacterSheet.Gauges)
+            {
+                <li>@gaugeLine.Name : @gaugeLine.Value / @gaugeLine.MaxValue</li>
+            }
+        </ul>
     }
 
     @if (!string.IsNullOrWhiteSpace(Message))
@@ -99,23 +752,7 @@ else
 
     <hr />
 
-    <p><strong>Session ID :</strong> @SessionId</p>
-
-    @if (Players.Count == 0)
-    {
-        <p>Aucun joueur pour l'instant</p>
-    }
-    else
-    {
-        <ul>
-            @foreach (var p in Players)
-            {
-                <li>@p.PlayerName @(p.IsGameMaster ? "(MJ)" : "")</li>
-            }
-        </ul>
-    }
-
-    <button @onclick="RefreshPlayers">Rafraîchir la liste</button>
+    <p><strong>@L["SessionPage_SessionId"] :</strong> @SessionId</p>
 }
 
 @code {
@@ -126,17 +763,43 @@ else
     private DomainSession? CurrentSession;
     private GameSystem? AssignedGameSystem;
     private List<GameSystem> OwnedGameSystems = new();
-    private List<PlayerSession> Players = new();
+    private List<AttributeDefinition> AvailableAttributes = new();
+    private List<SessionCharacterSummaryDto> Characters = new();
+    private CharacterSheetDto? SelectedCharacterSheet;
+    private SessionPublicStatsDto SessionStats = new();
+    private GameMasterActiveGameTestDto? ActiveTest;
+
+    private List<TraitDefinition> AvailableTraitDefinitions = new();
+    private Dictionary<Guid, List<TraitOption>> TraitOptionsByDefinition = new();
+    private List<GaugeDefinition> AvailableGaugeDefinitions = new();
+
+    private TestModifierMode NewModifierMode = TestModifierMode.Bonus;
+    private int NewDifficultyValue = 0;
+    private TestTargetScope NewTargetScope = TestTargetScope.OnlineLivingCharacters;
+
+    private HashSet<Guid> SelectedTraitOptionIds = new();
+    private List<ConsequenceRowModel> ConsequenceRows = new();
 
     private bool IsLoaded;
     private bool ShowSessionPassword;
+
+    private bool ShowPlayerName;
+    private bool ShowAttributes;
+    private bool ShowTraits;
+    private bool ShowGauges;
+    private bool IncludeOffline;
+    private bool IncludeDead;
 
     private Guid CurrentUserId;
     private string CurrentUsername = string.Empty;
     private string JoinUrl = string.Empty;
     private string Message = string.Empty;
-
     private string SelectedGameSystemId = string.Empty;
+
+    private string SelectedAttributeId = string.Empty;
+    private int NewDiceCount = 1;
+    private int NewDiceSides = 100;
+    private int? NewSuccessThreshold;
 
     protected override async Task OnInitializedAsync()
     {
@@ -152,7 +815,6 @@ else
         }
 
         await LoadSessionData();
-        await LoadPlayers();
 
         if (CurrentSession is not null && !string.IsNullOrWhiteSpace(CurrentUsername))
         {
@@ -164,17 +826,45 @@ else
             .WithAutomaticReconnect()
             .Build();
 
-        hubConnection.On<PlayerSession>("PlayerJoined", async player =>
+        hubConnection.On("PresenceChanged", async () =>
         {
             await InvokeAsync(async () =>
             {
-                await LoadPlayers();
+                await RefreshSessionVisuals();
+                StateHasChanged();
+            });
+        });
+
+        hubConnection.On("CharacterStateChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await RefreshSessionVisuals();
+                StateHasChanged();
+            });
+        });
+
+        hubConnection.On("TestChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadActiveTest();
+                StateHasChanged();
+            });
+        });
+
+        hubConnection.On("PollChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadLatestPoll();
                 StateHasChanged();
             });
         });
 
         await hubConnection.StartAsync();
         await hubConnection.SendAsync("JoinSessionGroup", SessionId.ToString());
+        await hubConnection.SendAsync("JoinPlayerPresence", SessionId.ToString(), Guid.NewGuid().ToString(), true);
 
         IsLoaded = true;
     }
@@ -185,28 +875,65 @@ else
         OwnedGameSystems = await GameSystemService.GetGameSystemsByOwnerAsync(CurrentUserId);
 
         AssignedGameSystem = null;
+        AvailableAttributes.Clear();
+        AvailableTraitDefinitions.Clear();
+        TraitOptionsByDefinition.Clear();
+        AvailableGaugeDefinitions.Clear();
         SelectedGameSystemId = string.Empty;
 
         if (CurrentSession?.GameSystemId is Guid gameSystemId)
         {
             AssignedGameSystem = await GameSystemService.GetGameSystemByIdAsync(gameSystemId, CurrentUserId);
 
-            if (AssignedGameSystem is not null && AssignedGameSystem.LockedToSessionId == null)
+            if (AssignedGameSystem is not null)
             {
-                SelectedGameSystemId = AssignedGameSystem.Id.ToString();
+                AvailableAttributes = await GameSystemService.GetAttributeDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+                AvailableTraitDefinitions = await GameSystemService.GetTraitDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+                AvailableGaugeDefinitions = await GameSystemService.GetGaugeDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+
+                foreach (var traitDefinition in AvailableTraitDefinitions)
+                {
+                    var options = await GameSystemService.GetTraitOptionsAsync(traitDefinition.Id, CurrentUserId);
+                    TraitOptionsByDefinition[traitDefinition.Id] = options;
+                }
+
+                if (AssignedGameSystem.LockedToSessionId == null)
+                {
+                    SelectedGameSystemId = AssignedGameSystem.Id.ToString();
+                }
             }
+        }
+
+        await RefreshSessionVisuals();
+        await LoadActiveTest();
+        await LoadLatestPoll();
+    }
+
+    private async Task RefreshSessionVisuals()
+    {
+        SessionStats = await CharacterService.GetSessionPublicStatsAsync(SessionId);
+        Characters = await CharacterService.GetSessionCharacterSummariesAsync(SessionId, IncludeOffline, IncludeDead);
+
+        if (SelectedCharacterSheet is not null)
+        {
+            SelectedCharacterSheet = await CharacterService.GetCharacterSheetForSessionAsync(SessionId, SelectedCharacterSheet.CharacterId);
         }
     }
 
-    private async Task LoadPlayers()
+    private async Task LoadActiveTest()
     {
-        Players = await SessionService.GetPlayersAsync(SessionId);
+        ActiveTest = await GameTestService.GetActiveGameTestForSessionAsync(SessionId);
     }
 
-    private async Task RefreshPlayers()
+    private async Task RefreshCharacterSection()
     {
-        await LoadPlayers();
+        await RefreshSessionVisuals();
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadCharacterDetails(Guid characterId)
+    {
+        SelectedCharacterSheet = await CharacterService.GetCharacterSheetForSessionAsync(SessionId, characterId);
     }
 
     private void ToggleSessionPasswordVisibility()
@@ -227,7 +954,7 @@ else
 
             if (string.IsNullOrWhiteSpace(SelectedGameSystemId))
             {
-                Message = "Veuillez choisir un système.";
+                Message = L["SessionPage_SelectGameSystemRequired"];
                 return;
             }
 
@@ -236,11 +963,80 @@ else
             await SessionService.AssignGameSystemToSessionAsync(SessionId, CurrentUserId, gameSystemId);
 
             await LoadSessionData();
-            Message = "Système associé à la session.";
+            Message = L["SessionPage_GameSystemAssigned"];
         }
         catch (Exception ex)
         {
-            Message = $"Erreur : {ex.Message}";
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task CreateGameTest()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(SelectedAttributeId))
+            {
+                Message = L["GameTest_AttributeRequired"];
+                return;
+            }
+
+            var filterGroups = new List<GameTestTraitFilterGroupDto>();
+
+            foreach (var traitDefinition in AvailableTraitDefinitions)
+            {
+                if (!TraitOptionsByDefinition.TryGetValue(traitDefinition.Id, out var traitOptions))
+                    continue;
+
+                var selectedOptionIds = traitOptions
+                    .Where(o => SelectedTraitOptionIds.Contains(o.Id))
+                    .Select(o => o.Id)
+                    .ToList();
+
+                if (selectedOptionIds.Count > 0)
+                {
+                    filterGroups.Add(new GameTestTraitFilterGroupDto
+                    {
+                        TraitDefinitionId = traitDefinition.Id,
+                        TraitDefinitionName = traitDefinition.Name,
+                        SelectedOptionIds = selectedOptionIds
+                    });
+                }
+            }
+
+            var request = new GameTestCreateRequestDto
+            {
+                AttributeDefinitionId = Guid.Parse(SelectedAttributeId),
+                DiceCount = NewDiceCount,
+                DiceSides = NewDiceSides,
+                SuccessThreshold = NewSuccessThreshold,
+                ModifierMode = NewModifierMode,
+                DifficultyValue = NewDifficultyValue,
+                TargetScope = NewTargetScope,
+                TraitFilters = filterGroups,
+                TraitFilterMode = NewTraitFilterMode,
+                Consequences = ConsequenceRows.Select(c => new GameTestConsequenceDraftDto
+                {
+                    ApplyOn = c.ApplyOn,
+                    TargetKind = c.TargetKind,
+                    TargetDefinitionId = c.TargetDefinitionId,
+                    ModifierMode = c.ModifierMode,
+                    Value = c.Value
+                }).ToList()
+            };
+
+            ActiveTest = await GameTestService.CreateGameTestAsync(
+                SessionId,
+                CurrentUserId,
+                request);
+
+            Message = L["GameTest_Created"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
 
@@ -260,7 +1056,7 @@ else
 
             if (AssignedGameSystem is null)
             {
-                Message = "Aucun système n'est lié à cette session.";
+                Message = L["SessionPage_NoAssignedGameSystem"];
                 return;
             }
 
@@ -275,7 +1071,7 @@ else
         }
         catch (Exception ex)
         {
-            Message = $"Erreur : {ex.Message}";
+            Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
 
@@ -285,5 +1081,366 @@ else
         {
             await hubConnection.DisposeAsync();
         }
+    }
+
+    private void ToggleTraitFilter(Guid optionId, object? isCheckedValue)
+    {
+        var isChecked = false;
+
+        if (isCheckedValue is bool boolValue)
+        {
+            isChecked = boolValue;
+        }
+        else if (isCheckedValue is string stringValue && bool.TryParse(stringValue, out var parsed))
+        {
+            isChecked = parsed;
+        }
+
+        if (isChecked)
+        {
+            SelectedTraitOptionIds.Add(optionId);
+        }
+        else
+        {
+            SelectedTraitOptionIds.Remove(optionId);
+        }
+    }
+
+    private void AddSuccessConsequence()
+    {
+        AddConsequence(TestConsequenceApplyOn.OnSuccess);
+    }
+
+    private void AddFailureConsequence()
+    {
+        AddConsequence(TestConsequenceApplyOn.OnFailure);
+    }
+
+    private void AddConsequence(TestConsequenceApplyOn applyOn)
+    {
+        var targetKind = AvailableGaugeDefinitions.Count > 0
+            ? TestConsequenceTargetKind.Gauge
+            : TestConsequenceTargetKind.Attribute;
+
+        var targetDefinitionId = Guid.Empty;
+
+        if (targetKind == TestConsequenceTargetKind.Gauge && AvailableGaugeDefinitions.Count > 0)
+        {
+            targetDefinitionId = AvailableGaugeDefinitions[0].Id;
+        }
+        else if (AvailableAttributes.Count > 0)
+        {
+            targetDefinitionId = AvailableAttributes[0].Id;
+        }
+
+        ConsequenceRows.Add(new ConsequenceRowModel
+        {
+            RowId = Guid.NewGuid(),
+            ApplyOn = applyOn,
+            TargetKind = targetKind,
+            TargetDefinitionId = targetDefinitionId,
+            ModifierMode = TestModifierMode.Malus,
+            Value = 1
+        });
+    }
+
+    private void RemoveConsequenceRow(Guid rowId)
+    {
+        var row = ConsequenceRows.FirstOrDefault(x => x.RowId == rowId);
+
+        if (row is not null)
+        {
+            ConsequenceRows.Remove(row);
+        }
+    }
+
+    private class ConsequenceRowModel
+    {
+        public Guid RowId { get; set; }
+
+        public TestConsequenceApplyOn ApplyOn { get; set; }
+
+        public TestConsequenceTargetKind TargetKind { get; set; }
+
+        public Guid TargetDefinitionId { get; set; }
+
+        public TestModifierMode ModifierMode { get; set; }
+
+        public int Value { get; set; }
+    }
+
+    private TestTraitFilterMode NewTraitFilterMode = TestTraitFilterMode.AndBetweenGroups;
+
+    private Task ShowRollbackConfirmation()
+    {
+        ConfirmRollbackVisible = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelRollback()
+    {
+        ConfirmRollbackVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task RollbackLatestTestConfirmed()
+    {
+        try
+        {
+            Message = string.Empty;
+            ConfirmRollbackVisible = false;
+
+            await GameTestService.RollbackLatestTestAsync(SessionId, CurrentUserId);
+
+            await LoadSessionData();
+
+            Message = L["GameTest_RollbackSuccess"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private bool ConfirmRollbackVisible;
+
+    private PollForGameMasterDto? LatestPoll;
+    private string NewPollQuestion = string.Empty;
+    private List<PollOptionRowModel> NewPollOptions = new()
+        {
+            new(),
+            new()
+        };
+
+    private class PollOptionRowModel
+    {
+        public string Label { get; set; } = string.Empty;
+
+        public List<PollOptionConsequenceRowModel> Consequences { get; set; } = new();
+    }
+
+    private class PollOptionConsequenceRowModel
+    {
+        public Guid RowId { get; set; }
+
+        public TestConsequenceTargetKind TargetKind { get; set; }
+
+        public Guid TargetDefinitionId { get; set; }
+
+        public TestModifierMode ModifierMode { get; set; }
+
+        public int Value { get; set; }
+    }
+
+    private async Task LoadLatestPoll()
+    {
+        LatestPoll = await PollService.GetLatestPollForGameMasterAsync(SessionId);
+        RecentPolls = await PollService.GetRecentPollsForGameMasterAsync(SessionId, 5);
+    }
+
+    private Task AddPollOption()
+    {
+        NewPollOptions.Add(new PollOptionRowModel());
+        return Task.CompletedTask;
+    }
+
+    private Task RemovePollOption(int index)
+    {
+        if (index >= 0 && index < NewPollOptions.Count && NewPollOptions.Count > 2)
+        {
+            NewPollOptions.RemoveAt(index);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task CreatePoll()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            var request = new PollCreateRequestDto
+            {
+                Question = NewPollQuestion,
+                Options = NewPollOptions.Select(o => new PollOptionDraftDto
+                {
+                    Label = o.Label,
+                    Consequences = o.Consequences.Select(c => new PollOptionConsequenceInlineDraftDto
+                    {
+                        TargetKind = c.TargetKind,
+                        TargetDefinitionId = c.TargetDefinitionId,
+                        ModifierMode = c.ModifierMode,
+                        Value = c.Value
+                    }).ToList()
+                }).ToList(),
+                WeightRules = PollWeightRuleRows.Select(r => new PollWeightRuleDraftDto
+                {
+                    TraitDefinitionId = r.TraitDefinitionId,
+                    TraitOptionId = r.TraitOptionId,
+                    WeightBonus = r.WeightBonus
+                }).ToList()
+            };
+
+            LatestPoll = await PollService.CreatePollAsync(SessionId, CurrentUserId, request);
+
+            NewPollQuestion = string.Empty;
+            NewPollOptions = new List<PollOptionRowModel> { new(), new() };
+            PollWeightRuleRows = new List<PollWeightRuleRowModel>();
+
+            Message = L["Poll_Created"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ClosePoll()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            await PollService.ClosePollAsync(SessionId, CurrentUserId);
+            await LoadLatestPoll();
+
+            Message = L["Poll_Closed"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private List<PollForGameMasterDto> RecentPolls = new();
+    private Guid? SelectedPollHistoryId;
+    private bool ShowLivePollResults;
+
+    private Task ToggleLivePollResults()
+    {
+        ShowLivePollResults = !ShowLivePollResults;
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadPollHistory()
+    {
+        if (SelectedPollHistoryId is null || SelectedPollHistoryId == Guid.Empty)
+        {
+            await LoadLatestPoll();
+            return;
+        }
+
+        var selectedPoll = await PollService.GetPollByIdForGameMasterAsync(SessionId, SelectedPollHistoryId.Value);
+
+        if (selectedPoll is not null)
+        {
+            LatestPoll = selectedPoll;
+        }
+    }
+
+    private bool ShowPollVoteDetails;
+
+    private Task TogglePollVoteDetails()
+    {
+        ShowPollVoteDetails = !ShowPollVoteDetails;
+        return Task.CompletedTask;
+    }
+
+    private List<PollWeightRuleRowModel> PollWeightRuleRows = new();
+
+    private class PollWeightRuleRowModel
+    {
+        public Guid RowId { get; set; }
+
+        public Guid TraitDefinitionId { get; set; }
+
+        public Guid TraitOptionId { get; set; }
+
+        public decimal WeightBonus { get; set; }
+    }
+
+    private Task LoadTraitOptionForWeightRule()
+    {
+        return Task.CompletedTask;
+    }
+
+    private Task AddPollWeightRule()
+    {
+        if (AvailableTraitDefinitions.Count == 0)
+            return Task.CompletedTask;
+
+        var traitDefinition = AvailableTraitDefinitions[0];
+        var optionId = TraitOptionsByDefinition.TryGetValue(traitDefinition.Id, out var options) && options.Count > 0
+            ? options[0].Id
+            : Guid.Empty;
+
+        PollWeightRuleRows.Add(new PollWeightRuleRowModel
+        {
+            RowId = Guid.NewGuid(),
+            TraitDefinitionId = traitDefinition.Id,
+            TraitOptionId = optionId,
+            WeightBonus = 0.00m
+        });
+
+        return Task.CompletedTask;
+    }
+
+    private Task RemovePollWeightRule(Guid rowId)
+    {
+        var row = PollWeightRuleRows.FirstOrDefault(x => x.RowId == rowId);
+        if (row is not null)
+        {
+            PollWeightRuleRows.Remove(row);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task AddPollOptionConsequence(int optionIndex)
+    {
+        if (optionIndex < 0 || optionIndex >= NewPollOptions.Count)
+            return Task.CompletedTask;
+
+        var targetKind = AvailableGaugeDefinitions.Count > 0
+            ? TestConsequenceTargetKind.Gauge
+            : TestConsequenceTargetKind.Attribute;
+
+        var targetDefinitionId = Guid.Empty;
+
+        if (targetKind == TestConsequenceTargetKind.Gauge && AvailableGaugeDefinitions.Count > 0)
+        {
+            targetDefinitionId = AvailableGaugeDefinitions[0].Id;
+        }
+        else if (AvailableAttributes.Count > 0)
+        {
+            targetDefinitionId = AvailableAttributes[0].Id;
+        }
+
+        NewPollOptions[optionIndex].Consequences.Add(new PollOptionConsequenceRowModel
+        {
+            RowId = Guid.NewGuid(),
+            TargetKind = targetKind,
+            TargetDefinitionId = targetDefinitionId,
+            ModifierMode = TestModifierMode.Malus,
+            Value = 1
+        });
+
+        return Task.CompletedTask;
+    }
+
+    private Task RemovePollOptionConsequence(int optionIndex, Guid rowId)
+    {
+        if (optionIndex < 0 || optionIndex >= NewPollOptions.Count)
+            return Task.CompletedTask;
+
+        var row = NewPollOptions[optionIndex].Consequences.FirstOrDefault(x => x.RowId == rowId);
+
+        if (row is not null)
+        {
+            NewPollOptions[optionIndex].Consequences.Remove(row);
+        }
+
+        return Task.CompletedTask;
     }
 }

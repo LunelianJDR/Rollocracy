@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
@@ -9,17 +10,23 @@ namespace Rollocracy.Infrastructure.Services
     public class AuthService : IAuthService
     {
         private readonly IDbContextFactory<RollocracyDbContext> _contextFactory;
+        private readonly IStringLocalizer _localizer;
 
-        // Hasher officiel Microsoft
+        // Hasher officiel Microsoft pour les mots de passe de compte
         private readonly PasswordHasher<UserAccount> _passwordHasher = new();
 
-        public AuthService(IDbContextFactory<RollocracyDbContext> contextFactory)
+        public AuthService(
+            IDbContextFactory<RollocracyDbContext> contextFactory,
+            IStringLocalizerFactory localizerFactory)
         {
             _contextFactory = contextFactory;
+
+            // Utilise le fichier de ressources partagé de l'application web
+            _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
         }
 
         // Création d'un compte utilisateur
-        public async Task<UserAccount> RegisterAsync(string username, string password, bool isGameMaster)
+        public async Task<UserAccount> RegisterAsync(string username, string password, bool isGameMaster, string language)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -28,13 +35,17 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(u => u.Username == username);
 
             if (existingUser != null)
-                throw new Exception("Ce pseudo existe déjà");
+                throw new Exception(_localizer["Backend_UsernameAlreadyExists"]);
+
+            // Sécurise la langue reçue
+            var normalizedLanguage = NormalizeLanguage(language);
 
             var user = new UserAccount
             {
                 Id = Guid.NewGuid(),
                 Username = username,
-                IsGameMaster = isGameMaster
+                IsGameMaster = isGameMaster,
+                Language = normalizedLanguage
             };
 
             // Génération du hash sécurisé
@@ -73,6 +84,22 @@ namespace Rollocracy.Infrastructure.Services
 
             return await context.UserAccounts
                 .FirstOrDefaultAsync(u => u.Username == username);
+        }
+
+        // Normalise la langue pour éviter les valeurs incohérentes
+        private string NormalizeLanguage(string language)
+        {
+            if (string.IsNullOrWhiteSpace(language))
+                return "fr";
+
+            var normalized = language.Trim().ToLowerInvariant();
+
+            return normalized switch
+            {
+                "fr" => "fr",
+                "en" => "en",
+                _ => "fr"
+            };
         }
     }
 }

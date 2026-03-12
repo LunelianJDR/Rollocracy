@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Interfaces;
 
 namespace Rollocracy.Controllers
@@ -11,13 +12,16 @@ namespace Rollocracy.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IStringLocalizer _localizer;
 
-        public AuthController(IAuthService authService)
+        public AuthController(
+            IAuthService authService,
+            IStringLocalizerFactory localizerFactory)
         {
             _authService = authService;
+            _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
         }
 
-        // API d'inscription
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
@@ -26,7 +30,8 @@ namespace Rollocracy.Controllers
                 var user = await _authService.RegisterAsync(
                     request.Username,
                     request.Password,
-                    request.IsGameMaster);
+                    request.IsGameMaster,
+                    request.Language);
 
                 return Ok(new
                 {
@@ -42,19 +47,17 @@ namespace Rollocracy.Controllers
             }
         }
 
-        // API de login
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
             var success = await SignInUserAsync(request.Username, request.Password);
 
             if (!success)
-                return Unauthorized("Pseudo ou mot de passe invalide");
+                return Unauthorized(_localizer["Backend_InvalidCredentials"]);
 
             return Ok();
         }
 
-        // Login navigateur via formulaire HTML
         [HttpPost("/auth/login")]
         public async Task<IActionResult> LoginForm([FromForm] LoginRequest request)
         {
@@ -66,7 +69,6 @@ namespace Rollocracy.Controllers
             return Redirect("/");
         }
 
-        // Logout navigateur
         [HttpGet("/auth/logout")]
         public async Task<IActionResult> LogoutPage()
         {
@@ -74,7 +76,6 @@ namespace Rollocracy.Controllers
             return Redirect("/login");
         }
 
-        // Logout API
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {
@@ -82,7 +83,6 @@ namespace Rollocracy.Controllers
             return Ok();
         }
 
-        // Retourne l'utilisateur connecté
         [HttpGet("me")]
         public IActionResult Me()
         {
@@ -103,7 +103,6 @@ namespace Rollocracy.Controllers
             });
         }
 
-        // Crée le cookie d'authentification avec les claims utiles
         private async Task<bool> SignInUserAsync(string username, string password)
         {
             var user = await _authService.ValidateLoginAsync(username, password);
@@ -136,16 +135,14 @@ namespace Rollocracy.Controllers
     public class RegisterRequest
     {
         public string Username { get; set; } = string.Empty;
-
         public string Password { get; set; } = string.Empty;
-
         public bool IsGameMaster { get; set; }
+        public string Language { get; set; } = "fr";
     }
 
     public class LoginRequest
     {
         public string Username { get; set; } = string.Empty;
-
         public string Password { get; set; } = string.Empty;
     }
 }

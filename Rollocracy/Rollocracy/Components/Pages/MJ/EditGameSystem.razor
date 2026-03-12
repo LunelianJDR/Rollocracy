@@ -2,100 +2,108 @@
 @rendermode InteractiveServer
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
 @using Rollocracy.Domain.Entities
 @using Rollocracy.Domain.GameRules
+@using Rollocracy.Localization
 @inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
 
-<h3>Édition du système de jeu</h3>
+<h3>@L["EditGameSystem_Title"]</h3>
 
 @if (!IsLoaded)
 {
-    <p>Chargement...</p>
+    <p>@L["Common_Loading"]</p>
 }
 else if (CurrentSystem is null)
 {
-    <p>Système introuvable.</p>
+    <p>@L["EditGameSystem_NotFound"]</p>
 }
 else
 {
-    <h4>Informations générales</h4>
+    <h4>@L["EditGameSystem_GeneralSection"]</h4>
 
     <div>
-        <label>Nom</label><br />
+        <label>@L["EditGameSystem_Name"]</label><br />
         <input @bind="CurrentSystemName" />
     </div>
 
     <div>
-        <label>Description</label><br />
+        <label>@L["EditGameSystem_Description"]</label><br />
         <input @bind="CurrentSystemDescription" />
     </div>
 
     <div>
-        <label>Mode de résolution</label><br />
+        <label>@L["EditGameSystem_ResolutionMode"]</label><br />
         <select @bind="CurrentResolutionMode">
-            <option value="@TestResolutionMode.SuccessThreshold">Seuil de Réussite</option>
-            <option value="@TestResolutionMode.RollUnderAttribute">Inférieur à la caractéristique</option>
+            <option value="@TestResolutionMode.SuccessThreshold">@L["Resolution_SuccessThreshold"]</option>
+            <option value="@TestResolutionMode.RollUnderAttribute">@L["Resolution_RollUnderAttribute"]</option>
         </select>
     </div>
 
-    <button @onclick="SaveGeneralInfo">Enregistrer</button>
+    <button @onclick="SaveGeneralInfo">@L["Common_Save"]</button>
 
     <hr />
 
-    <h4>Caractéristiques numériques</h4>
+    <h4>@L["EditGameSystem_AttributesSection"]</h4>
 
     <div>
-        <label>Nom</label><br />
+        <label>@L["Common_Name"]</label><br />
         <input @bind="NewAttributeName" />
     </div>
 
     <div>
-        <label>Min</label><br />
+        <label>@L["Common_Min"]</label><br />
         <input type="number" @bind="NewAttributeMin" />
     </div>
 
     <div>
-        <label>Max</label><br />
+        <label>@L["Common_Max"]</label><br />
         <input type="number" @bind="NewAttributeMax" />
     </div>
 
     <div>
-        <label>Valeur par défaut</label><br />
+        <label>@L["Common_DefaultValue"]</label><br />
         <input type="number" @bind="NewAttributeDefault" />
     </div>
 
-    <button @onclick="AddAttribute">Ajouter la caractéristique</button>
+    <button @onclick="AddAttribute">@L["EditGameSystem_AddAttribute"]</button>
 
     @if (AttributeDefinitions.Count == 0)
     {
-        <p>Aucune caractéristique pour le moment.</p>
+        <p>@L["EditGameSystem_NoAttributes"]</p>
     }
     else
     {
         <ul>
             @foreach (var attributeDefinition in AttributeDefinitions)
             {
-                <li>@attributeDefinition.Name (min: @attributeDefinition.MinValue, max: @attributeDefinition.MaxValue, défaut: @attributeDefinition.DefaultValue)</li>
+                <li>
+                    @attributeDefinition.Name
+                    (@L["Common_Min"] : @attributeDefinition.MinValue,
+                    @L["Common_Max"] : @attributeDefinition.MaxValue,
+                    @L["Common_DefaultValue"] : @attributeDefinition.DefaultValue)
+                </li>
             }
         </ul>
     }
 
     <hr />
 
-    <h4>Attributs à choix</h4>
+    <h4>@L["EditGameSystem_TraitsSection"]</h4>
 
     <div>
-        <label>Nom du type d'attribut</label><br />
+        <label>@L["EditGameSystem_TraitTypeName"]</label><br />
         <input @bind="NewTraitDefinitionName" />
     </div>
 
-    <button @onclick="AddTraitDefinition">Ajouter le type</button>
+    <button @onclick="AddTraitDefinition">@L["EditGameSystem_AddTraitType"]</button>
 
     @if (TraitDefinitions.Count == 0)
     {
-        <p>Aucun attribut à choix pour le moment.</p>
+        <p>@L["EditGameSystem_NoTraitTypes"]</p>
     }
     else
     {
@@ -105,8 +113,8 @@ else
                 <strong>@traitDefinition.Name</strong>
 
                 <div>
-                    <input @bind="NewTraitOptionNames[traitDefinition.Id]" placeholder="Nouvelle option" />
-                    <button @onclick="() => AddTraitOption(traitDefinition.Id)">Ajouter une option</button>
+                    <input @bind="NewTraitOptionNames[traitDefinition.Id]" placeholder="@L["EditGameSystem_NewOptionPlaceholder"]" />
+                    <button @onclick="() => AddTraitOption(traitDefinition.Id)">@L["EditGameSystem_AddOption"]</button>
                 </div>
 
                 @if (TraitOptionsByDefinition.ContainsKey(traitDefinition.Id) && TraitOptionsByDefinition[traitDefinition.Id].Count > 0)
@@ -120,7 +128,7 @@ else
                 }
                 else
                 {
-                    <p>Aucune option pour ce type.</p>
+                    <p>@L["EditGameSystem_NoOptionsForTrait"]</p>
                 }
             </div>
         }
@@ -128,40 +136,40 @@ else
 
     <hr />
 
-    <h4>Jauges</h4>
+    <h4>@L["EditGameSystem_GaugesSection"]</h4>
 
     <div>
-        <label>Nom</label><br />
+        <label>@L["Common_Name"]</label><br />
         <input @bind="NewGaugeName" />
     </div>
 
     <div>
-        <label>Min</label><br />
+        <label>@L["Common_Min"]</label><br />
         <input type="number" @bind="NewGaugeMin" />
     </div>
 
     <div>
-        <label>Max</label><br />
+        <label>@L["Common_Max"]</label><br />
         <input type="number" @bind="NewGaugeMax" />
     </div>
 
     <div>
-        <label>Valeur par défaut</label><br />
+        <label>@L["Common_DefaultValue"]</label><br />
         <input type="number" @bind="NewGaugeDefault" />
     </div>
 
     <div>
         <label>
             <input type="checkbox" @bind="NewGaugeIsHealthGauge" />
-            Jauge de santé ?
+            @L["EditGameSystem_IsHealthGauge"]
         </label>
     </div>
 
-    <button @onclick="AddGauge">Ajouter la jauge</button>
+    <button @onclick="AddGauge">@L["EditGameSystem_AddGauge"]</button>
 
     @if (GaugeDefinitions.Count == 0)
     {
-        <p>Aucune jauge pour le moment.</p>
+        <p>@L["EditGameSystem_NoGauges"]</p>
     }
     else
     {
@@ -170,8 +178,10 @@ else
             {
                 <li>
                     @gauge.Name
-                    (min: @gauge.MinValue, max: @gauge.MaxValue, défaut: @gauge.DefaultValue,
-                    létale: @(gauge.IsHealthGauge ? "oui" : "non"))
+                    (@L["Common_Min"] : @gauge.MinValue,
+                    @L["Common_Max"] : @gauge.MaxValue,
+                    @L["Common_DefaultValue"] : @gauge.DefaultValue,
+                    @L["EditGameSystem_Lethal"] : @(gauge.IsHealthGauge? L["Common_Yes"] : L["Common_No"]))
                 </li>
             }
         </ul>
@@ -290,11 +300,11 @@ else
                 CurrentResolutionMode);
 
             await LoadGameSystem();
-            Message = "Informations générales enregistrées.";
+            Message = L["EditGameSystem_GeneralSaved"];
         }
         catch (Exception ex)
         {
-            Message = $"Erreur : {ex.Message}";
+            Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
 
@@ -304,7 +314,7 @@ else
         {
             if (string.IsNullOrWhiteSpace(NewAttributeName))
             {
-                Message = "Le nom de la caractéristique est obligatoire.";
+                Message = L["EditGameSystem_AttributeNameRequired"];
                 return;
             }
 
@@ -322,11 +332,11 @@ else
             NewAttributeDefault = 10;
 
             await LoadGameSystem();
-            Message = "Caractéristique ajoutée.";
+            Message = L["EditGameSystem_AttributeAdded"];
         }
         catch (Exception ex)
         {
-            Message = $"Erreur : {ex.Message}";
+            Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
 
@@ -336,7 +346,7 @@ else
         {
             if (string.IsNullOrWhiteSpace(NewTraitDefinitionName))
             {
-                Message = "Le nom du type d'attribut est obligatoire.";
+                Message = L["EditGameSystem_TraitTypeNameRequired"];
                 return;
             }
 
@@ -348,11 +358,11 @@ else
             NewTraitDefinitionName = string.Empty;
 
             await LoadGameSystem();
-            Message = "Type d'attribut ajouté.";
+            Message = L["EditGameSystem_TraitTypeAdded"];
         }
         catch (Exception ex)
         {
-            Message = $"Erreur : {ex.Message}";
+            Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
 
@@ -367,7 +377,7 @@ else
 
             if (string.IsNullOrWhiteSpace(optionName))
             {
-                Message = "Le nom de l'option est obligatoire.";
+                Message = L["EditGameSystem_OptionNameRequired"];
                 return;
             }
 
@@ -379,11 +389,11 @@ else
             NewTraitOptionNames[traitDefinitionId] = string.Empty;
 
             await LoadGameSystem();
-            Message = "Option ajoutée.";
+            Message = L["EditGameSystem_OptionAdded"];
         }
         catch (Exception ex)
         {
-            Message = $"Erreur : {ex.Message}";
+            Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
 
@@ -393,7 +403,7 @@ else
         {
             if (string.IsNullOrWhiteSpace(NewGaugeName))
             {
-                Message = "Le nom de la jauge est obligatoire.";
+                Message = L["EditGameSystem_GaugeNameRequired"];
                 return;
             }
 
@@ -413,11 +423,11 @@ else
             NewGaugeIsHealthGauge = false;
 
             await LoadGameSystem();
-            Message = "Jauge ajoutée.";
+            Message = L["EditGameSystem_GaugeAdded"];
         }
         catch (Exception ex)
         {
-            Message = $"Erreur : {ex.Message}";
+            Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
 }

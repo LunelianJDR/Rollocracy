@@ -2,20 +2,23 @@
 @rendermode InteractiveServer
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Localization
 @using DomainSession = Rollocracy.Domain.Entities.Session
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
 
-<h3>Mes sessions</h3>
+<h3>@L["ResumeSession_Title"]</h3>
 
 @if (!IsLoaded)
 {
-    <p>Chargement...</p>
+    <p>@L["Common_Loading"]</p>
 }
 else if (SessionSummaries.Count == 0)
 {
-    <p>Vous n'avez encore créé aucune session.</p>
+    <p>@L["ResumeSession_None"]</p>
 }
 else
 {
@@ -23,31 +26,31 @@ else
         @foreach (var item in SessionSummaries)
         {
             <li style="margin-bottom: 1rem;">
-                <div><strong>Nom :</strong> @item.Session.SessionName</div>
-                <div><strong>Personnages vivants :</strong> @item.AliveCharacterCount</div>
-                <div><strong>Session active :</strong> @(item.Session.IsActive ? "Oui" : "Non")</div>
+                <div><strong>@L["ResumeSession_Name"] :</strong> @item.Session.SessionName</div>
+                <div><strong>@L["ResumeSession_AliveCharacters"] :</strong> @item.AliveCharacterCount</div>
+                <div><strong>@L["ResumeSession_IsActive"] :</strong> @(item.Session.IsActive? L["Common_Yes"] : L["Common_No"])</div>
 
                 @if (item.Session.IsActive)
                 {
                     <div>
-                        <strong>URL :</strong>
+                        <strong>@L["ResumeSession_Url"] :</strong>
                         <code>@($"{Navigation.BaseUri}{CurrentUsername}/{item.Session.SessionSlug}")</code>
                     </div>
                 }
                 else
                 {
-                    <div><strong>URL :</strong> session inactive</div>
+                    <div><strong>@L["ResumeSession_Url"] :</strong> @L["ResumeSession_InactiveUrl"]</div>
                 }
 
-                <button @onclick="() => OpenSession(item.Session.Id)">Ouvrir</button>
+                <button @onclick="() => OpenSession(item.Session.Id)">@L["ResumeSession_Open"]</button>
 
                 @if (item.Session.IsActive)
                 {
-                    <button @onclick="() => ToggleSessionState(item.Session.Id, false)">Désactiver</button>
+                    <button @onclick="() => ToggleSessionState(item.Session.Id, false)">@L["ResumeSession_Deactivate"]</button>
                 }
                 else
                 {
-                    <button @onclick="() => ToggleSessionState(item.Session.Id, true)">Activer</button>
+                    <button @onclick="() => ToggleSessionState(item.Session.Id, true)">@L["ResumeSession_Activate"]</button>
                 }
             </li>
         }
@@ -136,14 +139,13 @@ else
         }
         catch (Exception ex)
         {
-            Message = $"Erreur : {ex.Message}";
+            Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
 
     private class SessionSummary
     {
         public DomainSession Session { get; set; } = new();
-
         public int AliveCharacterCount { get; set; }
     }
 }

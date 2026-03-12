@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.Interfaces;
@@ -9,13 +10,16 @@ namespace Rollocracy.Infrastructure.Services
     public class GameSystemService : IGameSystemService
     {
         private readonly IDbContextFactory<RollocracyDbContext> _contextFactory;
+        private readonly IStringLocalizer _localizer;
 
-        public GameSystemService(IDbContextFactory<RollocracyDbContext> contextFactory)
+        public GameSystemService(
+            IDbContextFactory<RollocracyDbContext> contextFactory,
+            IStringLocalizerFactory localizerFactory)
         {
             _contextFactory = contextFactory;
+            _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
         }
 
-        // Liste uniquement les systèmes de base réutilisables
         public async Task<List<GameSystem>> GetGameSystemsByOwnerAsync(Guid ownerUserAccountId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -38,7 +42,6 @@ namespace Rollocracy.Infrastructure.Services
                     gs.OwnerUserAccountId == ownerUserAccountId);
         }
 
-        // Crée un système de base et lui ajoute automatiquement une jauge Vie
         public async Task<GameSystem> CreateGameSystemAsync(
             Guid ownerUserAccountId,
             string name,
@@ -60,7 +63,6 @@ namespace Rollocracy.Infrastructure.Services
 
             context.GameSystems.Add(system);
 
-            // Jauge créée par défaut sur tout nouveau système
             context.GaugeDefinitions.Add(new GaugeDefinition
             {
                 Id = Guid.NewGuid(),
@@ -92,7 +94,7 @@ namespace Rollocracy.Infrastructure.Services
                     gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (system == null)
-                throw new Exception("Système introuvable.");
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
 
             system.Name = name.Trim();
             system.Description = description.Trim();
@@ -118,7 +120,7 @@ namespace Rollocracy.Infrastructure.Services
                     gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (system == null)
-                throw new Exception("Système introuvable.");
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
 
             var attribute = new AttributeDefinition
             {
@@ -147,7 +149,7 @@ namespace Rollocracy.Infrastructure.Services
                     gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
-                throw new Exception("Système introuvable.");
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
 
             return await context.AttributeDefinitions
                 .AsNoTracking()
@@ -170,7 +172,7 @@ namespace Rollocracy.Infrastructure.Services
                     gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (system == null)
-                throw new Exception("Système introuvable.");
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
 
             var traitDefinition = new TraitDefinition
             {
@@ -196,7 +198,7 @@ namespace Rollocracy.Infrastructure.Services
                     gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
-                throw new Exception("Système introuvable.");
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
 
             return await context.TraitDefinitions
                 .AsNoTracking()
@@ -217,7 +219,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(td => td.Id == traitDefinitionId);
 
             if (traitDefinition == null)
-                throw new Exception("Attribut de choix introuvable.");
+                throw new Exception(_localizer["Backend_TraitDefinitionNotFound"]);
 
             var ownsSystem = await context.GameSystems
                 .AsNoTracking()
@@ -226,7 +228,7 @@ namespace Rollocracy.Infrastructure.Services
                     gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
-                throw new Exception("Accès refusé à ce système.");
+                throw new Exception(_localizer["Backend_GameSystemAccessDenied"]);
 
             var option = new TraitOption
             {
@@ -250,7 +252,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(td => td.Id == traitDefinitionId);
 
             if (traitDefinition == null)
-                throw new Exception("Attribut de choix introuvable.");
+                throw new Exception(_localizer["Backend_TraitDefinitionNotFound"]);
 
             var ownsSystem = await context.GameSystems
                 .AsNoTracking()
@@ -259,7 +261,7 @@ namespace Rollocracy.Infrastructure.Services
                     gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
-                throw new Exception("Accès refusé à ce système.");
+                throw new Exception(_localizer["Backend_GameSystemAccessDenied"]);
 
             return await context.TraitOptions
                 .AsNoTracking()
@@ -268,7 +270,6 @@ namespace Rollocracy.Infrastructure.Services
                 .ToListAsync();
         }
 
-        // Liste les jauges d'un système
         public async Task<List<GaugeDefinition>> GetGaugeDefinitionsAsync(Guid gameSystemId, Guid ownerUserAccountId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -280,7 +281,7 @@ namespace Rollocracy.Infrastructure.Services
                     gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
-                throw new Exception("Système introuvable.");
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
 
             return await context.GaugeDefinitions
                 .AsNoTracking()
@@ -289,7 +290,6 @@ namespace Rollocracy.Infrastructure.Services
                 .ToListAsync();
         }
 
-        // Ajoute une jauge à un système
         public async Task<GaugeDefinition> AddGaugeDefinitionAsync(
             Guid gameSystemId,
             Guid ownerUserAccountId,
@@ -308,7 +308,7 @@ namespace Rollocracy.Infrastructure.Services
                     gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (system == null)
-                throw new Exception("Système introuvable.");
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
 
             var gauge = new GaugeDefinition
             {
@@ -327,7 +327,6 @@ namespace Rollocracy.Infrastructure.Services
             return gauge;
         }
 
-        // Crée une copie complète du système pour une session spécifique
         public async Task<GameSystem> CloneGameSystemForSessionAsync(
             Guid sourceGameSystemId,
             Guid ownerUserAccountId,
@@ -342,7 +341,7 @@ namespace Rollocracy.Infrastructure.Services
                     gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (sourceSystem == null)
-                throw new Exception("Système source introuvable.");
+                throw new Exception(_localizer["Backend_SourceGameSystemNotFound"]);
 
             var clonedSystem = new GameSystem
             {
@@ -357,7 +356,6 @@ namespace Rollocracy.Infrastructure.Services
 
             context.GameSystems.Add(clonedSystem);
 
-            // Clone les caractéristiques numériques
             var sourceAttributes = await context.AttributeDefinitions
                 .AsNoTracking()
                 .Where(a => a.GameSystemId == sourceSystem.Id)
@@ -376,7 +374,6 @@ namespace Rollocracy.Infrastructure.Services
                 });
             }
 
-            // Clone les attributs à choix et leurs options
             var sourceTraits = await context.TraitDefinitions
                 .AsNoTracking()
                 .Where(t => t.GameSystemId == sourceSystem.Id)
@@ -409,7 +406,6 @@ namespace Rollocracy.Infrastructure.Services
                 }
             }
 
-            // Clone les jauges
             var sourceGauges = await context.GaugeDefinitions
                 .AsNoTracking()
                 .Where(g => g.GameSystemId == sourceSystem.Id)

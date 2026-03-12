@@ -3,65 +3,43 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
 @using Rollocracy.Localization
-@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
 <PageTitle>Accueil</PageTitle>
 
-@if (!IsLoaded)
-{
-    <p>@L["Common_Loading"]</p>
-}
-else if (!IsAuthenticated)
-{
-    <h1>@L["Home_WelcomeAnonymous"]</h1>
+<AuthorizeView>
+    <Authorizing>
+        <p>@L["Common_Loading"]</p>
+    </Authorizing>
 
-    <div>
-        <button @onclick="GoToLogin">@L["Home_Login"]</button>
-        <button @onclick="GoToRegister">@L["Home_Register"]</button>
-    </div>
-}
-else
-{
-    <h1>@L["Home_WelcomeUser", CurrentUsername]</h1>
-    <div>
-        <button @onclick="HandleLogout">@L["Home_Logout"]</button>
-        <button @onclick="GoToJoin">@L["Home_JoinSession"]</button>
+    <NotAuthorized>
+        <h1>@L["Home_WelcomeAnonymous"]</h1>
 
-        @if (IsGameMaster)
-        {
-            <button @onclick="GoToCreateSession">@L["Home_CreateSession"]</button>
-            <button @onclick="GoToResumeSession">@L["Home_ResumeSession"]</button>
-            <button @onclick="GoToGameSystems">@L["Home_GameSystems"]</button>
-        }
-    </div>
-}
+        <div>
+            <button @onclick="GoToLogin">@L["Home_Login"]</button>
+            <button @onclick="GoToRegister">@L["Home_Register"]</button>
+        </div>
+    </NotAuthorized>
+
+    <Authorized Context="authState">
+        <h1>@L["Home_WelcomeUser", authState.User.Identity?.Name ?? string.Empty]</h1>
+
+        <div>
+            <button @onclick="HandleLogout">@L["Home_Logout"]</button>
+            <button @onclick="GoToJoin">@L["Home_JoinSession"]</button>
+
+            @if (IsGameMaster(authState.User))
+            {
+                <button @onclick="GoToCreateSession">@L["Home_CreateSession"]</button>
+                <button @onclick="GoToResumeSession">@L["Home_ResumeSession"]</button>
+                <button @onclick="GoToGameSystems">@L["Home_GameSystems"]</button>
+            }
+        </div>
+    </Authorized>
+</AuthorizeView>
 
 @code {
-    private bool IsLoaded;
-    private bool IsAuthenticated;
-    private bool IsGameMaster;
-    private string CurrentUsername = string.Empty;
-
-    protected override async Task OnInitializedAsync()
-    {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        IsAuthenticated = user.Identity?.IsAuthenticated == true;
-        CurrentUsername = user.Identity?.Name ?? string.Empty;
-
-        var isGameMasterValue = user.FindFirst("IsGameMaster")?.Value;
-
-        if (!string.IsNullOrWhiteSpace(isGameMasterValue))
-        {
-            IsGameMaster = bool.Parse(isGameMasterValue);
-        }
-
-        IsLoaded = true;
-    }
-
     private void GoToLogin()
     {
         Navigation.NavigateTo("/login");
@@ -95,5 +73,11 @@ else
     private void HandleLogout()
     {
         Navigation.NavigateTo("/auth/logout", forceLoad: true);
+    }
+
+    private bool IsGameMaster(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var value = user.FindFirst("IsGameMaster")?.Value;
+        return !string.IsNullOrWhiteSpace(value) && bool.TryParse(value, out var result) && result;
     }
 }

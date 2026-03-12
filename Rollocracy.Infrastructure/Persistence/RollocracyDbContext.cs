@@ -3,6 +3,7 @@ using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.GameTests;
 using Rollocracy.Infrastructure.Events;
+using Rollocracy.Domain.Polls;
 
 namespace Rollocracy.Infrastructure.Persistence
 {
@@ -42,7 +43,20 @@ namespace Rollocracy.Infrastructure.Persistence
 
         public DbSet<GameTestConsequence> GameTestConsequences => Set<GameTestConsequence>();
 
+        public DbSet<GameTestTraitFilter> GameTestTraitFilters => Set<GameTestTraitFilter>();
+
         public DbSet<GameEvent> GameEvents => Set<GameEvent>();
+
+        public DbSet<GameTestAppliedEffect> GameTestAppliedEffects => Set<GameTestAppliedEffect>();
+
+
+        // Sondages
+        public DbSet<SessionPoll> SessionPolls => Set<SessionPoll>();
+        public DbSet<SessionPollOption> SessionPollOptions => Set<SessionPollOption>();
+        public DbSet<SessionPollVote> SessionPollVotes => Set<SessionPollVote>();
+        public DbSet<SessionPollWeightRule> SessionPollWeightRules => Set<SessionPollWeightRule>();
+        public DbSet<SessionPollOptionConsequence> SessionPollOptionConsequences => Set<SessionPollOptionConsequence>();
+        public DbSet<SessionPollAppliedEffect> SessionPollAppliedEffects => Set<SessionPollAppliedEffect>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -1,36 +1,37 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Rollocracy.Domain.GameTests
 {
-    /// Résultat d'un jet de dés pour un joueur donné.
     public class PlayerTestRoll
     {
-        /// Identifiant unique
         public Guid Id { get; set; }
 
-        /// Test concerné
         public Guid GameTestId { get; set; }
 
-        /// Joueur concerné
+        public Guid CharacterId { get; set; }
+
         public Guid PlayerSessionId { get; set; }
 
-        /// Résultat total du jet
-        public int TotalResult { get; set; }
+        public string CharacterNameSnapshot { get; set; } = string.Empty;
 
-        /// Résultat détaillé des dés
-        public string DiceDetails { get; set; } = string.Empty;
+        public string PlayerNameSnapshot { get; set; } = string.Empty;
 
-        /// Indique si le test est réussi
+        public int AttributeValueSnapshot { get; set; }
+
+        public int EffectiveAttributeValue { get; set; }
+
+        public string DiceResultsJson { get; set; } = string.Empty;
+
+        public int DiceTotal { get; set; }
+
+        public int FinalValue { get; set; }
+
         public bool IsSuccess { get; set; }
 
-        /// Indique si le jet a été fait automatiquement (AFK)
+        public bool HasRolled { get; set; }
+
         public bool IsAutoRolled { get; set; }
 
-        /// Date du jet
-        public DateTime RolledAt { get; set; }
+        public DateTime? RolledAtUtc { get; set; }
     }
 }

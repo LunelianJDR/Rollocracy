@@ -1,0 +1,570 @@
+﻿@page "/player/room/{PlayerSessionId:guid}"
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.AspNetCore.Components
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Characters
+@using Rollocracy.Domain.GameTests
+@using Rollocracy.Domain.Interfaces
+@using Rollocracy.Localization
+@using Rollocracy.Domain.Polls
+@inject ICharacterService CharacterService
+@inject IGameTestService GameTestService
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
+@inject IPollService PollService
+
+<h3>@L["PlayerRoom_Title"]</h3>
+
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (State is null)
+{
+    <p>@L["PlayerRoom_NotFound"]</p>
+}
+else
+{
+    <p><strong>@L["PlayerRoom_ConnectedPlayers"] :</strong> @State.SessionStats.ConnectedPlayersCount</p>
+    <p><strong>@L["PlayerRoom_AliveCharacters"] :</strong> @State.SessionStats.AliveCharactersCount</p>
+    <p><strong>@L["PlayerRoom_TotalCharacters"] :</strong> @State.SessionStats.TotalCharactersCount</p>
+
+    <hr />
+
+    @if (ActiveTest is not null)
+    {
+        <h4>@L["GameTest_PlayerSectionTitle"]</h4>
+
+        @if (ActiveTest.AutoRollAtUtc < DateTime.UtcNow)
+        {
+            <p><em>@L["GameTest_LastTestPerformed"]</em></p>
+        }
+
+        <p>
+            <strong>@L["GameTest_Attribute"] :</strong> @ActiveTest.AttributeName
+        </p>
+        <p>
+            <strong>@L["GameTest_Dice"] :</strong> @($"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}")
+        </p>
+
+        @if (ActiveTest.ResolutionMode == Rollocracy.Domain.GameRules.TestResolutionMode.SuccessThreshold)
+        {
+            <p>
+                <strong>@L["GameTest_SuccessThreshold"] :</strong> @ActiveTest.SuccessThreshold
+            </p>
+        }
+
+        <p>
+            <strong>@L["GameTest_DifficultySummary"] :</strong>
+            @(ActiveTest.ModifierMode == Rollocracy.Domain.GameTests.TestModifierMode.Bonus
+                ? L["GameTest_Bonus"]
+                : L["GameTest_Malus"])
+            @(" ")
+            @ActiveTest.DifficultyValue
+        </p>
+
+        @if (!ActiveTest.AlreadyRolled && ActiveTest.AutoRollAtUtc >= DateTime.UtcNow)
+        {
+            <button @onclick="RollCurrentTest">
+                @L["GameTest_RollButton", $"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}"]
+            </button>
+        }
+        else if (ActiveTest.Result is not null)
+        {
+            <p>
+                <strong>@L["GameTest_EffectiveAttributeValue"] :</strong> @ActiveTest.Result.EffectiveAttributeValue
+            </p>
+            <p>
+                <strong>@L["GameTest_DiceResults"] :</strong>
+                @string.Join(" - ", ActiveTest.Result.DiceResults)
+            </p>
+            <p>
+                <strong>@L["GameTest_DiceTotal"] :</strong> @ActiveTest.Result.DiceTotal
+            </p>
+            <p>
+                <strong>@L["GameTest_AttributeValue"] :</strong> @ActiveTest.Result.AttributeValue
+            </p>
+            <p>
+                <strong>@L["GameTest_FinalValue"] :</strong> @ActiveTest.Result.FinalValue
+            </p>
+            <p>
+                <strong>@L["GameTest_Result"] :</strong>
+                @(ActiveTest.Result.IsSuccess? L["GameTest_Success"] : L["GameTest_Failure"])
+            </p>
+
+            @if (ActiveTest.Result.IsAutoRolled)
+            {
+                <p>@L["GameTest_AutoRolledNotice"]</p>
+            }
+        }
+    }
+
+    @if (LatestPoll is not null)
+    {
+        <hr />
+
+        <h4>@L["Poll_PlayerSectionTitle"]</h4>
+
+        @if (LatestPoll.IsClosed)
+        {
+            <p><em>@L["Poll_LastPoll"]</em></p>
+        }
+
+        @if (LatestPoll.IsClosed && RemainingPollSeconds > 0)
+        {
+            <p>@L["Poll_DisappearsIn", RemainingPollSeconds]</p>
+        }
+
+        <p><strong>@L["Poll_Question"] :</strong> @LatestPoll.Question</p>
+
+        @if (!LatestPoll.IsClosed && !LatestPoll.HasVoted)
+        {
+            @foreach (var option in LatestPoll.Options)
+            {
+                <div style="margin-bottom: 0.5rem;">
+                    <button @onclick="() => Vote(option.OptionId)">
+                        @option.Label
+                    </button>
+                </div>
+            }
+        }
+        else
+        {
+            @if (LatestPoll.HasVoted)
+            {
+                <p>@L["Poll_VoteRegistered"]</p>
+            }
+
+            <ul>
+                @foreach (var option in LatestPoll.Options)
+                {
+                    var isSelected = LatestPoll.SelectedOptionId == option.OptionId;
+
+                    <li>
+                        @option.Label : @option.VoteCount / @option.WeightedVoteTotal.ToString("F2")
+                        @if (isSelected)
+                        {
+                            <strong> (@L["Poll_YourVote"])</strong>
+                        }
+                    </li>
+                }
+            </ul>
+
+            @if (LatestPoll.HasVoted && LatestPoll.VoteWeight.HasValue)
+            {
+                <p>@L["Poll_YourVoteWeight", LatestPoll.VoteWeight.Value.ToString("F2")]</p>
+            }
+        }
+    }
+
+    <hr />
+
+    @if (!State.HasAssignedGameSystem)
+    {
+        <p>@L["PlayerRoom_NoGameSystem"]</p>
+    }
+    else if (State.AliveCharacter is not null)
+    {
+        <h4>@L["PlayerRoom_YourCharacter"]</h4>
+        @RenderCharacterSheet(State.AliveCharacter, false)
+    }
+    else if (State.DeadCharacters.Count == 0)
+    {
+        <p>@L["PlayerRoom_NoCharacterYet"]</p>
+        <button @onclick="GoToCreateCharacter">@L["PlayerRoom_CreateCharacter"]</button>
+    }
+    else
+    {
+        <p>@L["PlayerRoom_OnlyDeadCharacters"]</p>
+
+        @if (State.CanCreateNewCharacter)
+        {
+            <button @onclick="GoToCreateCharacter">@L["PlayerRoom_CreateNewCharacter"]</button>
+        }
+        else if (State.CanCreateNewCharacterAtUtc.HasValue)
+        {
+            <p>@L["PlayerRoom_CreateCharacterCountdown", RemainingCreationSeconds]</p>
+        }
+
+        <h4>@L["PlayerRoom_DeadCharacters"]</h4>
+
+        <ul>
+            @foreach (var deadCharacter in State.DeadCharacters)
+            {
+                <li>
+                    @deadCharacter.Name
+                    <button @onclick="() => LoadDeadCharacter(deadCharacter.CharacterId)">
+                        @L["PlayerRoom_ViewDeadCharacter"]
+                    </button>
+                </li>
+            }
+        </ul>
+
+        @if (ViewedDeadCharacter is not null)
+        {
+            <hr />
+            <h4>@L["PlayerRoom_ViewedDeadCharacter"]</h4>
+            @RenderCharacterSheet(ViewedDeadCharacter, true)
+        }
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p>@Message</p>
+    }
+}
+
+@code {
+    [Parameter] public Guid PlayerSessionId { get; set; }
+    [SupplyParameterFromQuery(Name = "restored")] public string? RestoredFlag { get; set; }
+
+    private bool IsLoaded;
+    private string Message = string.Empty;
+
+    private PlayerRoomStateDto? State;
+    private CharacterSheetDto? ViewedDeadCharacter;
+    private ActivePlayerGameTestDto? ActiveTest;
+    private HubConnection? hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadState();
+        await LoadActiveTest();
+        await LoadLatestPoll();
+        await InitializeHubIfNeeded();
+        StartCreationCountdownIfNeeded();
+
+        if (RestoredFlag == "1")
+        {
+            Message = L["PlayerRoom_OldCharacterRestored"];
+        }
+
+        IsLoaded = true;
+    }
+
+    private async Task LoadState()
+    {
+        try
+        {
+            Message = string.Empty;
+            State = await CharacterService.GetPlayerRoomStateAsync(PlayerSessionId);
+            ViewedDeadCharacter = null;
+            StartCreationCountdownIfNeeded();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task LoadActiveTest()
+    {
+        try
+        {
+            ActiveTest = await GameTestService.GetActiveGameTestForPlayerAsync(PlayerSessionId);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task InitializeHubIfNeeded()
+    {
+        if (State is null)
+            return;
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/sessionhub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On("PresenceChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadState();
+                StateHasChanged();
+            });
+        });
+
+        hubConnection.On("CharacterStateChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadState();
+                StateHasChanged();
+            });
+        });
+
+        hubConnection.On("TestChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadActiveTest();
+                StateHasChanged();
+            });
+        });
+
+        hubConnection.On("PollChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadLatestPoll();
+                StateHasChanged();
+            });
+        });
+
+        await hubConnection.StartAsync();
+
+        await hubConnection.SendAsync("JoinSessionGroup", State.SessionId.ToString());
+
+        if (State.AliveCharacter is not null || State.DeadCharacters.Count > 0)
+        {
+            await hubConnection.SendAsync(
+                "JoinPlayerPresence",
+                State.SessionId.ToString(),
+                PlayerSessionId.ToString(),
+                false);
+        }
+    }
+
+    private async Task RollCurrentTest()
+    {
+        try
+        {
+            if (ActiveTest is null)
+                return;
+
+            await GameTestService.RollForPlayerAsync(PlayerSessionId, ActiveTest.GameTestId, false);
+            await LoadActiveTest();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void GoToCreateCharacter()
+    {
+        Navigation.NavigateTo($"/player/create-character/{PlayerSessionId}");
+    }
+
+    private async Task LoadDeadCharacter(Guid characterId)
+    {
+        try
+        {
+            ViewedDeadCharacter = await CharacterService.GetCharacterSheetAsync(PlayerSessionId, characterId);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private RenderFragment RenderCharacterSheet(CharacterSheetDto sheet, bool readOnly) => builder =>
+    {
+        var seq = 0;
+
+        builder.OpenElement(seq++, "p");
+        builder.AddContent(seq++, $"{L["PlayerRoom_CharacterName"]} : {sheet.Name}");
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "p");
+        builder.AddContent(seq++, $"{L["PlayerRoom_CharacterStatus"]} : {(sheet.IsAlive ? L["Common_Alive"] : L["Common_Dead"])}");
+        builder.CloseElement();
+
+        if (!string.IsNullOrWhiteSpace(sheet.Biography))
+        {
+            builder.OpenElement(seq++, "p");
+            builder.AddContent(seq++, $"{L["PlayerRoom_CharacterBiography"]} : {sheet.Biography}");
+            builder.CloseElement();
+        }
+
+        builder.OpenElement(seq++, "h5");
+        builder.AddContent(seq++, L["PlayerRoom_Attributes"]);
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "ul");
+        foreach (var attributeLine in sheet.Attributes)
+        {
+            builder.OpenElement(seq++, "li");
+            builder.AddContent(seq++, $"{attributeLine.Name} : {attributeLine.Value}");
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "h5");
+        builder.AddContent(seq++, L["PlayerRoom_Traits"]);
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "ul");
+        foreach (var traitLine in sheet.Traits)
+        {
+            builder.OpenElement(seq++, "li");
+            builder.AddContent(seq++, $"{traitLine.TraitName} : {traitLine.OptionName}");
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "h5");
+        builder.AddContent(seq++, L["PlayerRoom_Gauges"]);
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "ul");
+        foreach (var gaugeLine in sheet.Gauges)
+        {
+            builder.OpenElement(seq++, "li");
+            builder.AddContent(seq++, $"{gaugeLine.Name} : {gaugeLine.Value} / {gaugeLine.MaxValue}");
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+
+        if (readOnly)
+        {
+            builder.OpenElement(seq++, "p");
+            builder.AddContent(seq++, L["PlayerRoom_ReadOnlyDeadCharacter"]);
+            builder.CloseElement();
+        }
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        creationCountdownTimer?.Dispose();
+        pollVisibilityTimer?.Dispose();
+
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+
+    private System.Threading.Timer? creationCountdownTimer;
+
+    private int RemainingCreationSeconds;
+
+    private void StartCreationCountdownIfNeeded()
+    {
+        creationCountdownTimer?.Dispose();
+        creationCountdownTimer = null;
+
+        if (State is null || State.CanCreateNewCharacter || !State.CanCreateNewCharacterAtUtc.HasValue)
+        {
+            RemainingCreationSeconds = 0;
+            return;
+        }
+
+        void UpdateRemaining()
+        {
+            if (State?.CanCreateNewCharacterAtUtc is null)
+            {
+                RemainingCreationSeconds = 0;
+                return;
+            }
+
+            var remaining = State.CanCreateNewCharacterAtUtc.Value - DateTime.UtcNow;
+            RemainingCreationSeconds = Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
+        }
+
+        UpdateRemaining();
+
+        creationCountdownTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                UpdateRemaining();
+
+                if (RemainingCreationSeconds <= 0)
+                {
+                    creationCountdownTimer?.Dispose();
+                    creationCountdownTimer = null;
+
+                    await LoadState();
+                }
+
+                StateHasChanged();
+            });
+        }, null, 1000, 1000);
+    }
+
+    private PollForPlayerDto? LatestPoll;
+
+    private async Task LoadLatestPoll()
+    {
+        try
+        {
+            LatestPoll = await PollService.GetLatestPollForPlayerAsync(PlayerSessionId);
+            StartPollVisibilityTimerIfNeeded();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task Vote(Guid optionId)
+    {
+        try
+        {
+            Message = string.Empty;
+
+            if (LatestPoll is null)
+                return;
+
+            await PollService.VoteAsync(PlayerSessionId, LatestPoll.PollId, optionId);
+            await LoadLatestPoll();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private System.Threading.Timer? pollVisibilityTimer;
+    private int RemainingPollSeconds;
+
+    private void StartPollVisibilityTimerIfNeeded()
+    {
+        pollVisibilityTimer?.Dispose();
+        pollVisibilityTimer = null;
+
+        if (LatestPoll is null || !LatestPoll.IsClosed || !LatestPoll.ClosedAtUtc.HasValue)
+        {
+            RemainingPollSeconds = 0;
+            return;
+        }
+
+        void UpdateRemaining()
+        {
+            if (LatestPoll?.ClosedAtUtc is null)
+            {
+                RemainingPollSeconds = 0;
+                return;
+            }
+
+            var remaining = LatestPoll.ClosedAtUtc.Value.AddSeconds(30) - DateTime.UtcNow;
+            RemainingPollSeconds = Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
+        }
+
+        UpdateRemaining();
+
+        pollVisibilityTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                UpdateRemaining();
+
+                if (RemainingPollSeconds <= 0)
+                {
+                    pollVisibilityTimer?.Dispose();
+                    pollVisibilityTimer = null;
+
+                    await LoadLatestPoll();
+                }
+
+                StateHasChanged();
+            });
+        }, null, 1000, 1000);
+    }
+}

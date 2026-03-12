@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
@@ -8,10 +9,14 @@ namespace Rollocracy.Infrastructure.Services
     public class SessionService : ISessionService
     {
         private readonly IDbContextFactory<RollocracyDbContext> _contextFactory;
+        private readonly IStringLocalizer _localizer;
 
-        public SessionService(IDbContextFactory<RollocracyDbContext> contextFactory)
+        public SessionService(
+            IDbContextFactory<RollocracyDbContext> contextFactory,
+            IStringLocalizerFactory localizerFactory)
         {
             _contextFactory = contextFactory;
+            _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
         }
 
         public async Task<Session> CreateSessionAsync(
@@ -26,10 +31,10 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(u => u.Id == gameMasterUserAccountId);
 
             if (gameMasterUser == null)
-                throw new Exception("Compte utilisateur introuvable.");
+                throw new Exception(_localizer["Backend_UserAccountNotFound"]);
 
             if (!gameMasterUser.IsGameMaster)
-                throw new Exception("Seuls les comptes MJ peuvent créer une session.");
+                throw new Exception(_localizer["Backend_OnlyGameMastersCanCreateSession"]);
 
             var sessionSlug = GenerateSessionSlug(sessionName);
 
@@ -40,7 +45,7 @@ namespace Rollocracy.Infrastructure.Services
                     s.SessionSlug == sessionSlug);
 
             if (existingSession != null)
-                throw new Exception("Vous avez déjà une session avec ce nom.");
+                throw new Exception(_localizer["Backend_SessionNameAlreadyExists"]);
 
             var session = new Session
             {
@@ -89,7 +94,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUsername);
 
             if (gameMasterUser == null)
-                throw new Exception("MJ introuvable");
+                throw new Exception(_localizer["Backend_GameMasterNotFound"]);
 
             var session = await context.Sessions
                 .AsNoTracking()
@@ -98,15 +103,15 @@ namespace Rollocracy.Infrastructure.Services
                     s.SessionSlug.ToLower() == normalizedSlug);
 
             if (session == null)
-                throw new Exception("Session introuvable");
+                throw new Exception(_localizer["Backend_SessionNotFound"]);
 
             if (!session.IsActive)
-                throw new Exception("Cette session est actuellement inactive.");
+                throw new Exception(_localizer["Backend_SessionInactive"]);
 
             if (!string.IsNullOrWhiteSpace(session.SessionPassword))
             {
                 if (session.SessionPassword != sessionPassword)
-                    throw new Exception("Mot de passe de session invalide");
+                    throw new Exception(_localizer["Backend_InvalidSessionPassword"]);
             }
 
             var existingPlayerSession = await context.PlayerSessions
@@ -204,7 +209,7 @@ namespace Rollocracy.Infrastructure.Services
                     s.GameMasterUserAccountId == gameMasterUserAccountId);
 
             if (session == null)
-                throw new Exception("Session introuvable.");
+                throw new Exception(_localizer["Backend_SessionNotFound"]);
 
             session.IsActive = isActive;
 
@@ -227,7 +232,6 @@ namespace Rollocracy.Infrastructure.Services
                 .CountAsync();
         }
 
-        // Associe un système à une session
         public async Task AssignGameSystemToSessionAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid gameSystemId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -238,7 +242,7 @@ namespace Rollocracy.Infrastructure.Services
                     s.GameMasterUserAccountId == gameMasterUserAccountId);
 
             if (session == null)
-                throw new Exception("Session introuvable.");
+                throw new Exception(_localizer["Backend_SessionNotFound"]);
 
             var system = await context.GameSystems
                 .AsNoTracking()
@@ -247,7 +251,7 @@ namespace Rollocracy.Infrastructure.Services
                     gs.OwnerUserAccountId == gameMasterUserAccountId);
 
             if (system == null)
-                throw new Exception("Système introuvable.");
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
 
             session.GameSystemId = gameSystemId;
 

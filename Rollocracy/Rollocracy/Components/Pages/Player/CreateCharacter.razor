@@ -1,0 +1,140 @@
+﻿@page "/player/create-character/{PlayerSessionId:guid}"
+@rendermode InteractiveServer
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Characters
+@using Rollocracy.Domain.Interfaces
+@using Rollocracy.Localization
+@inject ICharacterService CharacterService
+@inject ISessionNotifier SessionNotifier
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
+
+<h3>@L["CreateCharacter_Title"]</h3>
+
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (Template is null)
+{
+    <p>@L["CreateCharacter_TemplateNotFound"]</p>
+}
+else
+{
+    <p><strong>@L["CreateCharacter_GameSystem"] :</strong> @Template.GameSystemName</p>
+
+    <div>
+        <label>@L["CreateCharacter_Name"]</label><br />
+        <input @bind="CharacterName" />
+    </div>
+
+    <div>
+        <label>@L["CreateCharacter_Biography"]</label><br />
+        <textarea @bind="Biography"></textarea>
+    </div>
+
+    <h4>@L["CreateCharacter_Attributes"]</h4>
+
+    @foreach (var attributeDefinition in Template.Attributes)
+    {
+        <div>
+            <label>@attributeDefinition.Name</label><br />
+            <input type="number" @bind="AttributeValues[attributeDefinition.AttributeDefinitionId]" />
+        </div>
+    }
+
+    <h4>@L["CreateCharacter_Traits"]</h4>
+
+    @foreach (var traitDefinition in Template.Traits)
+    {
+        <div>
+            <label>@traitDefinition.Name</label><br />
+            <select @bind="TraitSelections[traitDefinition.TraitDefinitionId]">
+                @foreach (var option in traitDefinition.Options)
+                {
+                    <option value="@option.TraitOptionId">@option.Name</option>
+                }
+            </select>
+        </div>
+    }
+
+    <button @onclick="HandleCreateCharacter">@L["CreateCharacter_Submit"]</button>
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p>@Message</p>
+    }
+}
+
+@code {
+    [Parameter] public Guid PlayerSessionId { get; set; }
+
+    private bool IsLoaded;
+    private string Message = string.Empty;
+
+    private CharacterCreationTemplateDto? Template;
+    private string CharacterName = string.Empty;
+    private string Biography = string.Empty;
+
+    private Dictionary<Guid, int> AttributeValues = new();
+    private Dictionary<Guid, Guid> TraitSelections = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Template = await CharacterService.GetCharacterCreationTemplateAsync(PlayerSessionId);
+
+            foreach (var attributeDefinition in Template.Attributes)
+            {
+                AttributeValues[attributeDefinition.AttributeDefinitionId] = attributeDefinition.DefaultValue;
+            }
+
+            foreach (var traitDefinition in Template.Traits)
+            {
+                if (traitDefinition.Options.Count > 0)
+                {
+                    TraitSelections[traitDefinition.TraitDefinitionId] = traitDefinition.Options[0].TraitOptionId;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            if (ex.Message == L["Backend_PlayerAlreadyHasAliveCharacter"])
+            {
+                Navigation.NavigateTo($"/player/room/{PlayerSessionId}?restored=1");
+                return;
+            }
+
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+
+        IsLoaded = true;
+    }
+
+    private async Task HandleCreateCharacter()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            await CharacterService.CreateCharacterAsync(
+                PlayerSessionId,
+                CharacterName,
+                Biography,
+                AttributeValues,
+                TraitSelections);
+
+            if (Template is not null)
+            {
+                await SessionNotifier.NotifyCharacterStateChangedAsync(Template.SessionId);
+            }
+
+            Navigation.NavigateTo($"/player/room/{PlayerSessionId}");
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+}

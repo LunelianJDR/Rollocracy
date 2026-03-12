@@ -2,38 +2,42 @@
 @rendermode InteractiveServer
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
 @using Rollocracy.Domain.Entities
+@using Rollocracy.Domain.GameRules
+@using Rollocracy.Localization
 @inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
 
-<h3>Mes systèmes de jeu</h3>
+<h3>@L["GameSystems_Title"]</h3>
 
 @if (!IsLoaded)
 {
-    <p>Chargement...</p>
+    <p>@L["Common_Loading"]</p>
 }
 else
 {
     <div>
-        <label>Nom du nouveau système</label><br />
+        <label>@L["GameSystems_NewName"]</label><br />
         <input @bind="NewSystemName" />
     </div>
 
     <div>
-        <label>Description</label><br />
+        <label>@L["GameSystems_NewDescription"]</label><br />
         <input @bind="NewSystemDescription" />
     </div>
 
     <div>
-        <label>Mode de résolution</label><br />
+        <label>@L["GameSystems_ResolutionMode"]</label><br />
         <select @bind="NewSystemResolutionMode">
-            <option value="@Rollocracy.Domain.GameRules.TestResolutionMode.SuccessThreshold">Seuil de Réussite</option>
-            <option value="@Rollocracy.Domain.GameRules.TestResolutionMode.RollUnderAttribute">Inférieur à la caractéristique</option>
+            <option value="@TestResolutionMode.SuccessThreshold">@L["Resolution_SuccessThreshold"]</option>
+            <option value="@TestResolutionMode.RollUnderAttribute">@L["Resolution_RollUnderAttribute"]</option>
         </select>
     </div>
 
-    <button @onclick="CreateGameSystem">Créer le système</button>
+    <button @onclick="CreateGameSystem">@L["GameSystems_Create"]</button>
 
     @if (!string.IsNullOrWhiteSpace(Message))
     {
@@ -44,7 +48,7 @@ else
 
     @if (OwnedGameSystems.Count == 0)
     {
-        <p>Vous n'avez encore créé aucun système.</p>
+        <p>@L["GameSystems_None"]</p>
     }
     else
     {
@@ -52,10 +56,10 @@ else
             @foreach (var system in OwnedGameSystems)
             {
                 <li style="margin-bottom: 1rem;">
-                    <div><strong>Nom :</strong> @system.Name</div>
-                    <div><strong>Description :</strong> @system.Description</div>
-                    <div><strong>Mode :</strong> @GetResolutionLabel(system.TestResolutionMode)</div>
-                    <button @onclick="() => EditSystem(system.Id)">Éditer</button>
+                    <div><strong>@L["GameSystems_Name"] :</strong> @system.Name</div>
+                    <div><strong>@L["GameSystems_Description"] :</strong> @system.Description</div>
+                    <div><strong>@L["GameSystems_Mode"] :</strong> @GetResolutionLabel(system.TestResolutionMode)</div>
+                    <button @onclick="() => EditSystem(system.Id)">@L["GameSystems_Edit"]</button>
                 </li>
             }
         </ul>
@@ -69,8 +73,7 @@ else
 
     private string NewSystemName = string.Empty;
     private string NewSystemDescription = string.Empty;
-    private Rollocracy.Domain.GameRules.TestResolutionMode NewSystemResolutionMode =
-        Rollocracy.Domain.GameRules.TestResolutionMode.SuccessThreshold;
+    private TestResolutionMode NewSystemResolutionMode = TestResolutionMode.SuccessThreshold;
 
     private List<GameSystem> OwnedGameSystems = new();
 
@@ -121,7 +124,7 @@ else
 
             if (string.IsNullOrWhiteSpace(NewSystemName))
             {
-                Message = "Le nom du système est obligatoire.";
+                Message = L["GameSystems_NameRequired"];
                 return;
             }
 
@@ -133,7 +136,7 @@ else
 
             NewSystemName = string.Empty;
             NewSystemDescription = string.Empty;
-            NewSystemResolutionMode = Rollocracy.Domain.GameRules.TestResolutionMode.SuccessThreshold;
+            NewSystemResolutionMode = TestResolutionMode.SuccessThreshold;
 
             await LoadGameSystems();
 
@@ -141,7 +144,7 @@ else
         }
         catch (Exception ex)
         {
-            Message = $"Erreur : {ex.Message}";
+            Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
 
@@ -150,12 +153,12 @@ else
         Navigation.NavigateTo($"/mj/gamesystems/{systemId}");
     }
 
-    private string GetResolutionLabel(Rollocracy.Domain.GameRules.TestResolutionMode mode)
+    private string GetResolutionLabel(TestResolutionMode mode)
     {
         return mode switch
         {
-            Rollocracy.Domain.GameRules.TestResolutionMode.SuccessThreshold => "Seuil de Réussite",
-            Rollocracy.Domain.GameRules.TestResolutionMode.RollUnderAttribute => "Inférieur à la caractéristique",
+            TestResolutionMode.SuccessThreshold => L["Resolution_SuccessThreshold"],
+            TestResolutionMode.RollUnderAttribute => L["Resolution_RollUnderAttribute"],
             _ => mode.ToString()
         };
     }
