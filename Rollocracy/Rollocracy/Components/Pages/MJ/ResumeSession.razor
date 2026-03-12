@@ -1,10 +1,12 @@
 ﻿@page "/mj/sessions"
 @rendermode InteractiveServer
+
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
 @using Rollocracy.Localization
 @using DomainSession = Rollocracy.Domain.Entities.Session
+
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
@@ -16,45 +18,45 @@
 {
     <p>@L["Common_Loading"]</p>
 }
+else if (RedirectToHome)
+{
+    <p>@L["Common_Loading"]</p>
+}
 else if (SessionSummaries.Count == 0)
 {
     <p>@L["ResumeSession_None"]</p>
 }
 else
 {
-    <ul>
-        @foreach (var item in SessionSummaries)
-        {
-            <li style="margin-bottom: 1rem;">
-                <div><strong>@L["ResumeSession_Name"] :</strong> @item.Session.SessionName</div>
-                <div><strong>@L["ResumeSession_AliveCharacters"] :</strong> @item.AliveCharacterCount</div>
-                <div><strong>@L["ResumeSession_IsActive"] :</strong> @(item.Session.IsActive? L["Common_Yes"] : L["Common_No"])</div>
+    @foreach (var item in SessionSummaries)
+    {
+        <div>
+            <p><strong>@L["ResumeSession_Name"] :</strong> @item.Session.SessionName</p>
+            <p><strong>@L["ResumeSession_AliveCharacters"] :</strong> @item.AliveCharacterCount</p>
+            <p><strong>@L["ResumeSession_IsActive"] :</strong> @(item.Session.IsActive? L["Common_Yes"] : L["Common_No"])</p>
 
-                @if (item.Session.IsActive)
-                {
-                    <div>
-                        <strong>@L["ResumeSession_Url"] :</strong>
-                        <code>@($"{Navigation.BaseUri}{CurrentUsername}/{item.Session.SessionSlug}")</code>
-                    </div>
-                }
-                else
-                {
-                    <div><strong>@L["ResumeSession_Url"] :</strong> @L["ResumeSession_InactiveUrl"]</div>
-                }
+            @if (item.Session.IsActive)
+            {
+                <p><strong>@L["ResumeSession_Url"] :</strong> <code>@($"{Navigation.BaseUri}{CurrentUsername}/{item.Session.SessionSlug}")</code></p>
+            }
+            else
+            {
+                <p><strong>@L["ResumeSession_Url"] :</strong> @L["ResumeSession_InactiveUrl"]</p>
+            }
 
-                <button @onclick="() => OpenSession(item.Session.Id)">@L["ResumeSession_Open"]</button>
+            <button @onclick="() => OpenSession(item.Session.Id)">@L["ResumeSession_Open"]</button>
 
-                @if (item.Session.IsActive)
-                {
-                    <button @onclick="() => ToggleSessionState(item.Session.Id, false)">@L["ResumeSession_Deactivate"]</button>
-                }
-                else
-                {
-                    <button @onclick="() => ToggleSessionState(item.Session.Id, true)">@L["ResumeSession_Activate"]</button>
-                }
-            </li>
-        }
-    </ul>
+            @if (item.Session.IsActive)
+            {
+                <button @onclick="() => ToggleSessionState(item.Session.Id, false)">@L["ResumeSession_Deactivate"]</button>
+            }
+            else
+            {
+                <button @onclick="() => ToggleSessionState(item.Session.Id, true)">@L["ResumeSession_Activate"]</button>
+            }
+        </div>
+        <hr />
+    }
 }
 
 @if (!string.IsNullOrWhiteSpace(Message))
@@ -66,8 +68,8 @@ else
     private Guid CurrentUserId;
     private string CurrentUsername = string.Empty;
     private bool IsLoaded;
+    private bool RedirectToHome;
     private string Message = string.Empty;
-
     private List<SessionSummary> SessionSummaries = new();
 
     protected override async Task OnInitializedAsync()
@@ -76,33 +78,39 @@ else
         var user = authState.User;
 
         var isAuthenticated = user.Identity?.IsAuthenticated == true;
-        var isGameMasterValue = user.FindFirst("IsGameMaster")?.Value;
         var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (!isAuthenticated)
+        if (!isAuthenticated || string.IsNullOrWhiteSpace(userIdValue))
         {
-            Navigation.NavigateTo("/login", forceLoad: true);
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(isGameMasterValue) || !bool.Parse(isGameMasterValue))
-        {
-            Navigation.NavigateTo("/", forceLoad: true);
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(userIdValue))
-        {
-            Navigation.NavigateTo("/", forceLoad: true);
+            RedirectToHome = true;
+            IsLoaded = true;
             return;
         }
 
         CurrentUserId = Guid.Parse(userIdValue);
         CurrentUsername = user.Identity?.Name ?? string.Empty;
 
-        await LoadSessions();
+        var canCreateSessions = await SessionService.CanUserCreateSessionsAsync(CurrentUserId);
 
+        if (!canCreateSessions)
+        {
+            RedirectToHome = true;
+            IsLoaded = true;
+            return;
+        }
+
+        await LoadSessions();
         IsLoaded = true;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToHome)
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+
+        return Task.CompletedTask;
     }
 
     private async Task LoadSessions()

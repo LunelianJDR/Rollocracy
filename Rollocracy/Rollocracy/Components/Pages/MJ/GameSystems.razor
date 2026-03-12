@@ -1,12 +1,15 @@
 ﻿@page "/mj/gamesystems"
 @rendermode InteractiveServer
+
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
 @using Rollocracy.Domain.Entities
 @using Rollocracy.Domain.GameRules
 @using Rollocracy.Localization
+
 @inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
+@inject Rollocracy.Domain.Interfaces.ISessionService SessionService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
@@ -14,6 +17,10 @@
 <h3>@L["GameSystems_Title"]</h3>
 
 @if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToHome)
 {
     <p>@L["Common_Loading"]</p>
 }
@@ -26,7 +33,7 @@ else
 
     <div>
         <label>@L["GameSystems_NewDescription"]</label><br />
-        <input @bind="NewSystemDescription" />
+        <textarea @bind="NewSystemDescription"></textarea>
     </div>
 
     <div>
@@ -52,29 +59,27 @@ else
     }
     else
     {
-        <ul>
-            @foreach (var system in OwnedGameSystems)
-            {
-                <li style="margin-bottom: 1rem;">
-                    <div><strong>@L["GameSystems_Name"] :</strong> @system.Name</div>
-                    <div><strong>@L["GameSystems_Description"] :</strong> @system.Description</div>
-                    <div><strong>@L["GameSystems_Mode"] :</strong> @GetResolutionLabel(system.TestResolutionMode)</div>
-                    <button @onclick="() => EditSystem(system.Id)">@L["GameSystems_Edit"]</button>
-                </li>
-            }
-        </ul>
+        @foreach (var system in OwnedGameSystems)
+        {
+            <div>
+                <p><strong>@L["GameSystems_Name"] :</strong> @system.Name</p>
+                <p><strong>@L["GameSystems_Description"] :</strong> @system.Description</p>
+                <p><strong>@L["GameSystems_Mode"] :</strong> @GetResolutionLabel(system.TestResolutionMode)</p>
+                <button @onclick="() => EditSystem(system.Id)">@L["GameSystems_Edit"]</button>
+            </div>
+            <hr />
+        }
     }
 }
 
 @code {
     private bool IsLoaded;
+    private bool RedirectToHome;
     private Guid CurrentUserId;
     private string Message = string.Empty;
-
     private string NewSystemName = string.Empty;
     private string NewSystemDescription = string.Empty;
     private TestResolutionMode NewSystemResolutionMode = TestResolutionMode.SuccessThreshold;
-
     private List<GameSystem> OwnedGameSystems = new();
 
     protected override async Task OnInitializedAsync()
@@ -83,32 +88,38 @@ else
         var user = authState.User;
 
         var isAuthenticated = user.Identity?.IsAuthenticated == true;
-        var isGameMasterValue = user.FindFirst("IsGameMaster")?.Value;
         var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (!isAuthenticated)
+        if (!isAuthenticated || string.IsNullOrWhiteSpace(userIdValue))
         {
-            Navigation.NavigateTo("/login", forceLoad: true);
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(isGameMasterValue) || !bool.Parse(isGameMasterValue))
-        {
-            Navigation.NavigateTo("/", forceLoad: true);
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(userIdValue))
-        {
-            Navigation.NavigateTo("/", forceLoad: true);
+            RedirectToHome = true;
+            IsLoaded = true;
             return;
         }
 
         CurrentUserId = Guid.Parse(userIdValue);
 
-        await LoadGameSystems();
+        var canCreateSessions = await SessionService.CanUserCreateSessionsAsync(CurrentUserId);
 
+        if (!canCreateSessions)
+        {
+            RedirectToHome = true;
+            IsLoaded = true;
+            return;
+        }
+
+        await LoadGameSystems();
         IsLoaded = true;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToHome)
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+
+        return Task.CompletedTask;
     }
 
     private async Task LoadGameSystems()
@@ -139,7 +150,6 @@ else
             NewSystemResolutionMode = TestResolutionMode.SuccessThreshold;
 
             await LoadGameSystems();
-
             Navigation.NavigateTo($"/mj/gamesystems/{system.Id}");
         }
         catch (Exception ex)

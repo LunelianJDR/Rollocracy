@@ -20,6 +20,10 @@ namespace Rollocracy.Domain.Entities
         // On part sur "fr" par défaut
         public string Language { get; set; } = "fr";
 
+        // JMS : nombre maximum de joueurs en ligne avec personnage vivant
+        // autorisés dans une session créée par ce compte.
+        public int MaxPlayersPerSession { get; set; } = 0;
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

@@ -1100,4 +1100,13 @@
 	<data name="Backend_LastPollHasNoAppliedConsequences" xml:space="preserve">
     <value>The latest poll has no applied consequences to undo.</value>
   </data>
+	<data name="Backend_OnlyUsersWithPositiveJmsCanCreateSession" xml:space="preserve">
+    <value>This account cannot create a session while its JMS limit is set to 0.</value>
+  </data>
+	<data name="Backend_OnlyUsersWithPositiveJmsCanManageGameSystems" xml:space="preserve">
+    <value>This account cannot manage game systems while its JMS limit is set to 0.</value>
+  </data>
+	<data name="Backend_SessionIsFull" xml:space="preserve">
+    <value>The session is full.</value>
+  </data>
 </root>

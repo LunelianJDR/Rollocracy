@@ -37,9 +37,7 @@ namespace Rollocracy.Infrastructure.Services
 
             return await context.GameSystems
                 .AsNoTracking()
-                .FirstOrDefaultAsync(gs =>
-                    gs.Id == gameSystemId &&
-                    gs.OwnerUserAccountId == ownerUserAccountId);
+                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
         }
 
         public async Task<GameSystem> CreateGameSystemAsync(
@@ -49,6 +47,8 @@ namespace Rollocracy.Infrastructure.Services
             TestResolutionMode testResolutionMode)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
+
+            await EnsureUserCanManageGameSystemsAsync(context, ownerUserAccountId);
 
             var system = new GameSystem
             {
@@ -88,10 +88,10 @@ namespace Rollocracy.Infrastructure.Services
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
+            await EnsureUserCanManageGameSystemsAsync(context, ownerUserAccountId);
+
             var system = await context.GameSystems
-                .FirstOrDefaultAsync(gs =>
-                    gs.Id == gameSystemId &&
-                    gs.OwnerUserAccountId == ownerUserAccountId);
+                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (system == null)
                 throw new Exception(_localizer["Backend_GameSystemNotFound"]);
@@ -113,11 +113,11 @@ namespace Rollocracy.Infrastructure.Services
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
+            await EnsureUserCanManageGameSystemsAsync(context, ownerUserAccountId);
+
             var system = await context.GameSystems
                 .AsNoTracking()
-                .FirstOrDefaultAsync(gs =>
-                    gs.Id == gameSystemId &&
-                    gs.OwnerUserAccountId == ownerUserAccountId);
+                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (system == null)
                 throw new Exception(_localizer["Backend_GameSystemNotFound"]);
@@ -133,6 +133,7 @@ namespace Rollocracy.Infrastructure.Services
             };
 
             context.AttributeDefinitions.Add(attribute);
+
             await context.SaveChangesAsync();
 
             return attribute;
@@ -144,9 +145,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var ownsSystem = await context.GameSystems
                 .AsNoTracking()
-                .AnyAsync(gs =>
-                    gs.Id == gameSystemId &&
-                    gs.OwnerUserAccountId == ownerUserAccountId);
+                .AnyAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
                 throw new Exception(_localizer["Backend_GameSystemNotFound"]);
@@ -165,11 +164,11 @@ namespace Rollocracy.Infrastructure.Services
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
+            await EnsureUserCanManageGameSystemsAsync(context, ownerUserAccountId);
+
             var system = await context.GameSystems
                 .AsNoTracking()
-                .FirstOrDefaultAsync(gs =>
-                    gs.Id == gameSystemId &&
-                    gs.OwnerUserAccountId == ownerUserAccountId);
+                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (system == null)
                 throw new Exception(_localizer["Backend_GameSystemNotFound"]);
@@ -182,6 +181,7 @@ namespace Rollocracy.Infrastructure.Services
             };
 
             context.TraitDefinitions.Add(traitDefinition);
+
             await context.SaveChangesAsync();
 
             return traitDefinition;
@@ -193,9 +193,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var ownsSystem = await context.GameSystems
                 .AsNoTracking()
-                .AnyAsync(gs =>
-                    gs.Id == gameSystemId &&
-                    gs.OwnerUserAccountId == ownerUserAccountId);
+                .AnyAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
                 throw new Exception(_localizer["Backend_GameSystemNotFound"]);
@@ -214,6 +212,8 @@ namespace Rollocracy.Infrastructure.Services
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
+            await EnsureUserCanManageGameSystemsAsync(context, ownerUserAccountId);
+
             var traitDefinition = await context.TraitDefinitions
                 .AsNoTracking()
                 .FirstOrDefaultAsync(td => td.Id == traitDefinitionId);
@@ -223,9 +223,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var ownsSystem = await context.GameSystems
                 .AsNoTracking()
-                .AnyAsync(gs =>
-                    gs.Id == traitDefinition.GameSystemId &&
-                    gs.OwnerUserAccountId == ownerUserAccountId);
+                .AnyAsync(gs => gs.Id == traitDefinition.GameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
                 throw new Exception(_localizer["Backend_GameSystemAccessDenied"]);
@@ -238,6 +236,7 @@ namespace Rollocracy.Infrastructure.Services
             };
 
             context.TraitOptions.Add(option);
+
             await context.SaveChangesAsync();
 
             return option;
@@ -256,9 +255,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var ownsSystem = await context.GameSystems
                 .AsNoTracking()
-                .AnyAsync(gs =>
-                    gs.Id == traitDefinition.GameSystemId &&
-                    gs.OwnerUserAccountId == ownerUserAccountId);
+                .AnyAsync(gs => gs.Id == traitDefinition.GameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
                 throw new Exception(_localizer["Backend_GameSystemAccessDenied"]);
@@ -276,9 +273,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var ownsSystem = await context.GameSystems
                 .AsNoTracking()
-                .AnyAsync(gs =>
-                    gs.Id == gameSystemId &&
-                    gs.OwnerUserAccountId == ownerUserAccountId);
+                .AnyAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
                 throw new Exception(_localizer["Backend_GameSystemNotFound"]);
@@ -301,11 +296,11 @@ namespace Rollocracy.Infrastructure.Services
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
+            await EnsureUserCanManageGameSystemsAsync(context, ownerUserAccountId);
+
             var system = await context.GameSystems
                 .AsNoTracking()
-                .FirstOrDefaultAsync(gs =>
-                    gs.Id == gameSystemId &&
-                    gs.OwnerUserAccountId == ownerUserAccountId);
+                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (system == null)
                 throw new Exception(_localizer["Backend_GameSystemNotFound"]);
@@ -322,6 +317,7 @@ namespace Rollocracy.Infrastructure.Services
             };
 
             context.GaugeDefinitions.Add(gauge);
+
             await context.SaveChangesAsync();
 
             return gauge;
@@ -334,11 +330,11 @@ namespace Rollocracy.Infrastructure.Services
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
+            await EnsureUserCanManageGameSystemsAsync(context, ownerUserAccountId);
+
             var sourceSystem = await context.GameSystems
                 .AsNoTracking()
-                .FirstOrDefaultAsync(gs =>
-                    gs.Id == sourceGameSystemId &&
-                    gs.OwnerUserAccountId == ownerUserAccountId);
+                .FirstOrDefaultAsync(gs => gs.Id == sourceGameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (sourceSystem == null)
                 throw new Exception(_localizer["Backend_SourceGameSystemNotFound"]);
@@ -428,6 +424,23 @@ namespace Rollocracy.Infrastructure.Services
             await context.SaveChangesAsync();
 
             return clonedSystem;
+        }
+
+        private async Task EnsureUserCanManageGameSystemsAsync(
+            RollocracyDbContext context,
+            Guid ownerUserAccountId)
+        {
+            var user = await context.UserAccounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == ownerUserAccountId);
+
+            if (user == null)
+                throw new Exception(_localizer["Backend_UserAccountNotFound"]);
+
+            var normalizedJms = Math.Clamp(user.MaxPlayersPerSession, 0, 5000);
+
+            if (normalizedJms <= 0)
+                throw new Exception(_localizer["Backend_OnlyUsersWithPositiveJmsCanManageGameSystems"]);
         }
     }
 }
