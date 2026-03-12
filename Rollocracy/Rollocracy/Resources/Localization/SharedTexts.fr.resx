@@ -1100,4 +1100,13 @@
 	<data name="Backend_LastPollHasNoAppliedConsequences" xml:space="preserve">
     <value>Le dernier sondage n'a aucune conséquence appliquée à annuler.</value>
   </data>
+	<data name="Backend_OnlyUsersWithPositiveJmsCanCreateSession" xml:space="preserve">
+    <value>Ce compte ne peut pas créer de session tant que sa limite JMS est à 0.</value>
+  </data>
+	<data name="Backend_OnlyUsersWithPositiveJmsCanManageGameSystems" xml:space="preserve">
+    <value>Ce compte ne peut pas gérer de système de jeu tant que sa limite JMS est à 0.</value>
+  </data>
+	<data name="Backend_SessionIsFull" xml:space="preserve">
+    <value>La session est pleine.</value>
+  </data>
 </root>

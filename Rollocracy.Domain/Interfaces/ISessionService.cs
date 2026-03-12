@@ -15,8 +15,7 @@ namespace Rollocracy.Domain.Interfaces
             string sessionSlug,
             string sessionPassword,
             Guid userAccountId,
-            string playerName,
-            bool isGameMaster);
+            string playerName);
 
         Task<List<PlayerSession>> GetPlayersAsync(Guid sessionId);
 
@@ -32,7 +31,12 @@ namespace Rollocracy.Domain.Interfaces
 
         Task<int> GetAliveCharacterCountAsync(Guid sessionId);
 
-        // Associe un système à une session
         Task AssignGameSystemToSessionAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid gameSystemId);
+
+        // Indique si l'utilisateur a le droit de créer / gérer ses sessions et systèmes.
+        Task<bool> CanUserCreateSessionsAsync(Guid userAccountId);
+
+        // Retourne la valeur JMS normalisée (0..5000).
+        Task<int> GetUserMaxPlayersPerSessionAsync(Guid userAccountId);
     }
 }

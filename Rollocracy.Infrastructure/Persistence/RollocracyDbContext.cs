@@ -15,13 +15,10 @@ namespace Rollocracy.Infrastructure.Persistence
         }
 
         public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
-
         public DbSet<GameSystem> GameSystems => Set<GameSystem>();
 
         public DbSet<Session> Sessions => Set<Session>();
-
         public DbSet<PlayerSession> PlayerSessions => Set<PlayerSession>();
-
         public DbSet<Character> Characters => Set<Character>();
 
         // Caractéristiques numériques
@@ -38,17 +35,11 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<CharacterGaugeValue> CharacterGaugeValues => Set<CharacterGaugeValue>();
 
         public DbSet<GameTest> GameTests => Set<GameTest>();
-
         public DbSet<PlayerTestRoll> PlayerTestRolls => Set<PlayerTestRoll>();
-
         public DbSet<GameTestConsequence> GameTestConsequences => Set<GameTestConsequence>();
-
         public DbSet<GameTestTraitFilter> GameTestTraitFilters => Set<GameTestTraitFilter>();
-
         public DbSet<GameEvent> GameEvents => Set<GameEvent>();
-
         public DbSet<GameTestAppliedEffect> GameTestAppliedEffects => Set<GameTestAppliedEffect>();
-
 
         // Sondages
         public DbSet<SessionPoll> SessionPolls => Set<SessionPoll>();
@@ -62,9 +53,21 @@ namespace Rollocracy.Infrastructure.Persistence
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<UserAccount>()
-                .HasIndex(u => u.Username)
-                .IsUnique();
+            modelBuilder.Entity<UserAccount>(entity =>
+            {
+                entity.HasIndex(u => u.Username)
+                    .IsUnique();
+
+                entity.Property(u => u.MaxPlayersPerSession)
+                    .HasDefaultValue(0);
+
+                entity.ToTable(table =>
+                {
+                    table.HasCheckConstraint(
+                        "CK_UserAccounts_MaxPlayersPerSession_Range",
+                        "\"MaxPlayersPerSession\" >= 0 AND \"MaxPlayersPerSession\" <= 5000");
+                });
+            });
 
             modelBuilder.Entity<Session>()
                 .HasIndex(s => new { s.GameMasterUserAccountId, s.SessionSlug })

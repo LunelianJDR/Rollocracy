@@ -1,5 +1,6 @@
 ﻿@page "/{mjUsername}/{sessionSlug}"
 @rendermode InteractiveServer
+
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.SignalR
@@ -7,6 +8,7 @@
 @using Rollocracy.Domain.Entities
 @using Rollocracy.Hubs
 @using Rollocracy.Localization
+
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
@@ -64,11 +66,8 @@ else
     private bool IsLoaded;
     private bool IsAuthenticated;
     private bool RequiresPassword;
-
     private Guid CurrentUserId;
     private string CurrentUsername = string.Empty;
-    private bool CurrentUserIsGameMaster;
-
     private string SessionPassword = string.Empty;
     private string Message = string.Empty;
 
@@ -82,7 +81,6 @@ else
         if (IsAuthenticated)
         {
             var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var isGameMasterValue = user.FindFirst("IsGameMaster")?.Value;
 
             if (!string.IsNullOrWhiteSpace(userIdValue))
             {
@@ -90,11 +88,6 @@ else
             }
 
             CurrentUsername = user.Identity?.Name ?? string.Empty;
-
-            if (!string.IsNullOrWhiteSpace(isGameMasterValue))
-            {
-                CurrentUserIsGameMaster = bool.Parse(isGameMasterValue);
-            }
 
             Session = await SessionService.GetSessionByOwnerAndSlugAsync(mjUsername, sessionSlug);
 
@@ -128,8 +121,7 @@ else
                 sessionSlug,
                 SessionPassword,
                 CurrentUserId,
-                CurrentUsername,
-                CurrentUserIsGameMaster);
+                CurrentUsername);
 
             await SessionHubContext.Clients
                 .Group(playerSession.SessionId.ToString())

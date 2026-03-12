@@ -1,12 +1,15 @@
 ﻿@page "/mj/gamesystems/{GameSystemId:guid}"
 @rendermode InteractiveServer
+
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
 @using Rollocracy.Domain.Entities
 @using Rollocracy.Domain.GameRules
 @using Rollocracy.Localization
+
 @inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
+@inject Rollocracy.Domain.Interfaces.ISessionService SessionService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
@@ -14,6 +17,10 @@
 <h3>@L["EditGameSystem_Title"]</h3>
 
 @if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToHome)
 {
     <p>@L["Common_Loading"]</p>
 }
@@ -32,7 +39,7 @@ else
 
     <div>
         <label>@L["EditGameSystem_Description"]</label><br />
-        <input @bind="CurrentSystemDescription" />
+        <textarea @bind="CurrentSystemDescription"></textarea>
     </div>
 
     <div>
@@ -80,12 +87,7 @@ else
         <ul>
             @foreach (var attributeDefinition in AttributeDefinitions)
             {
-                <li>
-                    @attributeDefinition.Name
-                    (@L["Common_Min"] : @attributeDefinition.MinValue,
-                    @L["Common_Max"] : @attributeDefinition.MaxValue,
-                    @L["Common_DefaultValue"] : @attributeDefinition.DefaultValue)
-                </li>
+                <li>@attributeDefinition.Name (@L["Common_Min"] : @attributeDefinition.MinValue, @L["Common_Max"] : @attributeDefinition.MaxValue, @L["Common_DefaultValue"] : @attributeDefinition.DefaultValue)</li>
             }
         </ul>
     }
@@ -109,13 +111,11 @@ else
     {
         @foreach (var traitDefinition in TraitDefinitions)
         {
-            <div style="margin-bottom: 1rem;">
-                <strong>@traitDefinition.Name</strong>
+            <div>
+                <p><strong>@traitDefinition.Name</strong></p>
 
-                <div>
-                    <input @bind="NewTraitOptionNames[traitDefinition.Id]" placeholder="@L["EditGameSystem_NewOptionPlaceholder"]" />
-                    <button @onclick="() => AddTraitOption(traitDefinition.Id)">@L["EditGameSystem_AddOption"]</button>
-                </div>
+                <input @bind="NewTraitOptionNames[traitDefinition.Id]" />
+                <button @onclick="() => AddTraitOption(traitDefinition.Id)">@L["EditGameSystem_AddOption"]</button>
 
                 @if (TraitOptionsByDefinition.ContainsKey(traitDefinition.Id) && TraitOptionsByDefinition[traitDefinition.Id].Count > 0)
                 {
@@ -159,10 +159,8 @@ else
     </div>
 
     <div>
-        <label>
-            <input type="checkbox" @bind="NewGaugeIsHealthGauge" />
-            @L["EditGameSystem_IsHealthGauge"]
-        </label>
+        <label>@L["EditGameSystem_IsHealthGauge"]</label>
+        <input type="checkbox" @bind="NewGaugeIsHealthGauge" />
     </div>
 
     <button @onclick="AddGauge">@L["EditGameSystem_AddGauge"]</button>
@@ -176,13 +174,7 @@ else
         <ul>
             @foreach (var gauge in GaugeDefinitions)
             {
-                <li>
-                    @gauge.Name
-                    (@L["Common_Min"] : @gauge.MinValue,
-                    @L["Common_Max"] : @gauge.MaxValue,
-                    @L["Common_DefaultValue"] : @gauge.DefaultValue,
-                    @L["EditGameSystem_Lethal"] : @(gauge.IsHealthGauge? L["Common_Yes"] : L["Common_No"]))
-                </li>
+                <li>@gauge.Name (@L["Common_Min"] : @gauge.MinValue, @L["Common_Max"] : @gauge.MaxValue, @L["Common_DefaultValue"] : @gauge.DefaultValue, @L["EditGameSystem_Lethal"] : @(gauge.IsHealthGauge? L["Common_Yes"] : L["Common_No"]))</li>
             }
         </ul>
     }
@@ -197,11 +189,11 @@ else
     [Parameter] public Guid GameSystemId { get; set; }
 
     private bool IsLoaded;
+    private bool RedirectToHome;
     private Guid CurrentUserId;
     private string Message = string.Empty;
 
     private GameSystem? CurrentSystem;
-
     private string CurrentSystemName = string.Empty;
     private string CurrentSystemDescription = string.Empty;
     private TestResolutionMode CurrentResolutionMode;
@@ -231,32 +223,38 @@ else
         var user = authState.User;
 
         var isAuthenticated = user.Identity?.IsAuthenticated == true;
-        var isGameMasterValue = user.FindFirst("IsGameMaster")?.Value;
         var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        if (!isAuthenticated)
+        if (!isAuthenticated || string.IsNullOrWhiteSpace(userIdValue))
         {
-            Navigation.NavigateTo("/login", forceLoad: true);
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(isGameMasterValue) || !bool.Parse(isGameMasterValue))
-        {
-            Navigation.NavigateTo("/", forceLoad: true);
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(userIdValue))
-        {
-            Navigation.NavigateTo("/", forceLoad: true);
+            RedirectToHome = true;
+            IsLoaded = true;
             return;
         }
 
         CurrentUserId = Guid.Parse(userIdValue);
 
-        await LoadGameSystem();
+        var canCreateSessions = await SessionService.CanUserCreateSessionsAsync(CurrentUserId);
 
+        if (!canCreateSessions)
+        {
+            RedirectToHome = true;
+            IsLoaded = true;
+            return;
+        }
+
+        await LoadGameSystem();
         IsLoaded = true;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToHome)
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+
+        return Task.CompletedTask;
     }
 
     private async Task LoadGameSystem()

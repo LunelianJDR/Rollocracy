@@ -1,5 +1,7 @@
 ﻿@page "/player/room/{PlayerSessionId:guid}"
 @rendermode InteractiveServer
+@implements IAsyncDisposable
+
 @using Microsoft.AspNetCore.SignalR.Client
 @using Microsoft.AspNetCore.Components
 @using Microsoft.Extensions.Localization
@@ -8,6 +10,7 @@
 @using Rollocracy.Domain.Interfaces
 @using Rollocracy.Localization
 @using Rollocracy.Domain.Polls
+
 @inject ICharacterService CharacterService
 @inject IGameTestService GameTestService
 @inject NavigationManager Navigation
@@ -26,9 +29,9 @@ else if (State is null)
 }
 else
 {
-    <p><strong>@L["PlayerRoom_ConnectedPlayers"] :</strong> @State.SessionStats.ConnectedPlayersCount</p>
-    <p><strong>@L["PlayerRoom_AliveCharacters"] :</strong> @State.SessionStats.AliveCharactersCount</p>
-    <p><strong>@L["PlayerRoom_TotalCharacters"] :</strong> @State.SessionStats.TotalCharactersCount</p>
+    <p>@L["PlayerRoom_ConnectedPlayers"] : @State.SessionStats.ConnectedPlayersCount</p>
+    <p>@L["PlayerRoom_AliveCharacters"] : @State.SessionStats.AliveCharactersCount</p>
+    <p>@L["PlayerRoom_TotalCharacters"] : @State.SessionStats.TotalCharactersCount</p>
 
     <hr />
 
@@ -38,60 +41,36 @@ else
 
         @if (ActiveTest.AutoRollAtUtc < DateTime.UtcNow)
         {
-            <p><em>@L["GameTest_LastTestPerformed"]</em></p>
+            <p>@L["GameTest_LastTestPerformed"]</p>
         }
 
-        <p>
-            <strong>@L["GameTest_Attribute"] :</strong> @ActiveTest.AttributeName
-        </p>
-        <p>
-            <strong>@L["GameTest_Dice"] :</strong> @($"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}")
-        </p>
+        <p>@L["GameTest_Attribute"] : @ActiveTest.AttributeName</p>
+        <p>@L["GameTest_Dice"] : @($"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}")</p>
 
         @if (ActiveTest.ResolutionMode == Rollocracy.Domain.GameRules.TestResolutionMode.SuccessThreshold)
         {
-            <p>
-                <strong>@L["GameTest_SuccessThreshold"] :</strong> @ActiveTest.SuccessThreshold
-            </p>
+            <p>@L["GameTest_SuccessThreshold"] : @ActiveTest.SuccessThreshold</p>
         }
 
         <p>
-            <strong>@L["GameTest_DifficultySummary"] :</strong>
-            @(ActiveTest.ModifierMode == Rollocracy.Domain.GameTests.TestModifierMode.Bonus
-                ? L["GameTest_Bonus"]
-                : L["GameTest_Malus"])
+            @L["GameTest_DifficultySummary"] :
+            @(ActiveTest.ModifierMode == Rollocracy.Domain.GameTests.TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])
             @(" ")
             @ActiveTest.DifficultyValue
         </p>
 
         @if (!ActiveTest.AlreadyRolled && ActiveTest.AutoRollAtUtc >= DateTime.UtcNow)
         {
-            <button @onclick="RollCurrentTest">
-                @L["GameTest_RollButton", $"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}"]
-            </button>
+            <button @onclick="RollCurrentTest">@L["GameTest_RollButton", $"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}"]</button>
         }
         else if (ActiveTest.Result is not null)
         {
-            <p>
-                <strong>@L["GameTest_EffectiveAttributeValue"] :</strong> @ActiveTest.Result.EffectiveAttributeValue
-            </p>
-            <p>
-                <strong>@L["GameTest_DiceResults"] :</strong>
-                @string.Join(" - ", ActiveTest.Result.DiceResults)
-            </p>
-            <p>
-                <strong>@L["GameTest_DiceTotal"] :</strong> @ActiveTest.Result.DiceTotal
-            </p>
-            <p>
-                <strong>@L["GameTest_AttributeValue"] :</strong> @ActiveTest.Result.AttributeValue
-            </p>
-            <p>
-                <strong>@L["GameTest_FinalValue"] :</strong> @ActiveTest.Result.FinalValue
-            </p>
-            <p>
-                <strong>@L["GameTest_Result"] :</strong>
-                @(ActiveTest.Result.IsSuccess? L["GameTest_Success"] : L["GameTest_Failure"])
-            </p>
+            <p>@L["GameTest_EffectiveAttributeValue"] : @ActiveTest.Result.EffectiveAttributeValue</p>
+            <p>@L["GameTest_DiceResults"] : @string.Join(" - ", ActiveTest.Result.DiceResults)</p>
+            <p>@L["GameTest_DiceTotal"] : @ActiveTest.Result.DiceTotal</p>
+            <p>@L["GameTest_AttributeValue"] : @ActiveTest.Result.AttributeValue</p>
+            <p>@L["GameTest_FinalValue"] : @ActiveTest.Result.FinalValue</p>
+            <p>@L["GameTest_Result"] : @(ActiveTest.Result.IsSuccess? L["GameTest_Success"] : L["GameTest_Failure"])</p>
 
             @if (ActiveTest.Result.IsAutoRolled)
             {
@@ -103,12 +82,11 @@ else
     @if (LatestPoll is not null)
     {
         <hr />
-
         <h4>@L["Poll_PlayerSectionTitle"]</h4>
 
         @if (LatestPoll.IsClosed)
         {
-            <p><em>@L["Poll_LastPoll"]</em></p>
+            <p>@L["Poll_LastPoll"]</p>
         }
 
         @if (LatestPoll.IsClosed && RemainingPollSeconds > 0)
@@ -116,17 +94,13 @@ else
             <p>@L["Poll_DisappearsIn", RemainingPollSeconds]</p>
         }
 
-        <p><strong>@L["Poll_Question"] :</strong> @LatestPoll.Question</p>
+        <p>@L["Poll_Question"] : @LatestPoll.Question</p>
 
         @if (!LatestPoll.IsClosed && !LatestPoll.HasVoted)
         {
             @foreach (var option in LatestPoll.Options)
             {
-                <div style="margin-bottom: 0.5rem;">
-                    <button @onclick="() => Vote(option.OptionId)">
-                        @option.Label
-                    </button>
-                </div>
+                <button @onclick="() => Vote(option.OptionId)">@option.Label</button>
             }
         }
         else
@@ -145,7 +119,7 @@ else
                         @option.Label : @option.VoteCount / @option.WeightedVoteTotal.ToString("F2")
                         @if (isSelected)
                         {
-                            <strong> (@L["Poll_YourVote"])</strong>
+                            <span>(@L["Poll_YourVote"])</span>
                         }
                     </li>
                 }
@@ -194,9 +168,7 @@ else
             {
                 <li>
                     @deadCharacter.Name
-                    <button @onclick="() => LoadDeadCharacter(deadCharacter.CharacterId)">
-                        @L["PlayerRoom_ViewDeadCharacter"]
-                    </button>
+                    <button @onclick="() => LoadDeadCharacter(deadCharacter.CharacterId)">@L["PlayerRoom_ViewDeadCharacter"]</button>
                 </li>
             }
         </ul>
@@ -221,11 +193,11 @@ else
 
     private bool IsLoaded;
     private string Message = string.Empty;
-
     private PlayerRoomStateDto? State;
     private CharacterSheetDto? ViewedDeadCharacter;
     private ActivePlayerGameTestDto? ActiveTest;
     private HubConnection? hubConnection;
+    private bool PresenceJoined;
 
     protected override async Task OnInitializedAsync()
     {
@@ -317,7 +289,6 @@ else
         });
 
         await hubConnection.StartAsync();
-
         await hubConnection.SendAsync("JoinSessionGroup", State.SessionId.ToString());
 
         if (State.AliveCharacter is not null || State.DeadCharacters.Count > 0)
@@ -327,6 +298,8 @@ else
                 State.SessionId.ToString(),
                 PlayerSessionId.ToString(),
                 false);
+
+            PresenceJoined = true;
         }
     }
 
@@ -436,12 +409,36 @@ else
 
         if (hubConnection is not null)
         {
+            try
+            {
+                // Sortie explicite de présence avant fermeture de la connexion.
+                if (PresenceJoined && State is not null && hubConnection.State == HubConnectionState.Connected)
+                {
+                    await hubConnection.SendAsync(
+                        "LeavePlayerPresence",
+                        State.SessionId.ToString(),
+                        PlayerSessionId.ToString());
+                }
+            }
+            catch
+            {
+                // On ignore ici : OnDisconnectedAsync côté Hub sert de filet de sécurité.
+            }
+
+            try
+            {
+                await hubConnection.StopAsync();
+            }
+            catch
+            {
+                // Pas bloquant pendant le nettoyage.
+            }
+
             await hubConnection.DisposeAsync();
         }
     }
 
     private System.Threading.Timer? creationCountdownTimer;
-
     private int RemainingCreationSeconds;
 
     private void StartCreationCountdownIfNeeded()
@@ -479,7 +476,6 @@ else
                 {
                     creationCountdownTimer?.Dispose();
                     creationCountdownTimer = null;
-
                     await LoadState();
                 }
 
@@ -489,6 +485,8 @@ else
     }
 
     private PollForPlayerDto? LatestPoll;
+    private System.Threading.Timer? pollVisibilityTimer;
+    private int RemainingPollSeconds;
 
     private async Task LoadLatestPoll()
     {
@@ -520,9 +518,6 @@ else
             Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
-
-    private System.Threading.Timer? pollVisibilityTimer;
-    private int RemainingPollSeconds;
 
     private void StartPollVisibilityTimerIfNeeded()
     {
@@ -559,7 +554,6 @@ else
                 {
                     pollVisibilityTimer?.Dispose();
                     pollVisibilityTimer = null;
-
                     await LoadLatestPoll();
                 }
 

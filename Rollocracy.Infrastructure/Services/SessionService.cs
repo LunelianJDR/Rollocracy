@@ -10,13 +10,16 @@ namespace Rollocracy.Infrastructure.Services
     {
         private readonly IDbContextFactory<RollocracyDbContext> _contextFactory;
         private readonly IStringLocalizer _localizer;
+        private readonly IPresenceTracker _presenceTracker;
 
         public SessionService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
-            IStringLocalizerFactory localizerFactory)
+            IStringLocalizerFactory localizerFactory,
+            IPresenceTracker presenceTracker)
         {
             _contextFactory = contextFactory;
             _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
+            _presenceTracker = presenceTracker;
         }
 
         public async Task<Session> CreateSessionAsync(
@@ -33,8 +36,10 @@ namespace Rollocracy.Infrastructure.Services
             if (gameMasterUser == null)
                 throw new Exception(_localizer["Backend_UserAccountNotFound"]);
 
-            if (!gameMasterUser.IsGameMaster)
-                throw new Exception(_localizer["Backend_OnlyGameMastersCanCreateSession"]);
+            var normalizedJms = NormalizeSessionCapacity(gameMasterUser.MaxPlayersPerSession);
+
+            if (normalizedJms <= 0)
+                throw new Exception(_localizer["Backend_OnlyUsersWithPositiveJmsCanCreateSession"]);
 
             var sessionSlug = GenerateSessionSlug(sessionName);
 
@@ -60,6 +65,7 @@ namespace Rollocracy.Infrastructure.Services
 
             context.Sessions.Add(session);
 
+            // Le créateur est l'unique MJ de cette session.
             var gmPlayerSession = new PlayerSession
             {
                 Id = Guid.NewGuid(),
@@ -81,8 +87,7 @@ namespace Rollocracy.Infrastructure.Services
             string sessionSlug,
             string sessionPassword,
             Guid userAccountId,
-            string playerName,
-            bool isGameMaster)
+            string playerName)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -108,27 +113,54 @@ namespace Rollocracy.Infrastructure.Services
             if (!session.IsActive)
                 throw new Exception(_localizer["Backend_SessionInactive"]);
 
-            if (!string.IsNullOrWhiteSpace(session.SessionPassword))
+            if (!string.IsNullOrWhiteSpace(session.SessionPassword) &&
+                session.SessionPassword != sessionPassword)
             {
-                if (session.SessionPassword != sessionPassword)
-                    throw new Exception(_localizer["Backend_InvalidSessionPassword"]);
+                throw new Exception(_localizer["Backend_InvalidSessionPassword"]);
             }
 
             var existingPlayerSession = await context.PlayerSessions
-                .FirstOrDefaultAsync(p =>
-                    p.SessionId == session.Id &&
-                    p.UserAccountId == userAccountId);
+                .FirstOrDefaultAsync(p => p.SessionId == session.Id && p.UserAccountId == userAccountId);
+
+            var existingPlayerHasAliveCharacter = false;
+
+            if (existingPlayerSession != null)
+            {
+                existingPlayerHasAliveCharacter = await context.Characters
+                    .AsNoTracking()
+                    .AnyAsync(c => c.PlayerSessionId == existingPlayerSession.Id && c.IsAlive);
+            }
+
+            var sessionCapacity = NormalizeSessionCapacity(gameMasterUser.MaxPlayersPerSession);
+
+            // JMS = 0 => session considérée comme pleine pour les nouveaux accès joueur.
+            if (sessionCapacity <= 0)
+                throw new Exception(_localizer["Backend_SessionIsFull"]);
+
+            var onlineLivingPlayersExcludingCurrent = await GetOnlineLivingPlayersCountAsync(
+                context,
+                session.Id,
+                existingPlayerSession?.Id);
+
+            // Un nouveau joueur compte comme un slot potentiel.
+            // Un ancien joueur ne recompte que s'il revient avec un personnage vivant.
+            var currentUserWouldConsumeASlot =
+                existingPlayerSession == null || existingPlayerHasAliveCharacter;
+
+            if (currentUserWouldConsumeASlot && onlineLivingPlayersExcludingCurrent >= sessionCapacity)
+                throw new Exception(_localizer["Backend_SessionIsFull"]);
 
             if (existingPlayerSession != null)
                 return existingPlayerSession;
 
+            // Tous les rejoignants autres que le créateur sont des joueurs.
             var playerSession = new PlayerSession
             {
                 Id = Guid.NewGuid(),
                 SessionId = session.Id,
                 UserAccountId = userAccountId,
                 PlayerName = playerName,
-                IsGameMaster = isGameMaster
+                IsGameMaster = false
             };
 
             context.PlayerSessions.Add(playerSession);
@@ -256,6 +288,59 @@ namespace Rollocracy.Infrastructure.Services
             session.GameSystemId = gameSystemId;
 
             await context.SaveChangesAsync();
+        }
+
+        public async Task<bool> CanUserCreateSessionsAsync(Guid userAccountId)
+        {
+            var maxPlayers = await GetUserMaxPlayersPerSessionAsync(userAccountId);
+            return maxPlayers > 0;
+        }
+
+        public async Task<int> GetUserMaxPlayersPerSessionAsync(Guid userAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var user = await context.UserAccounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userAccountId);
+
+            if (user == null)
+                throw new Exception(_localizer["Backend_UserAccountNotFound"]);
+
+            return NormalizeSessionCapacity(user.MaxPlayersPerSession);
+        }
+
+        private async Task<int> GetOnlineLivingPlayersCountAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            Guid? excludedPlayerSessionId)
+        {
+            var nonGameMasterPlayerSessions = await context.PlayerSessions
+                .AsNoTracking()
+                .Where(ps => ps.SessionId == sessionId && !ps.IsGameMaster)
+                .ToListAsync();
+
+            var onlinePlayerSessionIds = nonGameMasterPlayerSessions
+                .Where(ps =>
+                    (!excludedPlayerSessionId.HasValue || ps.Id != excludedPlayerSessionId.Value) &&
+                    _presenceTracker.IsPlayerOnline(ps.Id))
+                .Select(ps => ps.Id)
+                .ToList();
+
+            if (onlinePlayerSessionIds.Count == 0)
+                return 0;
+
+            return await context.Characters
+                .AsNoTracking()
+                .Where(c => c.IsAlive && onlinePlayerSessionIds.Contains(c.PlayerSessionId))
+                .Select(c => c.PlayerSessionId)
+                .Distinct()
+                .CountAsync();
+        }
+
+        private static int NormalizeSessionCapacity(int rawValue)
+        {
+            return Math.Clamp(rawValue, 0, 5000);
         }
 
         private string GenerateSessionSlug(string sessionName)

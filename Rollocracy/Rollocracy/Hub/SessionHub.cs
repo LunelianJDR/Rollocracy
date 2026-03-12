@@ -35,6 +35,24 @@ namespace Rollocracy.Hubs
             await Clients.Group(sessionId).SendAsync("PresenceChanged");
         }
 
+        // Sortie explicite de présence depuis le client joueur avant fermeture de la connexion
+        public async Task LeavePlayerPresence(string sessionId, string playerSessionId)
+        {
+            if (!Guid.TryParse(sessionId, out var parsedSessionId))
+                return;
+
+            var removed = _presenceTracker.RemoveConnection(Context.ConnectionId, out var removedSessionId);
+
+            if (removed)
+            {
+                var targetSessionId = removedSessionId != Guid.Empty
+                    ? removedSessionId
+                    : parsedSessionId;
+
+                await Clients.Group(targetSessionId.ToString()).SendAsync("PresenceChanged");
+            }
+        }
+
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
             if (_presenceTracker.RemoveConnection(Context.ConnectionId, out var sessionId) && sessionId != Guid.Empty)
