@@ -323,6 +323,8 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(v => v.SessionPollId == poll.Id)
                 .ToListAsync();
 
+            var hasAppliedEffects = false;
+
             foreach (var vote in votes)
             {
                 var character = await context.Characters.FirstOrDefaultAsync(c => c.Id == vote.CharacterId);
@@ -358,6 +360,8 @@ namespace Rollocracy.Infrastructure.Services
 
                             await UpdateCharacterAliveStateAsync(context, vote.CharacterId);
 
+                            hasAppliedEffects = true;
+
                             context.SessionPollAppliedEffects.Add(new SessionPollAppliedEffect
                             {
                                 Id = Guid.NewGuid(),
@@ -392,6 +396,8 @@ namespace Rollocracy.Infrastructure.Services
 
                             attributeValue.Value += signedValue;
 
+                            hasAppliedEffects = true;
+
                             context.SessionPollAppliedEffects.Add(new SessionPollAppliedEffect
                             {
                                 Id = Guid.NewGuid(),
@@ -415,8 +421,131 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             poll.IsClosed = true;
-            poll.ConsequencesApplied = true;
+            poll.ConsequencesApplied = hasAppliedEffects;
             poll.ClosedAtUtc = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
+            await _sessionNotifier.NotifyPollChangedAsync(sessionId);
+        }
+
+        public async Task UndoLatestPollConsequencesAsync(Guid sessionId, Guid gameMasterUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (session == null)
+                throw new Exception(_localizer["Backend_SessionNotFound"]);
+
+            var latestPoll = await context.SessionPolls
+                .Where(p => p.SessionId == sessionId)
+                .OrderByDescending(p => p.CreatedAtUtc)
+                .FirstOrDefaultAsync();
+
+            if (latestPoll == null)
+                throw new Exception(_localizer["Backend_PollNotFound"]);
+
+            if (!latestPoll.IsClosed)
+                throw new Exception(_localizer["Backend_LastPollIsNotClosed"]);
+
+            if (!latestPoll.ConsequencesApplied)
+                throw new Exception(_localizer["Backend_LastPollHasNoAppliedConsequences"]);
+
+            var appliedEffects = await context.SessionPollAppliedEffects
+                .Where(e => e.SessionPollId == latestPoll.Id)
+                .OrderByDescending(e => e.AppliedAtUtc)
+                .ToListAsync();
+
+            // Sécurité : si le booléen est incohérent avec les lignes réellement appliquées,
+            // on remet juste l'état logique à false.
+            if (appliedEffects.Count == 0)
+            {
+                latestPoll.ConsequencesApplied = false;
+                await context.SaveChangesAsync();
+                await _sessionNotifier.NotifyPollChangedAsync(sessionId);
+                return;
+            }
+
+            // Même logique que pour le rollback de test :
+            // si un ancien personnage serait ressuscité alors qu'un nouveau personnage vivant
+            // existe déjà pour le même joueur, on laisse l'ancien mort.
+            var charactersThatWouldBeResurrected = appliedEffects
+                .Where(e => e.PreviousIsAlive && !e.NewIsAlive)
+                .Select(e => e.CharacterId)
+                .Distinct()
+                .ToList();
+
+            var charactersToKeepDead = new HashSet<Guid>();
+
+            foreach (var characterId in charactersThatWouldBeResurrected)
+            {
+                var character = await context.Characters
+                    .FirstOrDefaultAsync(c => c.Id == characterId);
+
+                if (character == null)
+                    continue;
+
+                var otherAliveCharacterExists = await context.Characters
+                    .AnyAsync(c =>
+                        c.PlayerSessionId == character.PlayerSessionId &&
+                        c.Id != character.Id &&
+                        c.IsAlive);
+
+                if (otherAliveCharacterExists)
+                {
+                    charactersToKeepDead.Add(characterId);
+                }
+            }
+
+            foreach (var effect in appliedEffects)
+            {
+                var character = await context.Characters
+                    .FirstOrDefaultAsync(c => c.Id == effect.CharacterId);
+
+                if (character == null)
+                    continue;
+
+                // On garde l'ancien personnage mort si un autre personnage vivant existe déjà.
+                if (charactersToKeepDead.Contains(effect.CharacterId))
+                    continue;
+
+                if (effect.TargetKind == TestConsequenceTargetKind.Gauge)
+                {
+                    var gaugeValue = await context.CharacterGaugeValues
+                        .FirstOrDefaultAsync(v =>
+                            v.CharacterId == effect.CharacterId &&
+                            v.GaugeDefinitionId == effect.TargetDefinitionId);
+
+                    if (gaugeValue != null)
+                    {
+                        gaugeValue.Value = effect.PreviousValue;
+                    }
+                }
+                else
+                {
+                    var attributeValue = await context.CharacterAttributeValues
+                        .FirstOrDefaultAsync(v =>
+                            v.CharacterId == effect.CharacterId &&
+                            v.AttributeDefinitionId == effect.TargetDefinitionId);
+
+                    if (attributeValue != null)
+                    {
+                        attributeValue.Value = effect.PreviousValue;
+                    }
+                }
+
+                character.IsAlive = effect.PreviousIsAlive;
+                character.DiedAtUtc = effect.PreviousDiedAtUtc;
+            }
+
+            context.SessionPollAppliedEffects.RemoveRange(appliedEffects);
+
+            // Le sondage et les votes restent intacts ; seule l'application des conséquences disparaît.
+            latestPoll.ConsequencesApplied = false;
 
             await context.SaveChangesAsync();
 

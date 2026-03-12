@@ -531,6 +531,20 @@ else
         @if (LatestPoll.IsClosed)
         {
             <p><em>@L["Poll_LastPoll"]</em></p>
+
+            @if (CanUndoLatestPollConsequences)
+            {
+                @if (!ConfirmUndoPollConsequencesVisible)
+                {
+                    <button @onclick="ShowUndoPollConsequencesConfirmation">@L["Poll_UndoConsequences"]</button>
+                }
+                else
+                {
+                    <p>@L["Poll_UndoConsequencesConfirmQuestion"]</p>
+                    <button @onclick="UndoLatestPollConsequencesConfirmed">@L["Common_Yes"]</button>
+                    <button @onclick="CancelUndoPollConsequences">@L["Common_No"]</button>
+                }
+            }
         }
         else
         {
@@ -1236,6 +1250,7 @@ else
     {
         LatestPoll = await PollService.GetLatestPollForGameMasterAsync(SessionId);
         RecentPolls = await PollService.GetRecentPollsForGameMasterAsync(SessionId, 5);
+        ConfirmUndoPollConsequencesVisible = false;
     }
 
     private Task AddPollOption()
@@ -1312,6 +1327,45 @@ else
             Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
+
+    private bool CanUndoLatestPollConsequences =>
+    LatestPoll is not null &&
+    LatestPoll.IsClosed &&
+    LatestPoll.ConsequencesApplied &&
+    RecentPolls.FirstOrDefault()?.PollId == LatestPoll.PollId;
+
+    private Task ShowUndoPollConsequencesConfirmation()
+    {
+        ConfirmUndoPollConsequencesVisible = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelUndoPollConsequences()
+    {
+        ConfirmUndoPollConsequencesVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task UndoLatestPollConsequencesConfirmed()
+    {
+        try
+        {
+            Message = string.Empty;
+            ConfirmUndoPollConsequencesVisible = false;
+
+            await PollService.UndoLatestPollConsequencesAsync(SessionId, CurrentUserId);
+            await LoadLatestPoll();
+            await RefreshSessionVisuals();
+
+            Message = L["Poll_UndoConsequencesSuccess"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private bool ConfirmUndoPollConsequencesVisible;
 
     private List<PollForGameMasterDto> RecentPolls = new();
     private Guid? SelectedPollHistoryId;

@@ -17,5 +17,7 @@ namespace Rollocracy.Domain.Interfaces
         Task VoteAsync(Guid playerSessionId, Guid pollId, Guid optionId);
 
         Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId);
+
+        Task UndoLatestPollConsequencesAsync(Guid sessionId, Guid gameMasterUserAccountId);
     }
 }

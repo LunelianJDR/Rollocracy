@@ -1085,4 +1085,19 @@
 	<data name="Poll_YourVoteWeight" xml:space="preserve">
   <value>Poids de votre vote : {0}</value>
 </data>
+	<data name="Poll_UndoConsequences" xml:space="preserve">
+    <value>Annuler les conséquences du dernier sondage</value>
+  </data>
+	<data name="Poll_UndoConsequencesConfirmQuestion" xml:space="preserve">
+    <value>Veux-tu vraiment annuler uniquement les conséquences du dernier sondage ? Le sondage et les votes seront conservés.</value>
+  </data>
+	<data name="Poll_UndoConsequencesSuccess" xml:space="preserve">
+    <value>Les conséquences du dernier sondage ont été annulées.</value>
+  </data>
+	<data name="Backend_LastPollIsNotClosed" xml:space="preserve">
+    <value>Le dernier sondage n'est pas encore clôturé.</value>
+  </data>
+	<data name="Backend_LastPollHasNoAppliedConsequences" xml:space="preserve">
+    <value>Le dernier sondage n'a aucune conséquence appliquée à annuler.</value>
+  </data>
 </root>
