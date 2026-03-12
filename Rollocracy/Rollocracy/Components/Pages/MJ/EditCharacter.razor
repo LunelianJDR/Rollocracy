@@ -1,0 +1,206 @@
+﻿@page "/mj/session/{SessionId:guid}/characters/{CharacterId:guid}/edit"
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Characters
+@using Rollocracy.Localization
+
+@inject Rollocracy.Domain.Interfaces.ICharacterService CharacterService
+@inject Rollocracy.Domain.Interfaces.ISessionService SessionService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
+
+<h3>@L["EditCharacter_Title"]</h3>
+
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToHome)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (Character is null)
+{
+    <p>@L["EditCharacter_NotFound"]</p>
+}
+else
+{
+    <p><strong>@L["EditCharacter_PlayerName"] :</strong> @Character.PlayerName</p>
+    <p><strong>@L["EditCharacter_Status"] :</strong> @(Character.IsAlive? L["Common_Alive"] : L["Common_Dead"])</p>
+
+    @if (Character.DiedAtUtc.HasValue && !Character.IsAlive)
+    {
+        <p><strong>@L["Common_Dead"] :</strong> @Character.DiedAtUtc.Value.ToLocalTime()</p>
+    }
+
+    <div style="margin-top:12px;">
+        <label>@L["EditCharacter_Name"]</label><br />
+        <input @bind="Character.Name" />
+    </div>
+
+    <div style="margin-top:12px;">
+        <label>@L["EditCharacter_Biography"]</label><br />
+        <textarea @bind="Character.Biography"></textarea>
+    </div>
+
+    <hr />
+
+    <h4>@L["PlayerRoom_Attributes"]</h4>
+
+    @foreach (var attributeItem in Character.Attributes)
+    {
+        <div style="margin-top:8px;">
+            <label>@attributeItem.Name (@attributeItem.MinValue - @attributeItem.MaxValue)</label><br />
+            <input type="number" min="@attributeItem.MinValue" max="@attributeItem.MaxValue" @bind="attributeItem.Value" />
+        </div>
+    }
+
+    <hr />
+
+    <h4>@L["PlayerRoom_Traits"]</h4>
+
+    @foreach (var traitItem in Character.Traits)
+    {
+        <div style="margin-top:8px;">
+            <label>@traitItem.TraitName</label><br />
+            <select @bind="traitItem.SelectedOptionId">
+                <option value="">--</option>
+                @foreach (var optionItem in traitItem.Options)
+                {
+                    <option value="@optionItem.TraitOptionId">@optionItem.Name</option>
+                }
+            </select>
+        </div>
+    }
+
+    <hr />
+
+    <h4>@L["PlayerRoom_Gauges"]</h4>
+
+    @foreach (var gaugeItem in Character.Gauges)
+    {
+        <div style="margin-top:8px;">
+            <label>
+                @gaugeItem.Name (@gaugeItem.MinValue - @gaugeItem.MaxValue)
+                @if (gaugeItem.IsHealthGauge)
+                {
+                    <span>- @L["EditCharacter_HealthGauge"]</span>
+                }
+            </label><br />
+            <input type="number" min="@gaugeItem.MinValue" max="@gaugeItem.MaxValue" @bind="gaugeItem.Value" />
+        </div>
+    }
+
+    <div style="margin-top:16px;">
+        <button @onclick="SaveCharacter">@L["Common_Save"]</button>
+        <button @onclick="BackToSession">@L["EditCharacter_BackToSession"]</button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p style="margin-top:12px;">@Message</p>
+    }
+}
+
+@code {
+    [Parameter] public Guid SessionId { get; set; }
+    [Parameter] public Guid CharacterId { get; set; }
+
+    private bool IsLoaded;
+    private bool RedirectToHome;
+    private Guid CurrentUserId;
+    private EditableCharacterDto? Character;
+    private string Message = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!isAuthenticated || string.IsNullOrWhiteSpace(userIdValue))
+        {
+            RedirectToHome = true;
+            IsLoaded = true;
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+
+        var canCreateSessions = await SessionService.CanUserCreateSessionsAsync(CurrentUserId);
+
+        if (!canCreateSessions)
+        {
+            RedirectToHome = true;
+            IsLoaded = true;
+            return;
+        }
+
+        await LoadCharacter();
+        IsLoaded = true;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToHome)
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadCharacter()
+    {
+        Message = string.Empty;
+        Character = await CharacterService.GetEditableCharacterForSessionAsync(SessionId, CharacterId, CurrentUserId);
+    }
+
+    private async Task SaveCharacter()
+    {
+        try
+        {
+            if (Character is null)
+                return;
+
+            Message = string.Empty;
+
+            var result = await CharacterService.UpdateCharacterForSessionAsync(
+                SessionId,
+                CharacterId,
+                CurrentUserId,
+                new UpdateCharacterRequestDto
+                {
+                    Name = Character.Name,
+                    Biography = Character.Biography,
+                    Attributes = Character.Attributes,
+                    Traits = Character.Traits,
+                    Gauges = Character.Gauges
+                });
+
+            await LoadCharacter();
+
+            Message = L["EditCharacter_Saved"];
+
+            if (result.ResurrectionBlocked)
+            {
+                Message = $"{Message} {L["EditCharacter_ResurrectionBlocked"]}";
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void BackToSession()
+    {
+        Navigation.NavigateTo($"/mj/session/{SessionId}");
+    }
+}

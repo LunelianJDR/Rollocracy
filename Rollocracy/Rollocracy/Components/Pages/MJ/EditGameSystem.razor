@@ -4,7 +4,6 @@
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
-@using Rollocracy.Domain.Entities
 @using Rollocracy.Domain.GameRules
 @using Rollocracy.Localization
 
@@ -24,159 +23,222 @@ else if (RedirectToHome)
 {
     <p>@L["Common_Loading"]</p>
 }
-else if (CurrentSystem is null)
+else if (Editor is null)
 {
     <p>@L["EditGameSystem_NotFound"]</p>
 }
 else
 {
+    @if (!Editor.IsLockedToSessionCopy && Editor.ImpactedSessions.Count > 0)
+    {
+        <div class="alert alert-warning">
+            <p><strong>@L["EditGameSystem_SharedWarningTitle"]</strong></p>
+            <p>@L["EditGameSystem_SharedWarningText"]</p>
+            <ul>
+                @foreach (var session in Editor.ImpactedSessions)
+                {
+                    <li>@session.SessionName</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="alert alert-secondary">
+        <p>@L["EditGameSystem_ApplyOnlyWhenConfirmed"]</p>
+        <p>@L["EditGameSystem_DeletionResponsibilityWarning"]</p>
+    </div>
+
     <h4>@L["EditGameSystem_GeneralSection"]</h4>
 
     <div>
         <label>@L["EditGameSystem_Name"]</label><br />
-        <input @bind="CurrentSystemName" />
+        <input @bind="Editor.Name" />
     </div>
 
     <div>
         <label>@L["EditGameSystem_Description"]</label><br />
-        <textarea @bind="CurrentSystemDescription"></textarea>
+        <textarea @bind="Editor.Description"></textarea>
     </div>
 
     <div>
         <label>@L["EditGameSystem_ResolutionMode"]</label><br />
-        <select @bind="CurrentResolutionMode">
+        <select @bind="Editor.TestResolutionMode">
             <option value="@TestResolutionMode.SuccessThreshold">@L["Resolution_SuccessThreshold"]</option>
             <option value="@TestResolutionMode.RollUnderAttribute">@L["Resolution_RollUnderAttribute"]</option>
         </select>
     </div>
 
-    <button @onclick="SaveGeneralInfo">@L["Common_Save"]</button>
-
     <hr />
 
     <h4>@L["EditGameSystem_AttributesSection"]</h4>
 
-    <div>
-        <label>@L["Common_Name"]</label><br />
-        <input @bind="NewAttributeName" />
-    </div>
+    <button @onclick="AddAttributeRow">@L["EditGameSystem_AddAttributeRow"]</button>
 
-    <div>
-        <label>@L["Common_Min"]</label><br />
-        <input type="number" @bind="NewAttributeMin" />
-    </div>
-
-    <div>
-        <label>@L["Common_Max"]</label><br />
-        <input type="number" @bind="NewAttributeMax" />
-    </div>
-
-    <div>
-        <label>@L["Common_DefaultValue"]</label><br />
-        <input type="number" @bind="NewAttributeDefault" />
-    </div>
-
-    <button @onclick="AddAttribute">@L["EditGameSystem_AddAttribute"]</button>
-
-    @if (AttributeDefinitions.Count == 0)
+    @foreach (var attributeItem in Editor.Attributes)
     {
-        <p>@L["EditGameSystem_NoAttributes"]</p>
-    }
-    else
-    {
-        <ul>
-            @foreach (var attributeDefinition in AttributeDefinitions)
+        <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
+            @if (attributeItem.IsDeleted)
             {
-                <li>@attributeDefinition.Name (@L["Common_Min"] : @attributeDefinition.MinValue, @L["Common_Max"] : @attributeDefinition.MaxValue, @L["Common_DefaultValue"] : @attributeDefinition.DefaultValue)</li>
+                <p><strong>@attributeItem.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                <button @onclick="() => attributeItem.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
             }
-        </ul>
+            else
+            {
+                <div>
+                    <label>@L["Common_Name"]</label><br />
+                    <input @bind="attributeItem.Name" />
+                </div>
+                <div>
+                    <label>@L["Common_Min"]</label><br />
+                    <input type="number" @bind="attributeItem.MinValue" />
+                </div>
+                <div>
+                    <label>@L["Common_Max"]</label><br />
+                    <input type="number" @bind="attributeItem.MaxValue" />
+                </div>
+                <div>
+                    <label>@L["Common_DefaultValue"]</label><br />
+                    <input type="number" @bind="attributeItem.DefaultValue" />
+                </div>
+
+                @if (attributeItem.AttributeDefinitionId.HasValue)
+                {
+                    <button @onclick="() => attributeItem.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                }
+                else
+                {
+                    <button @onclick="() => Editor.Attributes.Remove(attributeItem)">@L["EditGameSystem_Delete"]</button>
+                }
+            }
+        </div>
     }
 
     <hr />
 
     <h4>@L["EditGameSystem_TraitsSection"]</h4>
 
-    <div>
-        <label>@L["EditGameSystem_TraitTypeName"]</label><br />
-        <input @bind="NewTraitDefinitionName" />
-    </div>
+    <button @onclick="AddTraitRow">@L["EditGameSystem_AddTraitTypeRow"]</button>
 
-    <button @onclick="AddTraitDefinition">@L["EditGameSystem_AddTraitType"]</button>
-
-    @if (TraitDefinitions.Count == 0)
+    @foreach (var trait in Editor.Traits)
     {
-        <p>@L["EditGameSystem_NoTraitTypes"]</p>
-    }
-    else
-    {
-        @foreach (var traitDefinition in TraitDefinitions)
-        {
-            <div>
-                <p><strong>@traitDefinition.Name</strong></p>
+        <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
+            @if (trait.IsDeleted)
+            {
+                <p><strong>@trait.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                <button @onclick="() => trait.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+            }
+            else
+            {
+                <div>
+                    <label>@L["EditGameSystem_TraitTypeName"]</label><br />
+                    <input @bind="trait.Name" />
+                </div>
 
-                <input @bind="NewTraitOptionNames[traitDefinition.Id]" />
-                <button @onclick="() => AddTraitOption(traitDefinition.Id)">@L["EditGameSystem_AddOption"]</button>
+                <button @onclick="() => AddTraitOptionRow(trait)">@L["EditGameSystem_AddOptionRow"]</button>
 
-                @if (TraitOptionsByDefinition.ContainsKey(traitDefinition.Id) && TraitOptionsByDefinition[traitDefinition.Id].Count > 0)
+                <div style="margin-left:20px; margin-top:8px;">
+                    @foreach (var option in trait.Options)
+                    {
+                        <div style="margin-top:8px;">
+                            @if (option.IsDeleted)
+                            {
+                                <span><strong>@option.Name</strong> - @L["EditGameSystem_PendingDeletion"]</span>
+                                <button @onclick="() => option.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                            }
+                            else
+                            {
+                                <input @bind="option.Name" />
+
+                                @if (option.TraitOptionId.HasValue)
+                                {
+                                    <button @onclick="() => option.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                }
+                                else
+                                {
+                                    <button @onclick="() => trait.Options.Remove(option)">@L["EditGameSystem_Delete"]</button>
+                                }
+                            }
+                        </div>
+                    }
+                </div>
+
+                @if (trait.TraitDefinitionId.HasValue)
                 {
-                    <ul>
-                        @foreach (var option in TraitOptionsByDefinition[traitDefinition.Id])
-                        {
-                            <li>@option.Name</li>
-                        }
-                    </ul>
+                    <button @onclick="() => trait.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
                 }
                 else
                 {
-                    <p>@L["EditGameSystem_NoOptionsForTrait"]</p>
+                    <button @onclick="() => Editor.Traits.Remove(trait)">@L["EditGameSystem_Delete"]</button>
                 }
-            </div>
-        }
+            }
+        </div>
     }
 
     <hr />
 
     <h4>@L["EditGameSystem_GaugesSection"]</h4>
 
-    <div>
-        <label>@L["Common_Name"]</label><br />
-        <input @bind="NewGaugeName" />
-    </div>
+    <button @onclick="AddGaugeRow">@L["EditGameSystem_AddGaugeRow"]</button>
 
-    <div>
-        <label>@L["Common_Min"]</label><br />
-        <input type="number" @bind="NewGaugeMin" />
-    </div>
-
-    <div>
-        <label>@L["Common_Max"]</label><br />
-        <input type="number" @bind="NewGaugeMax" />
-    </div>
-
-    <div>
-        <label>@L["Common_DefaultValue"]</label><br />
-        <input type="number" @bind="NewGaugeDefault" />
-    </div>
-
-    <div>
-        <label>@L["EditGameSystem_IsHealthGauge"]</label>
-        <input type="checkbox" @bind="NewGaugeIsHealthGauge" />
-    </div>
-
-    <button @onclick="AddGauge">@L["EditGameSystem_AddGauge"]</button>
-
-    @if (GaugeDefinitions.Count == 0)
+    @foreach (var gauge in Editor.Gauges)
     {
-        <p>@L["EditGameSystem_NoGauges"]</p>
-    }
-    else
-    {
-        <ul>
-            @foreach (var gauge in GaugeDefinitions)
+        <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
+            @if (gauge.IsDeleted)
             {
-                <li>@gauge.Name (@L["Common_Min"] : @gauge.MinValue, @L["Common_Max"] : @gauge.MaxValue, @L["Common_DefaultValue"] : @gauge.DefaultValue, @L["EditGameSystem_Lethal"] : @(gauge.IsHealthGauge? L["Common_Yes"] : L["Common_No"]))</li>
+                <p><strong>@gauge.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                <button @onclick="() => gauge.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
             }
-        </ul>
+            else
+            {
+                <div>
+                    <label>@L["Common_Name"]</label><br />
+                    <input @bind="gauge.Name" />
+                </div>
+                <div>
+                    <label>@L["Common_Min"]</label><br />
+                    <input type="number" @bind="gauge.MinValue" />
+                </div>
+                <div>
+                    <label>@L["Common_Max"]</label><br />
+                    <input type="number" @bind="gauge.MaxValue" />
+                </div>
+                <div>
+                    <label>@L["Common_DefaultValue"]</label><br />
+                    <input type="number" @bind="gauge.DefaultValue" />
+                </div>
+                <div>
+                    <label>@L["EditGameSystem_IsHealthGauge"]</label>
+                    <input type="checkbox" @bind="gauge.IsHealthGauge" />
+                </div>
+
+                @if (gauge.GaugeDefinitionId.HasValue)
+                {
+                    <button @onclick="() => gauge.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                }
+                else
+                {
+                    <button @onclick="() => Editor.Gauges.Remove(gauge)">@L["EditGameSystem_Delete"]</button>
+                }
+            }
+        </div>
+    }
+
+    <hr />
+
+    <button @onclick="ApplyChanges">@L["EditGameSystem_ApplyChanges"]</button>
+
+    @if (Editor.CanUndoLastChange)
+    {
+        <button @onclick="UndoLastChange">@L["EditGameSystem_UndoLastChange"]</button>
+    }
+
+    @if (ShowSharedConfirm)
+    {
+        <div class="alert alert-warning" style="margin-top:12px;">
+            <p>@L["EditGameSystem_SharedWarningContinueQuestion"]</p>
+            <button @onclick="ConfirmApplyChanges">@L["Common_Yes"]</button>
+            <button @onclick="CancelApplyChanges">@L["Common_No"]</button>
+        </div>
     }
 
     @if (!string.IsNullOrWhiteSpace(Message))
@@ -192,30 +254,8 @@ else
     private bool RedirectToHome;
     private Guid CurrentUserId;
     private string Message = string.Empty;
-
-    private GameSystem? CurrentSystem;
-    private string CurrentSystemName = string.Empty;
-    private string CurrentSystemDescription = string.Empty;
-    private TestResolutionMode CurrentResolutionMode;
-
-    private string NewAttributeName = string.Empty;
-    private int NewAttributeMin = 0;
-    private int NewAttributeMax = 20;
-    private int NewAttributeDefault = 10;
-
-    private string NewTraitDefinitionName = string.Empty;
-
-    private string NewGaugeName = string.Empty;
-    private int NewGaugeMin = 0;
-    private int NewGaugeMax = 10;
-    private int NewGaugeDefault = 10;
-    private bool NewGaugeIsHealthGauge = false;
-
-    private List<AttributeDefinition> AttributeDefinitions = new();
-    private List<TraitDefinition> TraitDefinitions = new();
-    private List<GaugeDefinition> GaugeDefinitions = new();
-    private Dictionary<Guid, List<TraitOption>> TraitOptionsByDefinition = new();
-    private Dictionary<Guid, string> NewTraitOptionNames = new();
+    private bool ShowSharedConfirm;
+    private GameSystemEditorDto? Editor;
 
     protected override async Task OnInitializedAsync()
     {
@@ -243,7 +283,7 @@ else
             return;
         }
 
-        await LoadGameSystem();
+        await LoadEditor();
         IsLoaded = true;
     }
 
@@ -257,48 +297,77 @@ else
         return Task.CompletedTask;
     }
 
-    private async Task LoadGameSystem()
+    private async Task LoadEditor()
     {
         Message = string.Empty;
+        ShowSharedConfirm = false;
+        Editor = await GameSystemService.GetGameSystemEditorAsync(GameSystemId, CurrentUserId);
+    }
 
-        CurrentSystem = await GameSystemService.GetGameSystemByIdAsync(GameSystemId, CurrentUserId);
-
-        if (CurrentSystem is null)
+    private void AddAttributeRow()
+    {
+        if (Editor is null)
             return;
 
-        CurrentSystemName = CurrentSystem.Name;
-        CurrentSystemDescription = CurrentSystem.Description;
-        CurrentResolutionMode = CurrentSystem.TestResolutionMode;
-
-        AttributeDefinitions = await GameSystemService.GetAttributeDefinitionsAsync(GameSystemId, CurrentUserId);
-        TraitDefinitions = await GameSystemService.GetTraitDefinitionsAsync(GameSystemId, CurrentUserId);
-        GaugeDefinitions = await GameSystemService.GetGaugeDefinitionsAsync(GameSystemId, CurrentUserId);
-
-        TraitOptionsByDefinition.Clear();
-        NewTraitOptionNames.Clear();
-
-        foreach (var traitDefinition in TraitDefinitions)
+        Editor.Attributes.Add(new EditableAttributeDefinitionDto
         {
-            TraitOptionsByDefinition[traitDefinition.Id] =
-                await GameSystemService.GetTraitOptionsAsync(traitDefinition.Id, CurrentUserId);
-
-            NewTraitOptionNames[traitDefinition.Id] = string.Empty;
-        }
+            Name = string.Empty,
+            MinValue = 0,
+            MaxValue = 20,
+            DefaultValue = 10
+        });
     }
 
-    private async Task SaveGeneralInfo()
+    private void AddTraitRow()
     {
+        if (Editor is null)
+            return;
+
+        Editor.Traits.Add(new EditableTraitDefinitionDto
+        {
+            Name = string.Empty
+        });
+    }
+
+    private void AddTraitOptionRow(EditableTraitDefinitionDto trait)
+    {
+        trait.Options.Add(new EditableTraitOptionDto
+        {
+            Name = string.Empty
+        });
+    }
+
+    private void AddGaugeRow()
+    {
+        if (Editor is null)
+            return;
+
+        Editor.Gauges.Add(new EditableGaugeDefinitionDto
+        {
+            Name = string.Empty,
+            MinValue = 0,
+            MaxValue = 10,
+            DefaultValue = 10,
+            IsHealthGauge = false
+        });
+    }
+
+    private async Task ApplyChanges()
+    {
+        if (Editor is null)
+            return;
+
         try
         {
-            await GameSystemService.UpdateGameSystemAsync(
-                GameSystemId,
-                CurrentUserId,
-                CurrentSystemName,
-                CurrentSystemDescription,
-                CurrentResolutionMode);
+            Message = string.Empty;
 
-            await LoadGameSystem();
-            Message = L["EditGameSystem_GeneralSaved"];
+            if (!Editor.IsLockedToSessionCopy && Editor.ImpactedSessions.Count > 0)
+            {
+                ShowSharedConfirm = true;
+                return;
+            }
+
+            await ApplyChangesInternal(false);
         }
         catch (Exception ex)
         {
@@ -306,31 +375,11 @@ else
         }
     }
 
-    private async Task AddAttribute()
+    private async Task ConfirmApplyChanges()
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(NewAttributeName))
-            {
-                Message = L["EditGameSystem_AttributeNameRequired"];
-                return;
-            }
-
-            await GameSystemService.AddAttributeDefinitionAsync(
-                GameSystemId,
-                CurrentUserId,
-                NewAttributeName,
-                NewAttributeMin,
-                NewAttributeMax,
-                NewAttributeDefault);
-
-            NewAttributeName = string.Empty;
-            NewAttributeMin = 0;
-            NewAttributeMax = 20;
-            NewAttributeDefault = 10;
-
-            await LoadGameSystem();
-            Message = L["EditGameSystem_AttributeAdded"];
+            await ApplyChangesInternal(true);
         }
         catch (Exception ex)
         {
@@ -338,90 +387,46 @@ else
         }
     }
 
-    private async Task AddTraitDefinition()
+    private Task CancelApplyChanges()
     {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(NewTraitDefinitionName))
-            {
-                Message = L["EditGameSystem_TraitTypeNameRequired"];
-                return;
-            }
-
-            await GameSystemService.AddTraitDefinitionAsync(
-                GameSystemId,
-                CurrentUserId,
-                NewTraitDefinitionName);
-
-            NewTraitDefinitionName = string.Empty;
-
-            await LoadGameSystem();
-            Message = L["EditGameSystem_TraitTypeAdded"];
-        }
-        catch (Exception ex)
-        {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
-        }
+        ShowSharedConfirm = false;
+        return Task.CompletedTask;
     }
 
-    private async Task AddTraitOption(Guid traitDefinitionId)
+    private async Task ApplyChangesInternal(bool confirmShared)
     {
-        try
+        if (Editor is null)
+            return;
+
+        ShowSharedConfirm = false;
+
+        var request = new GameSystemApplyChangesRequestDto
         {
-            if (!NewTraitOptionNames.ContainsKey(traitDefinitionId))
-                return;
+            Name = Editor.Name,
+            Description = Editor.Description,
+            TestResolutionMode = Editor.TestResolutionMode,
+            ConfirmSharedSystemChanges = confirmShared,
+            Attributes = Editor.Attributes,
+            Traits = Editor.Traits,
+            Gauges = Editor.Gauges
+        };
 
-            var optionName = NewTraitOptionNames[traitDefinitionId];
+        await GameSystemService.ApplyGameSystemChangesAsync(GameSystemId, CurrentUserId, request);
+        await LoadEditor();
 
-            if (string.IsNullOrWhiteSpace(optionName))
-            {
-                Message = L["EditGameSystem_OptionNameRequired"];
-                return;
-            }
-
-            await GameSystemService.AddTraitOptionAsync(
-                traitDefinitionId,
-                CurrentUserId,
-                optionName);
-
-            NewTraitOptionNames[traitDefinitionId] = string.Empty;
-
-            await LoadGameSystem();
-            Message = L["EditGameSystem_OptionAdded"];
-        }
-        catch (Exception ex)
-        {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
-        }
+        Message = L["EditGameSystem_ChangesApplied"];
     }
 
-    private async Task AddGauge()
+    private async Task UndoLastChange()
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(NewGaugeName))
-            {
-                Message = L["EditGameSystem_GaugeNameRequired"];
-                return;
-            }
+            Message = string.Empty;
 
-            await GameSystemService.AddGaugeDefinitionAsync(
-                GameSystemId,
-                CurrentUserId,
-                NewGaugeName,
-                NewGaugeMin,
-                NewGaugeMax,
-                NewGaugeDefault,
-                NewGaugeIsHealthGauge);
+            await GameSystemService.UndoLastGameSystemChangeAsync(GameSystemId, CurrentUserId);
+            await LoadEditor();
 
-            NewGaugeName = string.Empty;
-            NewGaugeMin = 0;
-            NewGaugeMax = 10;
-            NewGaugeDefault = 10;
-            NewGaugeIsHealthGauge = false;
-
-            await LoadGameSystem();
-            Message = L["EditGameSystem_GaugeAdded"];
+            Message = L["EditGameSystem_LastChangeUndone"];
         }
         catch (Exception ex)
         {

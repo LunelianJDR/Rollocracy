@@ -26,5 +26,16 @@ namespace Rollocracy.Domain.Interfaces
             bool includeDead);
 
         Task<CharacterSheetDto?> GetCharacterSheetForSessionAsync(Guid sessionId, Guid characterId);
+
+        Task<EditableCharacterDto?> GetEditableCharacterForSessionAsync(
+            Guid sessionId,
+            Guid characterId,
+            Guid gameMasterUserAccountId);
+
+        Task<CharacterUpdateResultDto> UpdateCharacterForSessionAsync(
+            Guid sessionId,
+            Guid characterId,
+            Guid gameMasterUserAccountId,
+            UpdateCharacterRequestDto request);
     }
 }

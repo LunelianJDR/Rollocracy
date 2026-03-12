@@ -1109,4 +1109,136 @@
 	<data name="Backend_SessionIsFull" xml:space="preserve">
     <value>La session est pleine.</value>
   </data>
+	<data name="EditGameSystem_ApplyOnlyWhenConfirmed" xml:space="preserve">
+    <value>Les modifications locales ne sont pas enregistrées tant que tu n'as pas cliqué sur « Appliquer les changements ».</value>
+  </data>
+	<data name="EditGameSystem_DeletionResponsibilityWarning" xml:space="preserve">
+    <value>Les suppressions et leurs conséquences sont sous la responsabilité du MJ. Tu peux toutefois annuler la dernière modification du système dans la limite des 5 dernières sauvegardes.</value>
+  </data>
+	<data name="EditGameSystem_SharedWarningTitle" xml:space="preserve">
+    <value>Attention : système partagé</value>
+  </data>
+	<data name="EditGameSystem_SharedWarningText" xml:space="preserve">
+    <value>Modifier ce système impactera aussi les sessions suivantes qui l'utilisent actuellement. Si tu ne veux pas les impacter, duplique d'abord le système dans ces sessions avant de l'éditer.</value>
+  </data>
+	<data name="EditGameSystem_SharedWarningContinueQuestion" xml:space="preserve">
+    <value>Veux-tu vraiment appliquer les changements à ce système partagé ?</value>
+  </data>
+	<data name="EditGameSystem_AddAttributeRow" xml:space="preserve">
+    <value>Ajouter une caractéristique</value>
+  </data>
+	<data name="EditGameSystem_AddTraitTypeRow" xml:space="preserve">
+    <value>Ajouter un type de trait</value>
+  </data>
+	<data name="EditGameSystem_AddGaugeRow" xml:space="preserve">
+    <value>Ajouter une jauge</value>
+  </data>
+	<data name="EditGameSystem_AddOptionRow" xml:space="preserve">
+    <value>Ajouter une option</value>
+  </data>
+	<data name="EditGameSystem_Delete" xml:space="preserve">
+    <value>Supprimer</value>
+  </data>
+	<data name="EditGameSystem_Restore" xml:space="preserve">
+    <value>Restaurer</value>
+  </data>
+	<data name="EditGameSystem_PendingDeletion" xml:space="preserve">
+    <value>suppression en attente</value>
+  </data>
+	<data name="EditGameSystem_ApplyChanges" xml:space="preserve">
+    <value>Appliquer les changements</value>
+  </data>
+	<data name="EditGameSystem_UndoLastChange" xml:space="preserve">
+    <value>Annuler la dernière modification</value>
+  </data>
+	<data name="EditGameSystem_ChangesApplied" xml:space="preserve">
+    <value>Les changements du système ont été appliqués.</value>
+  </data>
+	<data name="EditGameSystem_LastChangeUndone" xml:space="preserve">
+    <value>La dernière modification du système a été annulée.</value>
+  </data>
+	<data name="Backend_GameSystemSharedEditConfirmationRequired" xml:space="preserve">
+    <value>Ce système est partagé avec des sessions existantes. Une confirmation est nécessaire avant d'appliquer les changements.</value>
+  </data>
+	<data name="Backend_GameSystemMustKeepAtLeastOneHealthGauge" xml:space="preserve">
+    <value>Impossible de supprimer la dernière jauge de vie : un personnage doit toujours disposer d'au moins une jauge IsHealthGauge.</value>
+  </data>
+	<data name="Backend_GameSystemNoSnapshotToUndo" xml:space="preserve">
+    <value>Aucune sauvegarde de système n'est disponible à annuler.</value>
+  </data>
+	<data name="SessionSettings_Title" xml:space="preserve">
+    <value>Paramètres de la session</value>
+  </data>
+	<data name="SessionSettings_NotFound" xml:space="preserve">
+    <value>Session introuvable.</value>
+  </data>
+	<data name="SessionSettings_Name" xml:space="preserve">
+    <value>Nom de la session</value>
+  </data>
+	<data name="SessionSettings_Password" xml:space="preserve">
+    <value>Mot de passe de la session</value>
+  </data>
+	<data name="SessionSettings_UpdateJoinUrl" xml:space="preserve">
+    <value>Changer aussi l'URL d'accès</value>
+  </data>
+	<data name="SessionSettings_CurrentSlug" xml:space="preserve">
+    <value>Slug actuel</value>
+  </data>
+	<data name="SessionSettings_CurrentJoinUrl" xml:space="preserve">
+    <value>URL actuelle de jointure</value>
+  </data>
+	<data name="SessionSettings_IsActive" xml:space="preserve">
+    <value>Session active</value>
+  </data>
+	<data name="SessionSettings_BackToSession" xml:space="preserve">
+    <value>Retour à la session</value>
+  </data>
+	<data name="SessionSettings_Saved" xml:space="preserve">
+    <value>Les paramètres de la session ont été enregistrés.</value>
+  </data>
+	<data name="SessionSettings_SavedWithUrlChange" xml:space="preserve">
+    <value>Les paramètres de la session ont été enregistrés et l'URL d'accès a été mise à jour.</value>
+  </data>
+	<data name="ResumeSession_EditSettings" xml:space="preserve">
+    <value>Paramètres</value>
+  </data>
+	<data name="Backend_SessionNameRequired" xml:space="preserve">
+    <value>Le nom de la session est obligatoire.</value>
+  </data>
+	<data name="EditCharacter_Title" xml:space="preserve">
+    <value>Édition de la fiche personnage</value>
+  </data>
+	<data name="EditCharacter_NotFound" xml:space="preserve">
+    <value>Personnage introuvable.</value>
+  </data>
+	<data name="EditCharacter_PlayerName" xml:space="preserve">
+    <value>Joueur</value>
+  </data>
+	<data name="EditCharacter_Name" xml:space="preserve">
+    <value>Nom du personnage</value>
+  </data>
+	<data name="EditCharacter_Biography" xml:space="preserve">
+    <value>Biographie</value>
+  </data>
+	<data name="EditCharacter_Status" xml:space="preserve">
+    <value>État</value>
+  </data>
+	<data name="EditCharacter_BackToSession" xml:space="preserve">
+    <value>Retour à la session</value>
+  </data>
+	<data name="EditCharacter_Saved" xml:space="preserve">
+    <value>La fiche personnage a été enregistrée.</value>
+  </data>
+	<data name="EditCharacter_ResurrectionBlocked" xml:space="preserve">
+    <value>Ce joueur a un personnage actif toujours vivant, ce personnage ne peut pas être ramené à la vie.</value>
+  </data>
+	<data name="EditCharacter_HealthGauge" xml:space="preserve">
+    <value>jauge de vie</value>
+  </data>
+	<data name="SessionPage_EditCharacter" xml:space="preserve">
+    <value>Éditer ce personnage</value>
+  </data>
+	<data name="Backend_CharacterNotFoundForSession" xml:space="preserve">
+    <value>Le personnage demandé n'existe pas dans cette session.</value>
+  </data>
 </root>

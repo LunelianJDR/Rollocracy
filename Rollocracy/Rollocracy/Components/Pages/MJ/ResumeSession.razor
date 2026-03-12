@@ -45,6 +45,7 @@ else
             }
 
             <button @onclick="() => OpenSession(item.Session.Id)">@L["ResumeSession_Open"]</button>
+            <button @onclick="() => OpenSessionSettings(item.Session.Id)">@L["ResumeSession_EditSettings"]</button>
 
             @if (item.Session.IsActive)
             {
@@ -135,6 +136,11 @@ else
     private void OpenSession(Guid sessionId)
     {
         Navigation.NavigateTo($"/mj/session/{sessionId}");
+    }
+
+    private void OpenSessionSettings(Guid sessionId)
+    {
+        Navigation.NavigateTo($"/mj/session/{sessionId}/settings");
     }
 
     private async Task ToggleSessionState(Guid sessionId, bool isActive)
