@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Rollocracy.Domain.Characters
@@ -19,6 +19,12 @@ namespace Rollocracy.Domain.Characters
     }
 
     public class CharacterAttributeLineDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Value { get; set; }
+    }
+
+    public class CharacterDerivedStatLineDto
     {
         public string Name { get; set; } = string.Empty;
         public int Value { get; set; }
@@ -47,6 +53,7 @@ namespace Rollocracy.Domain.Characters
         public bool IsAlive { get; set; }
         public DateTime? DiedAtUtc { get; set; }
         public List<CharacterAttributeLineDto> Attributes { get; set; } = new();
+        public List<CharacterDerivedStatLineDto> DerivedStats { get; set; } = new();
         public List<CharacterTraitLineDto> Traits { get; set; } = new();
         public List<CharacterGaugeLineDto> Gauges { get; set; } = new();
     }
@@ -103,6 +110,7 @@ namespace Rollocracy.Domain.Characters
         public bool IsAlive { get; set; }
         public bool IsOnline { get; set; }
         public List<CharacterAttributeLineDto> Attributes { get; set; } = new();
+        public List<CharacterDerivedStatLineDto> DerivedStats { get; set; } = new();
         public List<CharacterTraitLineDto> Traits { get; set; } = new();
         public List<CharacterGaugeLineDto> Gauges { get; set; } = new();
     }
@@ -113,6 +121,13 @@ namespace Rollocracy.Domain.Characters
         public string Name { get; set; } = string.Empty;
         public int MinValue { get; set; }
         public int MaxValue { get; set; }
+        public int Value { get; set; }
+    }
+
+    public class EditableCharacterDerivedStatDto
+    {
+        public Guid DerivedStatDefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
         public int Value { get; set; }
     }
 
@@ -150,6 +165,7 @@ namespace Rollocracy.Domain.Characters
         public bool IsAlive { get; set; }
         public DateTime? DiedAtUtc { get; set; }
         public List<EditableCharacterAttributeDto> Attributes { get; set; } = new();
+        public List<EditableCharacterDerivedStatDto> DerivedStats { get; set; } = new();
         public List<EditableCharacterTraitDto> Traits { get; set; } = new();
         public List<EditableCharacterGaugeDto> Gauges { get; set; } = new();
     }

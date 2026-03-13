@@ -1241,4 +1241,103 @@
 	<data name="Backend_CharacterNotFoundForSession" xml:space="preserve">
     <value>Le personnage demandé n'existe pas dans cette session.</value>
   </data>
+	<data name="EditGameSystem_DiceDefaultHelp" xml:space="preserve">
+    <value>En V1, tu peux définir une valeur par défaut fixe ou aléatoire pour les caractéristiques de base. Les compétences calculées et metrics sont préparées en base mais ne sont pas encore activées dans l'interface.</value>
+  </data>
+	<data name="EditGameSystem_DefaultMode" xml:space="preserve">
+    <value>Mode de valeur par défaut</value>
+  </data>
+	<data name="EditGameSystem_DefaultModeFixed" xml:space="preserve">
+    <value>Valeur fixe</value>
+  </data>
+	<data name="EditGameSystem_DefaultModeDice" xml:space="preserve">
+    <value>Jet de dés</value>
+  </data>
+	<data name="EditGameSystem_DefaultFixedValue" xml:space="preserve">
+    <value>Valeur fixe par défaut</value>
+  </data>
+	<data name="EditGameSystem_DefaultFlatBonus" xml:space="preserve">
+    <value>Bonus fixe</value>
+  </data>
+	<data name="EditGameSystem_DefaultDiceCount" xml:space="preserve">
+    <value>Nombre de dés</value>
+  </data>
+	<data name="EditGameSystem_DefaultDiceSides" xml:space="preserve">
+    <value>Nombre de faces</value>
+  </data>
+	<data name="EditGameSystem_FoundationDeliveryNotice" xml:space="preserve">
+    <value>Cette première livraison active les valeurs par défaut aléatoires sur les caractéristiques de base et prépare les tables des compétences calculées et metrics pour la suite.</value>
+  </data>
+	<data name="Backend_GameSystemBaseStatNameRequired" xml:space="preserve">
+    <value>Chaque caractéristique de base doit avoir un nom.</value>
+  </data>
+	<data name="Backend_InvalidBaseStatRange" xml:space="preserve">
+    <value>La valeur minimale d'une caractéristique ne peut pas dépasser sa valeur maximale.</value>
+  </data>
+	<data name="Backend_InvalidFixedBaseStatDefaultValue" xml:space="preserve">
+    <value>La valeur fixe par défaut d'une caractéristique doit rester dans ses bornes min/max.</value>
+  </data>
+	<data name="Backend_InvalidAttributeDefaultDiceExpression" xml:space="preserve">
+    <value>La formule de dés par défaut est invalide. Utilise au plus 5 dés, entre 2 et 100 faces, et une somme compatible avec les bornes min/max.</value>
+  </data>
+	<data name="EditGameSystem_DerivedStatsSection" xml:space="preserve">
+    <value>Compétences calculées</value>
+  </data>
+	<data name="EditGameSystem_DerivedStatsHelp" xml:space="preserve">
+    <value>Une compétence calculée est la somme de caractéristiques pondérées par des coefficients en pourcentage, puis arrondie selon le mode choisi. Exemples : 50 = 0,5 ; 100 = 1 ; 150 = 1,5.</value>
+  </data>
+	<data name="EditGameSystem_AddDerivedStatRow" xml:space="preserve">
+    <value>Ajouter une compétence calculée</value>
+  </data>
+	<data name="EditGameSystem_AddDerivedComponentRow" xml:space="preserve">
+    <value>Ajouter un composant</value>
+  </data>
+	<data name="EditGameSystem_ComponentAttribute" xml:space="preserve">
+    <value>Caractéristique source</value>
+  </data>
+	<data name="EditGameSystem_ComponentWeight" xml:space="preserve">
+    <value>Coefficient (%)</value>
+  </data>
+	<data name="EditGameSystem_ComponentWeightHelp" xml:space="preserve">
+    <value>Le calcul se fait avec la formule : plafond de la somme des caractéristiques multipliées par leur coefficient / 100.</value>
+  </data>
+	<data name="EditGameSystem_RoundMode" xml:space="preserve">
+    <value>Mode d'arrondi</value>
+  </data>
+	<data name="EditGameSystem_RoundModeCeiling" xml:space="preserve">
+    <value>Au supérieur</value>
+  </data>
+	<data name="EditGameSystem_RoundModeFloor" xml:space="preserve">
+    <value>À l'inférieur</value>
+  </data>
+	<data name="EditGameSystem_RoundModeNearest" xml:space="preserve">
+    <value>Au plus proche</value>
+  </data>
+	<data name="EditGameSystem_RoundModeNone" xml:space="preserve">
+    <value>Tronqué</value>
+  </data>
+	<data name="EditGameSystem_DisplayOrder" xml:space="preserve">
+    <value>Ordre d'affichage</value>
+  </data>
+	<data name="PlayerRoom_DerivedStats" xml:space="preserve">
+    <value>Compétences</value>
+  </data>
+	<data name="EditCharacter_DerivedStatsReadonly" xml:space="preserve">
+    <value>Les compétences calculées sont en lecture seule ici : elles se recalculent automatiquement à partir des caractéristiques.</value>
+  </data>
+	<data name="Backend_DerivedStatNameRequired" xml:space="preserve">
+    <value>Chaque compétence calculée doit avoir un nom.</value>
+  </data>
+	<data name="Backend_InvalidDerivedStatRange" xml:space="preserve">
+    <value>La valeur minimale d'une compétence calculée ne peut pas dépasser sa valeur maximale.</value>
+  </data>
+	<data name="Backend_DerivedStatMustHaveAtLeastOneComponent" xml:space="preserve">
+    <value>Une compétence calculée doit dépendre d'au moins une caractéristique de base.</value>
+  </data>
+	<data name="Backend_InvalidDerivedStatComponentWeight" xml:space="preserve">
+    <value>Le coefficient d'un composant doit être compris entre 1 et 500.</value>
+  </data>
+	<data name="Backend_InvalidDerivedStatComponentAttribute" xml:space="preserve">
+    <value>Un composant de compétence calculée doit référencer une caractéristique valide.</value>
+  </data>
 </root>

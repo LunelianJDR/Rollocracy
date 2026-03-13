@@ -1241,4 +1241,103 @@
 	<data name="Backend_CharacterNotFoundForSession" xml:space="preserve">
     <value>The requested character does not exist in this session.</value>
   </data>
+	<data name="EditGameSystem_DiceDefaultHelp" xml:space="preserve">
+    <value>In V1, you can define a fixed or random default value for base stats. Computed skills and metrics are prepared in the database but are not yet enabled in the UI.</value>
+  </data>
+	<data name="EditGameSystem_DefaultMode" xml:space="preserve">
+    <value>Default value mode</value>
+  </data>
+	<data name="EditGameSystem_DefaultModeFixed" xml:space="preserve">
+    <value>Fixed value</value>
+  </data>
+	<data name="EditGameSystem_DefaultModeDice" xml:space="preserve">
+    <value>Dice roll</value>
+  </data>
+	<data name="EditGameSystem_DefaultFixedValue" xml:space="preserve">
+    <value>Fixed default value</value>
+  </data>
+	<data name="EditGameSystem_DefaultFlatBonus" xml:space="preserve">
+    <value>Flat bonus</value>
+  </data>
+	<data name="EditGameSystem_DefaultDiceCount" xml:space="preserve">
+    <value>Dice count</value>
+  </data>
+	<data name="EditGameSystem_DefaultDiceSides" xml:space="preserve">
+    <value>Dice sides</value>
+  </data>
+	<data name="EditGameSystem_FoundationDeliveryNotice" xml:space="preserve">
+    <value>This first delivery enables random default values for base stats and prepares the computed skills and metrics tables for the next steps.</value>
+  </data>
+	<data name="Backend_GameSystemBaseStatNameRequired" xml:space="preserve">
+    <value>Each base stat must have a name.</value>
+  </data>
+	<data name="Backend_InvalidBaseStatRange" xml:space="preserve">
+    <value>A base stat minimum value cannot be greater than its maximum value.</value>
+  </data>
+	<data name="Backend_InvalidFixedBaseStatDefaultValue" xml:space="preserve">
+    <value>A fixed base stat default value must stay within its min/max range.</value>
+  </data>
+	<data name="Backend_InvalidAttributeDefaultDiceExpression" xml:space="preserve">
+    <value>The default dice formula is invalid. Use at most 5 dice, between 2 and 100 sides, and a total compatible with the min/max range.</value>
+  </data>
+	<data name="EditGameSystem_DerivedStatsSection" xml:space="preserve">
+    <value>Computed skills</value>
+  </data>
+	<data name="EditGameSystem_DerivedStatsHelp" xml:space="preserve">
+    <value>A computed skill is the sum of weighted base stats using percentage coefficients, then rounded with the selected mode. Examples: 50 = 0.5; 100 = 1; 150 = 1.5.</value>
+  </data>
+	<data name="EditGameSystem_AddDerivedStatRow" xml:space="preserve">
+    <value>Add a computed skill</value>
+  </data>
+	<data name="EditGameSystem_AddDerivedComponentRow" xml:space="preserve">
+    <value>Add a component</value>
+  </data>
+	<data name="EditGameSystem_ComponentAttribute" xml:space="preserve">
+    <value>Source stat</value>
+  </data>
+	<data name="EditGameSystem_ComponentWeight" xml:space="preserve">
+    <value>Coefficient (%)</value>
+  </data>
+	<data name="EditGameSystem_ComponentWeightHelp" xml:space="preserve">
+    <value>The formula is: ceiling of the sum of each base stat multiplied by its coefficient / 100.</value>
+  </data>
+	<data name="EditGameSystem_RoundMode" xml:space="preserve">
+    <value>Rounding mode</value>
+  </data>
+	<data name="EditGameSystem_RoundModeCeiling" xml:space="preserve">
+    <value>Ceiling</value>
+  </data>
+	<data name="EditGameSystem_RoundModeFloor" xml:space="preserve">
+    <value>Floor</value>
+  </data>
+	<data name="EditGameSystem_RoundModeNearest" xml:space="preserve">
+    <value>Nearest</value>
+  </data>
+	<data name="EditGameSystem_RoundModeNone" xml:space="preserve">
+    <value>Truncated</value>
+  </data>
+	<data name="EditGameSystem_DisplayOrder" xml:space="preserve">
+    <value>Display order</value>
+  </data>
+	<data name="PlayerRoom_DerivedStats" xml:space="preserve">
+    <value>Skills</value>
+  </data>
+	<data name="EditCharacter_DerivedStatsReadonly" xml:space="preserve">
+    <value>Computed skills are read-only here: they are automatically recalculated from the base stats.</value>
+  </data>
+	<data name="Backend_DerivedStatNameRequired" xml:space="preserve">
+    <value>Each computed skill must have a name.</value>
+  </data>
+	<data name="Backend_InvalidDerivedStatRange" xml:space="preserve">
+    <value>A computed skill minimum value cannot be greater than its maximum value.</value>
+  </data>
+	<data name="Backend_DerivedStatMustHaveAtLeastOneComponent" xml:space="preserve">
+    <value>A computed skill must depend on at least one base stat.</value>
+  </data>
+	<data name="Backend_InvalidDerivedStatComponentWeight" xml:space="preserve">
+    <value>A component coefficient must be between 1 and 500.</value>
+  </data>
+	<data name="Backend_InvalidDerivedStatComponentAttribute" xml:space="preserve">
+    <value>A computed skill component must reference a valid base stat.</value>
+  </data>
 </root>

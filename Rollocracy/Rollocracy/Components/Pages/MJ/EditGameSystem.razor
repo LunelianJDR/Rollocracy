@@ -1,4 +1,4 @@
-﻿@page "/mj/gamesystems/{GameSystemId:guid}"
+@page "/mj/gamesystems/{GameSystemId:guid}"
 @rendermode InteractiveServer
 
 @using System.Security.Claims
@@ -23,19 +23,44 @@ else if (RedirectToHome)
 {
     <p>@L["Common_Loading"]</p>
 }
-else if (Editor is null)
+else if (CurrentSystem is null)
 {
     <p>@L["EditGameSystem_NotFound"]</p>
 }
 else
 {
-    @if (!Editor.IsLockedToSessionCopy && Editor.ImpactedSessions.Count > 0)
+    <div class="alert alert-info">
+        <p>@L["EditGameSystem_FoundationDeliveryNotice"]</p>
+        <p>@L["EditGameSystem_DiceDefaultHelp"]</p>
+    </div>
+
+    <h4>@L["EditGameSystem_GeneralSection"]</h4>
+
+    <div>
+        <label>@L["EditGameSystem_Name"]</label><br />
+        <input @bind="CurrentSystem.Name" />
+    </div>
+
+    <div>
+        <label>@L["EditGameSystem_Description"]</label><br />
+        <textarea @bind="CurrentSystem.Description"></textarea>
+    </div>
+
+    <div>
+        <label>@L["EditGameSystem_ResolutionMode"]</label><br />
+        <select @bind="CurrentSystem.TestResolutionMode">
+            <option value="@TestResolutionMode.SuccessThreshold">@L["Resolution_SuccessThreshold"]</option>
+            <option value="@TestResolutionMode.RollUnderAttribute">@L["Resolution_RollUnderAttribute"]</option>
+        </select>
+    </div>
+
+    @if (!CurrentSystem.IsLockedToSessionCopy && CurrentSystem.ImpactedSessions.Count > 0)
     {
-        <div class="alert alert-warning">
+        <div class="alert alert-warning" style="margin-top:12px;">
             <p><strong>@L["EditGameSystem_SharedWarningTitle"]</strong></p>
             <p>@L["EditGameSystem_SharedWarningText"]</p>
             <ul>
-                @foreach (var session in Editor.ImpactedSessions)
+                @foreach (var session in CurrentSystem.ImpactedSessions)
                 {
                     <li>@session.SessionName</li>
                 }
@@ -43,29 +68,9 @@ else
         </div>
     }
 
-    <div class="alert alert-secondary">
+    <div class="alert alert-secondary" style="margin-top:12px;">
         <p>@L["EditGameSystem_ApplyOnlyWhenConfirmed"]</p>
         <p>@L["EditGameSystem_DeletionResponsibilityWarning"]</p>
-    </div>
-
-    <h4>@L["EditGameSystem_GeneralSection"]</h4>
-
-    <div>
-        <label>@L["EditGameSystem_Name"]</label><br />
-        <input @bind="Editor.Name" />
-    </div>
-
-    <div>
-        <label>@L["EditGameSystem_Description"]</label><br />
-        <textarea @bind="Editor.Description"></textarea>
-    </div>
-
-    <div>
-        <label>@L["EditGameSystem_ResolutionMode"]</label><br />
-        <select @bind="Editor.TestResolutionMode">
-            <option value="@TestResolutionMode.SuccessThreshold">@L["Resolution_SuccessThreshold"]</option>
-            <option value="@TestResolutionMode.RollUnderAttribute">@L["Resolution_RollUnderAttribute"]</option>
-        </select>
     </div>
 
     <hr />
@@ -74,7 +79,7 @@ else
 
     <button @onclick="AddAttributeRow">@L["EditGameSystem_AddAttributeRow"]</button>
 
-    @foreach (var attributeItem in Editor.Attributes)
+    @foreach (var attributeItem in CurrentSystem.Attributes)
     {
         <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
             @if (attributeItem.IsDeleted)
@@ -97,9 +102,35 @@ else
                     <input type="number" @bind="attributeItem.MaxValue" />
                 </div>
                 <div>
-                    <label>@L["Common_DefaultValue"]</label><br />
-                    <input type="number" @bind="attributeItem.DefaultValue" />
+                    <label>@L["EditGameSystem_DefaultMode"]</label><br />
+                    <select @bind="attributeItem.DefaultValueMode">
+                        <option value="@BaseValueGenerationMode.Fixed">@L["EditGameSystem_DefaultModeFixed"]</option>
+                        <option value="@BaseValueGenerationMode.DiceExpression">@L["EditGameSystem_DefaultModeDice"]</option>
+                    </select>
                 </div>
+
+                @if (attributeItem.DefaultValueMode == BaseValueGenerationMode.Fixed)
+                {
+                    <div>
+                        <label>@L["EditGameSystem_DefaultFixedValue"]</label><br />
+                        <input type="number" @bind="attributeItem.DefaultValue" />
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <label>@L["EditGameSystem_DefaultFlatBonus"]</label><br />
+                        <input type="number" @bind="attributeItem.DefaultValueFlatBonus" />
+                    </div>
+                    <div>
+                        <label>@L["EditGameSystem_DefaultDiceCount"]</label><br />
+                        <input type="number" @bind="attributeItem.DefaultValueDiceCount" />
+                    </div>
+                    <div>
+                        <label>@L["EditGameSystem_DefaultDiceSides"]</label><br />
+                        <input type="number" @bind="attributeItem.DefaultValueDiceSides" />
+                    </div>
+                }
 
                 @if (attributeItem.AttributeDefinitionId.HasValue)
                 {
@@ -107,7 +138,105 @@ else
                 }
                 else
                 {
-                    <button @onclick="() => Editor.Attributes.Remove(attributeItem)">@L["EditGameSystem_Delete"]</button>
+                    <button @onclick="() => CurrentSystem.Attributes.Remove(attributeItem)">@L["EditGameSystem_Delete"]</button>
+                }
+            }
+        </div>
+    }
+
+    <hr />
+
+    <h4>@L["EditGameSystem_DerivedStatsSection"]</h4>
+    <p>@L["EditGameSystem_DerivedStatsHelp"]</p>
+
+    <button @onclick="AddDerivedStatRow">@L["EditGameSystem_AddDerivedStatRow"]</button>
+
+    @foreach (var derivedStat in CurrentSystem.DerivedStats)
+    {
+        <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
+            @if (derivedStat.IsDeleted)
+            {
+                <p><strong>@derivedStat.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                <button @onclick="() => derivedStat.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+            }
+            else
+            {
+                <div>
+                    <label>@L["Common_Name"]</label><br />
+                    <input @bind="derivedStat.Name" />
+                </div>
+                <div>
+                    <label>@L["Common_Min"]</label><br />
+                    <input type="number" @bind="derivedStat.MinValue" />
+                </div>
+                <div>
+                    <label>@L["Common_Max"]</label><br />
+                    <input type="number" @bind="derivedStat.MaxValue" />
+                </div>
+                <div>
+                    <label>@L["EditGameSystem_RoundMode"]</label><br />
+                    <select @bind="derivedStat.RoundMode">
+                        <option value="@ComputedValueRoundMode.Ceiling">@L["EditGameSystem_RoundModeCeiling"]</option>
+                        <option value="@ComputedValueRoundMode.Floor">@L["EditGameSystem_RoundModeFloor"]</option>
+                        <option value="@ComputedValueRoundMode.Nearest">@L["EditGameSystem_RoundModeNearest"]</option>
+                        <option value="@ComputedValueRoundMode.None">@L["EditGameSystem_RoundModeNone"]</option>
+                    </select>
+                </div>
+                <div>
+                    <label>@L["EditGameSystem_DisplayOrder"]</label><br />
+                    <input type="number" @bind="derivedStat.DisplayOrder" />
+                </div>
+
+                <div style="margin-top:8px;">
+                    <button @onclick="() => AddDerivedComponentRow(derivedStat)">@L["EditGameSystem_AddDerivedComponentRow"]</button>
+                </div>
+
+                <div style="margin-left:20px; margin-top:8px;">
+                    @foreach (var component in derivedStat.Components)
+                    {
+                        <div style="margin-top:8px; border:1px dashed #aaa; padding:8px;">
+                            @if (component.IsDeleted)
+                            {
+                                <span><strong>@GetBaseAttributeName(component.AttributeDefinitionId)</strong> - @L["EditGameSystem_PendingDeletion"]</span>
+                                <button @onclick="() => component.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                            }
+                            else
+                            {
+                                <div>
+                                    <label>@L["EditGameSystem_ComponentAttribute"]</label><br />
+                                    <select @bind="component.AttributeDefinitionId">
+                                        @foreach (var attributeRef in CurrentSystem.AvailableBaseAttributes)
+                                        {
+                                            <option value="@attributeRef.AttributeDefinitionId">@attributeRef.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>@L["EditGameSystem_ComponentWeight"]</label><br />
+                                    <input type="number" @bind="component.Weight" />
+                                </div>
+                                <p>@L["EditGameSystem_ComponentWeightHelp"]</p>
+
+                                @if (component.DerivedStatComponentId.HasValue)
+                                {
+                                    <button @onclick="() => component.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                }
+                                else
+                                {
+                                    <button @onclick="() => derivedStat.Components.Remove(component)">@L["EditGameSystem_Delete"]</button>
+                                }
+                            }
+                        </div>
+                    }
+                </div>
+
+                @if (derivedStat.DerivedStatDefinitionId.HasValue)
+                {
+                    <button @onclick="() => derivedStat.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                }
+                else
+                {
+                    <button @onclick="() => CurrentSystem.DerivedStats.Remove(derivedStat)">@L["EditGameSystem_Delete"]</button>
                 }
             }
         </div>
@@ -119,7 +248,7 @@ else
 
     <button @onclick="AddTraitRow">@L["EditGameSystem_AddTraitTypeRow"]</button>
 
-    @foreach (var trait in Editor.Traits)
+    @foreach (var trait in CurrentSystem.Traits)
     {
         <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
             @if (trait.IsDeleted)
@@ -168,7 +297,7 @@ else
                 }
                 else
                 {
-                    <button @onclick="() => Editor.Traits.Remove(trait)">@L["EditGameSystem_Delete"]</button>
+                    <button @onclick="() => CurrentSystem.Traits.Remove(trait)">@L["EditGameSystem_Delete"]</button>
                 }
             }
         </div>
@@ -180,7 +309,7 @@ else
 
     <button @onclick="AddGaugeRow">@L["EditGameSystem_AddGaugeRow"]</button>
 
-    @foreach (var gauge in Editor.Gauges)
+    @foreach (var gauge in CurrentSystem.Gauges)
     {
         <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
             @if (gauge.IsDeleted)
@@ -217,7 +346,7 @@ else
                 }
                 else
                 {
-                    <button @onclick="() => Editor.Gauges.Remove(gauge)">@L["EditGameSystem_Delete"]</button>
+                    <button @onclick="() => CurrentSystem.Gauges.Remove(gauge)">@L["EditGameSystem_Delete"]</button>
                 }
             }
         </div>
@@ -227,7 +356,7 @@ else
 
     <button @onclick="ApplyChanges">@L["EditGameSystem_ApplyChanges"]</button>
 
-    @if (Editor.CanUndoLastChange)
+    @if (CurrentSystem.CanUndoLastChange)
     {
         <button @onclick="UndoLastChange">@L["EditGameSystem_UndoLastChange"]</button>
     }
@@ -255,7 +384,7 @@ else
     private Guid CurrentUserId;
     private string Message = string.Empty;
     private bool ShowSharedConfirm;
-    private GameSystemEditorDto? Editor;
+    private GameSystemEditorDto? CurrentSystem;
 
     protected override async Task OnInitializedAsync()
     {
@@ -301,15 +430,12 @@ else
     {
         Message = string.Empty;
         ShowSharedConfirm = false;
-        Editor = await GameSystemService.GetGameSystemEditorAsync(GameSystemId, CurrentUserId);
+        CurrentSystem = await GameSystemService.GetGameSystemEditorAsync(GameSystemId, CurrentUserId);
     }
 
     private void AddAttributeRow()
     {
-        if (Editor is null)
-            return;
-
-        Editor.Attributes.Add(new EditableAttributeDefinitionDto
+        CurrentSystem?.Attributes.Add(new EditableAttributeDefinitionDto
         {
             Name = string.Empty,
             MinValue = 0,
@@ -318,31 +444,55 @@ else
         });
     }
 
-    private void AddTraitRow()
+    private void AddDerivedStatRow()
     {
-        if (Editor is null)
+        CurrentSystem?.DerivedStats.Add(new EditableDerivedStatDefinitionDto
+        {
+            Name = string.Empty,
+            MinValue = 0,
+            MaxValue = 100,
+            RoundMode = ComputedValueRoundMode.Ceiling,
+            DisplayOrder = CurrentSystem.DerivedStats.Count
+        });
+    }
+
+    private void AddDerivedComponentRow(EditableDerivedStatDefinitionDto derivedStat)
+    {
+        if (CurrentSystem is null || CurrentSystem.AvailableBaseAttributes.Count == 0)
             return;
 
-        Editor.Traits.Add(new EditableTraitDefinitionDto
+        var attribute = CurrentSystem.AvailableBaseAttributes.First();
+
+        derivedStat.Components.Add(new EditableDerivedStatComponentDto
         {
-            Name = string.Empty
+            AttributeDefinitionId = attribute.AttributeDefinitionId,
+            AttributeName = attribute.Name,
+            Weight = 100
         });
+    }
+
+    private string GetBaseAttributeName(Guid attributeDefinitionId)
+    {
+        if (CurrentSystem is null)
+            return string.Empty;
+
+        return CurrentSystem.AvailableBaseAttributes
+            .FirstOrDefault(a => a.AttributeDefinitionId == attributeDefinitionId)?.Name ?? string.Empty;
+    }
+
+    private void AddTraitRow()
+    {
+        CurrentSystem?.Traits.Add(new EditableTraitDefinitionDto { Name = string.Empty });
     }
 
     private void AddTraitOptionRow(EditableTraitDefinitionDto trait)
     {
-        trait.Options.Add(new EditableTraitOptionDto
-        {
-            Name = string.Empty
-        });
+        trait.Options.Add(new EditableTraitOptionDto { Name = string.Empty });
     }
 
     private void AddGaugeRow()
     {
-        if (Editor is null)
-            return;
-
-        Editor.Gauges.Add(new EditableGaugeDefinitionDto
+        CurrentSystem?.Gauges.Add(new EditableGaugeDefinitionDto
         {
             Name = string.Empty,
             MinValue = 0,
@@ -354,14 +504,14 @@ else
 
     private async Task ApplyChanges()
     {
-        if (Editor is null)
+        if (CurrentSystem is null)
             return;
 
         try
         {
             Message = string.Empty;
 
-            if (!Editor.IsLockedToSessionCopy && Editor.ImpactedSessions.Count > 0)
+            if (!CurrentSystem.IsLockedToSessionCopy && CurrentSystem.ImpactedSessions.Count > 0)
             {
                 ShowSharedConfirm = true;
                 return;
@@ -395,20 +545,21 @@ else
 
     private async Task ApplyChangesInternal(bool confirmShared)
     {
-        if (Editor is null)
+        if (CurrentSystem is null)
             return;
 
         ShowSharedConfirm = false;
 
         var request = new GameSystemApplyChangesRequestDto
         {
-            Name = Editor.Name,
-            Description = Editor.Description,
-            TestResolutionMode = Editor.TestResolutionMode,
+            Name = CurrentSystem.Name,
+            Description = CurrentSystem.Description,
+            TestResolutionMode = CurrentSystem.TestResolutionMode,
             ConfirmSharedSystemChanges = confirmShared,
-            Attributes = Editor.Attributes,
-            Traits = Editor.Traits,
-            Gauges = Editor.Gauges
+            Attributes = CurrentSystem.Attributes,
+            DerivedStats = CurrentSystem.DerivedStats,
+            Traits = CurrentSystem.Traits,
+            Gauges = CurrentSystem.Gauges
         };
 
         await GameSystemService.ApplyGameSystemChangesAsync(GameSystemId, CurrentUserId, request);
