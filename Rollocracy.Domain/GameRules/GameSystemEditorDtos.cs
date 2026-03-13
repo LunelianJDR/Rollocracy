@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Rollocracy.Domain.GameRules
@@ -16,7 +16,32 @@ namespace Rollocracy.Domain.GameRules
         public int MinValue { get; set; }
         public int MaxValue { get; set; }
         public int DefaultValue { get; set; }
+        public BaseValueGenerationMode DefaultValueMode { get; set; } = BaseValueGenerationMode.Fixed;
+        public int DefaultValueDiceCount { get; set; } = 1;
+        public int DefaultValueDiceSides { get; set; } = 6;
+        public int DefaultValueFlatBonus { get; set; }
         public bool IsDeleted { get; set; }
+    }
+
+    public class EditableDerivedStatComponentDto
+    {
+        public Guid? DerivedStatComponentId { get; set; }
+        public Guid AttributeDefinitionId { get; set; }
+        public string AttributeName { get; set; } = string.Empty;
+        public int Weight { get; set; } = 100;
+        public bool IsDeleted { get; set; }
+    }
+
+    public class EditableDerivedStatDefinitionDto
+    {
+        public Guid? DerivedStatDefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int MinValue { get; set; }
+        public int MaxValue { get; set; }
+        public ComputedValueRoundMode RoundMode { get; set; } = ComputedValueRoundMode.Ceiling;
+        public int DisplayOrder { get; set; }
+        public bool IsDeleted { get; set; }
+        public List<EditableDerivedStatComponentDto> Components { get; set; } = new();
     }
 
     public class EditableGaugeDefinitionDto
@@ -45,6 +70,12 @@ namespace Rollocracy.Domain.GameRules
         public List<EditableTraitOptionDto> Options { get; set; } = new();
     }
 
+    public class BaseAttributeReferenceDto
+    {
+        public Guid AttributeDefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
     public class GameSystemEditorDto
     {
         public Guid GameSystemId { get; set; }
@@ -58,7 +89,9 @@ namespace Rollocracy.Domain.GameRules
 
         public List<GameSystemImpactSessionDto> ImpactedSessions { get; set; } = new();
 
+        public List<BaseAttributeReferenceDto> AvailableBaseAttributes { get; set; } = new();
         public List<EditableAttributeDefinitionDto> Attributes { get; set; } = new();
+        public List<EditableDerivedStatDefinitionDto> DerivedStats { get; set; } = new();
         public List<EditableTraitDefinitionDto> Traits { get; set; } = new();
         public List<EditableGaugeDefinitionDto> Gauges { get; set; } = new();
     }
@@ -72,6 +105,7 @@ namespace Rollocracy.Domain.GameRules
         public bool ConfirmSharedSystemChanges { get; set; }
 
         public List<EditableAttributeDefinitionDto> Attributes { get; set; } = new();
+        public List<EditableDerivedStatDefinitionDto> DerivedStats { get; set; } = new();
         public List<EditableTraitDefinitionDto> Traits { get; set; } = new();
         public List<EditableGaugeDefinitionDto> Gauges { get; set; } = new();
     }

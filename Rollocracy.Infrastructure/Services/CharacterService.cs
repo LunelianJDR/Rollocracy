@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.Entities;
+using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
 
@@ -93,7 +94,6 @@ namespace Rollocracy.Infrastructure.Services
                 else
                 {
                     var allowedAtUtc = latestDeathUtc.AddSeconds(30);
-
                     result.CanCreateNewCharacterAtUtc = allowedAtUtc;
                     result.CanCreateNewCharacter = DateTime.UtcNow >= allowedAtUtc;
                 }
@@ -154,7 +154,7 @@ namespace Rollocracy.Infrastructure.Services
                     Name = a.Name,
                     MinValue = a.MinValue,
                     MaxValue = a.MaxValue,
-                    DefaultValue = a.DefaultValue
+                    DefaultValue = GenerateAttributeDefaultValue(a)
                 }).ToList()
             };
 
@@ -247,12 +247,10 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var attributeDefinition in attributeDefinitions)
             {
-                var value = attributeDefinition.DefaultValue;
+                var value = GenerateAttributeDefaultValue(attributeDefinition);
 
                 if (attributeValues.TryGetValue(attributeDefinition.Id, out var submittedValue))
-                {
                     value = submittedValue;
-                }
 
                 if (value < attributeDefinition.MinValue)
                     value = attributeDefinition.MinValue;
@@ -260,7 +258,7 @@ namespace Rollocracy.Infrastructure.Services
                 if (value > attributeDefinition.MaxValue)
                     value = attributeDefinition.MaxValue;
 
-                context.CharacterAttributeValues.Add(new Domain.GameRules.CharacterAttributeValue
+                context.CharacterAttributeValues.Add(new CharacterAttributeValue
                 {
                     Id = Guid.NewGuid(),
                     CharacterId = character.Id,
@@ -281,7 +279,7 @@ namespace Rollocracy.Infrastructure.Services
                 if (!optionExists)
                     throw new Exception(_localizer["Backend_InvalidTraitSelection"]);
 
-                context.CharacterTraitValues.Add(new Domain.GameRules.CharacterTraitValue
+                context.CharacterTraitValues.Add(new CharacterTraitValue
                 {
                     Id = Guid.NewGuid(),
                     CharacterId = character.Id,
@@ -292,7 +290,7 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var gaugeDefinition in gaugeDefinitions)
             {
-                context.CharacterGaugeValues.Add(new Domain.GameRules.CharacterGaugeValue
+                context.CharacterGaugeValues.Add(new CharacterGaugeValue
                 {
                     Id = Guid.NewGuid(),
                     CharacterId = character.Id,
@@ -367,6 +365,7 @@ namespace Rollocracy.Infrastructure.Services
                     IsAlive = row.character.IsAlive,
                     IsOnline = isOnline,
                     Attributes = sheet.Attributes,
+                    DerivedStats = sheet.DerivedStats,
                     Traits = sheet.Traits,
                     Gauges = sheet.Gauges
                 });
@@ -395,9 +394,9 @@ namespace Rollocracy.Infrastructure.Services
         }
 
         public async Task<EditableCharacterDto?> GetEditableCharacterForSessionAsync(
-    Guid sessionId,
-    Guid characterId,
-    Guid gameMasterUserAccountId)
+            Guid sessionId,
+            Guid characterId,
+            Guid gameMasterUserAccountId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -517,7 +516,7 @@ namespace Rollocracy.Infrastructure.Services
 
                 if (existingValue == null)
                 {
-                    context.CharacterAttributeValues.Add(new Rollocracy.Domain.GameRules.CharacterAttributeValue
+                    context.CharacterAttributeValues.Add(new CharacterAttributeValue
                     {
                         Id = Guid.NewGuid(),
                         CharacterId = row.character.Id,
@@ -541,9 +540,7 @@ namespace Rollocracy.Infrastructure.Services
                 if (requestedTrait?.SelectedOptionId is null)
                 {
                     if (existingValue != null)
-                    {
                         context.CharacterTraitValues.Remove(existingValue);
-                    }
 
                     continue;
                 }
@@ -557,7 +554,7 @@ namespace Rollocracy.Infrastructure.Services
 
                 if (existingValue == null)
                 {
-                    context.CharacterTraitValues.Add(new Rollocracy.Domain.GameRules.CharacterTraitValue
+                    context.CharacterTraitValues.Add(new CharacterTraitValue
                     {
                         Id = Guid.NewGuid(),
                         CharacterId = row.character.Id,
@@ -614,9 +611,7 @@ namespace Rollocracy.Infrastructure.Services
                         var proposedValue = proposedGaugeValues[healthGauge.Id];
 
                         if (previousValue <= 0 && proposedValue > 0)
-                        {
                             proposedGaugeValues[healthGauge.Id] = 0;
-                        }
                     }
 
                     wouldBeAlive = false;
@@ -630,7 +625,7 @@ namespace Rollocracy.Infrastructure.Services
 
                 if (existingValue == null)
                 {
-                    context.CharacterGaugeValues.Add(new Rollocracy.Domain.GameRules.CharacterGaugeValue
+                    context.CharacterGaugeValues.Add(new CharacterGaugeValue
                     {
                         Id = Guid.NewGuid(),
                         CharacterId = row.character.Id,
@@ -652,9 +647,7 @@ namespace Rollocracy.Infrastructure.Services
             else
             {
                 if (row.character.IsAlive)
-                {
                     row.character.DiedAtUtc = DateTime.UtcNow;
-                }
 
                 row.character.IsAlive = false;
             }
@@ -664,122 +657,6 @@ namespace Rollocracy.Infrastructure.Services
             return new CharacterUpdateResultDto
             {
                 ResurrectionBlocked = resurrectionBlocked
-            };
-        }
-
-        private async Task<EditableCharacterDto> BuildEditableCharacterAsync(
-            RollocracyDbContext context,
-            Session session,
-            PlayerSession playerSession,
-            Character character)
-        {
-            var gameSystemId = session.GameSystemId!.Value;
-
-            var attributeDefinitions = await context.AttributeDefinitions
-                .AsNoTracking()
-                .Where(a => a.GameSystemId == gameSystemId)
-                .OrderBy(a => a.Name)
-                .ToListAsync();
-
-            var gaugeDefinitions = await context.GaugeDefinitions
-                .AsNoTracking()
-                .Where(g => g.GameSystemId == gameSystemId)
-                .OrderBy(g => g.Name)
-                .ToListAsync();
-
-            var traitDefinitions = await context.TraitDefinitions
-                .AsNoTracking()
-                .Where(t => t.GameSystemId == gameSystemId)
-                .OrderBy(t => t.Name)
-                .ToListAsync();
-
-            var traitDefinitionIds = traitDefinitions.Select(t => t.Id).ToList();
-
-            var traitOptions = await context.TraitOptions
-                .AsNoTracking()
-                .Where(o => traitDefinitionIds.Contains(o.TraitDefinitionId))
-                .OrderBy(o => o.Name)
-                .ToListAsync();
-
-            var attributeValues = await context.CharacterAttributeValues
-                .AsNoTracking()
-                .Where(v => v.CharacterId == character.Id)
-                .ToListAsync();
-
-            var gaugeValues = await context.CharacterGaugeValues
-                .AsNoTracking()
-                .Where(v => v.CharacterId == character.Id)
-                .ToListAsync();
-
-            var traitValues = await context.CharacterTraitValues
-                .AsNoTracking()
-                .Where(v => v.CharacterId == character.Id)
-                .ToListAsync();
-
-            return new EditableCharacterDto
-            {
-                CharacterId = character.Id,
-                PlayerSessionId = playerSession.Id,
-                PlayerName = playerSession.PlayerName,
-                Name = character.Name,
-                Biography = character.Biography,
-                IsAlive = character.IsAlive,
-                DiedAtUtc = character.DiedAtUtc,
-                Attributes = attributeDefinitions
-                    .Select(definition =>
-                    {
-                        var value = attributeValues.FirstOrDefault(v => v.AttributeDefinitionId == definition.Id)?.Value
-                            ?? definition.DefaultValue;
-
-                        return new EditableCharacterAttributeDto
-                        {
-                            AttributeDefinitionId = definition.Id,
-                            Name = definition.Name,
-                            MinValue = definition.MinValue,
-                            MaxValue = definition.MaxValue,
-                            Value = value
-                        };
-                    })
-                    .ToList(),
-                Gauges = gaugeDefinitions
-                    .Select(definition =>
-                    {
-                        var value = gaugeValues.FirstOrDefault(v => v.GaugeDefinitionId == definition.Id)?.Value
-                            ?? definition.DefaultValue;
-
-                        return new EditableCharacterGaugeDto
-                        {
-                            GaugeDefinitionId = definition.Id,
-                            Name = definition.Name,
-                            MinValue = definition.MinValue,
-                            MaxValue = definition.MaxValue,
-                            Value = value,
-                            IsHealthGauge = definition.IsHealthGauge
-                        };
-                    })
-                    .ToList(),
-                Traits = traitDefinitions
-                    .Select(definition =>
-                    {
-                        var selectedOptionId = traitValues
-                            .FirstOrDefault(v => v.TraitDefinitionId == definition.Id)?.TraitOptionId;
-
-                        return new EditableCharacterTraitDto
-                        {
-                            TraitDefinitionId = definition.Id,
-                            TraitName = definition.Name,
-                            SelectedOptionId = selectedOptionId,
-                            Options = traitOptions
-                                .Where(o => o.TraitDefinitionId == definition.Id)
-                                .Select(o => new EditableCharacterTraitOptionDto
-                                {
-                                    TraitOptionId = o.Id,
-                                    Name = o.Name
-                                })
-                                .ToList()
-                        };
-                    })
-                    .ToList()
             };
         }
 
@@ -817,6 +694,20 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(c => c.Id == characterId && c.PlayerSessionId == playerSessionId);
 
             if (character == null)
+                return null;
+
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps => ps.Id == playerSessionId);
+
+            if (playerSession == null)
+                return null;
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == playerSession.SessionId);
+
+            if (session == null)
                 return null;
 
             var attributeLines = await context.CharacterAttributeValues
@@ -872,6 +763,10 @@ namespace Rollocracy.Infrastructure.Services
                 .OrderBy(x => x.Name)
                 .ToListAsync();
 
+            var derivedLines = session.GameSystemId.HasValue
+                ? await ComputeDerivedStatsAsync(context, session.GameSystemId.Value, character.Id)
+                : new List<CharacterDerivedStatLineDto>();
+
             return new CharacterSheetDto
             {
                 CharacterId = character.Id,
@@ -880,9 +775,244 @@ namespace Rollocracy.Infrastructure.Services
                 IsAlive = character.IsAlive,
                 DiedAtUtc = character.DiedAtUtc,
                 Attributes = attributeLines,
+                DerivedStats = derivedLines,
                 Traits = traitLines,
                 Gauges = gaugeLines
             };
+        }
+
+        private async Task<EditableCharacterDto> BuildEditableCharacterAsync(
+            RollocracyDbContext context,
+            Session session,
+            PlayerSession playerSession,
+            Character character)
+        {
+            var gameSystemId = session.GameSystemId!.Value;
+
+            var attributeDefinitions = await context.AttributeDefinitions
+                .AsNoTracking()
+                .Where(a => a.GameSystemId == gameSystemId)
+                .OrderBy(a => a.Name)
+                .ToListAsync();
+
+            var gaugeDefinitions = await context.GaugeDefinitions
+                .AsNoTracking()
+                .Where(g => g.GameSystemId == gameSystemId)
+                .OrderBy(g => g.Name)
+                .ToListAsync();
+
+            var traitDefinitions = await context.TraitDefinitions
+                .AsNoTracking()
+                .Where(t => t.GameSystemId == gameSystemId)
+                .OrderBy(t => t.Name)
+                .ToListAsync();
+
+            var derivedStats = await context.DerivedStatDefinitions
+                .AsNoTracking()
+                .Where(d => d.GameSystemId == gameSystemId)
+                .OrderBy(d => d.DisplayOrder)
+                .ThenBy(d => d.Name)
+                .ToListAsync();
+
+            var traitDefinitionIds = traitDefinitions.Select(t => t.Id).ToList();
+
+            var traitOptions = await context.TraitOptions
+                .AsNoTracking()
+                .Where(o => traitDefinitionIds.Contains(o.TraitDefinitionId))
+                .OrderBy(o => o.Name)
+                .ToListAsync();
+
+            var attributeValues = await context.CharacterAttributeValues
+                .AsNoTracking()
+                .Where(v => v.CharacterId == character.Id)
+                .ToListAsync();
+
+            var gaugeValues = await context.CharacterGaugeValues
+                .AsNoTracking()
+                .Where(v => v.CharacterId == character.Id)
+                .ToListAsync();
+
+            var traitValues = await context.CharacterTraitValues
+                .AsNoTracking()
+                .Where(v => v.CharacterId == character.Id)
+                .ToListAsync();
+
+            var derivedValues = await ComputeDerivedStatValuesAsync(context, gameSystemId, character.Id);
+
+            return new EditableCharacterDto
+            {
+                CharacterId = character.Id,
+                PlayerSessionId = playerSession.Id,
+                PlayerName = playerSession.PlayerName,
+                Name = character.Name,
+                Biography = character.Biography,
+                IsAlive = character.IsAlive,
+                DiedAtUtc = character.DiedAtUtc,
+                Attributes = attributeDefinitions
+                    .Select(definition =>
+                    {
+                        var value = attributeValues.FirstOrDefault(v => v.AttributeDefinitionId == definition.Id)?.Value
+                            ?? definition.DefaultValue;
+
+                        return new EditableCharacterAttributeDto
+                        {
+                            AttributeDefinitionId = definition.Id,
+                            Name = definition.Name,
+                            MinValue = definition.MinValue,
+                            MaxValue = definition.MaxValue,
+                            Value = value
+                        };
+                    })
+                    .ToList(),
+                DerivedStats = derivedStats
+                    .Select(d => new EditableCharacterDerivedStatDto
+                    {
+                        DerivedStatDefinitionId = d.Id,
+                        Name = d.Name,
+                        Value = derivedValues.TryGetValue(d.Id, out var computed) ? computed : d.MinValue
+                    })
+                    .ToList(),
+                Gauges = gaugeDefinitions
+                    .Select(definition =>
+                    {
+                        var value = gaugeValues.FirstOrDefault(v => v.GaugeDefinitionId == definition.Id)?.Value
+                            ?? definition.DefaultValue;
+
+                        return new EditableCharacterGaugeDto
+                        {
+                            GaugeDefinitionId = definition.Id,
+                            Name = definition.Name,
+                            MinValue = definition.MinValue,
+                            MaxValue = definition.MaxValue,
+                            Value = value,
+                            IsHealthGauge = definition.IsHealthGauge
+                        };
+                    })
+                    .ToList(),
+                Traits = traitDefinitions
+                    .Select(definition =>
+                    {
+                        var selectedOptionId = traitValues
+                            .FirstOrDefault(v => v.TraitDefinitionId == definition.Id)?.TraitOptionId;
+
+                        return new EditableCharacterTraitDto
+                        {
+                            TraitDefinitionId = definition.Id,
+                            TraitName = definition.Name,
+                            SelectedOptionId = selectedOptionId,
+                            Options = traitOptions
+                                .Where(o => o.TraitDefinitionId == definition.Id)
+                                .Select(o => new EditableCharacterTraitOptionDto
+                                {
+                                    TraitOptionId = o.Id,
+                                    Name = o.Name
+                                })
+                                .ToList()
+                        };
+                    })
+                    .ToList()
+            };
+        }
+
+        private async Task<List<CharacterDerivedStatLineDto>> ComputeDerivedStatsAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            Guid characterId)
+        {
+            var values = await ComputeDerivedStatValuesAsync(context, gameSystemId, characterId);
+
+            var definitions = await context.DerivedStatDefinitions
+                .AsNoTracking()
+                .Where(d => d.GameSystemId == gameSystemId)
+                .OrderBy(d => d.DisplayOrder)
+                .ThenBy(d => d.Name)
+                .ToListAsync();
+
+            return definitions
+                .Select(d => new CharacterDerivedStatLineDto
+                {
+                    Name = d.Name,
+                    Value = values.TryGetValue(d.Id, out var computedValue) ? computedValue : d.MinValue
+                })
+                .ToList();
+        }
+
+        private async Task<Dictionary<Guid, int>> ComputeDerivedStatValuesAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            Guid characterId)
+        {
+            var definitions = await context.DerivedStatDefinitions
+                .AsNoTracking()
+                .Where(d => d.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            if (definitions.Count == 0)
+                return new Dictionary<Guid, int>();
+
+            var definitionIds = definitions.Select(d => d.Id).ToList();
+
+            var components = await context.DerivedStatComponents
+                .AsNoTracking()
+                .Where(c => definitionIds.Contains(c.DerivedStatDefinitionId))
+                .ToListAsync();
+
+            var attributeValues = await context.CharacterAttributeValues
+                .AsNoTracking()
+                .Where(v => v.CharacterId == characterId)
+                .ToDictionaryAsync(v => v.AttributeDefinitionId, v => v.Value);
+
+            var result = new Dictionary<Guid, int>();
+
+            foreach (var definition in definitions)
+            {
+                var definitionComponents = components
+                    .Where(c => c.DerivedStatDefinitionId == definition.Id)
+                    .ToList();
+
+                if (definitionComponents.Count == 0)
+                {
+                    result[definition.Id] = definition.MinValue;
+                    continue;
+                }
+
+                decimal total = 0m;
+
+                foreach (var component in definitionComponents)
+                {
+                    if (attributeValues.TryGetValue(component.AttributeDefinitionId, out var attributeValue))
+                    {
+                        total += attributeValue * (component.Weight / 100m);
+                    }
+                }
+
+                var rounded = definition.RoundMode switch
+                {
+                    ComputedValueRoundMode.Floor => (int)Math.Floor(total),
+                    ComputedValueRoundMode.Nearest => (int)Math.Round(total, MidpointRounding.AwayFromZero),
+                    ComputedValueRoundMode.None => (int)total,
+                    _ => (int)Math.Ceiling(total)
+                };
+
+                result[definition.Id] = Math.Clamp(rounded, definition.MinValue, definition.MaxValue);
+            }
+
+            return result;
+        }
+
+        private static int GenerateAttributeDefaultValue(AttributeDefinition definition)
+        {
+            if (definition.DefaultValueMode == BaseValueGenerationMode.Fixed)
+                return definition.DefaultValue;
+
+            var total = definition.DefaultValueFlatBonus;
+
+            for (var i = 0; i < definition.DefaultValueDiceCount; i++)
+            {
+                total += Random.Shared.Next(1, definition.DefaultValueDiceSides + 1);
+            }
+
+            return Math.Clamp(total, definition.MinValue, definition.MaxValue);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿@page "/mj/session/{SessionId:guid}/characters/{CharacterId:guid}/edit"
+@page "/mj/session/{SessionId:guid}/characters/{CharacterId:guid}/edit"
 @rendermode InteractiveServer
 
 @using System.Security.Claims
@@ -30,7 +30,7 @@ else if (Character is null)
 else
 {
     <p><strong>@L["EditCharacter_PlayerName"] :</strong> @Character.PlayerName</p>
-    <p><strong>@L["EditCharacter_Status"] :</strong> @(Character.IsAlive? L["Common_Alive"] : L["Common_Dead"])</p>
+    <p><strong>@L["EditCharacter_Status"] :</strong> @(Character.IsAlive ? L["Common_Alive"] : L["Common_Dead"])</p>
 
     @if (Character.DiedAtUtc.HasValue && !Character.IsAlive)
     {
@@ -57,6 +57,23 @@ else
             <label>@attributeItem.Name (@attributeItem.MinValue - @attributeItem.MaxValue)</label><br />
             <input type="number" min="@attributeItem.MinValue" max="@attributeItem.MaxValue" @bind="attributeItem.Value" />
         </div>
+    }
+
+    @if (Character.DerivedStats.Count > 0)
+    {
+        <hr />
+
+        <h4>@L["PlayerRoom_DerivedStats"]</h4>
+
+        @foreach (var derivedItem in Character.DerivedStats)
+        {
+            <div style="margin-top:8px;">
+                <label>@derivedItem.Name</label><br />
+                <input value="@derivedItem.Value" readonly />
+            </div>
+        }
+
+        <p>@L["EditCharacter_DerivedStatsReadonly"]</p>
     }
 
     <hr />

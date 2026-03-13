@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
 using Rollocracy.Infrastructure.Events;
@@ -23,6 +23,10 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<Character> Characters => Set<Character>();
 
         public DbSet<AttributeDefinition> AttributeDefinitions => Set<AttributeDefinition>();
+        public DbSet<DerivedStatDefinition> DerivedStatDefinitions => Set<DerivedStatDefinition>();
+        public DbSet<DerivedStatComponent> DerivedStatComponents => Set<DerivedStatComponent>();
+        public DbSet<MetricDefinition> MetricDefinitions => Set<MetricDefinition>();
+        public DbSet<MetricComponent> MetricComponents => Set<MetricComponent>();
         public DbSet<CharacterAttributeValue> CharacterAttributeValues => Set<CharacterAttributeValue>();
 
         public DbSet<TraitDefinition> TraitDefinitions => Set<TraitDefinition>();
@@ -77,6 +81,18 @@ namespace Rollocracy.Infrastructure.Persistence
                 entity.Property(x => x.SnapshotJson)
                     .HasColumnType("text");
             });
+
+            modelBuilder.Entity<DerivedStatDefinition>()
+                .HasIndex(x => new { x.GameSystemId, x.Name });
+
+            modelBuilder.Entity<MetricDefinition>()
+                .HasIndex(x => new { x.GameSystemId, x.Name });
+
+            modelBuilder.Entity<DerivedStatComponent>()
+                .HasIndex(x => new { x.DerivedStatDefinitionId, x.AttributeDefinitionId });
+
+            modelBuilder.Entity<MetricComponent>()
+                .HasIndex(x => new { x.MetricDefinitionId, x.AttributeDefinitionId });
         }
     }
 }

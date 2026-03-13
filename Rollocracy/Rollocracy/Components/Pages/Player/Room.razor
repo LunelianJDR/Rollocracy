@@ -1,4 +1,4 @@
-﻿@page "/player/room/{PlayerSessionId:guid}"
+@page "/player/room/{PlayerSessionId:guid}"
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 
@@ -70,7 +70,7 @@ else
             <p>@L["GameTest_DiceTotal"] : @ActiveTest.Result.DiceTotal</p>
             <p>@L["GameTest_AttributeValue"] : @ActiveTest.Result.AttributeValue</p>
             <p>@L["GameTest_FinalValue"] : @ActiveTest.Result.FinalValue</p>
-            <p>@L["GameTest_Result"] : @(ActiveTest.Result.IsSuccess? L["GameTest_Success"] : L["GameTest_Failure"])</p>
+            <p>@L["GameTest_Result"] : @(ActiveTest.Result.IsSuccess ? L["GameTest_Success"] : L["GameTest_Failure"])</p>
 
             @if (ActiveTest.Result.IsAutoRolled)
             {
@@ -127,7 +127,7 @@ else
 
             @if (LatestPoll.HasVoted && LatestPoll.VoteWeight.HasValue)
             {
-                <p>@L["Poll_YourVoteWeight", LatestPoll.VoteWeight.Value.ToString("F2")]</p>
+                <p>@L["Poll_YourVoteWeight", LatestPoll.VoteWeight.Value.ToString("F2") ]</p>
             }
         }
     }
@@ -368,6 +368,22 @@ else
         }
         builder.CloseElement();
 
+        if (sheet.DerivedStats.Count > 0)
+        {
+            builder.OpenElement(seq++, "h5");
+            builder.AddContent(seq++, L["PlayerRoom_DerivedStats"]);
+            builder.CloseElement();
+
+            builder.OpenElement(seq++, "ul");
+            foreach (var derivedLine in sheet.DerivedStats)
+            {
+                builder.OpenElement(seq++, "li");
+                builder.AddContent(seq++, $"{derivedLine.Name} : {derivedLine.Value}");
+                builder.CloseElement();
+            }
+            builder.CloseElement();
+        }
+
         builder.OpenElement(seq++, "h5");
         builder.AddContent(seq++, L["PlayerRoom_Traits"]);
         builder.CloseElement();
@@ -411,7 +427,6 @@ else
         {
             try
             {
-                // Sortie explicite de présence avant fermeture de la connexion.
                 if (PresenceJoined && State is not null && hubConnection.State == HubConnectionState.Connected)
                 {
                     await hubConnection.SendAsync(
@@ -422,7 +437,6 @@ else
             }
             catch
             {
-                // On ignore ici : OnDisconnectedAsync côté Hub sert de filet de sécurité.
             }
 
             try
@@ -431,7 +445,6 @@ else
             }
             catch
             {
-                // Pas bloquant pendant le nettoyage.
             }
 
             await hubConnection.DisposeAsync();

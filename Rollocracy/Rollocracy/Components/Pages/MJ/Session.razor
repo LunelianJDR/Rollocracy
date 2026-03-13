@@ -742,7 +742,19 @@ else
             }
         </ul>
 
+        @if (SelectedCharacterSheet.DerivedStats != null && SelectedCharacterSheet.DerivedStats.Count > 0)
+        {
+            <h5>@L["PlayerRoom_DerivedStats"]</h5>
+            <ul>
+                @foreach (var derivedLine in SelectedCharacterSheet.DerivedStats)
+                {
+                    <li>@derivedLine.Name : @derivedLine.Value</li>
+                }
+            </ul>
+        }
+
         <h5>@L["PlayerRoom_Traits"]</h5>
+
         <ul>
             @foreach (var traitLine in SelectedCharacterSheet.Traits)
             {
