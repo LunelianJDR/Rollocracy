@@ -370,7 +370,7 @@ else
                 <div style="margin-left:20px; margin-top:8px;">
                     @foreach (var option in trait.Options)
                     {
-                        <div style="margin-top:8px;">
+                        <div style="margin-top:8px; margin-left:20px; padding:8px; border:1px solid #ddd;">
                             @if (option.IsDeleted)
                             {
                                 <span><strong>@option.Name</strong> - @L["EditGameSystem_PendingDeletion"]</span>
@@ -378,16 +378,75 @@ else
                             }
                             else
                             {
-                                <input @bind="option.Name" />
+                                <div>
+                                    <input @bind="option.Name" />
+                                    @if (option.TraitOptionId.HasValue)
+                                    {
+                                        <button @onclick="() => option.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                    }
+                                    else
+                                    {
+                                        <button @onclick="() => trait.Options.Remove(option)">@L["EditGameSystem_Delete"]</button>
+                                    }
+                                </div>
 
-                                @if (option.TraitOptionId.HasValue)
-                                {
-                                    <button @onclick="() => option.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
-                                }
-                                else
-                                {
-                                    <button @onclick="() => trait.Options.Remove(option)">@L["EditGameSystem_Delete"]</button>
-                                }
+                                <div style="margin-top:8px;">
+                                    <h5>@L["EditGameSystem_ModifiersSection"]</h5>
+
+                                    @foreach (var mod in option.Modifiers.Where(x => !x.IsDeleted))
+                                    {
+                                        <div style="margin-left:20px; margin-top:8px;">
+                                            <select @bind="mod.TargetType">
+                                                <option value="@ModifierTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
+                                                <option value="@ModifierTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
+                                                <option value="@ModifierTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                                            </select>
+
+                                            @if (mod.TargetType == ModifierTargetType.BaseAttribute)
+                                            {
+                                                <select @bind="mod.TargetId">
+                                                    @foreach (var target in CurrentSystem.AvailableBaseAttributes)
+                                                    {
+                                                        <option value="@target.AttributeDefinitionId">@target.Name</option>
+                                                    }
+                                                </select>
+                                            }
+                                            else if (mod.TargetType == ModifierTargetType.DerivedStat)
+                                            {
+                                                <select @bind="mod.TargetId">
+                                                    @foreach (var target in CurrentSystem.AvailableDerivedStats)
+                                                    {
+                                                        <option value="@target.DerivedStatDefinitionId">@target.Name</option>
+                                                    }
+                                                </select>
+                                            }
+                                            else if (mod.TargetType == ModifierTargetType.Metric)
+                                            {
+                                                <select @bind="mod.TargetId">
+                                                    @foreach (var target in CurrentSystem.AvailableMetrics)
+                                                    {
+                                                        <option value="@target.MetricDefinitionId">@target.Name</option>
+                                                    }
+                                                </select>
+                                            }
+
+                                            <input type="number" @bind="mod.AddValue" />
+
+                                            @if (mod.ModifierId.HasValue)
+                                            {
+                                                <button @onclick="() => mod.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                            }
+                                            else
+                                            {
+                                                <button @onclick="() => option.Modifiers.Remove(mod)">@L["EditGameSystem_Delete"]</button>
+                                            }
+                                        </div>
+                                    }
+
+                                    <button @onclick="() => AddTraitOptionModifierRow(option)">
+                                        @L["EditGameSystem_AddModifierRow"]
+                                    </button>
+                                </div>
                             }
                         </div>
                     }
@@ -807,6 +866,18 @@ else
     {
         trait.Options.Add(new EditableTraitOptionDto { Name = string.Empty });
     }
+
+    private void AddTraitOptionModifierRow(EditableTraitOptionDto option)
+{
+    var firstAttribute = CurrentSystem?.AvailableBaseAttributes.FirstOrDefault();
+
+    option.Modifiers.Add(new EditableModifierDefinitionDto
+    {
+        TargetType = ModifierTargetType.BaseAttribute,
+        TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
+        AddValue = 0
+    });
+}
 
     private void AddGaugeRow()
     {
