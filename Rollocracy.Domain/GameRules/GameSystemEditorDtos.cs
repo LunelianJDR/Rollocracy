@@ -77,6 +77,9 @@ namespace Rollocracy.Domain.GameRules
         public Guid? TraitOptionId { get; set; }
         public string Name { get; set; } = string.Empty;
         public bool IsDeleted { get; set; }
+
+        // Modificateurs appliqués lorsque cette option est choisie.
+        public List<EditableModifierDefinitionDto> Modifiers { get; set; } = new();
     }
 
     public class EditableTraitDefinitionDto

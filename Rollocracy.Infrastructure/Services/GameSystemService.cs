@@ -618,6 +618,12 @@ namespace Rollocracy.Infrastructure.Services
                 .OrderBy(x => x.Name)
                 .ToListAsync();
 
+            // Modificateurs portés directement par les options de traits
+            var choiceOptionModifiers = await context.Set<ChoiceOptionModifierDefinition>()
+                .AsNoTracking()
+                .Where(x => options.Select(o => o.Id).Contains(x.TraitOptionId))
+                .ToListAsync();
+
             var gauges = await context.GaugeDefinitions
                 .AsNoTracking()
                 .Where(x => x.GameSystemId == system.Id)
@@ -751,7 +757,18 @@ namespace Rollocracy.Infrastructure.Services
                         .Select(o => new EditableTraitOptionDto
                         {
                             TraitOptionId = o.Id,
-                            Name = o.Name
+                            Name = o.Name,
+                            Modifiers = choiceOptionModifiers
+                                .Where(m => m.TraitOptionId == o.Id)
+                                .Select(m => new EditableModifierDefinitionDto
+                                {
+                                    ModifierId = m.Id,
+                                    TargetType = m.TargetType,
+                                    TargetId = m.TargetId,
+                                    TargetName = ResolveModifierTargetName(m.TargetType, m.TargetId, attributes, derivedStats, metricDefinitions),
+                                    AddValue = m.AddValue
+                                })
+                                .ToList()
                         })
                         .ToList()
                 }).ToList(),
@@ -847,6 +864,7 @@ namespace Rollocracy.Infrastructure.Services
             await SyncDerivedStatsAsync(context, system.Id, request.DerivedStats);
             await SyncMetricsAsync(context, system.Id, request.Metrics);
             await SyncTraitsAsync(context, system.Id, request.Traits, affectedCharacters);
+            await SyncChoiceOptionModifiersAsync(context, request.Traits);
             await SyncGaugesAsync(context, system.Id, affectedCharacters, request.Gauges);
             await SyncTalentsAsync(context, system.Id, affectedCharacters.Select(c => c.Id).ToList(), request.Talents);
             await SyncItemsAsync(context, system.Id, affectedCharacters.Select(c => c.Id).ToList(), request.Items);
@@ -920,6 +938,10 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => currentTraitIds.Contains(x.TraitDefinitionId))
                 .ToListAsync();
 
+            var currentChoiceOptionModifiers = await context.Set<ChoiceOptionModifierDefinition>()
+                .Where(x => currentOptions.Select(o => o.Id).Contains(x.TraitOptionId))
+                .ToListAsync();
+
             var currentAttributes = await context.AttributeDefinitions
                 .Where(x => x.GameSystemId == system.Id)
                 .ToListAsync();
@@ -979,6 +1001,7 @@ namespace Rollocracy.Infrastructure.Services
 
             context.TalentModifierDefinitions.RemoveRange(currentTalentModifiers);
             context.ItemModifierDefinitions.RemoveRange(currentItemModifiers);
+            context.Set<ChoiceOptionModifierDefinition>().RemoveRange(currentChoiceOptionModifiers);
 
             context.DerivedStatComponents.RemoveRange(currentDerivedComponents);
             context.DerivedStatDefinitions.RemoveRange(currentDerivedStats);
@@ -1026,6 +1049,9 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var modifier in payload.ItemModifiers)
                 context.ItemModifierDefinitions.Add(modifier);
+
+            foreach (var modifier in payload.ChoiceOptionModifiers)
+                context.Set<ChoiceOptionModifierDefinition>().Add(modifier);
 
             var currentCharactersById = currentCharacters.ToDictionary(x => x.Id, x => x);
 
@@ -1421,7 +1447,12 @@ namespace Rollocracy.Infrastructure.Services
                         .Where(x => characterIds.Contains(x.CharacterId) && removedOptionIds.Contains(x.TraitOptionId))
                         .ToListAsync();
 
+                    var optionModifiersToDelete = await context.Set<ChoiceOptionModifierDefinition>()
+                        .Where(x => removedOptionIds.Contains(x.TraitOptionId))
+                        .ToListAsync();
+
                     context.CharacterTraitValues.RemoveRange(traitValuesToDelete);
+                    context.Set<ChoiceOptionModifierDefinition>().RemoveRange(optionModifiersToDelete);
                     context.TraitOptions.RemoveRange(traitCurrentOptions.Where(x => removedOptionIds.Contains(x.Id)));
                 }
 
@@ -1433,12 +1464,18 @@ namespace Rollocracy.Infrastructure.Services
 
                 foreach (var optionDto in item.Options.Where(x => !x.TraitOptionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
                 {
+                    var optionId = Guid.NewGuid();
+
                     context.TraitOptions.Add(new TraitOption
                     {
-                        Id = Guid.NewGuid(),
+                        Id = optionId,
                         TraitDefinitionId = entity.Id,
                         Name = optionDto.Name.Trim()
                     });
+
+                    // On remonte l'Id généré dans le DTO pour pouvoir créer
+                    // les modificateurs de l'option dans la même application.
+                    optionDto.TraitOptionId = optionId;
                 }
             }
 
@@ -1450,30 +1487,87 @@ namespace Rollocracy.Infrastructure.Services
 
                 var optionsToDelete = currentOptions.Where(x => removedTraitIds.Contains(x.TraitDefinitionId)).ToList();
 
+                var optionModifiersToDelete = await context.Set<ChoiceOptionModifierDefinition>()
+                    .Where(x => optionsToDelete.Select(o => o.Id).Contains(x.TraitOptionId))
+                    .ToListAsync();
+
                 context.CharacterTraitValues.RemoveRange(valuesToDelete);
+                context.Set<ChoiceOptionModifierDefinition>().RemoveRange(optionModifiersToDelete);
                 context.TraitOptions.RemoveRange(optionsToDelete);
                 context.TraitDefinitions.RemoveRange(currentTraits.Where(x => removedTraitIds.Contains(x.Id)));
             }
 
             foreach (var item in requestTraits.Where(x => !x.TraitDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
             {
+                var traitId = Guid.NewGuid();
+
                 var trait = new TraitDefinition
                 {
-                    Id = Guid.NewGuid(),
+                    Id = traitId,
                     GameSystemId = gameSystemId,
                     Name = item.Name.Trim()
                 };
 
                 context.TraitDefinitions.Add(trait);
+                item.TraitDefinitionId = traitId;
 
                 foreach (var optionDto in item.Options.Where(x => !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
                 {
+                    var optionId = Guid.NewGuid();
+
                     context.TraitOptions.Add(new TraitOption
                     {
-                        Id = Guid.NewGuid(),
+                        Id = optionId,
                         TraitDefinitionId = trait.Id,
                         Name = optionDto.Name.Trim()
                     });
+
+                    optionDto.TraitOptionId = optionId;
+                }
+            }
+        }
+
+        private async Task SyncChoiceOptionModifiersAsync(
+            RollocracyDbContext context,
+            List<EditableTraitDefinitionDto> requestTraits)
+        {
+            foreach (var trait in requestTraits)
+            {
+                foreach (var option in trait.Options)
+                {
+                    if (!option.TraitOptionId.HasValue)
+                        continue;
+
+                    var currentModifiers = await context.Set<ChoiceOptionModifierDefinition>()
+                        .Where(x => x.TraitOptionId == option.TraitOptionId.Value)
+                        .ToListAsync();
+
+                    foreach (var modifier in option.Modifiers)
+                    {
+                        if (modifier.IsDeleted && modifier.ModifierId.HasValue)
+                        {
+                            var entity = currentModifiers.First(x => x.Id == modifier.ModifierId.Value);
+                            context.Set<ChoiceOptionModifierDefinition>().Remove(entity);
+                        }
+                        else if (modifier.ModifierId.HasValue)
+                        {
+                            var entity = currentModifiers.First(x => x.Id == modifier.ModifierId.Value);
+                            entity.TargetType = modifier.TargetType;
+                            entity.TargetId = modifier.TargetId;
+                            entity.AddValue = modifier.AddValue;
+                        }
+                        else if (!modifier.IsDeleted)
+                        {
+                            context.Set<ChoiceOptionModifierDefinition>().Add(new ChoiceOptionModifierDefinition
+                            {
+                                Id = Guid.NewGuid(),
+                                TraitOptionId = option.TraitOptionId.Value,
+                                TargetType = modifier.TargetType,
+                                TargetId = modifier.TargetId,
+                                AddValue = modifier.AddValue
+                            });
+                        }
+                    }
                 }
             }
         }
@@ -1607,6 +1701,13 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => traitIds.Contains(x.TraitDefinitionId))
                 .ToListAsync();
 
+            var traitOptionIds = traitOptions.Select(x => x.Id).ToList();
+
+            var choiceOptionModifiers = await context.ChoiceOptionModifierDefinitions
+                .AsNoTracking()
+                .Where(x => traitOptionIds.Contains(x.TraitOptionId))
+                .ToListAsync();
+
             var metricDefinitions = await context.MetricDefinitions
                 .AsNoTracking()
                 .Where(x => x.GameSystemId == system.Id)
@@ -1696,6 +1797,7 @@ namespace Rollocracy.Infrastructure.Services
                 TalentModifiers = talentModifiers.Select(CloneTalentModifier).ToList(),
                 Items = items.Select(CloneItem).ToList(),
                 ItemModifiers = itemModifiers.Select(CloneItemModifier).ToList(),
+                ChoiceOptionModifiers = choiceOptionModifiers.Select(CloneChoiceOptionModifier).ToList(),
                 Characters = affectedCharacters.Select(x => new CharacterSnapshotItem
                 {
                     Id = x.Id,
@@ -1844,6 +1946,15 @@ namespace Rollocracy.Infrastructure.Services
         {
             Id = x.Id,
             ItemDefinitionId = x.ItemDefinitionId,
+            TargetType = x.TargetType,
+            TargetId = x.TargetId,
+            AddValue = x.AddValue
+        };
+
+        private static ChoiceOptionModifierDefinition CloneChoiceOptionModifier(ChoiceOptionModifierDefinition x) => new()
+        {
+            Id = x.Id,
+            TraitOptionId = x.TraitOptionId,
             TargetType = x.TargetType,
             TargetId = x.TargetId,
             AddValue = x.AddValue
@@ -2461,6 +2572,7 @@ namespace Rollocracy.Infrastructure.Services
             public List<TalentModifierDefinition> TalentModifiers { get; set; } = new();
             public List<ItemDefinition> Items { get; set; } = new();
             public List<ItemModifierDefinition> ItemModifiers { get; set; } = new();
+            public List<ChoiceOptionModifierDefinition> ChoiceOptionModifiers { get; set; } = new();
             public List<CharacterSnapshotItem> Characters { get; set; } = new();
             public List<CharacterAttributeValue> AttributeValues { get; set; } = new();
             public List<CharacterGaugeValue> GaugeValues { get; set; } = new();
