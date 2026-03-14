@@ -10,6 +10,13 @@ namespace Rollocracy.Domain.GameRules
 
         public string Name { get; set; } = string.Empty;
 
+        // Valeur de base ajoutée au calcul pondéré.
+        public int BaseValue { get; set; } = 0;
+
+        public int MinValue { get; set; } = 0;
+
+        public int MaxValue { get; set; } = 100;
+
         public ComputedValueRoundMode RoundMode { get; set; } = ComputedValueRoundMode.Ceiling;
 
         public int DisplayOrder { get; set; }

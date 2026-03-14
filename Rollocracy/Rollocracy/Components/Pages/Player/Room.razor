@@ -356,6 +356,32 @@ else
         }
 
         builder.OpenElement(seq++, "h5");
+        builder.AddContent(seq++, L["EditCharacter_Talents"]);
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "ul");
+        foreach (var talentLine in sheet.Talents)
+        {
+            builder.OpenElement(seq++, "li");
+            builder.AddContent(seq++, talentLine.Name);
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "h5");
+        builder.AddContent(seq++, L["EditCharacter_Items"]);
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "ul");
+        foreach (var itemLine in sheet.Items)
+        {
+            builder.OpenElement(seq++, "li");
+            builder.AddContent(seq++, itemLine.Name);
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "h5");
         builder.AddContent(seq++, L["PlayerRoom_Attributes"]);
         builder.CloseElement();
 

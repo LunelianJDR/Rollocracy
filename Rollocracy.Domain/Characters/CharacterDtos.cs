@@ -30,6 +30,12 @@ namespace Rollocracy.Domain.Characters
         public int Value { get; set; }
     }
 
+    public class CharacterMetricLineDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public int Value { get; set; }
+    }
+
     public class CharacterTraitLineDto
     {
         public string TraitName { get; set; } = string.Empty;
@@ -45,6 +51,12 @@ namespace Rollocracy.Domain.Characters
         public bool IsHealthGauge { get; set; }
     }
 
+    public class CharacterNameLineDto
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
     public class CharacterSheetDto
     {
         public Guid CharacterId { get; set; }
@@ -52,10 +64,14 @@ namespace Rollocracy.Domain.Characters
         public string Biography { get; set; } = string.Empty;
         public bool IsAlive { get; set; }
         public DateTime? DiedAtUtc { get; set; }
+
         public List<CharacterAttributeLineDto> Attributes { get; set; } = new();
         public List<CharacterDerivedStatLineDto> DerivedStats { get; set; } = new();
+        public List<CharacterMetricLineDto> Metrics { get; set; } = new();
         public List<CharacterTraitLineDto> Traits { get; set; } = new();
         public List<CharacterGaugeLineDto> Gauges { get; set; } = new();
+        public List<CharacterNameLineDto> Talents { get; set; } = new();
+        public List<CharacterNameLineDto> Items { get; set; } = new();
     }
 
     public class CharacterCreationAttributeDto
@@ -109,10 +125,14 @@ namespace Rollocracy.Domain.Characters
         public string PlayerName { get; set; } = string.Empty;
         public bool IsAlive { get; set; }
         public bool IsOnline { get; set; }
+
         public List<CharacterAttributeLineDto> Attributes { get; set; } = new();
         public List<CharacterDerivedStatLineDto> DerivedStats { get; set; } = new();
+        public List<CharacterMetricLineDto> Metrics { get; set; } = new();
         public List<CharacterTraitLineDto> Traits { get; set; } = new();
         public List<CharacterGaugeLineDto> Gauges { get; set; } = new();
+        public List<CharacterNameLineDto> Talents { get; set; } = new();
+        public List<CharacterNameLineDto> Items { get; set; } = new();
     }
 
     public class EditableCharacterAttributeDto
@@ -121,13 +141,6 @@ namespace Rollocracy.Domain.Characters
         public string Name { get; set; } = string.Empty;
         public int MinValue { get; set; }
         public int MaxValue { get; set; }
-        public int Value { get; set; }
-    }
-
-    public class EditableCharacterDerivedStatDto
-    {
-        public Guid DerivedStatDefinitionId { get; set; }
-        public string Name { get; set; } = string.Empty;
         public int Value { get; set; }
     }
 
@@ -155,6 +168,13 @@ namespace Rollocracy.Domain.Characters
         public List<EditableCharacterTraitOptionDto> Options { get; set; } = new();
     }
 
+    public class EditableCharacterGrantDto
+    {
+        public Guid DefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public bool IsSelected { get; set; }
+    }
+
     public class EditableCharacterDto
     {
         public Guid CharacterId { get; set; }
@@ -165,9 +185,12 @@ namespace Rollocracy.Domain.Characters
         public bool IsAlive { get; set; }
         public DateTime? DiedAtUtc { get; set; }
         public List<EditableCharacterAttributeDto> Attributes { get; set; } = new();
-        public List<EditableCharacterDerivedStatDto> DerivedStats { get; set; } = new();
+        public List<CharacterDerivedStatLineDto> DerivedStats { get; set; } = new();
+        public List<CharacterMetricLineDto> Metrics { get; set; } = new();
         public List<EditableCharacterTraitDto> Traits { get; set; } = new();
         public List<EditableCharacterGaugeDto> Gauges { get; set; } = new();
+        public List<EditableCharacterGrantDto> Talents { get; set; } = new();
+        public List<EditableCharacterGrantDto> Items { get; set; } = new();
     }
 
     public class UpdateCharacterRequestDto
@@ -177,6 +200,8 @@ namespace Rollocracy.Domain.Characters
         public List<EditableCharacterAttributeDto> Attributes { get; set; } = new();
         public List<EditableCharacterTraitDto> Traits { get; set; } = new();
         public List<EditableCharacterGaugeDto> Gauges { get; set; } = new();
+        public List<Guid> SelectedTalentIds { get; set; } = new();
+        public List<Guid> SelectedItemIds { get; set; } = new();
     }
 
     public class CharacterUpdateResultDto

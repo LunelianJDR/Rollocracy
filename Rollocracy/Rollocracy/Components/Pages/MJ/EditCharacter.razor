@@ -50,7 +50,6 @@ else
     <hr />
 
     <h4>@L["PlayerRoom_Attributes"]</h4>
-
     @foreach (var attributeItem in Character.Attributes)
     {
         <div style="margin-top:8px;">
@@ -62,24 +61,30 @@ else
     @if (Character.DerivedStats.Count > 0)
     {
         <hr />
-
         <h4>@L["PlayerRoom_DerivedStats"]</h4>
+        <ul>
+            @foreach (var derivedItem in Character.DerivedStats)
+            {
+                <li>@derivedItem.Name : @derivedItem.Value</li>
+            }
+        </ul>
+    }
 
-        @foreach (var derivedItem in Character.DerivedStats)
-        {
-            <div style="margin-top:8px;">
-                <label>@derivedItem.Name</label><br />
-                <input value="@derivedItem.Value" readonly />
-            </div>
-        }
-
-        <p>@L["EditCharacter_DerivedStatsReadonly"]</p>
+    @if (Character.Metrics.Count > 0)
+    {
+        <hr />
+        <h4>@L["EditCharacter_Metrics"]</h4>
+        <ul>
+            @foreach (var metricItem in Character.Metrics)
+            {
+                <li>@metricItem.Name : @metricItem.Value</li>
+            }
+        </ul>
     }
 
     <hr />
 
     <h4>@L["PlayerRoom_Traits"]</h4>
-
     @foreach (var traitItem in Character.Traits)
     {
         <div style="margin-top:8px;">
@@ -97,7 +102,6 @@ else
     <hr />
 
     <h4>@L["PlayerRoom_Gauges"]</h4>
-
     @foreach (var gaugeItem in Character.Gauges)
     {
         <div style="margin-top:8px;">
@@ -110,6 +114,46 @@ else
             </label><br />
             <input type="number" min="@gaugeItem.MinValue" max="@gaugeItem.MaxValue" @bind="gaugeItem.Value" />
         </div>
+    }
+
+    <hr />
+
+    <h4>@L["EditCharacter_Talents"]</h4>
+    @if (Character.Talents.Count == 0)
+    {
+        <p>@L["EditCharacter_NoTalentsDefined"]</p>
+    }
+    else
+    {
+        @foreach (var talentItem in Character.Talents)
+        {
+            <div>
+                <label>
+                    <input type="checkbox" @bind="talentItem.IsSelected" />
+                    @talentItem.Name
+                </label>
+            </div>
+        }
+    }
+
+    <hr />
+
+    <h4>@L["EditCharacter_Items"]</h4>
+    @if (Character.Items.Count == 0)
+    {
+        <p>@L["EditCharacter_NoItemsDefined"]</p>
+    }
+    else
+    {
+        @foreach (var item in Character.Items)
+        {
+            <div>
+                <label>
+                    <input type="checkbox" @bind="item.IsSelected" />
+                    @item.Name
+                </label>
+            </div>
+        }
     }
 
     <div style="margin-top:16px;">
@@ -198,7 +242,9 @@ else
                     Biography = Character.Biography,
                     Attributes = Character.Attributes,
                     Traits = Character.Traits,
-                    Gauges = Character.Gauges
+                    Gauges = Character.Gauges,
+                    SelectedTalentIds = Character.Talents.Where(x => x.IsSelected).Select(x => x.DefinitionId).ToList(),
+                    SelectedItemIds = Character.Items.Where(x => x.IsSelected).Select(x => x.DefinitionId).ToList()
                 });
 
             await LoadCharacter();

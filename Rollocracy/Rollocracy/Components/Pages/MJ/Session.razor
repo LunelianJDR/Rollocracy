@@ -459,43 +459,30 @@ else
 
         <button @onclick="AddPollOption">@L["Poll_AddOption"]</button>
 
-        <h5>@L["Poll_WeightRules"]</h5>
+        <h5>@L["Poll_VoteWeightMode"]</h5>
 
-        <button @onclick="AddPollWeightRule">@L["Poll_AddWeightRule"]</button>
+        <div>
+            <label>@L["Poll_VoteWeightMode"]</label><br />
+            <select @bind="SelectedPollVoteWeightMode">
+                <option value="@PollVoteWeightMode.FixedOne">@L["Poll_VoteWeightModeFixedOne"]</option>
+                <option value="@PollVoteWeightMode.Metric">@L["Poll_VoteWeightModeMetric"]</option>
+            </select>
+        </div>
 
-        @if (PollWeightRuleRows.Count == 0)
+        @if (SelectedPollVoteWeightMode == PollVoteWeightMode.Metric)
         {
-            <p>@L["Poll_NoWeightRule"]</p>
-        }
-        else
-        {
-            @foreach (var rule in PollWeightRuleRows)
-            {
-                <div style="margin-top:0.5rem;">
-                    <select @bind="rule.TraitDefinitionId" @bind:after="LoadTraitOptionForWeightRule">
-                        @foreach (var traitDefinition in AvailableTraitDefinitions)
-                        {
-                            <option value="@traitDefinition.Id">@traitDefinition.Name</option>
-                        }
-                    </select>
-
-                    @if (TraitOptionsByDefinition.TryGetValue(rule.TraitDefinitionId, out var traitOptions))
+            <div style="margin-top:0.5rem;">
+                <label>@L["Poll_VoteWeightMetric"]</label><br />
+                <select @bind="SelectedPollMetricId">
+                    <option value="">@L["Poll_SelectMetric"]</option>
+                    @foreach (var metric in AvailableMetrics)
                     {
-                        <select @bind="rule.TraitOptionId">
-                            @foreach (var option in traitOptions)
-                            {
-                                <option value="@option.Id">@option.Name</option>
-                            }
-                        </select>
+                        <option value="@metric.Id">@metric.Name</option>
                     }
+                </select>
+            </div>
 
-                    <input type="number" step="0.01" min="0" @bind="rule.WeightBonus" />
-
-                    <button @onclick="() => RemovePollWeightRule(rule.RowId)">
-                        @L["Common_Remove"]
-                    </button>
-                </div>
-            }
+            <p>@L["Poll_VoteWeightMetricHelp"]</p>
         }
 
         <button @onclick="CreatePoll">@L["Poll_Create"]</button>
@@ -590,6 +577,13 @@ else
                 </ul>
             }
         }
+
+        <p>
+            <strong>@L["Poll_VoteWeightMode"] :</strong>
+            @(LatestPoll.VoteWeightMode == PollVoteWeightMode.Metric
+                ? $"{L["Poll_VoteWeightModeMetric"]} - {LatestPoll.MetricName}"
+                : L["Poll_VoteWeightModeFixedOne"])
+        </p>
 
         @if (LatestPoll.WeightRules.Count > 0)
         {
@@ -754,13 +748,34 @@ else
         }
 
         <h5>@L["PlayerRoom_Traits"]</h5>
-
         <ul>
             @foreach (var traitLine in SelectedCharacterSheet.Traits)
             {
                 <li>@traitLine.TraitName : @traitLine.OptionName</li>
             }
         </ul>
+
+        @if (SelectedCharacterSheet.Talents != null && SelectedCharacterSheet.Talents.Count > 0)
+        {
+            <h5>@L["EditCharacter_Talents"]</h5>
+            <ul>
+                @foreach (var talentLine in SelectedCharacterSheet.Talents)
+                {
+                    <li>@talentLine.Name</li>
+                }
+            </ul>
+        }
+
+        @if (SelectedCharacterSheet.Items != null && SelectedCharacterSheet.Items.Count > 0)
+        {
+            <h5>@L["EditCharacter_Items"]</h5>
+            <ul>
+                @foreach (var itemLine in SelectedCharacterSheet.Items)
+                {
+                    <li>@itemLine.Name</li>
+                }
+            </ul>
+        }
 
         <h5>@L["PlayerRoom_Gauges"]</h5>
         <ul>
@@ -798,6 +813,7 @@ else
     private List<TraitDefinition> AvailableTraitDefinitions = new();
     private Dictionary<Guid, List<TraitOption>> TraitOptionsByDefinition = new();
     private List<GaugeDefinition> AvailableGaugeDefinitions = new();
+    private List<MetricDefinition> AvailableMetrics = new();
 
     private TestModifierMode NewModifierMode = TestModifierMode.Bonus;
     private int NewDifficultyValue = 0;
@@ -905,6 +921,7 @@ else
         AvailableTraitDefinitions.Clear();
         TraitOptionsByDefinition.Clear();
         AvailableGaugeDefinitions.Clear();
+        AvailableMetrics.Clear();
         SelectedGameSystemId = string.Empty;
 
         if (CurrentSession?.GameSystemId is Guid gameSystemId)
@@ -916,6 +933,7 @@ else
                 AvailableAttributes = await GameSystemService.GetAttributeDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
                 AvailableTraitDefinitions = await GameSystemService.GetTraitDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
                 AvailableGaugeDefinitions = await GameSystemService.GetGaugeDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+                AvailableMetrics = await GameSystemService.GetMetricDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
 
                 foreach (var traitDefinition in AvailableTraitDefinitions)
                 {
@@ -1231,6 +1249,8 @@ else
     private bool ConfirmRollbackVisible;
 
     private PollForGameMasterDto? LatestPoll;
+    private PollVoteWeightMode SelectedPollVoteWeightMode = PollVoteWeightMode.FixedOne;
+    private string SelectedPollMetricId = string.Empty;
     private string NewPollQuestion = string.Empty;
     private List<PollOptionRowModel> NewPollOptions = new()
         {
@@ -1301,19 +1321,18 @@ else
                         Value = c.Value
                     }).ToList()
                 }).ToList(),
-                WeightRules = PollWeightRuleRows.Select(r => new PollWeightRuleDraftDto
-                {
-                    TraitDefinitionId = r.TraitDefinitionId,
-                    TraitOptionId = r.TraitOptionId,
-                    WeightBonus = r.WeightBonus
-                }).ToList()
+                VoteWeightMode = SelectedPollVoteWeightMode,
+                MetricDefinitionId = SelectedPollVoteWeightMode == PollVoteWeightMode.Metric && !string.IsNullOrWhiteSpace(SelectedPollMetricId)
+                    ? Guid.Parse(SelectedPollMetricId)
+                    : null
             };
 
             LatestPoll = await PollService.CreatePollAsync(SessionId, CurrentUserId, request);
 
             NewPollQuestion = string.Empty;
             NewPollOptions = new List<PollOptionRowModel> { new(), new() };
-            PollWeightRuleRows = new List<PollWeightRuleRowModel>();
+            SelectedPollVoteWeightMode = PollVoteWeightMode.FixedOne;
+            SelectedPollMetricId = string.Empty;
 
             Message = L["Poll_Created"];
         }
@@ -1410,56 +1429,6 @@ else
     private Task TogglePollVoteDetails()
     {
         ShowPollVoteDetails = !ShowPollVoteDetails;
-        return Task.CompletedTask;
-    }
-
-    private List<PollWeightRuleRowModel> PollWeightRuleRows = new();
-
-    private class PollWeightRuleRowModel
-    {
-        public Guid RowId { get; set; }
-
-        public Guid TraitDefinitionId { get; set; }
-
-        public Guid TraitOptionId { get; set; }
-
-        public decimal WeightBonus { get; set; }
-    }
-
-    private Task LoadTraitOptionForWeightRule()
-    {
-        return Task.CompletedTask;
-    }
-
-    private Task AddPollWeightRule()
-    {
-        if (AvailableTraitDefinitions.Count == 0)
-            return Task.CompletedTask;
-
-        var traitDefinition = AvailableTraitDefinitions[0];
-        var optionId = TraitOptionsByDefinition.TryGetValue(traitDefinition.Id, out var options) && options.Count > 0
-            ? options[0].Id
-            : Guid.Empty;
-
-        PollWeightRuleRows.Add(new PollWeightRuleRowModel
-        {
-            RowId = Guid.NewGuid(),
-            TraitDefinitionId = traitDefinition.Id,
-            TraitOptionId = optionId,
-            WeightBonus = 0.00m
-        });
-
-        return Task.CompletedTask;
-    }
-
-    private Task RemovePollWeightRule(Guid rowId)
-    {
-        var row = PollWeightRuleRows.FirstOrDefault(x => x.RowId == rowId);
-        if (row is not null)
-        {
-            PollWeightRuleRows.Remove(row);
-        }
-
         return Task.CompletedTask;
     }
 

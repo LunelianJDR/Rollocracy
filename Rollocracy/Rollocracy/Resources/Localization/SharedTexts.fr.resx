@@ -1340,4 +1340,108 @@
 	<data name="Backend_InvalidDerivedStatComponentAttribute" xml:space="preserve">
     <value>Un composant de compétence calculée doit référencer une caractéristique valide.</value>
   </data>
+	<data name="EditGameSystem_MetricsSection" xml:space="preserve">
+    <value>Metrics</value>
+  </data>
+	<data name="EditGameSystem_MetricsHelp" xml:space="preserve">
+    <value>Les metrics sont des valeurs calculées utilisées par les mécaniques du système, par exemple le poids de vote des sondages.</value>
+  </data>
+	<data name="EditGameSystem_AddMetricRow" xml:space="preserve">
+    <value>Ajouter une metric</value>
+  </data>
+	<data name="EditGameSystem_AddMetricComponentRow" xml:space="preserve">
+    <value>Ajouter un composant de metric</value>
+  </data>
+	<data name="EditGameSystem_MetricBaseValue" xml:space="preserve">
+    <value>Valeur de base</value>
+  </data>
+
+	<data name="Poll_VoteWeightMode" xml:space="preserve">
+    <value>Mode de poids de vote</value>
+  </data>
+	<data name="Poll_VoteWeightModeFixedOne" xml:space="preserve">
+    <value>Poids fixe à 1</value>
+  </data>
+	<data name="Poll_VoteWeightModeMetric" xml:space="preserve">
+    <value>Metric du système</value>
+  </data>
+	<data name="Poll_SelectMetric" xml:space="preserve">
+    <value>Sélectionner une metric</value>
+  </data>
+	<data name="Poll_VoteWeightMetric" xml:space="preserve">
+    <value>Metric utilisée</value>
+  </data>
+	<data name="Poll_VoteWeightMetricHelp" xml:space="preserve">
+    <value>Si une metric est choisie, le poids du vote est calculé automatiquement à partir du personnage.</value>
+  </data>
+
+	<data name="Backend_MetricNameRequired" xml:space="preserve">
+    <value>Chaque metric doit avoir un nom.</value>
+  </data>
+	<data name="Backend_InvalidMetricRange" xml:space="preserve">
+    <value>La valeur minimale d'une metric ne peut pas dépasser sa valeur maximale.</value>
+  </data>
+	<data name="Backend_InvalidMetricBaseValue" xml:space="preserve">
+    <value>La valeur de base d'une metric doit rester dans ses bornes min/max.</value>
+  </data>
+	<data name="Backend_MetricMustHaveAtLeastOneComponent" xml:space="preserve">
+    <value>Une metric doit contenir au moins un composant.</value>
+  </data>
+	<data name="Backend_InvalidMetricComponentWeight" xml:space="preserve">
+    <value>Le coefficient d'un composant de metric doit être supérieur ou égal à 0.</value>
+  </data>
+	<data name="Backend_PollMetricRequired" xml:space="preserve">
+    <value>Une metric doit être sélectionnée pour ce mode de poids de vote.</value>
+  </data>
+	<data name="Backend_PollMetricNotFound" xml:space="preserve">
+    <value>La metric sélectionnée pour ce sondage est introuvable.</value>
+  </data>
+	<data name="EditCharacter_Metrics" xml:space="preserve">
+    <value>Metrics</value>
+  </data>
+	<data name="EditCharacter_Talents" xml:space="preserve">
+    <value>Talents</value>
+  </data>
+	<data name="EditCharacter_Items" xml:space="preserve">
+    <value>Objets</value>
+  </data>
+	<data name="EditCharacter_NoTalentsDefined" xml:space="preserve">
+    <value>Aucun talent n'est défini dans ce système.</value>
+  </data>
+	<data name="EditCharacter_NoItemsDefined" xml:space="preserve">
+    <value>Aucun objet n'est défini dans ce système.</value>
+  </data>
+	<data name="EditGameSystem_TalentsSection" xml:space="preserve">
+    <value>Talents</value>
+  </data>
+	<data name="EditGameSystem_ItemsSection" xml:space="preserve">
+    <value>Objets</value>
+  </data>
+	<data name="EditGameSystem_AddTalentRow" xml:space="preserve">
+    <value>Ajouter un talent</value>
+  </data>
+	<data name="EditGameSystem_AddItemRow" xml:space="preserve">
+    <value>Ajouter un objet</value>
+  </data>
+	<data name="Backend_TalentNameRequired" xml:space="preserve">
+    <value>Chaque talent doit avoir un nom.</value>
+  </data>
+	<data name="Backend_ItemNameRequired" xml:space="preserve">
+    <value>Chaque objet doit avoir un nom.</value>
+  </data>
+	<data name="EditGameSystem_ModifiersSection" xml:space="preserve">
+  <value>Modificateurs</value>
+</data>
+	<data name="EditGameSystem_AddModifierRow" xml:space="preserve">
+  <value>Ajouter un modificateur</value>
+</data>
+	<data name="EditGameSystem_ModifierTarget_Attribute" xml:space="preserve">
+  <value>Caractéristique</value>
+</data>
+	<data name="EditGameSystem_ModifierTarget_DerivedStat" xml:space="preserve">
+  <value>Compétence</value>
+</data>
+	<data name="EditGameSystem_ModifierTarget_Metric" xml:space="preserve">
+  <value>Metric</value>
+</data>
 </root>

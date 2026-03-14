@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Rollocracy.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Rollocracy.Infrastructure.Persistence;
 namespace Rollocracy.Infrastructure.Migrations
 {
     [DbContext(typeof(RollocracyDbContext))]
-    partial class RollocracyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260313144239_AddTalentsItemsAndModifiers")]
+    partial class AddTalentsItemsAndModifiers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -352,29 +355,6 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("CharacterTraitValues");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.ChoiceOptionModifierDefinition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AddValue")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("TargetId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("TargetType")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("TraitOptionId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ChoiceOptionModifierDefinitions");
                 });
 
             modelBuilder.Entity("Rollocracy.Domain.GameRules.DerivedStatComponent", b =>

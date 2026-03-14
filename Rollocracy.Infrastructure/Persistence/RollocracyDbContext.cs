@@ -1,9 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
-using Rollocracy.Infrastructure.Events;
 using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Polls;
+using Rollocracy.Infrastructure.Events;
 
 namespace Rollocracy.Infrastructure.Persistence
 {
@@ -49,6 +50,18 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<SessionPollWeightRule> SessionPollWeightRules => Set<SessionPollWeightRule>();
         public DbSet<SessionPollOptionConsequence> SessionPollOptionConsequences => Set<SessionPollOptionConsequence>();
         public DbSet<SessionPollAppliedEffect> SessionPollAppliedEffects => Set<SessionPollAppliedEffect>();
+
+        public DbSet<TalentDefinition> TalentDefinitions => Set<TalentDefinition>();
+        public DbSet<TalentModifierDefinition> TalentModifierDefinitions => Set<TalentModifierDefinition>();
+
+        public DbSet<ItemDefinition> ItemDefinitions => Set<ItemDefinition>();
+        public DbSet<ItemModifierDefinition> ItemModifierDefinitions => Set<ItemModifierDefinition>();
+
+        public DbSet<CharacterTalent> CharacterTalents => Set<CharacterTalent>();
+        public DbSet<CharacterItem> CharacterItems => Set<CharacterItem>();
+
+        public DbSet<ChoiceOptionModifierDefinition> ChoiceOptionModifierDefinitions => Set<ChoiceOptionModifierDefinition>();
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

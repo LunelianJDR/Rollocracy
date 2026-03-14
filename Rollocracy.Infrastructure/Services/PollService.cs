@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Domain.Polls;
@@ -26,6 +27,7 @@ namespace Rollocracy.Infrastructure.Services
             _presenceTracker = presenceTracker;
         }
 
+        
         public async Task<PollForGameMasterDto> CreatePollAsync(Guid sessionId, Guid gameMasterUserAccountId, PollCreateRequestDto request)
         {
             ValidateCreateRequest(request);
@@ -50,6 +52,27 @@ namespace Rollocracy.Infrastructure.Services
             if (!gameSystemId.HasValue)
                 throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
 
+            Guid? metricDefinitionId = null;
+            var metricNameSnapshot = string.Empty;
+
+            if (request.VoteWeightMode == PollVoteWeightMode.Metric)
+            {
+                if (!request.MetricDefinitionId.HasValue)
+                    throw new Exception(_localizer["Backend_PollMetricRequired"]);
+
+                var metricDefinition = await context.MetricDefinitions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(m =>
+                        m.Id == request.MetricDefinitionId.Value &&
+                        m.GameSystemId == gameSystemId.Value);
+
+                if (metricDefinition == null)
+                    throw new Exception(_localizer["Backend_InvalidPollMetric"]);
+
+                metricDefinitionId = metricDefinition.Id;
+                metricNameSnapshot = metricDefinition.Name;
+            }
+
             var poll = new SessionPoll
             {
                 Id = Guid.NewGuid(),
@@ -57,6 +80,9 @@ namespace Rollocracy.Infrastructure.Services
                 Question = request.Question.Trim(),
                 IsClosed = false,
                 ConsequencesApplied = false,
+                VoteWeightMode = request.VoteWeightMode,
+                MetricDefinitionId = metricDefinitionId,
+                MetricNameSnapshot = metricNameSnapshot,
                 CreatedAtUtc = DateTime.UtcNow
             };
 
@@ -67,7 +93,6 @@ namespace Rollocracy.Infrastructure.Services
             for (var i = 0; i < request.Options.Count; i++)
             {
                 var option = request.Options[i];
-
                 var optionId = Guid.NewGuid();
                 optionIdMap[i] = optionId;
 
@@ -80,6 +105,8 @@ namespace Rollocracy.Infrastructure.Services
                 });
             }
 
+            // Compatibilité : on n'utilise plus la configuration manuelle des poids
+            // dans le nouveau flux, mais on laisse la table en place pour l'historique.
             foreach (var weightRule in request.WeightRules.Where(r => r.WeightBonus > 0))
             {
                 context.SessionPollWeightRules.Add(new SessionPollWeightRule
@@ -125,7 +152,7 @@ namespace Rollocracy.Infrastructure.Services
             return await BuildGameMasterDtoAsync(context, poll.Id);
         }
 
-        public async Task<PollForGameMasterDto?> GetLatestPollForGameMasterAsync(Guid sessionId)
+public async Task<PollForGameMasterDto?> GetLatestPollForGameMasterAsync(Guid sessionId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -207,6 +234,7 @@ namespace Rollocracy.Infrastructure.Services
             return await BuildPlayerDtoAsync(context, poll.Id, playerSessionId);
         }
 
+        
         public async Task VoteAsync(Guid playerSessionId, Guid pollId, Guid optionId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -249,33 +277,48 @@ namespace Rollocracy.Infrastructure.Services
             if (existingVote != null)
                 throw new Exception(_localizer["Backend_PlayerAlreadyVoted"]);
 
-            var weightRules = await context.SessionPollWeightRules
-                .AsNoTracking()
-                .Where(r => r.SessionPollId == pollId)
-                .ToListAsync();
-
-            var characterTraitValues = await context.CharacterTraitValues
-                .AsNoTracking()
-                .Where(v => v.CharacterId == aliveCharacter.Id)
-                .ToListAsync();
-
             decimal voteWeight = 1.00m;
 
-            foreach (var rule in weightRules)
+            if (poll.VoteWeightMode == PollVoteWeightMode.Metric)
             {
-                var matches = characterTraitValues.Any(v =>
-                    v.TraitDefinitionId == rule.TraitDefinitionId &&
-                    v.TraitOptionId == rule.TraitOptionId);
+                if (!poll.MetricDefinitionId.HasValue)
+                    throw new Exception(_localizer["Backend_InvalidPollMetric"]);
 
-                if (matches)
+                voteWeight = await ComputeMetricVoteWeightAsync(context, poll.MetricDefinitionId.Value, aliveCharacter.Id);
+            }
+            else
+            {
+                // Compatibilité ancienne logique : si un vieux sondage possède encore des règles,
+                // on les applique ; sinon poids fixe = 1.
+                var weightRules = await context.SessionPollWeightRules
+                    .AsNoTracking()
+                    .Where(r => r.SessionPollId == pollId)
+                    .ToListAsync();
+
+                if (weightRules.Count > 0)
                 {
-                    voteWeight += rule.WeightBonus;
+                    var characterTraitValues = await context.CharacterTraitValues
+                        .AsNoTracking()
+                        .Where(v => v.CharacterId == aliveCharacter.Id)
+                        .ToListAsync();
+
+                    foreach (var rule in weightRules)
+                    {
+                        var matches = characterTraitValues.Any(v =>
+                            v.TraitDefinitionId == rule.TraitDefinitionId &&
+                            v.TraitOptionId == rule.TraitOptionId);
+
+                        if (matches)
+                        {
+                            voteWeight += rule.WeightBonus;
+                        }
+                    }
+
+                    voteWeight = Decimal.Round(voteWeight, 2, MidpointRounding.AwayFromZero);
+                    if (voteWeight < 1.00m)
+                        voteWeight = 1.00m;
                 }
             }
-
-            voteWeight = Decimal.Round(voteWeight, 2, MidpointRounding.AwayFromZero);
-            if (voteWeight < 1.00m)
-                voteWeight = 1.00m;
 
             context.SessionPollVotes.Add(new SessionPollVote
             {
@@ -293,7 +336,7 @@ namespace Rollocracy.Infrastructure.Services
             await _sessionNotifier.NotifyPollChangedAsync(poll.SessionId);
         }
 
-        public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
+public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -553,6 +596,156 @@ namespace Rollocracy.Infrastructure.Services
             await _sessionNotifier.NotifyPollChangedAsync(sessionId);
         }
 
+        private async Task<decimal> ComputeMetricVoteWeightAsync(
+    RollocracyDbContext context,
+    Guid metricDefinitionId,
+    Guid characterId)
+        {
+            var metricDefinition = await context.MetricDefinitions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == metricDefinitionId);
+
+            if (metricDefinition == null)
+                throw new Exception(_localizer["Backend_PollMetricNotFound"]);
+
+            var gameSystemId = metricDefinition.GameSystemId;
+
+            var attributeDefinitions = await context.AttributeDefinitions
+                .AsNoTracking()
+                .Where(a => a.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var attributeValues = await context.CharacterAttributeValues
+                .AsNoTracking()
+                .Where(v => v.CharacterId == characterId)
+                .ToListAsync();
+
+            var traitValues = await context.CharacterTraitValues
+                .AsNoTracking()
+                .Where(v => v.CharacterId == characterId)
+                .ToListAsync();
+
+            var traitOptionIds = traitValues
+                .Select(v => v.TraitOptionId)
+                .Distinct()
+                .ToList();
+
+            var choiceModifiers = await context.ChoiceOptionModifierDefinitions
+                .AsNoTracking()
+                .Where(m => traitOptionIds.Contains(m.TraitOptionId))
+                .ToListAsync();
+
+            var talentIds = await context.CharacterTalents
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId)
+                .Select(x => x.TalentDefinitionId)
+                .ToListAsync();
+
+            var itemIds = await context.CharacterItems
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId)
+                .Select(x => x.ItemDefinitionId)
+                .ToListAsync();
+
+            var talentModifiers = await context.TalentModifierDefinitions
+                .AsNoTracking()
+                .Where(m => talentIds.Contains(m.TalentDefinitionId))
+                .ToListAsync();
+
+            var itemModifiers = await context.ItemModifierDefinitions
+                .AsNoTracking()
+                .Where(m => itemIds.Contains(m.ItemDefinitionId))
+                .ToListAsync();
+
+            var allModifiers = choiceModifiers
+                .Select(m => new RuntimeMetricModifier
+                {
+                    TargetType = m.TargetType,
+                    TargetId = m.TargetId,
+                    AddValue = m.AddValue
+                })
+                .Concat(talentModifiers.Select(m => new RuntimeMetricModifier
+                {
+                    TargetType = m.TargetType,
+                    TargetId = m.TargetId,
+                    AddValue = m.AddValue
+                }))
+                .Concat(itemModifiers.Select(m => new RuntimeMetricModifier
+                {
+                    TargetType = m.TargetType,
+                    TargetId = m.TargetId,
+                    AddValue = m.AddValue
+                }))
+                .ToList();
+
+            var effectiveAttributeValues = attributeDefinitions.ToDictionary(
+                definition => definition.Id,
+                definition =>
+                {
+                    var baseValue = attributeValues.FirstOrDefault(v => v.AttributeDefinitionId == definition.Id)?.Value
+                        ?? definition.DefaultValue;
+
+                    var modifier = allModifiers
+                        .Where(m => m.TargetType == ModifierTargetType.BaseAttribute && m.TargetId == definition.Id)
+                        .Sum(m => m.AddValue);
+
+                    var effectiveValue = baseValue + modifier;
+                    return Math.Clamp(effectiveValue, definition.MinValue, definition.MaxValue);
+                });
+
+            var components = await context.MetricComponents
+                .AsNoTracking()
+                .Where(c => c.MetricDefinitionId == metricDefinitionId)
+                .ToListAsync();
+
+            decimal rawValue = metricDefinition.BaseValue;
+
+            foreach (var component in components)
+            {
+                var effectiveValue = effectiveAttributeValues.TryGetValue(component.AttributeDefinitionId, out var sourceValue)
+                    ? sourceValue
+                    : 0;
+
+                rawValue += effectiveValue * (component.Weight / 100m);
+            }
+
+            rawValue += allModifiers
+                .Where(m => m.TargetType == ModifierTargetType.Metric && m.TargetId == metricDefinitionId)
+                .Sum(m => m.AddValue);
+
+            var roundedValue = ApplyComputedRoundMode(rawValue, metricDefinition.RoundMode);
+
+            if (roundedValue < metricDefinition.MinValue)
+                roundedValue = metricDefinition.MinValue;
+
+            if (roundedValue > metricDefinition.MaxValue)
+                roundedValue = metricDefinition.MaxValue;
+
+            if (roundedValue < 1m)
+                roundedValue = 1m;
+
+            return decimal.Round(roundedValue, 2, MidpointRounding.AwayFromZero);
+        }
+
+        private sealed class RuntimeMetricModifier
+        {
+            public ModifierTargetType TargetType { get; set; }
+            public Guid TargetId { get; set; }
+            public int AddValue { get; set; }
+        }
+
+        private static decimal ApplyComputedRoundMode(decimal value, ComputedValueRoundMode roundMode)
+        {
+            return roundMode switch
+            {
+                ComputedValueRoundMode.Ceiling => Math.Ceiling(value),
+                ComputedValueRoundMode.Floor => Math.Floor(value),
+                ComputedValueRoundMode.Nearest => Math.Round(value, 0, MidpointRounding.AwayFromZero),
+                ComputedValueRoundMode.None => value,
+                _ => Math.Ceiling(value)
+            };
+        }
+
         private async Task UpdateCharacterAliveStateAsync(RollocracyDbContext context, Guid characterId)
         {
             var character = await context.Characters.FirstOrDefaultAsync(c => c.Id == characterId);
@@ -612,6 +805,7 @@ namespace Rollocracy.Infrastructure.Services
             return attribute.Name;
         }
 
+        
         private void ValidateCreateRequest(PollCreateRequestDto request)
         {
             if (string.IsNullOrWhiteSpace(request.Question))
@@ -624,12 +818,16 @@ namespace Rollocracy.Infrastructure.Services
             if (cleanedOptions.Count < 2)
                 throw new Exception(_localizer["Backend_PollNeedsTwoOptions"]);
 
+            if (request.VoteWeightMode == PollVoteWeightMode.Metric && !request.MetricDefinitionId.HasValue)
+                throw new Exception(_localizer["Backend_PollMetricRequired"]);
+
             foreach (var rule in request.WeightRules)
             {
                 if (rule.WeightBonus < 0)
                     throw new Exception(_localizer["Backend_InvalidPollWeightBonus"]);
             }
         }
+
 
         private async Task<PollForGameMasterDto> BuildGameMasterDtoAsync(RollocracyDbContext context, Guid pollId)
         {
@@ -716,6 +914,9 @@ namespace Rollocracy.Infrastructure.Services
                 Question = poll.Question,
                 IsClosed = poll.IsClosed,
                 ConsequencesApplied = poll.ConsequencesApplied,
+                VoteWeightMode = poll.VoteWeightMode,
+                MetricDefinitionId = poll.MetricDefinitionId,
+                MetricName = poll.MetricNameSnapshot,
                 TotalVotes = totalVotes,
                 TotalWeightedVotes = totalWeightedVotes,
                 OnlinePlayersCount = onlinePlayersCount,
@@ -744,13 +945,13 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     TraitDefinitionId = r.TraitDefinitionId,
                     TraitOptionId = r.TraitOptionId,
-                    TraitDefinitionName = traitDefinitions.FirstOrDefault(t => t.Id == r.TraitDefinitionId)?.Name ?? string.Empty,
-                    TraitOptionName = traitOptions.FirstOrDefault(o => o.Id == r.TraitOptionId)?.Name ?? string.Empty,
+                    TraitDefinitionName = traitDefinitions.FirstOrDefault(td => td.Id == r.TraitDefinitionId)?.Name ?? string.Empty,
+                    TraitOptionName = traitOptions.FirstOrDefault(to => to.Id == r.TraitOptionId)?.Name ?? string.Empty,
                     WeightBonus = r.WeightBonus
                 }).ToList(),
                 Consequences = optionConsequences.Select(x => new PollOptionConsequenceDto
                 {
-                    SessionPollOptionId = x.option.Id,
+                    SessionPollOptionId = x.consequence.SessionPollOptionId,
                     OptionLabel = x.option.Label,
                     TargetKind = x.consequence.TargetKind,
                     TargetDefinitionId = x.consequence.TargetDefinitionId,
@@ -761,7 +962,7 @@ namespace Rollocracy.Infrastructure.Services
             };
         }
 
-        private async Task<PollForPlayerDto> BuildPlayerDtoAsync(RollocracyDbContext context, Guid pollId, Guid playerSessionId)
+private async Task<PollForPlayerDto> BuildPlayerDtoAsync(RollocracyDbContext context, Guid pollId, Guid playerSessionId)
         {
             var poll = await context.SessionPolls
                 .AsNoTracking()

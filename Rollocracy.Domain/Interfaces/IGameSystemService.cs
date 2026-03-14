@@ -1,4 +1,4 @@
-﻿using Rollocracy.Domain.Entities;
+using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
 
 namespace Rollocracy.Domain.Interfaces
@@ -31,6 +31,8 @@ namespace Rollocracy.Domain.Interfaces
             int defaultValue);
 
         Task<List<AttributeDefinition>> GetAttributeDefinitionsAsync(Guid gameSystemId, Guid ownerUserAccountId);
+
+        Task<List<MetricDefinition>> GetMetricDefinitionsAsync(Guid gameSystemId, Guid ownerUserAccountId);
 
         Task<TraitDefinition> AddTraitDefinitionAsync(
             Guid gameSystemId,

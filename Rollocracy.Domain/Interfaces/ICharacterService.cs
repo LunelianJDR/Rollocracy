@@ -1,4 +1,4 @@
-﻿using Rollocracy.Domain.Characters;
+using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.Entities;
 
 namespace Rollocracy.Domain.Interfaces
