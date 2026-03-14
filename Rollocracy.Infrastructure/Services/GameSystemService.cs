@@ -5,6 +5,7 @@ using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
+using Rollocracy.Domain.Characters;
 
 namespace Rollocracy.Infrastructure.Services
 {
@@ -154,6 +155,25 @@ namespace Rollocracy.Infrastructure.Services
                 .AsNoTracking()
                 .Where(a => a.GameSystemId == gameSystemId)
                 .OrderBy(a => a.Name)
+                .ToListAsync();
+        }
+
+        public async Task<List<MetricDefinition>> GetMetricDefinitionsAsync(Guid gameSystemId, Guid ownerUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var ownsSystem = await context.GameSystems
+                .AsNoTracking()
+                .AnyAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
+
+            if (!ownsSystem)
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+
+            return await context.MetricDefinitions
+                .AsNoTracking()
+                .Where(m => m.GameSystemId == gameSystemId)
+                .OrderBy(m => m.DisplayOrder)
+                .ThenBy(m => m.Name)
                 .ToListAsync();
         }
 
@@ -570,6 +590,20 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => derivedStatIds.Contains(x.DerivedStatDefinitionId))
                 .ToListAsync();
 
+            var metricDefinitions = await context.MetricDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == system.Id)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.Name)
+                .ToListAsync();
+
+            var metricDefinitionIds = metricDefinitions.Select(x => x.Id).ToList();
+
+            var metricComponents = await context.MetricComponents
+                .AsNoTracking()
+                .Where(x => metricDefinitionIds.Contains(x.MetricDefinitionId))
+                .ToListAsync();
+
             var traits = await context.TraitDefinitions
                 .AsNoTracking()
                 .Where(x => x.GameSystemId == system.Id)
@@ -588,6 +622,30 @@ namespace Rollocracy.Infrastructure.Services
                 .AsNoTracking()
                 .Where(x => x.GameSystemId == system.Id)
                 .OrderBy(x => x.Name)
+                .ToListAsync();
+
+            var talents = await context.TalentDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == system.Id)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.Name)
+                .ToListAsync();
+
+            var talentModifiers = await context.TalentModifierDefinitions
+                .AsNoTracking()
+                .Where(x => talents.Select(t => t.Id).Contains(x.TalentDefinitionId))
+                .ToListAsync();
+
+            var items = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == system.Id)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.Name)
+                .ToListAsync();
+
+            var itemModifiers = await context.ItemModifierDefinitions
+                .AsNoTracking()
+                .Where(x => items.Select(i => i.Id).Contains(x.ItemDefinitionId))
                 .ToListAsync();
 
             var impactedSessions = await GetSessionsUsingSystemAsync(context, system.Id);
@@ -613,6 +671,26 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     AttributeDefinitionId = a.Id,
                     Name = a.Name
+                }).ToList(),
+                AvailableDerivedStats = derivedStats.Select(d => new EditableDerivedStatDefinitionDto
+                {
+                    DerivedStatDefinitionId = d.Id,
+                    Name = d.Name,
+                    MinValue = d.MinValue,
+                    MaxValue = d.MaxValue,
+                    RoundMode = d.RoundMode,
+                    DisplayOrder = d.DisplayOrder
+                }).ToList(),
+
+                AvailableMetrics = metricDefinitions.Select(m => new EditableMetricDefinitionDto
+                {
+                    MetricDefinitionId = m.Id,
+                    Name = m.Name,
+                    BaseValue = m.BaseValue,
+                    MinValue = m.MinValue,
+                    MaxValue = m.MaxValue,
+                    RoundMode = m.RoundMode,
+                    DisplayOrder = m.DisplayOrder
                 }).ToList(),
                 Attributes = attributes.Select(x => new EditableAttributeDefinitionDto
                 {
@@ -645,6 +723,26 @@ namespace Rollocracy.Infrastructure.Services
                         })
                         .ToList()
                 }).ToList(),
+                Metrics = metricDefinitions.Select(m => new EditableMetricDefinitionDto
+                {
+                    MetricDefinitionId = m.Id,
+                    Name = m.Name,
+                    BaseValue = m.BaseValue,
+                    MinValue = m.MinValue,
+                    MaxValue = m.MaxValue,
+                    RoundMode = m.RoundMode,
+                    DisplayOrder = m.DisplayOrder,
+                    Components = metricComponents
+                        .Where(c => c.MetricDefinitionId == m.Id)
+                        .Select(c => new EditableMetricComponentDto
+                        {
+                            MetricComponentId = c.Id,
+                            AttributeDefinitionId = c.AttributeDefinitionId,
+                            AttributeName = attributes.FirstOrDefault(a => a.Id == c.AttributeDefinitionId)?.Name ?? string.Empty,
+                            Weight = c.Weight
+                        })
+                        .ToList()
+                }).ToList(),
                 Traits = traits.Select(t => new EditableTraitDefinitionDto
                 {
                     TraitDefinitionId = t.Id,
@@ -665,6 +763,40 @@ namespace Rollocracy.Infrastructure.Services
                     MaxValue = x.MaxValue,
                     DefaultValue = x.DefaultValue,
                     IsHealthGauge = x.IsHealthGauge
+                }).ToList(),
+                Talents = talents.Select(t => new EditableTalentDefinitionDto
+                {
+                    TalentDefinitionId = t.Id,
+                    Name = t.Name,
+                    Description = t.Description ?? "",
+                    DisplayOrder = t.DisplayOrder,
+                    Modifiers = talentModifiers
+                    .Where(m => m.TalentDefinitionId == t.Id)
+                    .Select(m => new EditableModifierDefinitionDto
+                    {
+                        ModifierId = m.Id,
+                        TargetType = m.TargetType,
+                        TargetId = m.TargetId,
+                        TargetName = ResolveModifierTargetName(m.TargetType, m.TargetId, attributes, derivedStats, metricDefinitions),
+                        AddValue = m.AddValue
+                    }).ToList()
+                }).ToList(),
+                Items = items.Select(i => new EditableItemDefinitionDto
+                {
+                    ItemDefinitionId = i.Id,
+                    Name = i.Name,
+                    Description = i.Description ?? "",
+                    DisplayOrder = i.DisplayOrder,
+                    Modifiers = itemModifiers
+                        .Where(m => m.ItemDefinitionId == i.Id)
+                        .Select(m => new EditableModifierDefinitionDto
+                        {
+                            ModifierId = m.Id,
+                            TargetType = m.TargetType,
+                            TargetId = m.TargetId,
+                            TargetName = ResolveModifierTargetName(m.TargetType, m.TargetId, attributes, derivedStats, metricDefinitions),
+                            AddValue = m.AddValue
+                        }).ToList()
                 }).ToList()
             };
         }
@@ -695,7 +827,10 @@ namespace Rollocracy.Infrastructure.Services
 
             ValidateBaseAttributes(request.Attributes);
             ValidateDerivedStats(request.DerivedStats, request.Attributes);
+            ValidateMetrics(request.Metrics, request.Attributes);
             ValidateHealthGaugeRule(request.Gauges);
+            ValidateCatalogTalents(request.Talents);
+            ValidateCatalogItems(request.Items);
 
             var affectedCharacters = await GetCharactersUsingSystemAsync(context, system.Id);
 
@@ -710,9 +845,13 @@ namespace Rollocracy.Infrastructure.Services
 
             await SyncAttributesAsync(context, system.Id, affectedCharacters, request.Attributes);
             await SyncDerivedStatsAsync(context, system.Id, request.DerivedStats);
+            await SyncMetricsAsync(context, system.Id, request.Metrics);
             await SyncTraitsAsync(context, system.Id, request.Traits, affectedCharacters);
             await SyncGaugesAsync(context, system.Id, affectedCharacters, request.Gauges);
-
+            await SyncTalentsAsync(context, system.Id, affectedCharacters.Select(c => c.Id).ToList(), request.Talents);
+            await SyncItemsAsync(context, system.Id, affectedCharacters.Select(c => c.Id).ToList(), request.Items);
+            await SyncTalentModifiersAsync(context, request.Talents);
+            await SyncItemModifiersAsync(context, request.Items);
             await context.SaveChangesAsync();
             await TrimSnapshotsAsync(context, system.Id);
             await transaction.CommitAsync();
@@ -761,6 +900,16 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => currentDerivedStatIds.Contains(x.DerivedStatDefinitionId))
                 .ToListAsync();
 
+            var currentMetrics = await context.MetricDefinitions
+                .Where(x => x.GameSystemId == system.Id)
+                .ToListAsync();
+
+            var currentMetricIds = currentMetrics.Select(x => x.Id).ToList();
+
+            var currentMetricComponents = await context.MetricComponents
+                .Where(x => currentMetricIds.Contains(x.MetricDefinitionId))
+                .ToListAsync();
+
             var currentTraits = await context.TraitDefinitions
                 .Where(x => x.GameSystemId == system.Id)
                 .ToListAsync();
@@ -779,6 +928,26 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => x.GameSystemId == system.Id)
                 .ToListAsync();
 
+            var currentTalents = await context.TalentDefinitions
+                .Where(x => x.GameSystemId == system.Id)
+                .ToListAsync();
+
+            var currentTalentIds = currentTalents.Select(x => x.Id).ToList();
+
+            var currentTalentModifiers = await context.TalentModifierDefinitions
+                .Where(x => currentTalentIds.Contains(x.TalentDefinitionId))
+                .ToListAsync();
+
+            var currentItems = await context.ItemDefinitions
+                .Where(x => x.GameSystemId == system.Id)
+                .ToListAsync();
+
+            var currentItemIds = currentItems.Select(x => x.Id).ToList();
+
+            var currentItemModifiers = await context.ItemModifierDefinitions
+                .Where(x => currentItemIds.Contains(x.ItemDefinitionId))
+                .ToListAsync();
+
             var currentCharacters = await GetCharactersUsingSystemAsync(context, system.Id);
             var currentCharacterIds = currentCharacters.Select(x => x.Id).ToList();
 
@@ -794,16 +963,33 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => currentCharacterIds.Contains(x.CharacterId))
                 .ToListAsync();
 
+            var currentCharacterTalents = await context.CharacterTalents
+                .Where(x => currentCharacterIds.Contains(x.CharacterId))
+                .ToListAsync();
+
+            var currentCharacterItems = await context.CharacterItems
+                .Where(x => currentCharacterIds.Contains(x.CharacterId))
+                .ToListAsync();
+
             context.CharacterAttributeValues.RemoveRange(currentAttributeValues);
             context.CharacterGaugeValues.RemoveRange(currentGaugeValues);
             context.CharacterTraitValues.RemoveRange(currentTraitValues);
+            context.CharacterTalents.RemoveRange(currentCharacterTalents);
+            context.CharacterItems.RemoveRange(currentCharacterItems);
+
+            context.TalentModifierDefinitions.RemoveRange(currentTalentModifiers);
+            context.ItemModifierDefinitions.RemoveRange(currentItemModifiers);
 
             context.DerivedStatComponents.RemoveRange(currentDerivedComponents);
             context.DerivedStatDefinitions.RemoveRange(currentDerivedStats);
+            context.MetricComponents.RemoveRange(currentMetricComponents);
+            context.MetricDefinitions.RemoveRange(currentMetrics);
             context.TraitOptions.RemoveRange(currentOptions);
             context.TraitDefinitions.RemoveRange(currentTraits);
             context.AttributeDefinitions.RemoveRange(currentAttributes);
             context.GaugeDefinitions.RemoveRange(currentGauges);
+            context.TalentDefinitions.RemoveRange(currentTalents);
+            context.ItemDefinitions.RemoveRange(currentItems);
 
             foreach (var attribute in payload.Attributes)
                 context.AttributeDefinitions.Add(attribute);
@@ -814,6 +1000,12 @@ namespace Rollocracy.Infrastructure.Services
             foreach (var component in payload.DerivedStatComponents)
                 context.DerivedStatComponents.Add(component);
 
+            foreach (var metric in payload.Metrics)
+                context.MetricDefinitions.Add(metric);
+
+            foreach (var component in payload.MetricComponents)
+                context.MetricComponents.Add(component);
+
             foreach (var trait in payload.Traits)
                 context.TraitDefinitions.Add(trait);
 
@@ -822,6 +1014,18 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var gauge in payload.Gauges)
                 context.GaugeDefinitions.Add(gauge);
+
+            foreach (var talent in payload.Talents)
+                context.TalentDefinitions.Add(talent);
+
+            foreach (var modifier in payload.TalentModifiers)
+                context.TalentModifierDefinitions.Add(modifier);
+
+            foreach (var item in payload.Items)
+                context.ItemDefinitions.Add(item);
+
+            foreach (var modifier in payload.ItemModifiers)
+                context.ItemModifierDefinitions.Add(modifier);
 
             var currentCharactersById = currentCharacters.ToDictionary(x => x.Id, x => x);
 
@@ -842,6 +1046,12 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var value in payload.TraitValues.Where(x => currentCharactersById.ContainsKey(x.CharacterId)))
                 context.CharacterTraitValues.Add(value);
+
+            foreach (var value in payload.CharacterTalents.Where(x => currentCharactersById.ContainsKey(x.CharacterId)))
+                context.CharacterTalents.Add(value);
+
+            foreach (var value in payload.CharacterItems.Where(x => currentCharactersById.ContainsKey(x.CharacterId)))
+                context.CharacterItems.Add(value);
 
             await context.SaveChangesAsync();
 
@@ -1397,9 +1607,45 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => traitIds.Contains(x.TraitDefinitionId))
                 .ToListAsync();
 
+            var metricDefinitions = await context.MetricDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == system.Id)
+                .ToListAsync();
+
+            var metricIds = metricDefinitions.Select(x => x.Id).ToList();
+
+            var metricComponents = await context.MetricComponents
+                .AsNoTracking()
+                .Where(x => metricIds.Contains(x.MetricDefinitionId))
+                .ToListAsync();
+
             var gaugeDefinitions = await context.GaugeDefinitions
                 .AsNoTracking()
                 .Where(x => x.GameSystemId == system.Id)
+                .ToListAsync();
+
+            var talents = await context.TalentDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == system.Id)
+                .ToListAsync();
+
+            var talentIds = talents.Select(x => x.Id).ToList();
+
+            var talentModifiers = await context.TalentModifierDefinitions
+                .AsNoTracking()
+                .Where(x => talentIds.Contains(x.TalentDefinitionId))
+                .ToListAsync();
+
+            var items = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == system.Id)
+                .ToListAsync();
+
+            var itemIds = items.Select(x => x.Id).ToList();
+
+            var itemModifiers = await context.ItemModifierDefinitions
+                .AsNoTracking()
+                .Where(x => itemIds.Contains(x.ItemDefinitionId))
                 .ToListAsync();
 
             var characterIds = affectedCharacters.Select(x => x.Id).ToList();
@@ -1415,6 +1661,16 @@ namespace Rollocracy.Infrastructure.Services
                 .ToListAsync();
 
             var traitValues = await context.CharacterTraitValues
+                .AsNoTracking()
+                .Where(x => characterIds.Contains(x.CharacterId))
+                .ToListAsync();
+
+            var characterTalents = await context.CharacterTalents
+                .AsNoTracking()
+                .Where(x => characterIds.Contains(x.CharacterId))
+                .ToListAsync();
+
+            var characterItems = await context.CharacterItems
                 .AsNoTracking()
                 .Where(x => characterIds.Contains(x.CharacterId))
                 .ToListAsync();
@@ -1436,6 +1692,10 @@ namespace Rollocracy.Infrastructure.Services
                 Traits = traitDefinitions.Select(CloneTrait).ToList(),
                 TraitOptions = traitOptions.Select(CloneTraitOption).ToList(),
                 Gauges = gaugeDefinitions.Select(CloneGauge).ToList(),
+                Talents = talents.Select(CloneTalent).ToList(),
+                TalentModifiers = talentModifiers.Select(CloneTalentModifier).ToList(),
+                Items = items.Select(CloneItem).ToList(),
+                ItemModifiers = itemModifiers.Select(CloneItemModifier).ToList(),
                 Characters = affectedCharacters.Select(x => new CharacterSnapshotItem
                 {
                     Id = x.Id,
@@ -1444,7 +1704,9 @@ namespace Rollocracy.Infrastructure.Services
                 }).ToList(),
                 AttributeValues = attributeValues.Select(CloneAttributeValue).ToList(),
                 GaugeValues = gaugeValues.Select(CloneGaugeValue).ToList(),
-                TraitValues = traitValues.Select(CloneTraitValue).ToList()
+                TraitValues = traitValues.Select(CloneTraitValue).ToList(),
+                CharacterTalents = characterTalents.Select(CloneCharacterTalent).ToList(),
+                CharacterItems = characterItems.Select(CloneCharacterItem).ToList()
             };
 
             return new GameSystemSnapshot
@@ -1454,6 +1716,22 @@ namespace Rollocracy.Infrastructure.Services
                 OwnerUserAccountId = ownerUserAccountId,
                 SnapshotJson = JsonSerializer.Serialize(payload),
                 CreatedAtUtc = DateTime.UtcNow
+            };
+        }
+
+        private static string ResolveModifierTargetName(
+            ModifierTargetType targetType,
+            Guid targetId,
+            List<AttributeDefinition> attributes,
+            List<DerivedStatDefinition> derivedStats,
+            List<MetricDefinition> metrics)
+        {
+            return targetType switch
+            {
+                ModifierTargetType.BaseAttribute => attributes.FirstOrDefault(x => x.Id == targetId)?.Name ?? string.Empty,
+                ModifierTargetType.DerivedStat => derivedStats.FirstOrDefault(x => x.Id == targetId)?.Name ?? string.Empty,
+                ModifierTargetType.Metric => metrics.FirstOrDefault(x => x.Id == targetId)?.Name ?? string.Empty,
+                _ => string.Empty
             };
         }
 
@@ -1490,6 +1768,26 @@ namespace Rollocracy.Infrastructure.Services
             Weight = x.Weight
         };
 
+        private static MetricDefinition CloneMetric(MetricDefinition x) => new()
+        {
+            Id = x.Id,
+            GameSystemId = x.GameSystemId,
+            Name = x.Name,
+            BaseValue = x.BaseValue,
+            MinValue = x.MinValue,
+            MaxValue = x.MaxValue,
+            RoundMode = x.RoundMode,
+            DisplayOrder = x.DisplayOrder
+        };
+
+        private static MetricComponent CloneMetricComponent(MetricComponent x) => new()
+        {
+            Id = x.Id,
+            MetricDefinitionId = x.MetricDefinitionId,
+            AttributeDefinitionId = x.AttributeDefinitionId,
+            Weight = x.Weight
+        };
+
         private static TraitDefinition CloneTrait(TraitDefinition x) => new()
         {
             Id = x.Id,
@@ -1515,6 +1813,42 @@ namespace Rollocracy.Infrastructure.Services
             IsHealthGauge = x.IsHealthGauge
         };
 
+        private static TalentDefinition CloneTalent(TalentDefinition x) => new()
+        {
+            Id = x.Id,
+            GameSystemId = x.GameSystemId,
+            Name = x.Name,
+            Description = x.Description,
+            DisplayOrder = x.DisplayOrder
+        };
+
+        private static TalentModifierDefinition CloneTalentModifier(TalentModifierDefinition x) => new()
+        {
+            Id = x.Id,
+            TalentDefinitionId = x.TalentDefinitionId,
+            TargetType = x.TargetType,
+            TargetId = x.TargetId,
+            AddValue = x.AddValue
+        };
+
+        private static ItemDefinition CloneItem(ItemDefinition x) => new()
+        {
+            Id = x.Id,
+            GameSystemId = x.GameSystemId,
+            Name = x.Name,
+            Description = x.Description,
+            DisplayOrder = x.DisplayOrder
+        };
+
+        private static ItemModifierDefinition CloneItemModifier(ItemModifierDefinition x) => new()
+        {
+            Id = x.Id,
+            ItemDefinitionId = x.ItemDefinitionId,
+            TargetType = x.TargetType,
+            TargetId = x.TargetId,
+            AddValue = x.AddValue
+        };
+
         private static CharacterAttributeValue CloneAttributeValue(CharacterAttributeValue x) => new()
         {
             Id = x.Id,
@@ -1537,6 +1871,20 @@ namespace Rollocracy.Infrastructure.Services
             CharacterId = x.CharacterId,
             TraitDefinitionId = x.TraitDefinitionId,
             TraitOptionId = x.TraitOptionId
+        };
+
+        private static CharacterTalent CloneCharacterTalent(CharacterTalent x) => new()
+        {
+            Id = x.Id,
+            CharacterId = x.CharacterId,
+            TalentDefinitionId = x.TalentDefinitionId
+        };
+
+        private static CharacterItem CloneCharacterItem(CharacterItem x) => new()
+        {
+            Id = x.Id,
+            CharacterId = x.CharacterId,
+            ItemDefinitionId = x.ItemDefinitionId
         };
 
         private async Task<List<Session>> GetSessionsUsingSystemAsync(RollocracyDbContext context, Guid gameSystemId)
@@ -1657,12 +2005,398 @@ namespace Rollocracy.Infrastructure.Services
             }
         }
 
+
+        private void ValidateMetrics(
+            List<EditableMetricDefinitionDto> metrics,
+            List<EditableAttributeDefinitionDto> attributes)
+        {
+            var availableAttributeIds = attributes
+                .Where(x => !x.IsDeleted && x.AttributeDefinitionId.HasValue)
+                .Select(x => x.AttributeDefinitionId!.Value)
+                .ToHashSet();
+
+            foreach (var attribute in attributes.Where(x => !x.IsDeleted && !x.AttributeDefinitionId.HasValue && !string.IsNullOrWhiteSpace(x.Name)))
+            {
+                // Les nouvelles caractéristiques recevront un nouvel Id au sync ;
+                // ici on ne peut pas encore les relier depuis les metrics.
+            }
+
+            foreach (var metric in metrics.Where(x => !x.IsDeleted))
+            {
+                if (string.IsNullOrWhiteSpace(metric.Name))
+                    throw new Exception(_localizer["Backend_GameSystemMetricNameRequired"]);
+
+                if (metric.MinValue > metric.MaxValue)
+                    throw new Exception(_localizer["Backend_InvalidMetricRange"]);
+
+                if (metric.BaseValue < metric.MinValue || metric.BaseValue > metric.MaxValue)
+                    throw new Exception(_localizer["Backend_InvalidMetricBaseValue"]);
+
+                if (metric.Components.Count(x => !x.IsDeleted) == 0)
+                    throw new Exception(_localizer["Backend_GameSystemMetricNeedsComponent"]);
+
+                foreach (var component in metric.Components.Where(x => !x.IsDeleted))
+                {
+                    if (component.Weight < 0)
+                        throw new Exception(_localizer["Backend_InvalidMetricWeight"]);
+                }
+            }
+        }
+
+        private async Task SyncMetricsAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            List<EditableMetricDefinitionDto> requestMetrics)
+        {
+            var currentDefinitions = await context.MetricDefinitions
+                .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var currentDefinitionById = currentDefinitions.ToDictionary(x => x.Id, x => x);
+            var currentDefinitionIds = currentDefinitions.Select(x => x.Id).ToList();
+
+            var currentComponents = await context.MetricComponents
+                .Where(x => currentDefinitionIds.Contains(x.MetricDefinitionId))
+                .ToListAsync();
+
+            var requestExistingIds = requestMetrics
+                .Where(x => x.MetricDefinitionId.HasValue)
+                .Select(x => x.MetricDefinitionId!.Value)
+                .ToHashSet();
+
+            var removedIds = requestMetrics
+                .Where(x => x.MetricDefinitionId.HasValue && x.IsDeleted)
+                .Select(x => x.MetricDefinitionId!.Value)
+                .Union(currentDefinitions.Where(x => !requestExistingIds.Contains(x.Id)).Select(x => x.Id))
+                .Distinct()
+                .ToList();
+
+            if (removedIds.Count > 0)
+            {
+                context.MetricComponents.RemoveRange(
+                    currentComponents.Where(x => removedIds.Contains(x.MetricDefinitionId)));
+
+                context.MetricDefinitions.RemoveRange(
+                    currentDefinitions.Where(x => removedIds.Contains(x.Id)));
+            }
+
+            foreach (var item in requestMetrics.Where(x => x.MetricDefinitionId.HasValue && !x.IsDeleted))
+            {
+                var entity = currentDefinitionById[item.MetricDefinitionId!.Value];
+                entity.Name = item.Name.Trim();
+                entity.BaseValue = item.BaseValue;
+                entity.MinValue = item.MinValue;
+                entity.MaxValue = item.MaxValue;
+                entity.RoundMode = item.RoundMode;
+                entity.DisplayOrder = item.DisplayOrder;
+
+                var existingComponents = currentComponents
+                    .Where(x => x.MetricDefinitionId == entity.Id)
+                    .ToList();
+
+                var requestExistingComponentIds = item.Components
+                    .Where(x => x.MetricComponentId.HasValue)
+                    .Select(x => x.MetricComponentId!.Value)
+                    .ToHashSet();
+
+                var removedComponentIds = item.Components
+                    .Where(x => x.MetricComponentId.HasValue && x.IsDeleted)
+                    .Select(x => x.MetricComponentId!.Value)
+                    .Union(existingComponents.Where(x => !requestExistingComponentIds.Contains(x.Id)).Select(x => x.Id))
+                    .Distinct()
+                    .ToList();
+
+                if (removedComponentIds.Count > 0)
+                {
+                    context.MetricComponents.RemoveRange(
+                        existingComponents.Where(x => removedComponentIds.Contains(x.Id)));
+                }
+
+                foreach (var componentDto in item.Components.Where(x => x.MetricComponentId.HasValue && !x.IsDeleted))
+                {
+                    var component = existingComponents.First(x => x.Id == componentDto.MetricComponentId!.Value);
+                    component.AttributeDefinitionId = componentDto.AttributeDefinitionId;
+                    component.Weight = componentDto.Weight;
+                }
+
+                foreach (var componentDto in item.Components.Where(x => !x.MetricComponentId.HasValue && !x.IsDeleted))
+                {
+                    context.MetricComponents.Add(new MetricComponent
+                    {
+                        Id = Guid.NewGuid(),
+                        MetricDefinitionId = entity.Id,
+                        AttributeDefinitionId = componentDto.AttributeDefinitionId,
+                        Weight = componentDto.Weight
+                    });
+                }
+            }
+
+            var newlyCreatedDefinitions = new List<(Guid DefinitionId, EditableMetricDefinitionDto Dto)>();
+
+            foreach (var item in requestMetrics.Where(x => !x.MetricDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
+            {
+                var definitionId = Guid.NewGuid();
+
+                var definition = new MetricDefinition
+                {
+                    Id = definitionId,
+                    GameSystemId = gameSystemId,
+                    Name = item.Name.Trim(),
+                    BaseValue = item.BaseValue,
+                    MinValue = item.MinValue,
+                    MaxValue = item.MaxValue,
+                    RoundMode = item.RoundMode,
+                    DisplayOrder = item.DisplayOrder
+                };
+
+                context.MetricDefinitions.Add(definition);
+                newlyCreatedDefinitions.Add((definitionId, item));
+            }
+
+            if (newlyCreatedDefinitions.Count > 0)
+            {
+                await context.SaveChangesAsync();
+
+                foreach (var created in newlyCreatedDefinitions)
+                {
+                    foreach (var componentDto in created.Dto.Components.Where(x => !x.IsDeleted))
+                    {
+                        context.MetricComponents.Add(new MetricComponent
+                        {
+                            Id = Guid.NewGuid(),
+                            MetricDefinitionId = created.DefinitionId,
+                            AttributeDefinitionId = componentDto.AttributeDefinitionId,
+                            Weight = componentDto.Weight
+                        });
+                    }
+                }
+            }
+        }
+
         private void ValidateHealthGaugeRule(List<EditableGaugeDefinitionDto> gauges)
         {
             var remainingHealthGaugeCount = gauges.Count(x => !x.IsDeleted && x.IsHealthGauge);
 
             if (remainingHealthGaugeCount <= 0)
                 throw new Exception(_localizer["Backend_GameSystemMustKeepAtLeastOneHealthGauge"]);
+        }
+
+        private void ValidateCatalogTalents(List<EditableTalentDefinitionDto> requestTalents)
+        {
+            foreach (var item in requestTalents.Where(x => !x.IsDeleted))
+            {
+                if (string.IsNullOrWhiteSpace(item.Name))
+                    throw new Exception(_localizer["Backend_TalentNameRequired"]);
+            }
+        }
+
+        private void ValidateCatalogItems(List<EditableItemDefinitionDto> requestItems)
+        {
+            foreach (var item in requestItems.Where(x => !x.IsDeleted))
+            {
+                if (string.IsNullOrWhiteSpace(item.Name))
+                    throw new Exception(_localizer["Backend_ItemNameRequired"]);
+            }
+        }
+
+        private async Task SyncTalentsAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            List<Guid> affectedCharacterIds,
+            List<EditableTalentDefinitionDto> requestTalents)
+        {
+            var currentTalents = await context.TalentDefinitions
+                .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var requestExistingIds = requestTalents
+                .Where(x => x.TalentDefinitionId.HasValue)
+                .Select(x => x.TalentDefinitionId!.Value)
+                .ToHashSet();
+
+            var removedIds = requestTalents
+                .Where(x => x.TalentDefinitionId.HasValue && x.IsDeleted)
+                .Select(x => x.TalentDefinitionId!.Value)
+                .Union(currentTalents.Where(x => !requestExistingIds.Contains(x.Id)).Select(x => x.Id))
+                .Distinct()
+                .ToList();
+
+            if (removedIds.Count > 0)
+            {
+                var characterTalents = await context.CharacterTalents
+                    .Where(x => affectedCharacterIds.Contains(x.CharacterId) && removedIds.Contains(x.TalentDefinitionId))
+                    .ToListAsync();
+
+                var modifiers = await context.TalentModifierDefinitions
+                    .Where(x => removedIds.Contains(x.TalentDefinitionId))
+                    .ToListAsync();
+
+                context.CharacterTalents.RemoveRange(characterTalents);
+                context.TalentModifierDefinitions.RemoveRange(modifiers);
+                context.TalentDefinitions.RemoveRange(currentTalents.Where(x => removedIds.Contains(x.Id)));
+            }
+
+            foreach (var item in requestTalents.Where(x => x.TalentDefinitionId.HasValue && !x.IsDeleted))
+            {
+                var entity = currentTalents.First(x => x.Id == item.TalentDefinitionId!.Value);
+                entity.Name = item.Name.Trim();
+                entity.Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim();
+                entity.DisplayOrder = item.DisplayOrder;
+            }
+
+            foreach (var item in requestTalents.Where(x => !x.TalentDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
+            {
+                context.TalentDefinitions.Add(new TalentDefinition
+                {
+                    Id = Guid.NewGuid(),
+                    GameSystemId = gameSystemId,
+                    Name = item.Name.Trim(),
+                    Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim(),
+                    DisplayOrder = item.DisplayOrder
+                });
+            }
+        }
+
+        private async Task SyncItemsAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            List<Guid> affectedCharacterIds,
+            List<EditableItemDefinitionDto> requestItems)
+        {
+            var currentItems = await context.ItemDefinitions
+                .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var requestExistingIds = requestItems
+                .Where(x => x.ItemDefinitionId.HasValue)
+                .Select(x => x.ItemDefinitionId!.Value)
+                .ToHashSet();
+
+            var removedIds = requestItems
+                .Where(x => x.ItemDefinitionId.HasValue && x.IsDeleted)
+                .Select(x => x.ItemDefinitionId!.Value)
+                .Union(currentItems.Where(x => !requestExistingIds.Contains(x.Id)).Select(x => x.Id))
+                .Distinct()
+                .ToList();
+
+            if (removedIds.Count > 0)
+            {
+                var characterItems = await context.CharacterItems
+                    .Where(x => affectedCharacterIds.Contains(x.CharacterId) && removedIds.Contains(x.ItemDefinitionId))
+                    .ToListAsync();
+
+                var modifiers = await context.ItemModifierDefinitions
+                    .Where(x => removedIds.Contains(x.ItemDefinitionId))
+                    .ToListAsync();
+
+                context.CharacterItems.RemoveRange(characterItems);
+                context.ItemModifierDefinitions.RemoveRange(modifiers);
+                context.ItemDefinitions.RemoveRange(currentItems.Where(x => removedIds.Contains(x.Id)));
+            }
+
+            foreach (var item in requestItems.Where(x => x.ItemDefinitionId.HasValue && !x.IsDeleted))
+            {
+                var entity = currentItems.First(x => x.Id == item.ItemDefinitionId!.Value);
+                entity.Name = item.Name.Trim();
+                entity.Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim();
+                entity.DisplayOrder = item.DisplayOrder;
+            }
+
+            foreach (var item in requestItems.Where(x => !x.ItemDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
+            {
+                context.ItemDefinitions.Add(new ItemDefinition
+                {
+                    Id = Guid.NewGuid(),
+                    GameSystemId = gameSystemId,
+                    Name = item.Name.Trim(),
+                    Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim(),
+                    DisplayOrder = item.DisplayOrder
+                });
+            }
+        }
+
+        private async Task SyncTalentModifiersAsync(
+            RollocracyDbContext context,
+            List<EditableTalentDefinitionDto> requestTalents)
+        {
+            foreach (var talent in requestTalents)
+            {
+                if (!talent.TalentDefinitionId.HasValue)
+                    continue;
+
+                var currentModifiers = await context.TalentModifierDefinitions
+                    .Where(x => x.TalentDefinitionId == talent.TalentDefinitionId.Value)
+                    .ToListAsync();
+
+                foreach (var modifier in talent.Modifiers)
+                {
+                    if (modifier.IsDeleted && modifier.ModifierId.HasValue)
+                    {
+                        var entity = currentModifiers.First(x => x.Id == modifier.ModifierId.Value);
+                        context.TalentModifierDefinitions.Remove(entity);
+                    }
+                    else if (modifier.ModifierId.HasValue)
+                    {
+                        var entity = currentModifiers.First(x => x.Id == modifier.ModifierId.Value);
+                        entity.TargetType = modifier.TargetType;
+                        entity.TargetId = modifier.TargetId;
+                        entity.AddValue = modifier.AddValue;
+                    }
+                    else if (!modifier.IsDeleted)
+                    {
+                        context.TalentModifierDefinitions.Add(new TalentModifierDefinition
+                        {
+                            Id = Guid.NewGuid(),
+                            TalentDefinitionId = talent.TalentDefinitionId.Value,
+                            TargetType = modifier.TargetType,
+                            TargetId = modifier.TargetId,
+                            AddValue = modifier.AddValue
+                        });
+                    }
+                }
+            }
+        }
+
+        private async Task SyncItemModifiersAsync(
+            RollocracyDbContext context,
+            List<EditableItemDefinitionDto> requestItems)
+        {
+            foreach (var item in requestItems)
+            {
+                if (!item.ItemDefinitionId.HasValue)
+                    continue;
+
+                var currentModifiers = await context.ItemModifierDefinitions
+                    .Where(x => x.ItemDefinitionId == item.ItemDefinitionId.Value)
+                    .ToListAsync();
+
+                foreach (var modifier in item.Modifiers)
+                {
+                    if (modifier.IsDeleted && modifier.ModifierId.HasValue)
+                    {
+                        var entity = currentModifiers.First(x => x.Id == modifier.ModifierId.Value);
+                        context.ItemModifierDefinitions.Remove(entity);
+                    }
+                    else if (modifier.ModifierId.HasValue)
+                    {
+                        var entity = currentModifiers.First(x => x.Id == modifier.ModifierId.Value);
+                        entity.TargetType = modifier.TargetType;
+                        entity.TargetId = modifier.TargetId;
+                        entity.AddValue = modifier.AddValue;
+                    }
+                    else if (!modifier.IsDeleted)
+                    {
+                        context.ItemModifierDefinitions.Add(new ItemModifierDefinition
+                        {
+                            Id = Guid.NewGuid(),
+                            ItemDefinitionId = item.ItemDefinitionId.Value,
+                            TargetType = modifier.TargetType,
+                            TargetId = modifier.TargetId,
+                            AddValue = modifier.AddValue
+                        });
+                    }
+                }
+            }
         }
 
         private async Task TrimSnapshotsAsync(RollocracyDbContext context, Guid gameSystemId)
@@ -1718,13 +2452,21 @@ namespace Rollocracy.Infrastructure.Services
             public List<AttributeDefinition> Attributes { get; set; } = new();
             public List<DerivedStatDefinition> DerivedStats { get; set; } = new();
             public List<DerivedStatComponent> DerivedStatComponents { get; set; } = new();
+            public List<MetricDefinition> Metrics { get; set; } = new();
+            public List<MetricComponent> MetricComponents { get; set; } = new();
             public List<TraitDefinition> Traits { get; set; } = new();
             public List<TraitOption> TraitOptions { get; set; } = new();
             public List<GaugeDefinition> Gauges { get; set; } = new();
+            public List<TalentDefinition> Talents { get; set; } = new();
+            public List<TalentModifierDefinition> TalentModifiers { get; set; } = new();
+            public List<ItemDefinition> Items { get; set; } = new();
+            public List<ItemModifierDefinition> ItemModifiers { get; set; } = new();
             public List<CharacterSnapshotItem> Characters { get; set; } = new();
             public List<CharacterAttributeValue> AttributeValues { get; set; } = new();
             public List<CharacterGaugeValue> GaugeValues { get; set; } = new();
             public List<CharacterTraitValue> TraitValues { get; set; } = new();
+            public List<CharacterTalent> CharacterTalents { get; set; } = new();
+            public List<CharacterItem> CharacterItems { get; set; } = new();
         }
 
         private sealed class GameSystemSnapshotSystemInfo

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace Rollocracy.Domain.Polls
 {
@@ -13,6 +13,12 @@ namespace Rollocracy.Domain.Polls
         public bool IsClosed { get; set; }
 
         public bool ConsequencesApplied { get; set; }
+
+        public PollVoteWeightMode VoteWeightMode { get; set; } = PollVoteWeightMode.FixedOne;
+
+        public Guid? MetricDefinitionId { get; set; }
+
+        public string MetricNameSnapshot { get; set; } = string.Empty;
 
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 

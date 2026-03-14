@@ -9,6 +9,12 @@ namespace Rollocracy.Domain.GameRules
         public string SessionName { get; set; } = string.Empty;
     }
 
+    public class BaseAttributeReferenceDto
+    {
+        public Guid AttributeDefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
     public class EditableAttributeDefinitionDto
     {
         public Guid? AttributeDefinitionId { get; set; }
@@ -16,10 +22,10 @@ namespace Rollocracy.Domain.GameRules
         public int MinValue { get; set; }
         public int MaxValue { get; set; }
         public int DefaultValue { get; set; }
-        public BaseValueGenerationMode DefaultValueMode { get; set; } = BaseValueGenerationMode.Fixed;
-        public int DefaultValueDiceCount { get; set; } = 1;
-        public int DefaultValueDiceSides { get; set; } = 6;
+        public BaseValueGenerationMode DefaultValueMode { get; set; }
         public int DefaultValueFlatBonus { get; set; }
+        public int DefaultValueDiceCount { get; set; }
+        public int DefaultValueDiceSides { get; set; }
         public bool IsDeleted { get; set; }
     }
 
@@ -28,7 +34,7 @@ namespace Rollocracy.Domain.GameRules
         public Guid? DerivedStatComponentId { get; set; }
         public Guid AttributeDefinitionId { get; set; }
         public string AttributeName { get; set; } = string.Empty;
-        public int Weight { get; set; } = 100;
+        public int Weight { get; set; }
         public bool IsDeleted { get; set; }
     }
 
@@ -38,21 +44,32 @@ namespace Rollocracy.Domain.GameRules
         public string Name { get; set; } = string.Empty;
         public int MinValue { get; set; }
         public int MaxValue { get; set; }
-        public ComputedValueRoundMode RoundMode { get; set; } = ComputedValueRoundMode.Ceiling;
+        public ComputedValueRoundMode RoundMode { get; set; }
         public int DisplayOrder { get; set; }
         public bool IsDeleted { get; set; }
         public List<EditableDerivedStatComponentDto> Components { get; set; } = new();
     }
 
-    public class EditableGaugeDefinitionDto
+    public class EditableMetricComponentDto
     {
-        public Guid? GaugeDefinitionId { get; set; }
+        public Guid? MetricComponentId { get; set; }
+        public Guid AttributeDefinitionId { get; set; }
+        public string AttributeName { get; set; } = string.Empty;
+        public int Weight { get; set; }
+        public bool IsDeleted { get; set; }
+    }
+
+    public class EditableMetricDefinitionDto
+    {
+        public Guid? MetricDefinitionId { get; set; }
         public string Name { get; set; } = string.Empty;
+        public int BaseValue { get; set; }
         public int MinValue { get; set; }
         public int MaxValue { get; set; }
-        public int DefaultValue { get; set; }
-        public bool IsHealthGauge { get; set; }
+        public ComputedValueRoundMode RoundMode { get; set; }
+        public int DisplayOrder { get; set; }
         public bool IsDeleted { get; set; }
+        public List<EditableMetricComponentDto> Components { get; set; } = new();
     }
 
     public class EditableTraitOptionDto
@@ -70,10 +87,50 @@ namespace Rollocracy.Domain.GameRules
         public List<EditableTraitOptionDto> Options { get; set; } = new();
     }
 
-    public class BaseAttributeReferenceDto
+    public class EditableGaugeDefinitionDto
     {
-        public Guid AttributeDefinitionId { get; set; }
+        public Guid? GaugeDefinitionId { get; set; }
         public string Name { get; set; } = string.Empty;
+        public int MinValue { get; set; }
+        public int MaxValue { get; set; }
+        public int DefaultValue { get; set; }
+        public bool IsHealthGauge { get; set; }
+        public bool IsDeleted { get; set; }
+    }
+
+    public class EditableModifierDefinitionDto
+    {
+        public Guid? ModifierId { get; set; }
+
+        public ModifierTargetType TargetType { get; set; }
+
+        public Guid TargetId { get; set; }
+
+        public string TargetName { get; set; } = string.Empty;
+
+        public int AddValue { get; set; }
+
+        public bool IsDeleted { get; set; }
+    }
+
+    public class EditableTalentDefinitionDto
+    {
+        public Guid? TalentDefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public int DisplayOrder { get; set; }
+        public bool IsDeleted { get; set; }
+        public List<EditableModifierDefinitionDto> Modifiers { get; set; } = new();
+    }
+
+    public class EditableItemDefinitionDto
+    {
+        public Guid? ItemDefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public int DisplayOrder { get; set; }
+        public bool IsDeleted { get; set; }
+        public List<EditableModifierDefinitionDto> Modifiers { get; set; } = new();
     }
 
     public class GameSystemEditorDto
@@ -82,18 +139,20 @@ namespace Rollocracy.Domain.GameRules
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public TestResolutionMode TestResolutionMode { get; set; }
-
         public bool IsLockedToSessionCopy { get; set; }
-
         public bool CanUndoLastChange { get; set; }
 
         public List<GameSystemImpactSessionDto> ImpactedSessions { get; set; } = new();
-
         public List<BaseAttributeReferenceDto> AvailableBaseAttributes { get; set; } = new();
+        public List<EditableDerivedStatDefinitionDto> AvailableDerivedStats { get; set; } = new();
+        public List<EditableMetricDefinitionDto> AvailableMetrics { get; set; } = new();
         public List<EditableAttributeDefinitionDto> Attributes { get; set; } = new();
         public List<EditableDerivedStatDefinitionDto> DerivedStats { get; set; } = new();
+        public List<EditableMetricDefinitionDto> Metrics { get; set; } = new();
         public List<EditableTraitDefinitionDto> Traits { get; set; } = new();
         public List<EditableGaugeDefinitionDto> Gauges { get; set; } = new();
+        public List<EditableTalentDefinitionDto> Talents { get; set; } = new();
+        public List<EditableItemDefinitionDto> Items { get; set; } = new();
     }
 
     public class GameSystemApplyChangesRequestDto
@@ -101,12 +160,14 @@ namespace Rollocracy.Domain.GameRules
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public TestResolutionMode TestResolutionMode { get; set; }
-
         public bool ConfirmSharedSystemChanges { get; set; }
 
         public List<EditableAttributeDefinitionDto> Attributes { get; set; } = new();
         public List<EditableDerivedStatDefinitionDto> DerivedStats { get; set; } = new();
+        public List<EditableMetricDefinitionDto> Metrics { get; set; } = new();
         public List<EditableTraitDefinitionDto> Traits { get; set; } = new();
         public List<EditableGaugeDefinitionDto> Gauges { get; set; } = new();
+        public List<EditableTalentDefinitionDto> Talents { get; set; } = new();
+        public List<EditableItemDefinitionDto> Items { get; set; } = new();
     }
 }

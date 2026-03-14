@@ -1,4 +1,4 @@
-﻿using Rollocracy.Domain.Polls;
+using Rollocracy.Domain.Polls;
 
 namespace Rollocracy.Domain.Interfaces
 {

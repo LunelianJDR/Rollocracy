@@ -244,6 +244,108 @@ else
 
     <hr />
 
+    <h4>@L["EditGameSystem_MetricsSection"]</h4>
+    <p>@L["EditGameSystem_MetricsHelp"]</p>
+
+    <button @onclick="AddMetricRow">@L["EditGameSystem_AddMetricRow"]</button>
+
+    @foreach (var metric in CurrentSystem.Metrics)
+    {
+        <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
+            @if (metric.IsDeleted)
+            {
+                <p><strong>@metric.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                <button @onclick="() => metric.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+            }
+            else
+            {
+                <div>
+                    <label>@L["Common_Name"]</label><br />
+                    <input @bind="metric.Name" />
+                </div>
+                <div>
+                    <label>@L["EditGameSystem_MetricBaseValue"]</label><br />
+                    <input type="number" @bind="metric.BaseValue" />
+                </div>
+                <div>
+                    <label>@L["Common_Min"]</label><br />
+                    <input type="number" @bind="metric.MinValue" />
+                </div>
+                <div>
+                    <label>@L["Common_Max"]</label><br />
+                    <input type="number" @bind="metric.MaxValue" />
+                </div>
+                <div>
+                    <label>@L["EditGameSystem_RoundMode"]</label><br />
+                    <select @bind="metric.RoundMode">
+                        <option value="@ComputedValueRoundMode.Ceiling">@L["EditGameSystem_RoundModeCeiling"]</option>
+                        <option value="@ComputedValueRoundMode.Floor">@L["EditGameSystem_RoundModeFloor"]</option>
+                        <option value="@ComputedValueRoundMode.Nearest">@L["EditGameSystem_RoundModeNearest"]</option>
+                        <option value="@ComputedValueRoundMode.None">@L["EditGameSystem_RoundModeNone"]</option>
+                    </select>
+                </div>
+                <div>
+                    <label>@L["EditGameSystem_DisplayOrder"]</label><br />
+                    <input type="number" @bind="metric.DisplayOrder" />
+                </div>
+
+                <div style="margin-top:8px;">
+                    <button @onclick="() => AddMetricComponentRow(metric)">@L["EditGameSystem_AddMetricComponentRow"]</button>
+                </div>
+
+                <div style="margin-left:20px; margin-top:8px;">
+                    @foreach (var component in metric.Components)
+                    {
+                        <div style="margin-top:8px; border:1px dashed #aaa; padding:8px;">
+                            @if (component.IsDeleted)
+                            {
+                                <span><strong>@GetBaseAttributeName(component.AttributeDefinitionId)</strong> - @L["EditGameSystem_PendingDeletion"]</span>
+                                <button @onclick="() => component.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                            }
+                            else
+                            {
+                                <div>
+                                    <label>@L["EditGameSystem_ComponentAttribute"]</label><br />
+                                    <select @bind="component.AttributeDefinitionId">
+                                        @foreach (var attributeRef in CurrentSystem.AvailableBaseAttributes)
+                                        {
+                                            <option value="@attributeRef.AttributeDefinitionId">@attributeRef.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>@L["EditGameSystem_ComponentWeight"]</label><br />
+                                    <input type="number" @bind="component.Weight" />
+                                </div>
+                                <p>@L["EditGameSystem_ComponentWeightHelp"]</p>
+
+                                @if (component.MetricComponentId.HasValue)
+                                {
+                                    <button @onclick="() => component.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                }
+                                else
+                                {
+                                    <button @onclick="() => metric.Components.Remove(component)">@L["EditGameSystem_Delete"]</button>
+                                }
+                            }
+                        </div>
+                    }
+                </div>
+
+                @if (metric.MetricDefinitionId.HasValue)
+                {
+                    <button @onclick="() => metric.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                }
+                else
+                {
+                    <button @onclick="() => CurrentSystem.Metrics.Remove(metric)">@L["EditGameSystem_Delete"]</button>
+                }
+            }
+        </div>
+    }
+
+    <hr />
+
     <h4>@L["EditGameSystem_TraitsSection"]</h4>
 
     <button @onclick="AddTraitRow">@L["EditGameSystem_AddTraitTypeRow"]</button>
@@ -347,6 +449,194 @@ else
                 else
                 {
                     <button @onclick="() => CurrentSystem.Gauges.Remove(gauge)">@L["EditGameSystem_Delete"]</button>
+                }
+            }
+        </div>
+    }
+
+ //   SECTION TALENTS
+
+    <h4>@L["EditGameSystem_TalentsSection"]</h4>
+    <button @onclick="AddTalentRow">@L["EditGameSystem_AddTalentRow"]</button>
+
+    @foreach (var talent in CurrentSystem.Talents)
+    {
+        <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
+            @if (talent.IsDeleted)
+            {
+                <p><strong>@talent.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                <button @onclick="() => talent.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+            }
+            else
+            {
+                <div>
+                    <label>@L["Common_Name"]</label><br />
+                    <input @bind="talent.Name" />
+                </div>
+                <div>
+                    <label>@L["EditGameSystem_Description"]</label><br />
+                    <textarea @bind="talent.Description"></textarea>
+                </div>
+                <h5>@L["EditGameSystem_ModifiersSection"]</h5>
+
+                @foreach (var mod in talent.Modifiers.Where(x => !x.IsDeleted))
+                {
+                    <div style="margin-left:20px; margin-top:8px;">
+                        <select @bind="mod.TargetType">
+                            <option value="@ModifierTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
+                            <option value="@ModifierTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
+                            <option value="@ModifierTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                        </select>
+
+                        @if (mod.TargetType == ModifierTargetType.BaseAttribute)
+                        {
+                            <select @bind="mod.TargetId">
+                                @foreach (var target in CurrentSystem.AvailableBaseAttributes)
+                                {
+                                    <option value="@target.AttributeDefinitionId">@target.Name</option>
+                                }
+                            </select>
+                        }
+                        else if (mod.TargetType == ModifierTargetType.DerivedStat)
+                        {
+                            <select @bind="mod.TargetId">
+                                @foreach (var target in CurrentSystem.AvailableDerivedStats)
+                                {
+                                    <option value="@target.DerivedStatDefinitionId">@target.Name</option>
+                                }
+                            </select>
+                        }
+                        else if (mod.TargetType == ModifierTargetType.Metric)
+                        {
+                            <select @bind="mod.TargetId">
+                                @foreach (var target in CurrentSystem.AvailableMetrics)
+                                {
+                                    <option value="@target.MetricDefinitionId">@target.Name</option>
+                                }
+                            </select>
+                        }
+
+                        <input type="number" @bind="mod.AddValue" />
+
+                        @if (mod.ModifierId.HasValue)
+                        {
+                            <button @onclick="() => mod.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                        }
+                        else
+                        {
+                            <button @onclick="() => talent.Modifiers.Remove(mod)">@L["EditGameSystem_Delete"]</button>
+                        }
+                    </div>
+                }
+
+                <button @onclick="() => AddTalentModifierRow(talent)">
+                    @L["EditGameSystem_AddModifierRow"]
+                </button>
+                <div>
+                    <label>@L["EditGameSystem_DisplayOrder"]</label><br />
+                    <input type="number" @bind="talent.DisplayOrder" />
+                </div>
+
+                @if (talent.TalentDefinitionId.HasValue)
+                {
+                    <button @onclick="() => talent.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                }
+                else
+                {
+                    <button @onclick="() => CurrentSystem.Talents.Remove(talent)">@L["EditGameSystem_Delete"]</button>
+                }
+            }
+        </div>
+    }
+
+    <h4>@L["EditGameSystem_ItemsSection"]</h4>
+    <button @onclick="AddItemRow">@L["EditGameSystem_AddItemRow"]</button>
+
+    @foreach (var item in CurrentSystem.Items)
+    {
+        <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
+            @if (item.IsDeleted)
+            {
+                <p><strong>@item.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                <button @onclick="() => item.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+            }
+            else
+            {
+                <div>
+                    <label>@L["Common_Name"]</label><br />
+                    <input @bind="item.Name" />
+                </div>
+                <div>
+                    <label>@L["EditGameSystem_Description"]</label><br />
+                    <textarea @bind="item.Description"></textarea>
+                </div>
+                <h5>@L["EditGameSystem_ModifiersSection"]</h5>
+
+                @foreach (var mod in item.Modifiers.Where(x => !x.IsDeleted))
+                {
+                    <div style="margin-left:20px; margin-top:8px;">
+                        <select @bind="mod.TargetType">
+                            <option value="@ModifierTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
+                            <option value="@ModifierTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
+                            <option value="@ModifierTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                        </select>
+
+                        @if (mod.TargetType == ModifierTargetType.BaseAttribute)
+                        {
+                            <select @bind="mod.TargetId">
+                                @foreach (var target in CurrentSystem.AvailableBaseAttributes)
+                                {
+                                    <option value="@target.AttributeDefinitionId">@target.Name</option>
+                                }
+                            </select>
+                        }
+                        else if (mod.TargetType == ModifierTargetType.DerivedStat)
+                        {
+                            <select @bind="mod.TargetId">
+                                @foreach (var target in CurrentSystem.AvailableDerivedStats)
+                                {
+                                    <option value="@target.DerivedStatDefinitionId">@target.Name</option>
+                                }
+                            </select>
+                        }
+                        else if (mod.TargetType == ModifierTargetType.Metric)
+                        {
+                            <select @bind="mod.TargetId">
+                                @foreach (var target in CurrentSystem.AvailableMetrics)
+                                {
+                                    <option value="@target.MetricDefinitionId">@target.Name</option>
+                                }
+                            </select>
+                        }
+
+                        <input type="number" @bind="mod.AddValue" />
+
+                        @if (mod.ModifierId.HasValue)
+                        {
+                            <button @onclick="() => mod.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                        }
+                        else
+                        {
+                            <button @onclick="() => item.Modifiers.Remove(mod)">@L["EditGameSystem_Delete"]</button>
+                        }
+                    </div>
+                }
+
+                <button @onclick="() => AddItemModifierRow(item)">
+                    @L["EditGameSystem_AddModifierRow"]
+                </button>
+                <div>
+                    <label>@L["EditGameSystem_DisplayOrder"]</label><br />
+                    <input type="number" @bind="item.DisplayOrder" />
+                </div>
+
+                @if (item.ItemDefinitionId.HasValue)
+                {
+                    <button @onclick="() => item.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                }
+                else
+                {
+                    <button @onclick="() => CurrentSystem.Items.Remove(item)">@L["EditGameSystem_Delete"]</button>
                 }
             }
         </div>
@@ -480,6 +770,34 @@ else
             .FirstOrDefault(a => a.AttributeDefinitionId == attributeDefinitionId)?.Name ?? string.Empty;
     }
 
+    private void AddMetricRow()
+    {
+        CurrentSystem?.Metrics.Add(new EditableMetricDefinitionDto
+        {
+            Name = string.Empty,
+            BaseValue = 0,
+            MinValue = 0,
+            MaxValue = 100,
+            RoundMode = ComputedValueRoundMode.Ceiling,
+            DisplayOrder = CurrentSystem.Metrics.Count
+        });
+    }
+
+    private void AddMetricComponentRow(EditableMetricDefinitionDto metric)
+    {
+        if (CurrentSystem is null || CurrentSystem.AvailableBaseAttributes.Count == 0)
+            return;
+
+        var attribute = CurrentSystem.AvailableBaseAttributes.First();
+
+        metric.Components.Add(new EditableMetricComponentDto
+        {
+            AttributeDefinitionId = attribute.AttributeDefinitionId,
+            AttributeName = attribute.Name,
+            Weight = 100
+        });
+    }
+
     private void AddTraitRow()
     {
         CurrentSystem?.Traits.Add(new EditableTraitDefinitionDto { Name = string.Empty });
@@ -545,6 +863,7 @@ else
 
     private async Task ApplyChangesInternal(bool confirmShared)
     {
+
         if (CurrentSystem is null)
             return;
 
@@ -558,8 +877,11 @@ else
             ConfirmSharedSystemChanges = confirmShared,
             Attributes = CurrentSystem.Attributes,
             DerivedStats = CurrentSystem.DerivedStats,
+            Metrics = CurrentSystem.Metrics,
             Traits = CurrentSystem.Traits,
-            Gauges = CurrentSystem.Gauges
+            Gauges = CurrentSystem.Gauges,
+            Talents = CurrentSystem.Talents,
+            Items = CurrentSystem.Items
         };
 
         await GameSystemService.ApplyGameSystemChangesAsync(GameSystemId, CurrentUserId, request);
@@ -583,5 +905,47 @@ else
         {
             Message = $"{L["Common_Error"]} : {ex.Message}";
         }
+    }
+
+    private void AddTalentRow()
+    {
+        CurrentSystem?.Talents.Add(new EditableTalentDefinitionDto
+        {
+            Name = string.Empty,
+            DisplayOrder = (CurrentSystem?.Talents.Count ?? 0) + 1
+        });
+    }
+
+    private void AddItemRow()
+    {
+        CurrentSystem?.Items.Add(new EditableItemDefinitionDto
+        {
+            Name = string.Empty,
+            DisplayOrder = (CurrentSystem?.Items.Count ?? 0) + 1
+        });
+    }
+
+    private void AddTalentModifierRow(EditableTalentDefinitionDto talent)
+    {
+        var firstAttribute = CurrentSystem?.AvailableBaseAttributes.FirstOrDefault();
+
+        talent.Modifiers.Add(new EditableModifierDefinitionDto
+        {
+            TargetType = ModifierTargetType.BaseAttribute,
+            TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
+            AddValue = 0
+        });
+    }
+
+    private void AddItemModifierRow(EditableItemDefinitionDto item)
+    {
+        var firstAttribute = CurrentSystem?.AvailableBaseAttributes.FirstOrDefault();
+
+        item.Modifiers.Add(new EditableModifierDefinitionDto
+        {
+            TargetType = ModifierTargetType.BaseAttribute,
+            TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
+            AddValue = 0
+        });
     }
 }

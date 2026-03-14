@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Rollocracy.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Rollocracy.Infrastructure.Persistence;
 namespace Rollocracy.Infrastructure.Migrations
 {
     [DbContext(typeof(RollocracyDbContext))]
-    partial class RollocracyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260313140344_AddMetricsAndAutomaticPollVoteWeight")]
+    partial class AddMetricsAndAutomaticPollVoteWeight
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,40 +24,6 @@ namespace Rollocracy.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("Rollocracy.Domain.Characters.CharacterItem", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CharacterId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ItemDefinitionId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("CharacterItems");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.Characters.CharacterTalent", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CharacterId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TalentDefinitionId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("CharacterTalents");
-                });
 
             modelBuilder.Entity("Rollocracy.Domain.Entities.Character", b =>
                 {
@@ -354,29 +323,6 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.ToTable("CharacterTraitValues");
                 });
 
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.ChoiceOptionModifierDefinition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AddValue")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("TargetId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("TargetType")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("TraitOptionId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ChoiceOptionModifierDefinitions");
-                });
-
             modelBuilder.Entity("Rollocracy.Domain.GameRules.DerivedStatComponent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -461,55 +407,6 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.ToTable("GaugeDefinitions");
                 });
 
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.ItemDefinition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("GameSystemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ItemDefinitions");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.ItemModifierDefinition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AddValue")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("ItemDefinitionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TargetId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("TargetType")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ItemDefinitionId");
-
-                    b.ToTable("ItemModifierDefinitions");
-                });
-
             modelBuilder.Entity("Rollocracy.Domain.GameRules.MetricComponent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -565,55 +462,6 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.HasIndex("GameSystemId", "Name");
 
                     b.ToTable("MetricDefinitions");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.TalentDefinition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("GameSystemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("TalentDefinitions");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.TalentModifierDefinition", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("AddValue")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("TalentDefinitionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TargetId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("TargetType")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TalentDefinitionId");
-
-                    b.ToTable("TalentModifierDefinitions");
                 });
 
             modelBuilder.Entity("Rollocracy.Domain.GameRules.TraitDefinition", b =>
@@ -1078,38 +926,6 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("GameEvents");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.ItemModifierDefinition", b =>
-                {
-                    b.HasOne("Rollocracy.Domain.GameRules.ItemDefinition", "ItemDefinition")
-                        .WithMany("Modifiers")
-                        .HasForeignKey("ItemDefinitionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ItemDefinition");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.TalentModifierDefinition", b =>
-                {
-                    b.HasOne("Rollocracy.Domain.GameRules.TalentDefinition", "TalentDefinition")
-                        .WithMany("Modifiers")
-                        .HasForeignKey("TalentDefinitionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("TalentDefinition");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.ItemDefinition", b =>
-                {
-                    b.Navigation("Modifiers");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.GameRules.TalentDefinition", b =>
-                {
-                    b.Navigation("Modifiers");
                 });
 #pragma warning restore 612, 618
         }
