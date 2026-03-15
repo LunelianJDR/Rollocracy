@@ -77,6 +77,9 @@ builder.Services.AddScoped<ISessionNotifier, SignalRSessionNotifier>();
 
 builder.Services.AddScoped<IPollService, PollService>();
 
+builder.Services.AddScoped<IMassDistributionService, MassDistributionService>();
+
+
 //////////////////////////
 
 var supportedCultures = new[]

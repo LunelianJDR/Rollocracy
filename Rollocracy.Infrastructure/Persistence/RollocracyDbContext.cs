@@ -63,6 +63,8 @@ namespace Rollocracy.Infrastructure.Persistence
 
         public DbSet<ChoiceOptionModifierDefinition> ChoiceOptionModifierDefinitions => Set<ChoiceOptionModifierDefinition>();
 
+        public DbSet<MassDistributionBatch> MassDistributionBatches => Set<MassDistributionBatch>();
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -116,6 +118,27 @@ namespace Rollocracy.Infrastructure.Persistence
 
                 entity.Property(x => x.SourceNameSnapshot)
                     .HasColumnType("text");
+            });
+
+            modelBuilder.Entity<MassDistributionBatch>(entity =>
+            {
+                entity.HasIndex(x => x.SessionId);
+                entity.HasIndex(x => new { x.SessionId, x.CreatedAtUtc });
+
+                entity.Property(x => x.Name)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.FilterSnapshotJson)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.EffectsSnapshotJson)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.UndoSnapshotJson)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.UndoneAtUtc)
+                    .HasColumnType("timestamp with time zone");
             });
         }
     }

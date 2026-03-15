@@ -1462,4 +1462,109 @@
 	<data name="Backend_CharacterEffectBatchNameRequired" xml:space="preserve">
   <value>The effect batch name is required.</value>
 </data>
+	<data name="MassDistribution_Title" xml:space="preserve">
+  <value>Mass distribution</value>
+</data>
+	<data name="MassDistribution_NotFound" xml:space="preserve">
+  <value>Session not found or access denied.</value>
+</data>
+	<data name="MassDistribution_Session" xml:space="preserve">
+  <value>Session</value>
+</data>
+	<data name="MassDistribution_Name" xml:space="preserve">
+  <value>Batch name</value>
+</data>
+	<data name="MassDistribution_FilterSection" xml:space="preserve">
+  <value>Filters</value>
+</data>
+	<data name="MassDistribution_FilterOnlyAlive" xml:space="preserve">
+  <value>Alive only</value>
+</data>
+	<data name="MassDistribution_FilterOnlyDead" xml:space="preserve">
+  <value>Dead only</value>
+</data>
+	<data name="MassDistribution_FilterOnlyOnline" xml:space="preserve">
+  <value>Online only</value>
+</data>
+	<data name="MassDistribution_TraitOptionFilters" xml:space="preserve">
+  <value>Trait option filters</value>
+</data>
+	<data name="MassDistribution_TalentFilters" xml:space="preserve">
+  <value>Talent filters</value>
+</data>
+	<data name="MassDistribution_ItemFilters" xml:space="preserve">
+  <value>Item filters</value>
+</data>
+	<data name="MassDistribution_AddFilter" xml:space="preserve">
+  <value>Add filter</value>
+</data>
+	<data name="MassDistribution_ValueFilters" xml:space="preserve">
+  <value>Value filters</value>
+</data>
+	<data name="MassDistribution_AddValueFilter" xml:space="preserve">
+  <value>Add value filter</value>
+</data>
+	<data name="MassDistribution_Target_Gauge" xml:space="preserve">
+  <value>Gauge</value>
+</data>
+	<data name="MassDistribution_EffectsSection" xml:space="preserve">
+  <value>Effects</value>
+</data>
+	<data name="MassDistribution_AddEffect" xml:space="preserve">
+  <value>Add effect</value>
+</data>
+	<data name="MassDistribution_Operation_AddValue" xml:space="preserve">
+  <value>Add / remove a value</value>
+</data>
+	<data name="MassDistribution_Operation_GrantTalent" xml:space="preserve">
+  <value>Grant talent</value>
+</data>
+	<data name="MassDistribution_Operation_RevokeTalent" xml:space="preserve">
+  <value>Revoke talent</value>
+</data>
+	<data name="MassDistribution_Operation_GrantItem" xml:space="preserve">
+  <value>Grant item</value>
+</data>
+	<data name="MassDistribution_Operation_RevokeItem" xml:space="preserve">
+  <value>Revoke item</value>
+</data>
+	<data name="MassDistribution_PreviewTargets" xml:space="preserve">
+  <value>Preview targets</value>
+</data>
+	<data name="MassDistribution_Apply" xml:space="preserve">
+  <value>Apply distribution</value>
+</data>
+	<data name="MassDistribution_PreviewResult" xml:space="preserve">
+  <value>Preview result</value>
+</data>
+	<data name="MassDistribution_TargetCount" xml:space="preserve">
+  <value>Target character count</value>
+</data>
+	<data name="MassDistribution_Alive" xml:space="preserve">
+  <value>alive</value>
+</data>
+	<data name="MassDistribution_Dead" xml:space="preserve">
+  <value>dead</value>
+</data>
+	<data name="MassDistribution_ApplySuccess" xml:space="preserve">
+  <value>Distribution applied</value>
+</data>
+	<data name="Backend_MassDistributionNameRequired" xml:space="preserve">
+  <value>The distribution name is required.</value>
+</data>
+	<data name="MassDistribution_LastBatch" xml:space="preserve">
+  <value>Last batch</value>
+</data>
+	<data name="MassDistribution_UndoLast" xml:space="preserve">
+  <value>Undo last batch</value>
+</data>
+	<data name="MassDistribution_UndoSuccess" xml:space="preserve">
+  <value>Last batch undone</value>
+</data>
+	<data name="Backend_MassDistributionNoBatchToUndo" xml:space="preserve">
+  <value>No mass distribution batch can be undone.</value>
+</data>
+	<data name="Backend_MassDistributionUndoSnapshotInvalid" xml:space="preserve">
+  <value>The undo snapshot for the last batch is invalid.</value>
+</data>
 </root>

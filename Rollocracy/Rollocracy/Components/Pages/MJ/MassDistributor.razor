@@ -1,0 +1,440 @@
+﻿@page "/mj/session/{SessionId:guid}/mass-distribution"
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Characters
+@using Rollocracy.Domain.Interfaces
+@using Rollocracy.Localization
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IMassDistributionService MassDistributionService
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
+
+<h3>@L["MassDistribution_Title"]</h3>
+
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToHome)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (Editor is null)
+{
+    <p>@L["MassDistribution_NotFound"]</p>
+}
+else
+{
+    <p><strong>@L["MassDistribution_Session"] :</strong> @Editor.SessionName</p>
+
+    @if (LastBatch is not null)
+    {
+        <div style="margin-bottom:16px; padding:8px; border:1px solid #ccc;">
+            <p>
+                <strong>@L["MassDistribution_LastBatch"] :</strong>
+                @LastBatch.Name
+                (@LastBatch.TargetCharacterCount)
+            </p>
+            <button @onclick="UndoLastDistribution">@L["MassDistribution_UndoLast"]</button>
+        </div>
+    }
+
+    <div class="mb-3">
+        <label>@L["MassDistribution_Name"]</label><br />
+        <input @bind="Request.Name" />
+    </div>
+
+    <h4>@L["MassDistribution_FilterSection"]</h4>
+
+    <div>
+        <label><input type="checkbox" @bind="Request.Filter.OnlyAlive" /> @L["MassDistribution_FilterOnlyAlive"]</label>
+    </div>
+    <div>
+        <label><input type="checkbox" @bind="Request.Filter.OnlyDead" /> @L["MassDistribution_FilterOnlyDead"]</label>
+    </div>
+    <div>
+        <label><input type="checkbox" @bind="Request.Filter.OnlyOnline" /> @L["MassDistribution_FilterOnlyOnline"]</label>
+    </div>
+
+    <div style="margin-top:12px;">
+        <label>@L["MassDistribution_TraitOptionFilters"]</label><br />
+        <select @bind="SelectedTraitOptionId">
+            <option value="">--</option>
+            @foreach (var item in Editor.TraitOptions)
+            {
+                <option value="@item.Id">@item.Name</option>
+            }
+        </select>
+        <button @onclick="AddTraitOptionFilter">@L["MassDistribution_AddFilter"]</button>
+
+        @foreach (var item in Request.Filter.TraitOptionIds.ToList())
+        {
+            var reference = Editor.TraitOptions.FirstOrDefault(x => x.Id == item);
+            <div>
+                @reference?.Name
+                <button @onclick="() => Request.Filter.TraitOptionIds.Remove(item)">@L["EditGameSystem_Delete"]</button>
+            </div>
+        }
+    </div>
+
+    <div style="margin-top:12px;">
+        <label>@L["MassDistribution_TalentFilters"]</label><br />
+        <select @bind="SelectedTalentFilterId">
+            <option value="">--</option>
+            @foreach (var item in Editor.Talents)
+            {
+                <option value="@item.Id">@item.Name</option>
+            }
+        </select>
+        <button @onclick="AddTalentFilter">@L["MassDistribution_AddFilter"]</button>
+
+        @foreach (var item in Request.Filter.TalentIds.ToList())
+        {
+            var reference = Editor.Talents.FirstOrDefault(x => x.Id == item);
+            <div>
+                @reference?.Name
+                <button @onclick="() => Request.Filter.TalentIds.Remove(item)">@L["EditGameSystem_Delete"]</button>
+            </div>
+        }
+    </div>
+
+    <div style="margin-top:12px;">
+        <label>@L["MassDistribution_ItemFilters"]</label><br />
+        <select @bind="SelectedItemFilterId">
+            <option value="">--</option>
+            @foreach (var item in Editor.Items)
+            {
+                <option value="@item.Id">@item.Name</option>
+            }
+        </select>
+        <button @onclick="AddItemFilter">@L["MassDistribution_AddFilter"]</button>
+
+        @foreach (var item in Request.Filter.ItemIds.ToList())
+        {
+            var reference = Editor.Items.FirstOrDefault(x => x.Id == item);
+            <div>
+                @reference?.Name
+                <button @onclick="() => Request.Filter.ItemIds.Remove(item)">@L["EditGameSystem_Delete"]</button>
+            </div>
+        }
+    </div>
+
+    <div style="margin-top:12px;">
+        <h5>@L["MassDistribution_ValueFilters"]</h5>
+        <button @onclick="AddValueFilter">@L["MassDistribution_AddValueFilter"]</button>
+
+        @foreach (var valueFilter in Request.Filter.ValueFilters)
+        {
+            <div style="margin-top:8px; margin-left:20px;">
+                <select @bind="valueFilter.TargetType">
+                    <option value="@CharacterEffectTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
+                    <option value="@CharacterEffectTargetType.Gauge">@L["MassDistribution_Target_Gauge"]</option>
+                    <option value="@CharacterEffectTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
+                    <option value="@CharacterEffectTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                </select>
+
+                @if (valueFilter.TargetType == CharacterEffectTargetType.BaseAttribute)
+                {
+                    <select @bind="valueFilter.TargetId">
+                        @foreach (var item in Editor.BaseAttributes)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                }
+                else if (valueFilter.TargetType == CharacterEffectTargetType.Gauge)
+                {
+                    <select @bind="valueFilter.TargetId">
+                        @foreach (var item in Editor.Gauges)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                }
+                else if (valueFilter.TargetType == CharacterEffectTargetType.DerivedStat)
+                {
+                    <select @bind="valueFilter.TargetId">
+                        @foreach (var item in Editor.DerivedStats)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                }
+                else if (valueFilter.TargetType == CharacterEffectTargetType.Metric)
+                {
+                    <select @bind="valueFilter.TargetId">
+                        @foreach (var item in Editor.Metrics)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                }
+
+                <select @bind="valueFilter.ComparisonType">
+                    <option value="@CharacterValueComparisonType.Equal">=</option>
+                    <option value="@CharacterValueComparisonType.NotEqual">!=</option>
+                    <option value="@CharacterValueComparisonType.GreaterThan">&gt;</option>
+                    <option value="@CharacterValueComparisonType.GreaterThanOrEqual">&gt;=</option>
+                    <option value="@CharacterValueComparisonType.LessThan">&lt;</option>
+                    <option value="@CharacterValueComparisonType.LessThanOrEqual">&lt;=</option>
+                </select>
+
+                <input type="number" @bind="valueFilter.Value" />
+                <button @onclick="() => Request.Filter.ValueFilters.Remove(valueFilter)">@L["EditGameSystem_Delete"]</button>
+            </div>
+        }
+    </div>
+
+    <h4 style="margin-top:20px;">@L["MassDistribution_EffectsSection"]</h4>
+    <button @onclick="AddEffect">@L["MassDistribution_AddEffect"]</button>
+
+    @foreach (var effect in Request.Effects)
+    {
+        <div style="margin-top:8px; padding:8px; border:1px solid #ccc;">
+            <select @bind="effect.OperationType">
+                <option value="@CharacterEffectOperationType.AddValue">@L["MassDistribution_Operation_AddValue"]</option>
+                <option value="@CharacterEffectOperationType.GrantTalent">@L["MassDistribution_Operation_GrantTalent"]</option>
+                <option value="@CharacterEffectOperationType.RevokeTalent">@L["MassDistribution_Operation_RevokeTalent"]</option>
+                <option value="@CharacterEffectOperationType.GrantItem">@L["MassDistribution_Operation_GrantItem"]</option>
+                <option value="@CharacterEffectOperationType.RevokeItem">@L["MassDistribution_Operation_RevokeItem"]</option>
+            </select>
+
+            @if (effect.OperationType == CharacterEffectOperationType.AddValue)
+            {
+                <select @bind="effect.TargetType">
+                    <option value="@CharacterEffectTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
+                    <option value="@CharacterEffectTargetType.Gauge">@L["MassDistribution_Target_Gauge"]</option>
+                    <option value="@CharacterEffectTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
+                    <option value="@CharacterEffectTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                </select>
+
+                @if (effect.TargetType == CharacterEffectTargetType.BaseAttribute)
+                {
+                    <select @bind="effect.TargetId">
+                        @foreach (var item in Editor.BaseAttributes)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                }
+                else if (effect.TargetType == CharacterEffectTargetType.Gauge)
+                {
+                    <select @bind="effect.TargetId">
+                        @foreach (var item in Editor.Gauges)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                }
+                else if (effect.TargetType == CharacterEffectTargetType.DerivedStat)
+                {
+                    <select @bind="effect.TargetId">
+                        @foreach (var item in Editor.DerivedStats)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                }
+                else if (effect.TargetType == CharacterEffectTargetType.Metric)
+                {
+                    <select @bind="effect.TargetId">
+                        @foreach (var item in Editor.Metrics)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                }
+
+                <input type="number" @bind="effect.Value" />
+            }
+            else if (effect.OperationType == CharacterEffectOperationType.GrantTalent || effect.OperationType == CharacterEffectOperationType.RevokeTalent)
+            {
+                effect.TargetType = CharacterEffectTargetType.Talent;
+                <select @bind="effect.TargetId">
+                    @foreach (var item in Editor.Talents)
+                    {
+                        <option value="@item.Id">@item.Name</option>
+                    }
+                </select>
+            }
+            else
+            {
+                effect.TargetType = CharacterEffectTargetType.Item;
+                <select @bind="effect.TargetId">
+                    @foreach (var item in Editor.Items)
+                    {
+                        <option value="@item.Id">@item.Name</option>
+                    }
+                </select>
+            }
+
+            <button @onclick="() => Request.Effects.Remove(effect)">@L["EditGameSystem_Delete"]</button>
+        </div>
+    }
+
+    <div style="margin-top:20px;">
+        <button @onclick="PreviewTargets">@L["MassDistribution_PreviewTargets"]</button>
+        <button @onclick="ApplyDistribution">@L["MassDistribution_Apply"]</button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p style="margin-top:12px;">@Message</p>
+    }
+
+    @if (PreviewCharacters.Count > 0)
+    {
+        <h4 style="margin-top:20px;">@L["MassDistribution_PreviewResult"]</h4>
+        <p>@L["MassDistribution_TargetCount"] : @PreviewCharacters.Count</p>
+
+        <ul>
+            @foreach (var item in PreviewCharacters)
+            {
+                <li>@item.CharacterName (@(item.IsAlive? L["MassDistribution_Alive"] : L["MassDistribution_Dead"]))</li>
+            }
+        </ul>
+    }
+}
+
+@code {
+    [Parameter] public Guid SessionId { get; set; }
+
+    private Guid CurrentUserId;
+    private bool IsLoaded;
+    private bool RedirectToHome;
+    private string Message = string.Empty;
+
+    private MassDistributionEditorDto? Editor;
+    private MassDistributionRequestDto Request = new();
+
+    private string SelectedTraitOptionId = string.Empty;
+    private string SelectedTalentFilterId = string.Empty;
+    private string SelectedItemFilterId = string.Empty;
+
+    private List<MassDistributionPreviewCharacterDto> PreviewCharacters { get; set; } = new();
+
+    private MassDistributionLastBatchDto? LastBatch;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!isAuthenticated || string.IsNullOrWhiteSpace(userIdValue))
+        {
+            RedirectToHome = true;
+            IsLoaded = true;
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+        Editor = await MassDistributionService.GetEditorAsync(SessionId, CurrentUserId);
+
+        LastBatch = await MassDistributionService.GetLastBatchAsync(SessionId, CurrentUserId);
+
+        IsLoaded = true;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToHome)
+            Navigation.NavigateTo("/", forceLoad: true);
+
+        return Task.CompletedTask;
+    }
+
+    private void AddTraitOptionFilter()
+    {
+        if (Guid.TryParse(SelectedTraitOptionId, out var id) && !Request.Filter.TraitOptionIds.Contains(id))
+            Request.Filter.TraitOptionIds.Add(id);
+    }
+
+    private void AddTalentFilter()
+    {
+        if (Guid.TryParse(SelectedTalentFilterId, out var id) && !Request.Filter.TalentIds.Contains(id))
+            Request.Filter.TalentIds.Add(id);
+    }
+
+    private void AddItemFilter()
+    {
+        if (Guid.TryParse(SelectedItemFilterId, out var id) && !Request.Filter.ItemIds.Contains(id))
+            Request.Filter.ItemIds.Add(id);
+    }
+
+    private void AddValueFilter()
+    {
+        var firstAttribute = Editor?.BaseAttributes.FirstOrDefault();
+
+        Request.Filter.ValueFilters.Add(new CharacterValueFilterDto
+        {
+            TargetType = CharacterEffectTargetType.BaseAttribute,
+            TargetId = firstAttribute?.Id ?? Guid.Empty,
+            ComparisonType = CharacterValueComparisonType.GreaterThanOrEqual,
+            Value = 0
+        });
+    }
+
+    private void AddEffect()
+    {
+        var firstAttribute = Editor?.BaseAttributes.FirstOrDefault();
+
+        Request.Effects.Add(new CharacterEffectDefinitionDto
+        {
+            OperationType = CharacterEffectOperationType.AddValue,
+            TargetType = CharacterEffectTargetType.BaseAttribute,
+            TargetId = firstAttribute?.Id ?? Guid.Empty,
+            Value = 0
+        });
+    }
+
+    private async Task PreviewTargets()
+    {
+        try
+        {
+            Message = string.Empty;
+            PreviewCharacters = await MassDistributionService.PreviewTargetsAsync(SessionId, CurrentUserId, Request);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ApplyDistribution()
+    {
+        try
+        {
+            Message = string.Empty;
+            var count = await MassDistributionService.ApplyAsync(SessionId, CurrentUserId, Request);
+            PreviewCharacters = await MassDistributionService.PreviewTargetsAsync(SessionId, CurrentUserId, Request);
+            LastBatch = await MassDistributionService.GetLastBatchAsync(SessionId, CurrentUserId);
+            Message = $"{L["MassDistribution_ApplySuccess"]} : {count}";
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task UndoLastDistribution()
+    {
+        try
+        {
+            Message = string.Empty;
+            var batchName = await MassDistributionService.UndoLastAsync(SessionId, CurrentUserId);
+            LastBatch = await MassDistributionService.GetLastBatchAsync(SessionId, CurrentUserId);
+            PreviewCharacters.Clear();
+            Message = $"{L["MassDistribution_UndoSuccess"]} : {batchName}";
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+}
