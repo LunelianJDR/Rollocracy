@@ -1462,4 +1462,109 @@
 	<data name="Backend_CharacterEffectBatchNameRequired" xml:space="preserve">
   <value>Le nom du lot d'effets est obligatoire.</value>
 </data>
+	<data name="MassDistribution_Title" xml:space="preserve">
+  <value>Distribution de masse</value>
+</data>
+	<data name="MassDistribution_NotFound" xml:space="preserve">
+  <value>Session introuvable ou accès refusé.</value>
+</data>
+	<data name="MassDistribution_Session" xml:space="preserve">
+  <value>Session</value>
+</data>
+	<data name="MassDistribution_Name" xml:space="preserve">
+  <value>Nom du lot</value>
+</data>
+	<data name="MassDistribution_FilterSection" xml:space="preserve">
+  <value>Filtres</value>
+</data>
+	<data name="MassDistribution_FilterOnlyAlive" xml:space="preserve">
+  <value>Uniquement les vivants</value>
+</data>
+	<data name="MassDistribution_FilterOnlyDead" xml:space="preserve">
+  <value>Uniquement les morts</value>
+</data>
+	<data name="MassDistribution_FilterOnlyOnline" xml:space="preserve">
+  <value>Uniquement les connectés</value>
+</data>
+	<data name="MassDistribution_TraitOptionFilters" xml:space="preserve">
+  <value>Filtres par options d'attribut</value>
+</data>
+	<data name="MassDistribution_TalentFilters" xml:space="preserve">
+  <value>Filtres par talents</value>
+</data>
+	<data name="MassDistribution_ItemFilters" xml:space="preserve">
+  <value>Filtres par objets</value>
+</data>
+	<data name="MassDistribution_AddFilter" xml:space="preserve">
+  <value>Ajouter le filtre</value>
+</data>
+	<data name="MassDistribution_ValueFilters" xml:space="preserve">
+  <value>Filtres de valeur</value>
+</data>
+	<data name="MassDistribution_AddValueFilter" xml:space="preserve">
+  <value>Ajouter un filtre de valeur</value>
+</data>
+	<data name="MassDistribution_Target_Gauge" xml:space="preserve">
+  <value>Jauge</value>
+</data>
+	<data name="MassDistribution_EffectsSection" xml:space="preserve">
+  <value>Effets</value>
+</data>
+	<data name="MassDistribution_AddEffect" xml:space="preserve">
+  <value>Ajouter un effet</value>
+</data>
+	<data name="MassDistribution_Operation_AddValue" xml:space="preserve">
+  <value>Ajouter / retirer une valeur</value>
+</data>
+	<data name="MassDistribution_Operation_GrantTalent" xml:space="preserve">
+  <value>Attribuer un talent</value>
+</data>
+	<data name="MassDistribution_Operation_RevokeTalent" xml:space="preserve">
+  <value>Retirer un talent</value>
+</data>
+	<data name="MassDistribution_Operation_GrantItem" xml:space="preserve">
+  <value>Attribuer un objet</value>
+</data>
+	<data name="MassDistribution_Operation_RevokeItem" xml:space="preserve">
+  <value>Retirer un objet</value>
+</data>
+	<data name="MassDistribution_PreviewTargets" xml:space="preserve">
+  <value>Prévisualiser les cibles</value>
+</data>
+	<data name="MassDistribution_Apply" xml:space="preserve">
+  <value>Appliquer la distribution</value>
+</data>
+	<data name="MassDistribution_PreviewResult" xml:space="preserve">
+  <value>Résultat de la prévisualisation</value>
+</data>
+	<data name="MassDistribution_TargetCount" xml:space="preserve">
+  <value>Nombre de personnages ciblés</value>
+</data>
+	<data name="MassDistribution_Alive" xml:space="preserve">
+  <value>vivant</value>
+</data>
+	<data name="MassDistribution_Dead" xml:space="preserve">
+  <value>mort</value>
+</data>
+	<data name="MassDistribution_ApplySuccess" xml:space="preserve">
+  <value>Distribution appliquée</value>
+</data>
+	<data name="Backend_MassDistributionNameRequired" xml:space="preserve">
+  <value>Le nom de la distribution est obligatoire.</value>
+</data>
+	<data name="MassDistribution_LastBatch" xml:space="preserve">
+  <value>Dernier lot</value>
+</data>
+	<data name="MassDistribution_UndoLast" xml:space="preserve">
+  <value>Annuler le dernier lot</value>
+</data>
+	<data name="MassDistribution_UndoSuccess" xml:space="preserve">
+  <value>Dernier lot annulé</value>
+</data>
+	<data name="Backend_MassDistributionNoBatchToUndo" xml:space="preserve">
+  <value>Aucun lot de distribution de masse à annuler.</value>
+</data>
+	<data name="Backend_MassDistributionUndoSnapshotInvalid" xml:space="preserve">
+  <value>Le snapshot d'annulation du dernier lot est invalide.</value>
+</data>
 </root>
