@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Rollocracy.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Rollocracy.Infrastructure.Persistence;
 namespace Rollocracy.Infrastructure.Migrations
 {
     [DbContext(typeof(RollocracyDbContext))]
-    partial class RollocracyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260315192423_ExtendGameTestAppliedEffectForCommonRollback")]
+    partial class ExtendGameTestAppliedEffectForCommonRollback
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1020,23 +1023,14 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<DateTime?>("NewDiedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<bool>("NewHasTargetLink")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("NewIsAlive")
                         .HasColumnType("boolean");
 
                     b.Property<int>("NewValue")
                         .HasColumnType("integer");
 
-                    b.Property<int>("OperationType")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime?>("PreviousDiedAtUtc")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("PreviousHasTargetLink")
-                        .HasColumnType("boolean");
 
                     b.Property<bool>("PreviousIsAlive")
                         .HasColumnType("boolean");
@@ -1092,9 +1086,6 @@ namespace Rollocracy.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<int>("ModifierMode")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("OperationType")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("SessionPollOptionId")

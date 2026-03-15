@@ -3,6 +3,8 @@ using Rollocracy.Domain.GameTests;
 
 namespace Rollocracy.Domain.Polls
 {
+    // Historique d'effet appliqué par un sondage.
+    // Sert au rollback complet du dernier sondage.
     public class SessionPollAppliedEffect
     {
         public Guid Id { get; set; }
@@ -19,9 +21,17 @@ namespace Rollocracy.Domain.Polls
 
         public Guid TargetDefinitionId { get; set; }
 
+        public TestConsequenceOperationType OperationType { get; set; }
+
+        // Utilisé pour Attribute / Gauge
         public int PreviousValue { get; set; }
 
         public int NewValue { get; set; }
+
+        // Utilisé pour Talent / Item
+        public bool PreviousHasTargetLink { get; set; }
+
+        public bool NewHasTargetLink { get; set; }
 
         public bool PreviousIsAlive { get; set; }
 
@@ -31,6 +41,6 @@ namespace Rollocracy.Domain.Polls
 
         public DateTime? NewDiedAtUtc { get; set; }
 
-        public DateTime AppliedAtUtc { get; set; } = DateTime.UtcNow;
+        public DateTime AppliedAtUtc { get; set; }
     }
 }

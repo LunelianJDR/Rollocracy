@@ -18,6 +18,7 @@ namespace Rollocracy.Domain.Polls
         public Guid TargetDefinitionId { get; set; }
         public TestModifierMode ModifierMode { get; set; }
         public int Value { get; set; }
+        public TestConsequenceOperationType OperationType { get; set; }
     }
 
     public class PollOptionDraftDto
@@ -32,6 +33,7 @@ namespace Rollocracy.Domain.Polls
         public Guid TargetDefinitionId { get; set; }
         public TestModifierMode ModifierMode { get; set; }
         public int Value { get; set; }
+        public TestConsequenceOperationType OperationType { get; set; }
     }
 
     public class PollCreateRequestDto
@@ -86,6 +88,7 @@ namespace Rollocracy.Domain.Polls
         public string TargetName { get; set; } = string.Empty;
         public TestModifierMode ModifierMode { get; set; }
         public int Value { get; set; }
+        public TestConsequenceOperationType OperationType { get; set; }
     }
 
     public class PollForGameMasterDto
@@ -120,4 +123,5 @@ namespace Rollocracy.Domain.Polls
         public string MetricName { get; set; } = string.Empty;
         public List<PollOptionResultDto> Options { get; set; } = new();
     }
+
 }

@@ -216,7 +216,7 @@ else
 
         @if (ConsequenceRows.Count == 0)
         {
-            <p>@L["GameTest_NoConsequence"]</p>
+            @L["GameTest_NoConsequence"]
         }
         else
         {
@@ -224,9 +224,9 @@ else
             {
                 var row = ConsequenceRows[i];
 
-                <div style="border:1px solid #ccc; padding:0.5rem; margin-bottom:0.5rem;">
+                <div style="margin-top:8px; padding:8px; border:1px solid #ccc;">
                     <div>
-                        <label>@L["GameTest_When"]</label><br />
+                        @L["GameTest_When"]
                         <select @bind="row.ApplyOn">
                             <option value="@TestConsequenceApplyOn.OnSuccess">@L["GameTest_OnSuccess"]</option>
                             <option value="@TestConsequenceApplyOn.OnFailure">@L["GameTest_OnFailure"]</option>
@@ -234,15 +234,48 @@ else
                     </div>
 
                     <div>
-                        <label>@L["GameTest_ConsequenceTargetKind"]</label><br />
-                        <select @bind="row.TargetKind">
-                            <option value="@TestConsequenceTargetKind.Gauge">@L["GameTest_TargetGauge"]</option>
-                            <option value="@TestConsequenceTargetKind.Attribute">@L["GameTest_TargetAttribute"]</option>
+                        @L["GameTest_ConsequenceOperation"]
+                        <select value="@((int)row.OperationType)" @onchange="e => ChangeConsequenceOperation(row, e.Value?.ToString())">
+                            <option value="@((int)TestConsequenceOperationType.AddValue)">@L["TestConsequence_Operation_AddValue"]</option>
+                            <option value="@((int)TestConsequenceOperationType.GrantTalent)">@L["TestConsequence_Operation_GrantTalent"]</option>
+                            <option value="@((int)TestConsequenceOperationType.RevokeTalent)">@L["TestConsequence_Operation_RevokeTalent"]</option>
+                            <option value="@((int)TestConsequenceOperationType.GrantItem)">@L["TestConsequence_Operation_GrantItem"]</option>
+                            <option value="@((int)TestConsequenceOperationType.RevokeItem)">@L["TestConsequence_Operation_RevokeItem"]</option>
                         </select>
                     </div>
 
+                    @if (row.OperationType == TestConsequenceOperationType.AddValue)
+                    {
+                        <div>
+                            @L["GameTest_ConsequenceTargetKind"]
+                            <select value="@((int)row.TargetKind)" @onchange="e => ChangeConsequenceTargetKind(row, e.Value?.ToString())">
+                                <option value="@((int)TestConsequenceTargetKind.Gauge)">@L["GameTest_TargetGauge"]</option>
+                                <option value="@((int)TestConsequenceTargetKind.Attribute)">@L["GameTest_TargetAttribute"]</option>
+                                <option value="@((int)TestConsequenceTargetKind.DerivedStat)">@L["TestConsequence_Target_DerivedStat"]</option>
+                                <option value="@((int)TestConsequenceTargetKind.Metric)">@L["TestConsequence_Target_Metric"]</option>
+                            </select>
+                        </div>
+                    }
+                    else if (row.OperationType == TestConsequenceOperationType.GrantTalent || row.OperationType == TestConsequenceOperationType.RevokeTalent)
+                    {
+                        row.TargetKind = TestConsequenceTargetKind.Talent;
+                        <div>
+                            @L["GameTest_ConsequenceTargetKind"]
+                            <span>@L["TestConsequence_Target_Talent"]</span>
+                        </div>
+                    }
+                    else
+                    {
+                        row.TargetKind = TestConsequenceTargetKind.Item;
+                        <div>
+                            @L["GameTest_ConsequenceTargetKind"]
+                            <span>@L["TestConsequence_Target_Item"]</span>
+                        </div>
+                    }
+
                     <div>
-                        <label>@L["GameTest_TargetDefinition"]</label><br />
+                        @L["GameTest_TargetDefinition"]
+
                         @if (row.TargetKind == TestConsequenceTargetKind.Gauge)
                         {
                             <select @bind="row.TargetDefinitionId">
@@ -252,7 +285,7 @@ else
                                 }
                             </select>
                         }
-                        else
+                        else if (row.TargetKind == TestConsequenceTargetKind.Attribute)
                         {
                             <select @bind="row.TargetDefinitionId">
                                 @foreach (var attributeDefinition in AvailableAttributes)
@@ -261,22 +294,63 @@ else
                                 }
                             </select>
                         }
+                        else if (row.TargetKind == TestConsequenceTargetKind.DerivedStat)
+                        {
+                            <select @bind="row.TargetDefinitionId">
+                                @foreach (var derivedDefinition in AvailableDerivedStats)
+                                {
+                                    <option value="@derivedDefinition.DerivedStatDefinitionId">@derivedDefinition.Name</option>
+                                }
+                            </select>
+                        }
+                        else if (row.TargetKind == TestConsequenceTargetKind.Metric)
+                        {
+                            <select @bind="row.TargetDefinitionId">
+                                @foreach (var metricDefinition in AvailableMetrics)
+                                {
+                                    <option value="@metricDefinition.Id">@metricDefinition.Name</option>
+                                }
+                            </select>
+                        }
+                        else if (row.TargetKind == TestConsequenceTargetKind.Talent)
+                        {
+                            <select @bind="row.TargetDefinitionId">
+                                @foreach (var talentDefinition in AvailableTalents)
+                                {
+                                    <option value="@talentDefinition.TalentDefinitionId">@talentDefinition.Name</option>
+                                }
+                            </select>
+                        }
+                        else if (row.TargetKind == TestConsequenceTargetKind.Item)
+                        {
+                            <select @bind="row.TargetDefinitionId">
+                                @foreach (var itemDefinition in AvailableItems)
+                                {
+                                    <option value="@itemDefinition.ItemDefinitionId">@itemDefinition.Name</option>
+                                }
+                            </select>
+                        }
                     </div>
+
+                    @if (row.OperationType == TestConsequenceOperationType.AddValue)
+                    {
+                        <div>
+                            @L["GameTest_DifficultyMode"]
+                            <select @bind="row.ModifierMode">
+                                <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
+                                <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            @L["GameTest_DifficultyValue"]
+                            <input type="number" @bind="row.Value" />
+                        </div>
+                    }
 
                     <div>
-                        <label>@L["GameTest_DifficultyMode"]</label><br />
-                        <select @bind="row.ModifierMode">
-                            <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
-                            <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
-                        </select>
+                        <button @onclick="() => RemoveConsequenceRow(row.RowId)">@L["Common_Remove"]</button>
                     </div>
-
-                    <div>
-                        <label>@L["GameTest_DifficultyValue"]</label><br />
-                        <input type="number" @bind="row.Value" />
-                    </div>
-
-                    <button @onclick="() => RemoveConsequenceRow(row.RowId)">@L["Common_Remove"]</button>
                 </div>
             }
         }
@@ -417,41 +491,125 @@ else
 
                 @foreach (var consequence in optionRow.Consequences)
                 {
-                    <div style="margin-top:0.5rem;">
-                        <select @bind="consequence.TargetKind">
-                            <option value="@TestConsequenceTargetKind.Gauge">@L["GameTest_TargetGauge"]</option>
-                            <option value="@TestConsequenceTargetKind.Attribute">@L["GameTest_TargetAttribute"]</option>
-                        </select>
-
-                        @if (consequence.TargetKind == TestConsequenceTargetKind.Gauge)
-                        {
-                            <select @bind="consequence.TargetDefinitionId">
-                                @foreach (var gaugeDefinition in AvailableGaugeDefinitions)
-                                {
-                                    <option value="@gaugeDefinition.Id">@gaugeDefinition.Name</option>
-                                }
+                    <div style="margin-top:8px; margin-left:20px; padding:8px; border:1px solid #ccc;">
+                        <div>
+                            @L["Poll_ConsequenceOperation"]
+                            <select @bind="consequence.OperationType">
+                                <option value="@TestConsequenceOperationType.AddValue">@L["TestConsequence_Operation_AddValue"]</option>
+                                <option value="@TestConsequenceOperationType.GrantTalent">@L["TestConsequence_Operation_GrantTalent"]</option>
+                                <option value="@TestConsequenceOperationType.RevokeTalent">@L["TestConsequence_Operation_RevokeTalent"]</option>
+                                <option value="@TestConsequenceOperationType.GrantItem">@L["TestConsequence_Operation_GrantItem"]</option>
+                                <option value="@TestConsequenceOperationType.RevokeItem">@L["TestConsequence_Operation_RevokeItem"]</option>
                             </select>
+                        </div>
+
+                        @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
+                        {
+                            <div>
+                                @L["GameTest_ConsequenceTargetKind"]
+                                <select @bind="consequence.TargetKind">
+                                    <option value="@TestConsequenceTargetKind.Gauge">@L["GameTest_TargetGauge"]</option>
+                                    <option value="@TestConsequenceTargetKind.Attribute">@L["GameTest_TargetAttribute"]</option>
+                                    <option value="@TestConsequenceTargetKind.DerivedStat">@L["TestConsequence_Target_DerivedStat"]</option>
+                                    <option value="@TestConsequenceTargetKind.Metric">@L["TestConsequence_Target_Metric"]</option>
+                                </select>
+                            </div>
+                        }
+                        else if (consequence.OperationType == TestConsequenceOperationType.GrantTalent || consequence.OperationType == TestConsequenceOperationType.RevokeTalent)
+                        {
+                            consequence.TargetKind = TestConsequenceTargetKind.Talent;
+                            <div>
+                                @L["GameTest_ConsequenceTargetKind"]
+                                <span>@L["TestConsequence_Target_Talent"]</span>
+                            </div>
                         }
                         else
                         {
-                            <select @bind="consequence.TargetDefinitionId">
-                                @foreach (var attributeDefinition in AvailableAttributes)
-                                {
-                                    <option value="@attributeDefinition.Id">@attributeDefinition.Name</option>
-                                }
-                            </select>
+                            consequence.TargetKind = TestConsequenceTargetKind.Item;
+                            <div>
+                                @L["GameTest_ConsequenceTargetKind"]
+                                <span>@L["TestConsequence_Target_Item"]</span>
+                            </div>
                         }
 
-                        <select @bind="consequence.ModifierMode">
-                            <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
-                            <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
-                        </select>
+                        <div>
+                            @L["GameTest_TargetDefinition"]
 
-                        <input type="number" @bind="consequence.Value" />
+                            @if (consequence.TargetKind == TestConsequenceTargetKind.Gauge)
+                            {
+                                <select @bind="consequence.TargetDefinitionId">
+                                    @foreach (var gaugeDefinition in AvailableGaugeDefinitions)
+                                    {
+                                        <option value="@gaugeDefinition.Id">@gaugeDefinition.Name</option>
+                                    }
+                                </select>
+                            }
+                            else if (consequence.TargetKind == TestConsequenceTargetKind.Attribute)
+                            {
+                                <select @bind="consequence.TargetDefinitionId">
+                                    @foreach (var attributeDefinition in AvailableAttributes)
+                                    {
+                                        <option value="@attributeDefinition.Id">@attributeDefinition.Name</option>
+                                    }
+                                </select>
+                            }
+                            else if (consequence.TargetKind == TestConsequenceTargetKind.DerivedStat)
+                            {
+                                <select @bind="consequence.TargetDefinitionId">
+                                    @foreach (var derivedDefinition in AvailableDerivedStats)
+                                    {
+                                        <option value="@derivedDefinition.DerivedStatDefinitionId">@derivedDefinition.Name</option>
+                                    }
+                                </select>
+                            }
+                            else if (consequence.TargetKind == TestConsequenceTargetKind.Metric)
+                            {
+                                <select @bind="consequence.TargetDefinitionId">
+                                    @foreach (var metricDefinition in AvailableMetrics)
+                                    {
+                                        <option value="@metricDefinition.Id">@metricDefinition.Name</option>
+                                    }
+                                </select>
+                            }
+                            else if (consequence.TargetKind == TestConsequenceTargetKind.Talent)
+                            {
+                                <select @bind="consequence.TargetDefinitionId">
+                                    @foreach (var talentDefinition in AvailableTalents)
+                                    {
+                                        <option value="@talentDefinition.TalentDefinitionId">@talentDefinition.Name</option>
+                                    }
+                                </select>
+                            }
+                            else if (consequence.TargetKind == TestConsequenceTargetKind.Item)
+                            {
+                                <select @bind="consequence.TargetDefinitionId">
+                                    @foreach (var itemDefinition in AvailableItems)
+                                    {
+                                        <option value="@itemDefinition.ItemDefinitionId">@itemDefinition.Name</option>
+                                    }
+                                </select>
+                            }
+                        </div>
 
-                        <button @onclick="() => RemovePollOptionConsequence(optionIndex, consequence.RowId)">
-                            @L["Common_Remove"]
-                        </button>
+                        @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
+                        {
+                            <div>
+                                @L["GameTest_DifficultyMode"]
+                                <select @bind="consequence.ModifierMode">
+                                    <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
+                                    <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                @L["GameTest_DifficultyValue"]
+                                <input type="number" @bind="consequence.Value" />
+                            </div>
+                        }
+
+                        <div>
+                            <button @onclick="() => optionRow.Consequences.Remove(consequence)">@L["Common_Remove"]</button>
+                        </div>
                     </div>
                 }
             </div>
@@ -814,6 +972,9 @@ else
     private Dictionary<Guid, List<TraitOption>> TraitOptionsByDefinition = new();
     private List<GaugeDefinition> AvailableGaugeDefinitions = new();
     private List<MetricDefinition> AvailableMetrics = new();
+    private List<EditableDerivedStatDefinitionDto> AvailableDerivedStats = new();
+    private List<EditableTalentDefinitionDto> AvailableTalents = new();
+    private List<EditableItemDefinitionDto> AvailableItems = new();
 
     private TestModifierMode NewModifierMode = TestModifierMode.Bonus;
     private int NewDifficultyValue = 0;
@@ -922,6 +1083,9 @@ else
         TraitOptionsByDefinition.Clear();
         AvailableGaugeDefinitions.Clear();
         AvailableMetrics.Clear();
+        AvailableDerivedStats.Clear();
+        AvailableTalents.Clear();
+        AvailableItems.Clear();
         SelectedGameSystemId = string.Empty;
 
         if (CurrentSession?.GameSystemId is Guid gameSystemId)
@@ -934,6 +1098,14 @@ else
                 AvailableTraitDefinitions = await GameSystemService.GetTraitDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
                 AvailableGaugeDefinitions = await GameSystemService.GetGaugeDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
                 AvailableMetrics = await GameSystemService.GetMetricDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+
+                var editor = await GameSystemService.GetGameSystemEditorAsync(AssignedGameSystem.Id, CurrentUserId);
+                if (editor is not null)
+                {
+                    AvailableDerivedStats = editor.DerivedStats;
+                    AvailableTalents = editor.Talents;
+                    AvailableItems = editor.Items;
+                }
 
                 foreach (var traitDefinition in AvailableTraitDefinitions)
                 {
@@ -1064,6 +1236,7 @@ else
                 Consequences = ConsequenceRows.Select(c => new GameTestConsequenceDraftDto
                 {
                     ApplyOn = c.ApplyOn,
+                    OperationType = c.OperationType,
                     TargetKind = c.TargetKind,
                     TargetDefinitionId = c.TargetDefinitionId,
                     ModifierMode = c.ModifierMode,
@@ -1166,23 +1339,13 @@ else
             ? TestConsequenceTargetKind.Gauge
             : TestConsequenceTargetKind.Attribute;
 
-        var targetDefinitionId = Guid.Empty;
-
-        if (targetKind == TestConsequenceTargetKind.Gauge && AvailableGaugeDefinitions.Count > 0)
-        {
-            targetDefinitionId = AvailableGaugeDefinitions[0].Id;
-        }
-        else if (AvailableAttributes.Count > 0)
-        {
-            targetDefinitionId = AvailableAttributes[0].Id;
-        }
-
         ConsequenceRows.Add(new ConsequenceRowModel
         {
             RowId = Guid.NewGuid(),
             ApplyOn = applyOn,
+            OperationType = TestConsequenceOperationType.AddValue,
             TargetKind = targetKind,
-            TargetDefinitionId = targetDefinitionId,
+            TargetDefinitionId = GetFirstConsequenceTargetId(targetKind),
             ModifierMode = TestModifierMode.Malus,
             Value = 1
         });
@@ -1198,18 +1361,71 @@ else
         }
     }
 
+    private void ChangeConsequenceOperation(ConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.OperationType = (TestConsequenceOperationType)parsed;
+
+        switch (row.OperationType)
+        {
+            case TestConsequenceOperationType.AddValue:
+                row.TargetKind = AvailableGaugeDefinitions.Count > 0
+                    ? TestConsequenceTargetKind.Gauge
+                    : TestConsequenceTargetKind.Attribute;
+                row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
+                if (row.Value == 0)
+                    row.Value = 1;
+                break;
+
+            case TestConsequenceOperationType.GrantTalent:
+            case TestConsequenceOperationType.RevokeTalent:
+                row.TargetKind = TestConsequenceTargetKind.Talent;
+                row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
+                row.Value = 0;
+                break;
+
+            case TestConsequenceOperationType.GrantItem:
+            case TestConsequenceOperationType.RevokeItem:
+                row.TargetKind = TestConsequenceTargetKind.Item;
+                row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
+                row.Value = 0;
+                break;
+        }
+    }
+
+    private void ChangeConsequenceTargetKind(ConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.TargetKind = (TestConsequenceTargetKind)parsed;
+        row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
+    }
+
+    private Guid GetFirstConsequenceTargetId(TestConsequenceTargetKind targetKind)
+    {
+        return targetKind switch
+        {
+            TestConsequenceTargetKind.Gauge => AvailableGaugeDefinitions.FirstOrDefault()?.Id ?? Guid.Empty,
+            TestConsequenceTargetKind.Attribute => AvailableAttributes.FirstOrDefault()?.Id ?? Guid.Empty,
+            TestConsequenceTargetKind.DerivedStat => AvailableDerivedStats.FirstOrDefault()?.DerivedStatDefinitionId ?? Guid.Empty,
+            TestConsequenceTargetKind.Metric => AvailableMetrics.FirstOrDefault()?.Id ?? Guid.Empty,
+            TestConsequenceTargetKind.Talent => AvailableTalents.FirstOrDefault()?.TalentDefinitionId ?? Guid.Empty,
+            TestConsequenceTargetKind.Item => AvailableItems.FirstOrDefault()?.ItemDefinitionId ?? Guid.Empty,
+            _ => Guid.Empty
+        };
+    }
+
     private class ConsequenceRowModel
     {
         public Guid RowId { get; set; }
-
         public TestConsequenceApplyOn ApplyOn { get; set; }
-
+        public TestConsequenceOperationType OperationType { get; set; } = TestConsequenceOperationType.AddValue;
         public TestConsequenceTargetKind TargetKind { get; set; }
-
         public Guid TargetDefinitionId { get; set; }
-
         public TestModifierMode ModifierMode { get; set; }
-
         public int Value { get; set; }
     }
 
@@ -1269,6 +1485,8 @@ else
     {
         public Guid RowId { get; set; }
 
+        public TestConsequenceOperationType OperationType { get; set; } = TestConsequenceOperationType.AddValue;
+
         public TestConsequenceTargetKind TargetKind { get; set; }
 
         public Guid TargetDefinitionId { get; set; }
@@ -1315,6 +1533,7 @@ else
                     Label = o.Label,
                     Consequences = o.Consequences.Select(c => new PollOptionConsequenceInlineDraftDto
                     {
+                        OperationType = c.OperationType,
                         TargetKind = c.TargetKind,
                         TargetDefinitionId = c.TargetDefinitionId,
                         ModifierMode = c.ModifierMode,
@@ -1458,6 +1677,7 @@ else
             TargetKind = targetKind,
             TargetDefinitionId = targetDefinitionId,
             ModifierMode = TestModifierMode.Malus,
+            OperationType = TestConsequenceOperationType.AddValue,
             Value = 1
         });
 
@@ -1486,4 +1706,5 @@ else
 
         Navigation.NavigateTo($"/mj/session/{SessionId}/characters/{SelectedCharacterSheet.CharacterId}/edit");
     }
+
 }

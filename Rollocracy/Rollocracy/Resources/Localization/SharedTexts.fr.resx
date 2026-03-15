@@ -1567,4 +1567,52 @@
 	<data name="Backend_MassDistributionUndoSnapshotInvalid" xml:space="preserve">
   <value>Le snapshot d'annulation du dernier lot est invalide.</value>
 </data>
+	<data name="TestConsequence_Operation_AddValue" xml:space="preserve">
+  <value>Ajouter / retirer une valeur</value>
+</data>
+	<data name="TestConsequence_Operation_GrantTalent" xml:space="preserve">
+  <value>Attribuer un talent</value>
+</data>
+	<data name="TestConsequence_Operation_RevokeTalent" xml:space="preserve">
+  <value>Retirer un talent</value>
+</data>
+	<data name="TestConsequence_Operation_GrantItem" xml:space="preserve">
+  <value>Attribuer un objet</value>
+</data>
+	<data name="TestConsequence_Operation_RevokeItem" xml:space="preserve">
+  <value>Retirer un objet</value>
+</data>
+	<data name="TestConsequence_Target_DerivedStat" xml:space="preserve">
+  <value>Compétence</value>
+</data>
+	<data name="TestConsequence_Target_Metric" xml:space="preserve">
+  <value>Metric</value>
+</data>
+	<data name="TestConsequence_Target_Talent" xml:space="preserve">
+  <value>Talent</value>
+</data>
+	<data name="TestConsequence_Target_Item" xml:space="preserve">
+  <value>Objet</value>
+</data>
+	<data name="Backend_InvalidTestConsequenceApplyOn" xml:space="preserve">
+  <value>La condition d'application de la conséquence de test est invalide.</value>
+</data>
+	<data name="Backend_InvalidTestConsequenceTarget" xml:space="preserve">
+  <value>La cible de la conséquence de test est invalide.</value>
+</data>
+	<data name="Backend_InvalidTestConsequenceOperation" xml:space="preserve">
+  <value>Le type d'opération de la conséquence de test est invalide.</value>
+</data>
+	<data name="GameTest_ConsequenceOperation" xml:space="preserve">
+  <value>Opération</value>
+</data>
+	<data name="Poll_ConsequenceOperation" xml:space="preserve">
+  <value>Opération</value>
+</data>
+	<data name="Backend_InvalidPollConsequenceTarget" xml:space="preserve">
+  <value>La cible de la conséquence de sondage est invalide.</value>
+</data>
+	<data name="Backend_InvalidPollConsequenceOperation" xml:space="preserve">
+  <value>Le type d'opération de la conséquence de sondage est invalide.</value>
+</data>
 </root>
