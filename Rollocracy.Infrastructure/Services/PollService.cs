@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
@@ -14,17 +15,20 @@ namespace Rollocracy.Infrastructure.Services
         private readonly IStringLocalizer _localizer;
         private readonly ISessionNotifier _sessionNotifier;
         private readonly IPresenceTracker _presenceTracker;
+        private readonly ICharacterEffectService _characterEffectService;
 
         public PollService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
             IStringLocalizerFactory localizerFactory,
             ISessionNotifier sessionNotifier,
-            IPresenceTracker presenceTracker)
+            IPresenceTracker presenceTracker,
+            ICharacterEffectService characterEffectService)
         {
             _contextFactory = contextFactory;
             _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
             _sessionNotifier = sessionNotifier;
             _presenceTracker = presenceTracker;
+            _characterEffectService = characterEffectService;
         }
 
         
@@ -124,7 +128,7 @@ namespace Rollocracy.Infrastructure.Services
                 var optionDraft = request.Options[i];
                 var optionId = optionIdMap[i];
 
-                foreach (var consequence in optionDraft.Consequences.Where(c => c.Value > 0))
+                foreach (var consequence in optionDraft.Consequences.Where(IsMeaningfulPollConsequence))
                 {
                     var targetName = await ResolveConsequenceTargetNameAsync(
                         context,
@@ -140,7 +144,8 @@ namespace Rollocracy.Infrastructure.Services
                         TargetDefinitionId = consequence.TargetDefinitionId,
                         TargetNameSnapshot = targetName,
                         ModifierMode = consequence.ModifierMode,
-                        Value = consequence.Value
+                        Value = consequence.Value,
+                        OperationType = consequence.OperationType
                     });
                 }
             }
@@ -371,7 +376,6 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
             foreach (var vote in votes)
             {
                 var character = await context.Characters.FirstOrDefaultAsync(c => c.Id == vote.CharacterId);
-
                 if (character == null)
                     continue;
 
@@ -380,7 +384,16 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                     .Select(x => x.consequence)
                     .ToList();
 
-                foreach (var consequence in voteConsequences)
+                // 1) Legacy : Attribute / Gauge restent sur l'ancien mécanisme
+                // pour conserver le rollback actuel jusqu'à 5D.3.
+                var legacyConsequences = voteConsequences
+                    .Where(c =>
+                        c.OperationType == TestConsequenceOperationType.AddValue &&
+                        (c.TargetKind == TestConsequenceTargetKind.Attribute ||
+                         c.TargetKind == TestConsequenceTargetKind.Gauge))
+                    .ToList();
+
+                foreach (var consequence in legacyConsequences)
                 {
                     var signedValue = consequence.ModifierMode == TestModifierMode.Bonus
                         ? consequence.Value
@@ -414,8 +427,11 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                                 SessionPollOptionId = vote.SessionPollOptionId,
                                 TargetKind = TestConsequenceTargetKind.Gauge,
                                 TargetDefinitionId = consequence.TargetDefinitionId,
+                                OperationType = TestConsequenceOperationType.AddValue,
                                 PreviousValue = previousValue,
                                 NewValue = gaugeValue.Value,
+                                PreviousHasTargetLink = false,
+                                NewHasTargetLink = false,
                                 PreviousIsAlive = previousCharacterAlive,
                                 NewIsAlive = character.IsAlive,
                                 PreviousDiedAtUtc = previousCharacterDiedAt,
@@ -450,8 +466,11 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                                 SessionPollOptionId = vote.SessionPollOptionId,
                                 TargetKind = TestConsequenceTargetKind.Attribute,
                                 TargetDefinitionId = consequence.TargetDefinitionId,
+                                OperationType = TestConsequenceOperationType.AddValue,
                                 PreviousValue = previousValue,
                                 NewValue = attributeValue.Value,
+                                PreviousHasTargetLink = false,
+                                NewHasTargetLink = false,
                                 PreviousIsAlive = previousCharacterAlive,
                                 NewIsAlive = character.IsAlive,
                                 PreviousDiedAtUtc = previousCharacterDiedAt,
@@ -460,6 +479,87 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                             });
                         }
                     }
+                }
+
+                await context.SaveChangesAsync();
+
+                // 2) Nouveau moteur commun : DerivedStat / Metric / Talent / Item
+                var commonEngineConsequences = voteConsequences
+                    .Where(c => !(
+                        c.OperationType == TestConsequenceOperationType.AddValue &&
+                        (c.TargetKind == TestConsequenceTargetKind.Attribute ||
+                         c.TargetKind == TestConsequenceTargetKind.Gauge)))
+                    .ToList();
+
+                foreach (var consequence in commonEngineConsequences)
+                {
+                    var effectDto = ToCharacterEffectDefinitionDto(consequence);
+
+                    var previousCharacterAlive = character.IsAlive;
+                    var previousCharacterDiedAt = character.DiedAtUtc;
+
+                    var previousHasTargetLink = consequence.TargetKind switch
+                    {
+                        TestConsequenceTargetKind.Talent => await context.CharacterTalents.AnyAsync(x =>
+                            x.CharacterId == vote.CharacterId &&
+                            x.TalentDefinitionId == consequence.TargetDefinitionId),
+
+                        TestConsequenceTargetKind.Item => await context.CharacterItems.AnyAsync(x =>
+                            x.CharacterId == vote.CharacterId &&
+                            x.ItemDefinitionId == consequence.TargetDefinitionId),
+
+                        _ => false
+                    };
+
+                    await _characterEffectService.ApplyEffectsAsync(
+                        poll.SessionId,
+                        new List<Guid> { vote.CharacterId },
+                        new List<CharacterEffectDefinitionDto> { effectDto },
+                        CharacterEffectSourceType.Poll,
+                        poll.Id,
+                        $"Poll:{poll.Id}");
+
+                    await context.Entry(character).ReloadAsync();
+
+                    var newHasTargetLink = consequence.TargetKind switch
+                    {
+                        TestConsequenceTargetKind.Talent => await context.CharacterTalents.AnyAsync(x =>
+                            x.CharacterId == vote.CharacterId &&
+                            x.TalentDefinitionId == consequence.TargetDefinitionId),
+
+                        TestConsequenceTargetKind.Item => await context.CharacterItems.AnyAsync(x =>
+                            x.CharacterId == vote.CharacterId &&
+                            x.ItemDefinitionId == consequence.TargetDefinitionId),
+
+                        _ => false
+                    };
+
+                    if (consequence.TargetKind == TestConsequenceTargetKind.Talent ||
+                        consequence.TargetKind == TestConsequenceTargetKind.Item)
+                    {
+                        context.SessionPollAppliedEffects.Add(new SessionPollAppliedEffect
+                        {
+                            Id = Guid.NewGuid(),
+                            SessionPollId = poll.Id,
+                            CharacterId = vote.CharacterId,
+                            SessionPollVoteId = vote.Id,
+                            SessionPollOptionId = vote.SessionPollOptionId,
+                            TargetKind = consequence.TargetKind,
+                            TargetDefinitionId = consequence.TargetDefinitionId,
+                            OperationType = consequence.OperationType,
+                            PreviousValue = 0,
+                            NewValue = 0,
+                            PreviousHasTargetLink = previousHasTargetLink,
+                            NewHasTargetLink = newHasTargetLink,
+                            PreviousIsAlive = previousCharacterAlive,
+                            NewIsAlive = character.IsAlive,
+                            PreviousDiedAtUtc = previousCharacterDiedAt,
+                            NewDiedAtUtc = character.DiedAtUtc,
+                            AppliedAtUtc = DateTime.UtcNow
+                        });
+                    }
+
+                    hasAppliedEffects = true;
                 }
             }
 
@@ -503,6 +603,10 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                 .OrderByDescending(e => e.AppliedAtUtc)
                 .ToListAsync();
 
+            var pollCharacterModifiers = await context.CharacterModifiers
+                .Where(x => x.SourceType == CharacterEffectSourceType.Poll && x.SourceId == latestPoll.Id)
+                .ToListAsync();
+
             // Sécurité : si le booléen est incohérent avec les lignes réellement appliquées,
             // on remet juste l'état logique à false.
             if (appliedEffects.Count == 0)
@@ -544,6 +648,15 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                 }
             }
 
+            var modifiersToRemove = pollCharacterModifiers
+                .Where(x => !charactersToKeepDead.Contains(x.CharacterId))
+                .ToList();
+
+            if (modifiersToRemove.Count > 0)
+            {
+                context.CharacterModifiers.RemoveRange(modifiersToRemove);
+            }
+
             foreach (var effect in appliedEffects)
             {
                 var character = await context.Characters
@@ -555,6 +668,70 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                 // On garde l'ancien personnage mort si un autre personnage vivant existe déjà.
                 if (charactersToKeepDead.Contains(effect.CharacterId))
                     continue;
+
+                if (effect.TargetKind == TestConsequenceTargetKind.Talent)
+                {
+                    var existingTalent = await context.CharacterTalents
+                        .FirstOrDefaultAsync(x =>
+                            x.CharacterId == effect.CharacterId &&
+                            x.TalentDefinitionId == effect.TargetDefinitionId);
+
+                    if (effect.PreviousHasTargetLink)
+                    {
+                        if (existingTalent == null)
+                        {
+                            context.CharacterTalents.Add(new CharacterTalent
+                            {
+                                Id = Guid.NewGuid(),
+                                CharacterId = effect.CharacterId,
+                                TalentDefinitionId = effect.TargetDefinitionId
+                            });
+                        }
+                    }
+                    else
+                    {
+                        if (existingTalent != null)
+                        {
+                            context.CharacterTalents.Remove(existingTalent);
+                        }
+                    }
+
+                    character.IsAlive = effect.PreviousIsAlive;
+                    character.DiedAtUtc = effect.PreviousDiedAtUtc;
+                    continue;
+                }
+
+                if (effect.TargetKind == TestConsequenceTargetKind.Item)
+                {
+                    var existingItem = await context.CharacterItems
+                        .FirstOrDefaultAsync(x =>
+                            x.CharacterId == effect.CharacterId &&
+                            x.ItemDefinitionId == effect.TargetDefinitionId);
+
+                    if (effect.PreviousHasTargetLink)
+                    {
+                        if (existingItem == null)
+                        {
+                            context.CharacterItems.Add(new CharacterItem
+                            {
+                                Id = Guid.NewGuid(),
+                                CharacterId = effect.CharacterId,
+                                ItemDefinitionId = effect.TargetDefinitionId
+                            });
+                        }
+                    }
+                    else
+                    {
+                        if (existingItem != null)
+                        {
+                            context.CharacterItems.Remove(existingItem);
+                        }
+                    }
+
+                    character.IsAlive = effect.PreviousIsAlive;
+                    character.DiedAtUtc = effect.PreviousDiedAtUtc;
+                    continue;
+                }
 
                 if (effect.TargetKind == TestConsequenceTargetKind.Gauge)
                 {
@@ -777,54 +954,167 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
             }
         }
 
-        private async Task<string> ResolveConsequenceTargetNameAsync(
-            RollocracyDbContext context,
-            TestConsequenceTargetKind targetKind,
-            Guid targetDefinitionId,
-            Guid gameSystemId)
+        private static CharacterEffectDefinitionDto ToCharacterEffectDefinitionDto(SessionPollOptionConsequence consequence)
         {
-            if (targetKind == TestConsequenceTargetKind.Gauge)
+            var targetType = consequence.TargetKind switch
             {
-                var gauge = await context.GaugeDefinitions
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(g => g.Id == targetDefinitionId && g.GameSystemId == gameSystemId);
+                TestConsequenceTargetKind.Attribute => CharacterEffectTargetType.BaseAttribute,
+                TestConsequenceTargetKind.Gauge => CharacterEffectTargetType.Gauge,
+                TestConsequenceTargetKind.DerivedStat => CharacterEffectTargetType.DerivedStat,
+                TestConsequenceTargetKind.Metric => CharacterEffectTargetType.Metric,
+                TestConsequenceTargetKind.Talent => CharacterEffectTargetType.Talent,
+                TestConsequenceTargetKind.Item => CharacterEffectTargetType.Item,
+                _ => CharacterEffectTargetType.BaseAttribute
+            };
 
-                if (gauge == null)
-                    throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+            var signedValue = consequence.ModifierMode == TestModifierMode.Bonus
+                ? consequence.Value
+                : -consequence.Value;
 
-                return gauge.Name;
-            }
-
-            var attribute = await context.AttributeDefinitions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(a => a.Id == targetDefinitionId && a.GameSystemId == gameSystemId);
-
-            if (attribute == null)
-                throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
-
-            return attribute.Name;
+            return new CharacterEffectDefinitionDto
+            {
+                OperationType = consequence.OperationType switch
+                {
+                    TestConsequenceOperationType.AddValue => CharacterEffectOperationType.AddValue,
+                    TestConsequenceOperationType.GrantTalent => CharacterEffectOperationType.GrantTalent,
+                    TestConsequenceOperationType.RevokeTalent => CharacterEffectOperationType.RevokeTalent,
+                    TestConsequenceOperationType.GrantItem => CharacterEffectOperationType.GrantItem,
+                    TestConsequenceOperationType.RevokeItem => CharacterEffectOperationType.RevokeItem,
+                    _ => CharacterEffectOperationType.AddValue
+                },
+                TargetType = targetType,
+                TargetId = consequence.TargetDefinitionId,
+                TargetName = consequence.TargetNameSnapshot,
+                Value = signedValue
+            };
         }
 
-        
+        private async Task<string> ResolveConsequenceTargetNameAsync(
+    RollocracyDbContext context,
+    TestConsequenceTargetKind targetKind,
+    Guid targetDefinitionId,
+    Guid gameSystemId)
+        {
+            switch (targetKind)
+            {
+                case TestConsequenceTargetKind.Gauge:
+                    var gauge = await context.GaugeDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(g => g.Id == targetDefinitionId && g.GameSystemId == gameSystemId);
+
+                    if (gauge == null)
+                        throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
+
+                    return gauge.Name;
+
+                case TestConsequenceTargetKind.Attribute:
+                    var attribute = await context.AttributeDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(a => a.Id == targetDefinitionId && a.GameSystemId == gameSystemId);
+
+                    if (attribute == null)
+                        throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
+
+                    return attribute.Name;
+
+                case TestConsequenceTargetKind.DerivedStat:
+                    var derivedStat = await context.DerivedStatDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(d => d.Id == targetDefinitionId && d.GameSystemId == gameSystemId);
+
+                    if (derivedStat == null)
+                        throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
+
+                    return derivedStat.Name;
+
+                case TestConsequenceTargetKind.Metric:
+                    var metric = await context.MetricDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(m => m.Id == targetDefinitionId && m.GameSystemId == gameSystemId);
+
+                    if (metric == null)
+                        throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
+
+                    return metric.Name;
+
+                case TestConsequenceTargetKind.Talent:
+                    var talent = await context.TalentDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(t => t.Id == targetDefinitionId && t.GameSystemId == gameSystemId);
+
+                    if (talent == null)
+                        throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
+
+                    return talent.Name;
+
+                case TestConsequenceTargetKind.Item:
+                    var item = await context.ItemDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(i => i.Id == targetDefinitionId && i.GameSystemId == gameSystemId);
+
+                    if (item == null)
+                        throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
+
+                    return item.Name;
+
+                default:
+                    throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
+            }
+        }
+
+
         private void ValidateCreateRequest(PollCreateRequestDto request)
         {
             if (string.IsNullOrWhiteSpace(request.Question))
                 throw new Exception(_localizer["Backend_PollQuestionRequired"]);
 
-            var cleanedOptions = request.Options
-                .Where(o => !string.IsNullOrWhiteSpace(o.Label))
-                .ToList();
+            if (request.Options.Count < 2)
+                throw new Exception(_localizer["Backend_PollAtLeastTwoOptions"]);
 
-            if (cleanedOptions.Count < 2)
-                throw new Exception(_localizer["Backend_PollNeedsTwoOptions"]);
-
-            if (request.VoteWeightMode == PollVoteWeightMode.Metric && !request.MetricDefinitionId.HasValue)
-                throw new Exception(_localizer["Backend_PollMetricRequired"]);
-
-            foreach (var rule in request.WeightRules)
+            foreach (var option in request.Options)
             {
-                if (rule.WeightBonus < 0)
-                    throw new Exception(_localizer["Backend_InvalidPollWeightBonus"]);
+                if (string.IsNullOrWhiteSpace(option.Label))
+                    throw new Exception(_localizer["Backend_PollOptionLabelRequired"]);
+
+                foreach (var consequence in option.Consequences)
+                {
+                    if (consequence.TargetDefinitionId == Guid.Empty)
+                        throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
+
+                    // Compatibilité transitoire : l'UI legacy n'envoie pas encore OperationType.
+                    if ((int)consequence.OperationType == 0)
+                    {
+                        consequence.OperationType = TestConsequenceOperationType.AddValue;
+                    }
+
+                    switch (consequence.OperationType)
+                    {
+                        case TestConsequenceOperationType.AddValue:
+                            if (consequence.TargetKind != TestConsequenceTargetKind.Attribute &&
+                                consequence.TargetKind != TestConsequenceTargetKind.Gauge &&
+                                consequence.TargetKind != TestConsequenceTargetKind.DerivedStat &&
+                                consequence.TargetKind != TestConsequenceTargetKind.Metric)
+                            {
+                                throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
+                            }
+                            break;
+
+                        case TestConsequenceOperationType.GrantTalent:
+                        case TestConsequenceOperationType.RevokeTalent:
+                            if (consequence.TargetKind != TestConsequenceTargetKind.Talent)
+                                throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
+                            break;
+
+                        case TestConsequenceOperationType.GrantItem:
+                        case TestConsequenceOperationType.RevokeItem:
+                            if (consequence.TargetKind != TestConsequenceTargetKind.Item)
+                                throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
+                            break;
+
+                        default:
+                            throw new Exception(_localizer["Backend_InvalidPollConsequenceOperation"]);
+                    }
+                }
             }
         }
 
@@ -962,7 +1252,7 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
             };
         }
 
-private async Task<PollForPlayerDto> BuildPlayerDtoAsync(RollocracyDbContext context, Guid pollId, Guid playerSessionId)
+        private async Task<PollForPlayerDto> BuildPlayerDtoAsync(RollocracyDbContext context, Guid pollId, Guid playerSessionId)
         {
             var poll = await context.SessionPolls
                 .AsNoTracking()
@@ -1009,6 +1299,19 @@ private async Task<PollForPlayerDto> BuildPlayerDtoAsync(RollocracyDbContext con
                         WeightedVotePercent = totalWeightedVotes == 0 ? 0 : (double)(weightedTotal * 100m / totalWeightedVotes)
                     };
                 }).ToList()
+            };
+        }
+
+        private static bool IsMeaningfulPollConsequence(PollOptionConsequenceInlineDraftDto consequence)
+        {
+            return consequence.OperationType switch
+            {
+                TestConsequenceOperationType.AddValue => consequence.Value != 0,
+                TestConsequenceOperationType.GrantTalent => consequence.TargetDefinitionId != Guid.Empty,
+                TestConsequenceOperationType.RevokeTalent => consequence.TargetDefinitionId != Guid.Empty,
+                TestConsequenceOperationType.GrantItem => consequence.TargetDefinitionId != Guid.Empty,
+                TestConsequenceOperationType.RevokeItem => consequence.TargetDefinitionId != Guid.Empty,
+                _ => false
             };
         }
     }

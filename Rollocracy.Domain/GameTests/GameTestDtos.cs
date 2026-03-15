@@ -17,12 +17,18 @@ namespace Rollocracy.Domain.GameTests
     {
         public TestConsequenceApplyOn ApplyOn { get; set; }
 
+        public TestConsequenceOperationType OperationType { get; set; }
+
         public TestConsequenceTargetKind TargetKind { get; set; }
 
         public Guid TargetDefinitionId { get; set; }
 
+        public string TargetName { get; set; } = string.Empty;
+
+        // Utilisé uniquement pour AddValue
         public TestModifierMode ModifierMode { get; set; }
 
+        // Utilisé uniquement pour AddValue
         public int Value { get; set; }
     }
 

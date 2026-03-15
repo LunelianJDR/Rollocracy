@@ -18,5 +18,7 @@ namespace Rollocracy.Domain.Polls
         public TestModifierMode ModifierMode { get; set; }
 
         public int Value { get; set; }
+
+        public TestConsequenceOperationType OperationType { get; set; }
     }
 }

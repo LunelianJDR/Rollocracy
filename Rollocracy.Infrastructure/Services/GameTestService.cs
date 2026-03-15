@@ -1,11 +1,12 @@
-﻿using System.Security.Cryptography;
-using System.Text.Json;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
+using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
+using System.Security.Cryptography;
+using System.Text.Json;
 
 namespace Rollocracy.Infrastructure.Services
 {
@@ -16,19 +17,22 @@ namespace Rollocracy.Infrastructure.Services
         private readonly IPresenceTracker _presenceTracker;
         private readonly ISessionNotifier _sessionNotifier;
         private readonly GameTestAutoRollScheduler _scheduler;
+        private readonly ICharacterEffectService _characterEffectService;
 
         public GameTestService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
             IStringLocalizerFactory localizerFactory,
             IPresenceTracker presenceTracker,
             ISessionNotifier sessionNotifier,
-            GameTestAutoRollScheduler scheduler)
+            GameTestAutoRollScheduler scheduler,
+            ICharacterEffectService characterEffectService)
         {
             _contextFactory = contextFactory;
             _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
             _presenceTracker = presenceTracker;
             _sessionNotifier = sessionNotifier;
             _scheduler = scheduler;
+            _characterEffectService = characterEffectService;
         }
 
         public async Task<GameMasterActiveGameTestDto> CreateGameTestAsync(
@@ -154,7 +158,7 @@ namespace Rollocracy.Infrastructure.Services
                 }
             }
 
-            foreach (var consequence in request.Consequences.Where(c => c.Value > 0))
+            foreach (var consequence in request.Consequences.Where(IsMeaningfulConsequence))
             {
                 var targetName = await ResolveConsequenceTargetNameAsync(context, consequence, session.GameSystemId.Value);
 
@@ -163,6 +167,7 @@ namespace Rollocracy.Infrastructure.Services
                     Id = Guid.NewGuid(),
                     GameTestId = test.Id,
                     ApplyOn = consequence.ApplyOn,
+                    OperationType = consequence.OperationType,
                     TargetKind = consequence.TargetKind,
                     TargetDefinitionId = consequence.TargetDefinitionId,
                     TargetNameSnapshot = targetName,
@@ -412,6 +417,10 @@ namespace Rollocracy.Infrastructure.Services
                 .OrderByDescending(e => e.AppliedAtUtc)
                 .ToListAsync();
 
+            var testCharacterModifiers = await context.CharacterModifiers
+                .Where(x => x.SourceType == CharacterEffectSourceType.Test && x.SourceId == latestTest.Id)
+                .ToListAsync();
+
             // Liste des personnages qui seraient ressuscités par le rollback
             var charactersThatWouldBeResurrected = appliedEffects
                 .Where(e => e.PreviousIsAlive && !e.NewIsAlive)
@@ -442,6 +451,15 @@ namespace Rollocracy.Infrastructure.Services
                 }
             }
 
+            var modifiersToRemove = testCharacterModifiers
+                .Where(x => !charactersToKeepDead.Contains(x.CharacterId))
+                .ToList();
+
+            if (modifiersToRemove.Count > 0)
+            {
+                context.CharacterModifiers.RemoveRange(modifiersToRemove);
+            }
+
             foreach (var effect in appliedEffects)
             {
                 var character = await context.Characters
@@ -454,6 +472,70 @@ namespace Rollocracy.Infrastructure.Services
                 // On laisse donc son état actuel intact.
                 if (charactersToKeepDead.Contains(effect.CharacterId))
                 {
+                    continue;
+                }
+
+                if (effect.TargetKind == TestConsequenceTargetKind.Talent)
+                {
+                    var existingTalent = await context.CharacterTalents
+                        .FirstOrDefaultAsync(x =>
+                            x.CharacterId == effect.CharacterId &&
+                            x.TalentDefinitionId == effect.TargetDefinitionId);
+
+                    if (effect.PreviousHasTargetLink)
+                    {
+                        if (existingTalent == null)
+                        {
+                            context.CharacterTalents.Add(new CharacterTalent
+                            {
+                                Id = Guid.NewGuid(),
+                                CharacterId = effect.CharacterId,
+                                TalentDefinitionId = effect.TargetDefinitionId
+                            });
+                        }
+                    }
+                    else
+                    {
+                        if (existingTalent != null)
+                        {
+                            context.CharacterTalents.Remove(existingTalent);
+                        }
+                    }
+
+                    character.IsAlive = effect.PreviousIsAlive;
+                    character.DiedAtUtc = effect.PreviousDiedAtUtc;
+                    continue;
+                }
+
+                if (effect.TargetKind == TestConsequenceTargetKind.Item)
+                {
+                    var existingItem = await context.CharacterItems
+                        .FirstOrDefaultAsync(x =>
+                            x.CharacterId == effect.CharacterId &&
+                            x.ItemDefinitionId == effect.TargetDefinitionId);
+
+                    if (effect.PreviousHasTargetLink)
+                    {
+                        if (existingItem == null)
+                        {
+                            context.CharacterItems.Add(new CharacterItem
+                            {
+                                Id = Guid.NewGuid(),
+                                CharacterId = effect.CharacterId,
+                                ItemDefinitionId = effect.TargetDefinitionId
+                            });
+                        }
+                    }
+                    else
+                    {
+                        if (existingItem != null)
+                        {
+                            context.CharacterItems.Remove(existingItem);
+                        }
+                    }
+
+                    character.IsAlive = effect.PreviousIsAlive;
+                    character.DiedAtUtc = effect.PreviousDiedAtUtc;
                     continue;
                 }
 
@@ -515,14 +597,12 @@ namespace Rollocracy.Infrastructure.Services
         }
 
         private async Task ApplyConsequencesAsync(
-            RollocracyDbContext context,
-            Guid gameTestId,
-            Guid characterId,
-            bool isSuccess)
+    RollocracyDbContext context,
+    Guid gameTestId,
+    Guid characterId,
+    bool isSuccess)
         {
-            var applyOn = isSuccess
-                ? TestConsequenceApplyOn.OnSuccess
-                : TestConsequenceApplyOn.OnFailure;
+            var applyOn = isSuccess ? TestConsequenceApplyOn.OnSuccess : TestConsequenceApplyOn.OnFailure;
 
             var consequences = await context.GameTestConsequences
                 .Where(c => c.GameTestId == gameTestId && c.ApplyOn == applyOn)
@@ -531,12 +611,27 @@ namespace Rollocracy.Infrastructure.Services
             if (consequences.Count == 0)
                 return;
 
-            var character = await context.Characters.FirstOrDefaultAsync(c => c.Id == characterId);
+            var test = await context.GameTests
+                .AsNoTracking()
+                .FirstOrDefaultAsync(t => t.Id == gameTestId);
 
+            if (test == null)
+                return;
+
+            var character = await context.Characters.FirstOrDefaultAsync(c => c.Id == characterId);
             if (character == null)
                 return;
 
-            foreach (var consequence in consequences)
+            // 1) Ancien mécanisme conservé pour Attribute / Gauge,
+            // afin de garder le rollback actuel entièrement fonctionnel.
+            var legacyConsequences = consequences
+                .Where(c =>
+                    c.OperationType == TestConsequenceOperationType.AddValue &&
+                    (c.TargetKind == TestConsequenceTargetKind.Attribute ||
+                     c.TargetKind == TestConsequenceTargetKind.Gauge))
+                .ToList();
+
+            foreach (var consequence in legacyConsequences)
             {
                 var signedValue = consequence.ModifierMode == TestModifierMode.Bonus
                     ? consequence.Value
@@ -566,8 +661,11 @@ namespace Rollocracy.Infrastructure.Services
                             CharacterId = characterId,
                             TargetKind = TestConsequenceTargetKind.Gauge,
                             TargetDefinitionId = consequence.TargetDefinitionId,
+                            OperationType = TestConsequenceOperationType.AddValue,
                             PreviousValue = previousValue,
                             NewValue = gaugeValue.Value,
+                            PreviousHasTargetLink = false,
+                            NewHasTargetLink = false,
                             PreviousIsAlive = previousCharacterAlive,
                             NewIsAlive = character.IsAlive,
                             PreviousDiedAtUtc = previousCharacterDiedAt,
@@ -598,8 +696,11 @@ namespace Rollocracy.Infrastructure.Services
                             CharacterId = characterId,
                             TargetKind = TestConsequenceTargetKind.Attribute,
                             TargetDefinitionId = consequence.TargetDefinitionId,
+                            OperationType = TestConsequenceOperationType.AddValue,
                             PreviousValue = previousValue,
                             NewValue = attributeValue.Value,
+                            PreviousHasTargetLink = false,
+                            NewHasTargetLink = false,
                             PreviousIsAlive = previousCharacterAlive,
                             NewIsAlive = character.IsAlive,
                             PreviousDiedAtUtc = previousCharacterDiedAt,
@@ -611,6 +712,84 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             await context.SaveChangesAsync();
+
+            // 2) Nouveau moteur commun pour DerivedStat / Metric / Talent / Item.
+            var commonEngineConsequences = consequences
+                .Where(c => !(
+                    c.OperationType == TestConsequenceOperationType.AddValue &&
+                    (c.TargetKind == TestConsequenceTargetKind.Attribute ||
+                     c.TargetKind == TestConsequenceTargetKind.Gauge)))
+                .ToList();
+
+            if (commonEngineConsequences.Count == 0)
+                return;
+
+            foreach (var consequence in commonEngineConsequences)
+            {
+                var effectDto = ToCharacterEffectDefinitionDto(consequence);
+
+                var previousCharacterAlive = character.IsAlive;
+                var previousCharacterDiedAt = character.DiedAtUtc;
+
+                var previousHasTargetLink = consequence.TargetKind switch
+                {
+                    TestConsequenceTargetKind.Talent => await context.CharacterTalents.AnyAsync(x =>
+                        x.CharacterId == characterId &&
+                        x.TalentDefinitionId == consequence.TargetDefinitionId),
+
+                    TestConsequenceTargetKind.Item => await context.CharacterItems.AnyAsync(x =>
+                        x.CharacterId == characterId &&
+                        x.ItemDefinitionId == consequence.TargetDefinitionId),
+
+                    _ => false
+                };
+
+                await _characterEffectService.ApplyEffectsAsync(
+                    test.SessionId,
+                    new List<Guid> { characterId },
+                    new List<CharacterEffectDefinitionDto> { effectDto },
+                    CharacterEffectSourceType.Test,
+                    gameTestId,
+                    $"GameTest:{gameTestId}");
+
+                await context.Entry(character).ReloadAsync();
+
+                var newHasTargetLink = consequence.TargetKind switch
+                {
+                    TestConsequenceTargetKind.Talent => await context.CharacterTalents.AnyAsync(x =>
+                        x.CharacterId == characterId &&
+                        x.TalentDefinitionId == consequence.TargetDefinitionId),
+
+                    TestConsequenceTargetKind.Item => await context.CharacterItems.AnyAsync(x =>
+                        x.CharacterId == characterId &&
+                        x.ItemDefinitionId == consequence.TargetDefinitionId),
+
+                    _ => false
+                };
+
+                if (consequence.TargetKind == TestConsequenceTargetKind.Talent ||
+                    consequence.TargetKind == TestConsequenceTargetKind.Item)
+                {
+                    context.GameTestAppliedEffects.Add(new GameTestAppliedEffect
+                    {
+                        Id = Guid.NewGuid(),
+                        GameTestId = gameTestId,
+                        CharacterId = characterId,
+                        TargetKind = consequence.TargetKind,
+                        TargetDefinitionId = consequence.TargetDefinitionId,
+                        OperationType = consequence.OperationType,
+                        PreviousValue = 0,
+                        NewValue = 0,
+                        PreviousHasTargetLink = previousHasTargetLink,
+                        NewHasTargetLink = newHasTargetLink,
+                        PreviousIsAlive = previousCharacterAlive,
+                        NewIsAlive = character.IsAlive,
+                        PreviousDiedAtUtc = previousCharacterDiedAt,
+                        NewDiedAtUtc = character.DiedAtUtc,
+                        AppliedAtUtc = DateTime.UtcNow
+                    });
+                }
+            }
         }
 
         private async Task UpdateCharacterAliveStateAsync(RollocracyDbContext context, Guid characterId)
@@ -747,31 +926,125 @@ namespace Rollocracy.Infrastructure.Services
                 .ToList();
         }
 
-        private async Task<string> ResolveConsequenceTargetNameAsync(
-            RollocracyDbContext context,
-            GameTestConsequenceDraftDto consequence,
-            Guid gameSystemId)
+        private static CharacterEffectDefinitionDto ToCharacterEffectDefinitionDto(GameTestConsequence consequence)
         {
-            if (consequence.TargetKind == TestConsequenceTargetKind.Gauge)
+            var operationType = consequence.OperationType;
+            var targetType = consequence.TargetKind switch
             {
-                var gauge = await context.GaugeDefinitions
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.GameSystemId == gameSystemId);
+                TestConsequenceTargetKind.Attribute => CharacterEffectTargetType.BaseAttribute,
+                TestConsequenceTargetKind.Gauge => CharacterEffectTargetType.Gauge,
+                TestConsequenceTargetKind.DerivedStat => CharacterEffectTargetType.DerivedStat,
+                TestConsequenceTargetKind.Metric => CharacterEffectTargetType.Metric,
+                TestConsequenceTargetKind.Talent => CharacterEffectTargetType.Talent,
+                TestConsequenceTargetKind.Item => CharacterEffectTargetType.Item,
+                _ => CharacterEffectTargetType.BaseAttribute
+            };
 
-                if (gauge == null)
+            var signedValue = consequence.ModifierMode == TestModifierMode.Bonus
+                ? consequence.Value
+                : -consequence.Value;
+
+            return new CharacterEffectDefinitionDto
+            {
+                OperationType = operationType switch
+                {
+                    TestConsequenceOperationType.AddValue => CharacterEffectOperationType.AddValue,
+                    TestConsequenceOperationType.GrantTalent => CharacterEffectOperationType.GrantTalent,
+                    TestConsequenceOperationType.RevokeTalent => CharacterEffectOperationType.RevokeTalent,
+                    TestConsequenceOperationType.GrantItem => CharacterEffectOperationType.GrantItem,
+                    TestConsequenceOperationType.RevokeItem => CharacterEffectOperationType.RevokeItem,
+                    _ => CharacterEffectOperationType.AddValue
+                },
+                TargetType = targetType,
+                TargetId = consequence.TargetDefinitionId,
+                TargetName = consequence.TargetNameSnapshot,
+                Value = signedValue
+            };
+        }
+
+        private async Task<string> ResolveConsequenceTargetNameAsync(
+    RollocracyDbContext context,
+    GameTestConsequenceDraftDto consequence,
+    Guid gameSystemId)
+        {
+            switch (consequence.TargetKind)
+            {
+                case TestConsequenceTargetKind.Gauge:
+                    var gauge = await context.GaugeDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.GameSystemId == gameSystemId);
+
+                    if (gauge == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return gauge.Name;
+
+                case TestConsequenceTargetKind.Attribute:
+                    var attribute = await context.AttributeDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(a => a.Id == consequence.TargetDefinitionId && a.GameSystemId == gameSystemId);
+
+                    if (attribute == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return attribute.Name;
+
+                case TestConsequenceTargetKind.DerivedStat:
+                    var derivedStat = await context.DerivedStatDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(d => d.Id == consequence.TargetDefinitionId && d.GameSystemId == gameSystemId);
+
+                    if (derivedStat == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return derivedStat.Name;
+
+                case TestConsequenceTargetKind.Metric:
+                    var metric = await context.MetricDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(m => m.Id == consequence.TargetDefinitionId && m.GameSystemId == gameSystemId);
+
+                    if (metric == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return metric.Name;
+
+                case TestConsequenceTargetKind.Talent:
+                    var talent = await context.TalentDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(t => t.Id == consequence.TargetDefinitionId && t.GameSystemId == gameSystemId);
+
+                    if (talent == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return talent.Name;
+
+                case TestConsequenceTargetKind.Item:
+                    var item = await context.ItemDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(i => i.Id == consequence.TargetDefinitionId && i.GameSystemId == gameSystemId);
+
+                    if (item == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return item.Name;
+
+                default:
                     throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
-
-                return gauge.Name;
             }
+        }
 
-            var attribute = await context.AttributeDefinitions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(a => a.Id == consequence.TargetDefinitionId && a.GameSystemId == gameSystemId);
-
-            if (attribute == null)
-                throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
-
-            return attribute.Name;
+        private static bool IsMeaningfulConsequence(GameTestConsequenceDraftDto consequence)
+        {
+            return consequence.OperationType switch
+            {
+                TestConsequenceOperationType.AddValue => consequence.Value != 0,
+                TestConsequenceOperationType.GrantTalent => consequence.TargetDefinitionId != Guid.Empty,
+                TestConsequenceOperationType.RevokeTalent => consequence.TargetDefinitionId != Guid.Empty,
+                TestConsequenceOperationType.GrantItem => consequence.TargetDefinitionId != Guid.Empty,
+                TestConsequenceOperationType.RevokeItem => consequence.TargetDefinitionId != Guid.Empty,
+                _ => false
+            };
         }
 
         private void ValidateCreateRequest(GameTestCreateRequestDto request)
@@ -787,6 +1060,54 @@ namespace Rollocracy.Infrastructure.Services
 
             if (request.DifficultyValue < 0)
                 throw new Exception(_localizer["Backend_InvalidDifficultyValue"]);
+
+            foreach (var consequence in request.Consequences)
+            {
+                if (consequence.ApplyOn != TestConsequenceApplyOn.OnSuccess &&
+                    consequence.ApplyOn != TestConsequenceApplyOn.OnFailure)
+                {
+                    throw new Exception(_localizer["Backend_InvalidTestConsequenceApplyOn"]);
+                }
+
+                if (consequence.TargetDefinitionId == Guid.Empty)
+                    throw new Exception(_localizer["Backend_InvalidTestConsequenceTarget"]);
+
+                // Compatibilité transitoire :
+                // l'UI actuelle des tests n'envoie pas encore OperationType.
+                // On considère donc qu'une conséquence legacy est un AddValue.
+                if ((int)consequence.OperationType == 0)
+                {
+                    consequence.OperationType = TestConsequenceOperationType.AddValue;
+                }
+
+                switch (consequence.OperationType)
+                {
+                    case TestConsequenceOperationType.AddValue:
+                        if (consequence.TargetKind != TestConsequenceTargetKind.Attribute &&
+                            consequence.TargetKind != TestConsequenceTargetKind.Gauge &&
+                            consequence.TargetKind != TestConsequenceTargetKind.DerivedStat &&
+                            consequence.TargetKind != TestConsequenceTargetKind.Metric)
+                        {
+                            throw new Exception(_localizer["Backend_InvalidTestConsequenceTarget"]);
+                        }
+                        break;
+
+                    case TestConsequenceOperationType.GrantTalent:
+                    case TestConsequenceOperationType.RevokeTalent:
+                        if (consequence.TargetKind != TestConsequenceTargetKind.Talent)
+                            throw new Exception(_localizer["Backend_InvalidTestConsequenceTarget"]);
+                        break;
+
+                    case TestConsequenceOperationType.GrantItem:
+                    case TestConsequenceOperationType.RevokeItem:
+                        if (consequence.TargetKind != TestConsequenceTargetKind.Item)
+                            throw new Exception(_localizer["Backend_InvalidTestConsequenceTarget"]);
+                        break;
+
+                    default:
+                        throw new Exception(_localizer["Backend_InvalidTestConsequenceOperation"]);
+                }
+            }
         }
 
         private int ApplyModifier(int baseValue, TestModifierMode mode, int difficultyValue)
