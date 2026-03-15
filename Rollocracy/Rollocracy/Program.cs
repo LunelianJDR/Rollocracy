@@ -46,6 +46,8 @@ builder.Services.AddServerSideBlazor();
 
 builder.Services.AddSignalR();
 
+builder.Services.AddScoped<ICharacterEffectService, CharacterEffectService>();
+
 // Authentification par cookie
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

@@ -1061,6 +1061,15 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(m => characterItemIds.Contains(m.ItemDefinitionId))
                 .ToListAsync();
 
+            var characterModifiers = await context.CharacterModifiers
+                .AsNoTracking()
+                .Where(m =>
+                    m.CharacterId == characterId &&
+                    (m.TargetType == CharacterEffectTargetType.BaseAttribute ||
+                     m.TargetType == CharacterEffectTargetType.DerivedStat ||
+                     m.TargetType == CharacterEffectTargetType.Metric))
+                .ToListAsync();
+
             var allModifiers = choiceOptionModifiers
                 .Select(m => new RuntimeModifier
                 {
@@ -1080,7 +1089,19 @@ namespace Rollocracy.Infrastructure.Services
                     TargetId = m.TargetId,
                     AddValue = m.AddValue
                 }))
-                .ToList();
+                .Concat(characterModifiers.Select(m => new RuntimeModifier
+                {
+                    TargetType = m.TargetType switch
+                    {
+                        CharacterEffectTargetType.BaseAttribute => ModifierTargetType.BaseAttribute,
+                        CharacterEffectTargetType.DerivedStat => ModifierTargetType.DerivedStat,
+                        CharacterEffectTargetType.Metric => ModifierTargetType.Metric,
+                        _ => ModifierTargetType.BaseAttribute
+                    },
+                    TargetId = m.TargetId,
+                    AddValue = m.AddValue
+                }))
+    .ToList();
 
             var effectiveAttributeValues = attributeDefinitions.ToDictionary(
                 definition => definition.Id,
