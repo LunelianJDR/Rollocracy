@@ -1444,4 +1444,22 @@
 	<data name="EditGameSystem_ModifierTarget_Metric" xml:space="preserve">
   <value>Metric</value>
 </data>
+	<data name="Backend_InvalidCharacterSelectionForSession" xml:space="preserve">
+  <value>At least one selected character does not belong to this session.</value>
+</data>
+	<data name="Backend_InvalidCharacterEffectOperation" xml:space="preserve">
+  <value>The requested effect operation is invalid.</value>
+</data>
+	<data name="Backend_InvalidCharacterEffectTarget" xml:space="preserve">
+  <value>The requested effect target is invalid.</value>
+</data>
+	<data name="Backend_InvalidCharacterEffectTalentTarget" xml:space="preserve">
+  <value>The talent targeted by this effect is invalid.</value>
+</data>
+	<data name="Backend_InvalidCharacterEffectItemTarget" xml:space="preserve">
+  <value>The item targeted by this effect is invalid.</value>
+</data>
+	<data name="Backend_CharacterEffectBatchNameRequired" xml:space="preserve">
+  <value>The effect batch name is required.</value>
+</data>
 </root>

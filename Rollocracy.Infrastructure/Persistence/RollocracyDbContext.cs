@@ -22,6 +22,7 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<Session> Sessions => Set<Session>();
         public DbSet<PlayerSession> PlayerSessions => Set<PlayerSession>();
         public DbSet<Character> Characters => Set<Character>();
+        public DbSet<CharacterModifier> CharacterModifiers => Set<CharacterModifier>();
 
         public DbSet<AttributeDefinition> AttributeDefinitions => Set<AttributeDefinition>();
         public DbSet<DerivedStatDefinition> DerivedStatDefinitions => Set<DerivedStatDefinition>();
@@ -106,6 +107,16 @@ namespace Rollocracy.Infrastructure.Persistence
 
             modelBuilder.Entity<MetricComponent>()
                 .HasIndex(x => new { x.MetricDefinitionId, x.AttributeDefinitionId });
+
+            modelBuilder.Entity<CharacterModifier>(entity =>
+            {
+                entity.HasIndex(x => x.CharacterId);
+                entity.HasIndex(x => new { x.CharacterId, x.TargetType, x.TargetId });
+                entity.HasIndex(x => new { x.SourceType, x.SourceId });
+
+                entity.Property(x => x.SourceNameSnapshot)
+                    .HasColumnType("text");
+            });
         }
     }
 }
