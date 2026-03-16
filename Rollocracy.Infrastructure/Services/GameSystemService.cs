@@ -2143,9 +2143,10 @@ namespace Rollocracy.Infrastructure.Services
                 if (metric.BaseValue < metric.MinValue || metric.BaseValue > metric.MaxValue)
                     throw new Exception(_localizer["Backend_InvalidMetricBaseValue"]);
 
+            /*    
                 if (metric.Components.Count(x => !x.IsDeleted) == 0)
                     throw new Exception(_localizer["Backend_GameSystemMetricNeedsComponent"]);
-
+            */
                 foreach (var component in metric.Components.Where(x => !x.IsDeleted))
                 {
                     if (component.Weight < 0)
