@@ -15,6 +15,10 @@ namespace Rollocracy.Domain.GameRules
 
         public int AddValue { get; set; }
 
+        public ModifierValueMode ValueMode { get; set; }
+
+        public Guid? SourceMetricId { get; set; }
+
         public ItemDefinition? ItemDefinition { get; set; }
     }
 }

@@ -7,6 +7,7 @@
 @using Rollocracy.Domain.Characters
 @using Rollocracy.Domain.Interfaces
 @using Rollocracy.Localization
+@using Rollocracy.Domain.GameRules
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IMassDistributionService MassDistributionService
@@ -249,7 +250,29 @@ else
                     </select>
                 }
 
-                <input type="number" @bind="effect.Value" />
+                <select @bind="effect.ValueMode">
+                    <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
+                    <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                </select>
+
+                @if (effect.ValueMode == ModifierValueMode.Metric)
+                {
+                    <select @bind="effect.SourceMetricId">
+                        @foreach (var item in Editor.Metrics)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+
+                    <select @bind="effect.Value">
+                        <option value="1">@L["GameTest_Bonus"]</option>
+                        <option value="-1">@L["GameTest_Malus"]</option>
+                    </select>
+                }
+                else
+                {
+                    <input type="number" @bind="effect.Value" />
+                }
             }
             else if (effect.OperationType == CharacterEffectOperationType.GrantTalent || effect.OperationType == CharacterEffectOperationType.RevokeTalent)
             {
@@ -389,7 +412,9 @@ else
             OperationType = CharacterEffectOperationType.AddValue,
             TargetType = CharacterEffectTargetType.BaseAttribute,
             TargetId = firstAttribute?.Id ?? Guid.Empty,
-            Value = 0
+            Value = 0,
+            ValueMode = ModifierValueMode.Fixed,
+            SourceMetricId = Editor?.Metrics.FirstOrDefault()?.Id
         });
     }
 

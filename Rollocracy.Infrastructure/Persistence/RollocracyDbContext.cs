@@ -29,6 +29,7 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<DerivedStatComponent> DerivedStatComponents => Set<DerivedStatComponent>();
         public DbSet<MetricDefinition> MetricDefinitions => Set<MetricDefinition>();
         public DbSet<MetricComponent> MetricComponents => Set<MetricComponent>();
+        public DbSet<MetricFormulaStep> MetricFormulaSteps => Set<MetricFormulaStep>();
         public DbSet<CharacterAttributeValue> CharacterAttributeValues => Set<CharacterAttributeValue>();
 
         public DbSet<TraitDefinition> TraitDefinitions => Set<TraitDefinition>();
@@ -109,6 +110,14 @@ namespace Rollocracy.Infrastructure.Persistence
 
             modelBuilder.Entity<MetricComponent>()
                 .HasIndex(x => new { x.MetricDefinitionId, x.AttributeDefinitionId });
+
+            modelBuilder.Entity<MetricFormulaStep>(entity =>
+            {
+                entity.HasIndex(x => new { x.MetricDefinitionId, x.Order });
+
+                entity.Property(x => x.ConstantValue)
+                    .HasPrecision(18, 4);
+            });
 
             modelBuilder.Entity<CharacterModifier>(entity =>
             {

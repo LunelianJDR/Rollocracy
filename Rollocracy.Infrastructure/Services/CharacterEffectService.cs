@@ -122,6 +122,48 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(v => normalizedCharacterIds.Contains(v.CharacterId))
                 .ToListAsync();
 
+            var allCharacterTraitValues = await context.CharacterTraitValues
+                .Where(v => normalizedCharacterIds.Contains(v.CharacterId))
+                .ToListAsync();
+
+            var metricDefinitionIds = metricDefinitions.Select(x => x.Id).ToList();
+
+            var metricFormulaSteps = await context.MetricFormulaSteps
+                .AsNoTracking()
+                .Where(x => metricDefinitionIds.Contains(x.MetricDefinitionId))
+                .ToListAsync();
+
+            var metricComponents = await context.MetricComponents
+                .AsNoTracking()
+                .Where(x => metricDefinitionIds.Contains(x.MetricDefinitionId))
+                .ToListAsync();
+
+            var derivedDefinitionIds = derivedDefinitions.Select(x => x.Id).ToList();
+
+            var derivedComponents = await context.DerivedStatComponents
+                .AsNoTracking()
+                .Where(x => derivedDefinitionIds.Contains(x.DerivedStatDefinitionId))
+                .ToListAsync();
+
+            var traitOptionIds = allCharacterTraitValues.Select(v => v.TraitOptionId).Distinct().ToList();
+            var talentIds = allCharacterTalents.Select(v => v.TalentDefinitionId).Distinct().ToList();
+            var itemIds = allCharacterItems.Select(v => v.ItemDefinitionId).Distinct().ToList();
+
+            var choiceModifiers = await context.ChoiceOptionModifierDefinitions
+                .AsNoTracking()
+                .Where(x => traitOptionIds.Contains(x.TraitOptionId))
+                .ToListAsync();
+
+            var talentModifiers = await context.TalentModifierDefinitions
+                .AsNoTracking()
+                .Where(x => talentIds.Contains(x.TalentDefinitionId))
+                .ToListAsync();
+
+            var itemModifiers = await context.ItemModifierDefinitions
+                .AsNoTracking()
+                .Where(x => itemIds.Contains(x.ItemDefinitionId))
+                .ToListAsync();
+
             var allCharacterModifiers = await context.CharacterModifiers
                 .Where(v => normalizedCharacterIds.Contains(v.CharacterId))
                 .ToListAsync();
@@ -142,6 +184,15 @@ namespace Rollocracy.Infrastructure.Services
                         effect,
                         attributeDefinitions,
                         gaugeDefinitions,
+                        derivedDefinitions,
+                        metricDefinitions,
+                        derivedComponents,
+                        metricComponents,
+                        metricFormulaSteps,
+                        allCharacterTraitValues.Where(x => x.CharacterId == character.Id).ToList(),
+                        choiceModifiers,
+                        talentModifiers,
+                        itemModifiers,
                         talentDefinitions,
                         itemDefinitions,
                         attributeValues,
@@ -228,6 +279,18 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => x.GameSystemId == gameSystemId)
                 .ToListAsync();
 
+            var metricDefinitionIds = metricDefinitions.Select(x => x.Id).ToList();
+
+            var metricFormulaSteps = await context.MetricFormulaSteps
+                .AsNoTracking()
+                .Where(x => metricDefinitionIds.Contains(x.MetricDefinitionId))
+                .ToListAsync();
+
+            var metricComponents = await context.MetricComponents
+                .AsNoTracking()
+                .Where(x => metricDefinitionIds.Contains(x.MetricDefinitionId))
+                .ToListAsync();
+
             var attributeValues = await context.CharacterAttributeValues
                 .AsNoTracking()
                 .Where(x => characterIds.Contains(x.CharacterId))
@@ -263,16 +326,10 @@ namespace Rollocracy.Infrastructure.Services
                 .ToListAsync();
 
             var derivedDefinitionIds = derivedDefinitions.Select(d => d.Id).ToList();
-            var metricDefinitionIds = metricDefinitions.Select(m => m.Id).ToList();
 
             var derivedComponents = await context.DerivedStatComponents
                 .AsNoTracking()
                 .Where(x => derivedDefinitionIds.Contains(x.DerivedStatDefinitionId))
-                .ToListAsync();
-
-            var metricComponents = await context.MetricComponents
-                .AsNoTracking()
-                .Where(x => metricDefinitionIds.Contains(x.MetricDefinitionId))
                 .ToListAsync();
 
             var filtered = new List<Guid>();
@@ -337,6 +394,7 @@ namespace Rollocracy.Infrastructure.Services
                         metricDefinitions,
                         derivedComponents,
                         metricComponents,
+                        metricFormulaSteps,
                         attributeValues,
                         gaugeValues,
                         traitValues,
@@ -466,6 +524,9 @@ namespace Rollocracy.Infrastructure.Services
 
             if (!isValid)
                 throw new Exception(_localizer["Backend_InvalidCharacterEffectTarget"]);
+
+            if (effect.ValueMode == ModifierValueMode.Metric && (!effect.SourceMetricId.HasValue || !metricDefinitions.Any(x => x.Id == effect.SourceMetricId.Value)))
+                throw new Exception(_localizer["Backend_InvalidCharacterEffectSourceMetric"]);
         }
 
         private async Task ApplySingleEffectAsync(
@@ -474,6 +535,15 @@ namespace Rollocracy.Infrastructure.Services
             CharacterEffectDefinitionDto effect,
             List<AttributeDefinition> attributeDefinitions,
             List<GaugeDefinition> gaugeDefinitions,
+            List<DerivedStatDefinition> derivedDefinitions,
+            List<MetricDefinition> metricDefinitions,
+            List<DerivedStatComponent> derivedComponents,
+            List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> metricFormulaSteps,
+            List<CharacterTraitValue> traitValues,
+            List<ChoiceOptionModifierDefinition> choiceModifiers,
+            List<TalentModifierDefinition> talentModifiers,
+            List<ItemModifierDefinition> itemModifiers,
             List<TalentDefinition> talentDefinitions,
             List<ItemDefinition> itemDefinitions,
             List<CharacterAttributeValue> attributeValues,
@@ -488,6 +558,26 @@ namespace Rollocracy.Infrastructure.Services
             switch (effect.OperationType)
             {
                 case CharacterEffectOperationType.AddValue:
+                    var resolvedEffectValue = ResolveEffectValue(
+                        character.Id,
+                        effect,
+                        attributeDefinitions,
+                        gaugeDefinitions,
+                        derivedDefinitions,
+                        metricDefinitions,
+                        derivedComponents,
+                        metricComponents,
+                        metricFormulaSteps,
+                        traitValues,
+                        attributeValues,
+                        gaugeValues,
+                        characterTalents,
+                        characterItems,
+                        choiceModifiers,
+                        talentModifiers,
+                        itemModifiers,
+                        characterModifiers);
+
                     if (effect.TargetType == CharacterEffectTargetType.BaseAttribute)
                     {
                         var definition = attributeDefinitions.First(x => x.Id == effect.TargetId);
@@ -508,7 +598,7 @@ namespace Rollocracy.Infrastructure.Services
                         }
 
                         value.Value = Math.Clamp(
-                            value.Value + effect.Value,
+                            value.Value + resolvedEffectValue,
                             definition.MinValue,
                             definition.MaxValue);
                     }
@@ -532,7 +622,7 @@ namespace Rollocracy.Infrastructure.Services
                         }
 
                         value.Value = Math.Clamp(
-                            value.Value + effect.Value,
+                            value.Value + resolvedEffectValue,
                             definition.MinValue,
                             definition.MaxValue);
                     }
@@ -552,7 +642,7 @@ namespace Rollocracy.Infrastructure.Services
                                 CharacterId = character.Id,
                                 TargetType = effect.TargetType,
                                 TargetId = effect.TargetId,
-                                AddValue = effect.Value,
+                                AddValue = resolvedEffectValue,
                                 SourceType = sourceType,
                                 SourceId = sourceId,
                                 SourceNameSnapshot = sourceName,
@@ -564,7 +654,7 @@ namespace Rollocracy.Infrastructure.Services
                         }
                         else
                         {
-                            existingModifier.AddValue += effect.Value;
+                            existingModifier.AddValue += resolvedEffectValue;
                             existingModifier.SourceNameSnapshot = sourceName;
                         }
                     }
@@ -669,6 +759,7 @@ namespace Rollocracy.Infrastructure.Services
             List<MetricDefinition> metricDefinitions,
             List<DerivedStatComponent> derivedComponents,
             List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> metricFormulaSteps,
             List<CharacterAttributeValue> attributeValues,
             List<CharacterGaugeValue> gaugeValues,
             List<CharacterTraitValue> traitValues,
@@ -700,7 +791,9 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     TargetType = x.TargetType,
                     TargetId = x.TargetId,
-                    AddValue = x.AddValue
+                    AddValue = x.AddValue,
+                    ValueMode = x.ValueMode,
+                    SourceMetricId = x.SourceMetricId
                 });
 
             var talentRuntimeModifiers = talentModifiers
@@ -709,7 +802,9 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     TargetType = x.TargetType,
                     TargetId = x.TargetId,
-                    AddValue = x.AddValue
+                    AddValue = x.AddValue,
+                    ValueMode = x.ValueMode,
+                    SourceMetricId = x.SourceMetricId
                 });
 
             var itemRuntimeModifiers = itemModifiers
@@ -718,7 +813,9 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     TargetType = x.TargetType,
                     TargetId = x.TargetId,
-                    AddValue = x.AddValue
+                    AddValue = x.AddValue,
+                    ValueMode = x.ValueMode,
+                    SourceMetricId = x.SourceMetricId
                 });
 
             var persistentRuntimeModifiers = characterModifiers
@@ -736,16 +833,55 @@ namespace Rollocracy.Infrastructure.Services
                         _ => ModifierTargetType.BaseAttribute
                     },
                     TargetId = x.TargetId,
-                    AddValue = x.AddValue
+                    AddValue = x.AddValue,
+                    ValueMode = ModifierValueMode.Fixed
                 });
 
-            var allModifiers = choiceRuntimeModifiers
+            var rawModifiers = choiceRuntimeModifiers
                 .Concat(talentRuntimeModifiers)
                 .Concat(itemRuntimeModifiers)
                 .Concat(persistentRuntimeModifiers)
                 .ToList();
 
-            var effectiveBaseValues = attributeDefinitions.ToDictionary(
+            Dictionary<Guid, int> effectiveBaseValues = attributeDefinitions.ToDictionary(
+                definition => definition.Id,
+                definition =>
+                {
+                    var baseValue = attributeValues.FirstOrDefault(x =>
+                        x.CharacterId == characterId &&
+                        x.AttributeDefinitionId == definition.Id)?.Value ?? definition.DefaultValue;
+
+                    var modifierValue = rawModifiers
+                        .Where(x => x.ValueMode != ModifierValueMode.Metric && x.TargetType == ModifierTargetType.BaseAttribute && x.TargetId == definition.Id)
+                        .Sum(x => x.AddValue);
+
+                    return Math.Clamp(baseValue + modifierValue, definition.MinValue, definition.MaxValue);
+                });
+
+            var effectiveGaugeValues = gaugeDefinitions.ToDictionary(
+                definition => definition.Id,
+                definition =>
+                {
+                    var value = gaugeValues.FirstOrDefault(x => x.CharacterId == characterId && x.GaugeDefinitionId == definition.Id)?.Value
+                        ?? definition.DefaultValue;
+
+                    return Math.Clamp(value, definition.MinValue, definition.MaxValue);
+                });
+
+            var preliminaryDerivedValues = derivedDefinitions.ToDictionary(
+                definition => definition.Id,
+                definition => ResolveDerivedStatValue(definition.Id, derivedDefinitions, derivedComponents, effectiveBaseValues, rawModifiers.Where(x => x.ValueMode != ModifierValueMode.Metric).ToList()));
+
+            var allModifiers = ResolveRuntimeModifiers(
+                rawModifiers,
+                metricDefinitions,
+                metricComponents,
+                metricFormulaSteps,
+                effectiveBaseValues,
+                effectiveGaugeValues,
+                preliminaryDerivedValues);
+
+            effectiveBaseValues = attributeDefinitions.ToDictionary(
                 definition => definition.Id,
                 definition =>
                 {
@@ -760,6 +896,10 @@ namespace Rollocracy.Infrastructure.Services
                     return Math.Clamp(baseValue + modifierValue, definition.MinValue, definition.MaxValue);
                 });
 
+            var derivedValues = derivedDefinitions.ToDictionary(
+                definition => definition.Id,
+                definition => ResolveDerivedStatValue(definition.Id, derivedDefinitions, derivedComponents, effectiveBaseValues, allModifiers));
+
             return targetType switch
             {
                 CharacterEffectTargetType.BaseAttribute => effectiveBaseValues.TryGetValue(targetId, out var baseValue) ? baseValue : 0,
@@ -769,7 +909,15 @@ namespace Rollocracy.Infrastructure.Services
                     ?? gaugeDefinitions.FirstOrDefault(x => x.Id == targetId)?.DefaultValue
                     ?? 0,
                 CharacterEffectTargetType.DerivedStat => ResolveDerivedStatValue(targetId, derivedDefinitions, derivedComponents, effectiveBaseValues, allModifiers),
-                CharacterEffectTargetType.Metric => ResolveMetricValue(targetId, metricDefinitions, metricComponents, effectiveBaseValues, allModifiers),
+                CharacterEffectTargetType.Metric => ResolveMetricValue(
+                    targetId,
+                    metricDefinitions,
+                    metricComponents,
+                    metricFormulaSteps,
+                    effectiveBaseValues,
+                    effectiveGaugeValues,
+                    derivedValues,
+                    allModifiers),
                 _ => 0
             };
         }
@@ -807,29 +955,127 @@ namespace Rollocracy.Infrastructure.Services
             Guid targetId,
             List<MetricDefinition> definitions,
             List<MetricComponent> components,
+            List<MetricFormulaStep> formulaSteps,
             Dictionary<Guid, int> effectiveBaseValues,
+            Dictionary<Guid, int> effectiveGaugeValues,
+            Dictionary<Guid, int> derivedStatValues,
             List<RuntimeModifier> allModifiers)
         {
-            var definition = definitions.FirstOrDefault(x => x.Id == targetId);
-            if (definition == null)
-                return 0;
-
-            decimal rawValue = definition.BaseValue;
-
-            foreach (var component in components.Where(x => x.MetricDefinitionId == definition.Id))
+            return MetricFormulaEngine.ComputeSingle(new MetricFormulaEngine.MetricComputationRequest
             {
-                var sourceValue = effectiveBaseValues.TryGetValue(component.AttributeDefinitionId, out var value) ? value : 0;
-                rawValue += sourceValue * (component.Weight / 100m);
-            }
+                MetricDefinitions = definitions,
+                FormulaSteps = formulaSteps,
+                LegacyComponents = components,
+                BaseAttributeValues = effectiveBaseValues,
+                GaugeValues = effectiveGaugeValues,
+                DerivedStatValues = derivedStatValues,
+                Modifiers = allModifiers.Select(x => new MetricFormulaEngine.ModifierValue
+                {
+                    TargetType = x.TargetType,
+                    TargetId = x.TargetId,
+                    AddValue = x.AddValue
+                }).ToList()
+            }, targetId);
+        }
 
-            rawValue = ApplyRoundMode(rawValue, definition.RoundMode);
+        private int ResolveEffectValue(
+            Guid characterId,
+            CharacterEffectDefinitionDto effect,
+            List<AttributeDefinition> attributeDefinitions,
+            List<GaugeDefinition> gaugeDefinitions,
+            List<DerivedStatDefinition> derivedDefinitions,
+            List<MetricDefinition> metricDefinitions,
+            List<DerivedStatComponent> derivedComponents,
+            List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> metricFormulaSteps,
+            List<CharacterTraitValue> traitValues,
+            List<CharacterAttributeValue> attributeValues,
+            List<CharacterGaugeValue> gaugeValues,
+            List<CharacterTalent> characterTalents,
+            List<CharacterItem> characterItems,
+            List<ChoiceOptionModifierDefinition> choiceModifiers,
+            List<TalentModifierDefinition> talentModifiers,
+            List<ItemModifierDefinition> itemModifiers,
+            List<CharacterModifier> characterModifiers)
+        {
+            if (effect.ValueMode != ModifierValueMode.Metric || !effect.SourceMetricId.HasValue)
+                return effect.Value;
 
-            var modifierValue = allModifiers
-                .Where(x => x.TargetType == ModifierTargetType.Metric && x.TargetId == definition.Id)
-                .Sum(x => x.AddValue);
+            var metricValue = ResolveCharacterValue(
+                characterId,
+                CharacterEffectTargetType.Metric,
+                effect.SourceMetricId.Value,
+                attributeDefinitions,
+                gaugeDefinitions,
+                derivedDefinitions,
+                metricDefinitions,
+                derivedComponents,
+                metricComponents,
+                metricFormulaSteps,
+                attributeValues,
+                gaugeValues,
+                traitValues,
+                characterTalents,
+                characterItems,
+                choiceModifiers,
+                talentModifiers,
+                itemModifiers,
+                characterModifiers);
 
-            var finalValue = (int)rawValue + modifierValue;
-            return Math.Clamp(finalValue, definition.MinValue, definition.MaxValue);
+            // En 6D, pour un effet basé sur une metric, on réutilise le signe porté
+            // par Value : >= 0 pour un bonus, < 0 pour un malus.
+            var sign = effect.Value < 0 ? -1 : 1;
+            return metricValue * sign;
+        }
+
+        private static List<RuntimeModifier> ResolveRuntimeModifiers(
+            List<RuntimeModifier> rawModifiers,
+            List<MetricDefinition> metricDefinitions,
+            List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> formulaSteps,
+            Dictionary<Guid, int> attributeValues,
+            Dictionary<Guid, int> gaugeValues,
+            Dictionary<Guid, int> derivedValues)
+        {
+            var fixedModifiers = rawModifiers
+                .Where(x => x.ValueMode != ModifierValueMode.Metric || !x.SourceMetricId.HasValue)
+                .Select(x => new RuntimeModifier
+                {
+                    TargetType = x.TargetType,
+                    TargetId = x.TargetId,
+                    AddValue = x.AddValue,
+                    ValueMode = ModifierValueMode.Fixed
+                })
+                .ToList();
+
+            if (!rawModifiers.Any(x => x.ValueMode == ModifierValueMode.Metric && x.SourceMetricId.HasValue))
+                return fixedModifiers;
+
+            var metricValues = MetricFormulaEngine.ComputeAll(new MetricFormulaEngine.MetricComputationRequest
+            {
+                MetricDefinitions = metricDefinitions,
+                FormulaSteps = formulaSteps,
+                LegacyComponents = metricComponents,
+                BaseAttributeValues = attributeValues,
+                GaugeValues = gaugeValues,
+                DerivedStatValues = derivedValues,
+                Modifiers = fixedModifiers.Select(x => new MetricFormulaEngine.ModifierValue
+                {
+                    TargetType = x.TargetType,
+                    TargetId = x.TargetId,
+                    AddValue = x.AddValue
+                }).ToList()
+            });
+
+            return rawModifiers.Select(x => new RuntimeModifier
+            {
+                TargetType = x.TargetType,
+                TargetId = x.TargetId,
+                AddValue = x.ValueMode == ModifierValueMode.Metric && x.SourceMetricId.HasValue && metricValues.TryGetValue(x.SourceMetricId.Value, out var metricValue)
+                    ? metricValue
+                    : x.AddValue,
+                ValueMode = ModifierValueMode.Fixed
+            }).ToList();
         }
 
         private static decimal ApplyRoundMode(decimal rawValue, ComputedValueRoundMode roundMode)
@@ -862,6 +1108,8 @@ namespace Rollocracy.Infrastructure.Services
             public ModifierTargetType TargetType { get; set; }
             public Guid TargetId { get; set; }
             public int AddValue { get; set; }
+            public ModifierValueMode ValueMode { get; set; }
+            public Guid? SourceMetricId { get; set; }
         }
     }
 }

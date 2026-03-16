@@ -16,6 +16,14 @@ namespace Rollocracy.Domain.Entities
         // Définit la logique globale de résolution des tests
         public TestResolutionMode TestResolutionMode { get; set; }
 
+        // Dés par défaut des tests du système
+        public int DefaultTestDiceCount { get; set; } = 1;
+        public int DefaultTestDiceSides { get; set; } = 100;
+
+        // Seuils critiques appliqués uniquement quand le test utilise les dés par défaut du système.
+        public int? CriticalSuccessValue { get; set; }
+        public int? CriticalFailureValue { get; set; }
+
         // Si ce système est une copie, référence vers le système d'origine
         public Guid? SourceGameSystemId { get; set; }
 

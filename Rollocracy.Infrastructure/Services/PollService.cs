@@ -31,7 +31,7 @@ namespace Rollocracy.Infrastructure.Services
             _characterEffectService = characterEffectService;
         }
 
-        
+
         public async Task<PollForGameMasterDto> CreatePollAsync(Guid sessionId, Guid gameMasterUserAccountId, PollCreateRequestDto request)
         {
             ValidateCreateRequest(request);
@@ -130,6 +130,16 @@ namespace Rollocracy.Infrastructure.Services
 
                 foreach (var consequence in optionDraft.Consequences.Where(IsMeaningfulPollConsequence))
                 {
+                    if (consequence.ValueMode == ModifierValueMode.Metric)
+                    {
+                        var sourceMetricExists = consequence.SourceMetricId.HasValue && await context.MetricDefinitions
+                            .AsNoTracking()
+                            .AnyAsync(m => m.Id == consequence.SourceMetricId.Value && m.GameSystemId == gameSystemId.Value);
+
+                        if (!sourceMetricExists)
+                            throw new Exception(_localizer["Backend_InvalidPollConsequenceSourceMetric"]);
+                    }
+
                     var targetName = await ResolveConsequenceTargetNameAsync(
                         context,
                         consequence.TargetKind,
@@ -145,6 +155,10 @@ namespace Rollocracy.Infrastructure.Services
                         TargetNameSnapshot = targetName,
                         ModifierMode = consequence.ModifierMode,
                         Value = consequence.Value,
+                        ValueMode = consequence.ValueMode,
+                        SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
+                            ? consequence.SourceMetricId
+                            : null,
                         OperationType = consequence.OperationType
                     });
                 }
@@ -157,7 +171,7 @@ namespace Rollocracy.Infrastructure.Services
             return await BuildGameMasterDtoAsync(context, poll.Id);
         }
 
-public async Task<PollForGameMasterDto?> GetLatestPollForGameMasterAsync(Guid sessionId)
+        public async Task<PollForGameMasterDto?> GetLatestPollForGameMasterAsync(Guid sessionId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -239,7 +253,7 @@ public async Task<PollForGameMasterDto?> GetLatestPollForGameMasterAsync(Guid se
             return await BuildPlayerDtoAsync(context, poll.Id, playerSessionId);
         }
 
-        
+
         public async Task VoteAsync(Guid playerSessionId, Guid pollId, Guid optionId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -341,7 +355,7 @@ public async Task<PollForGameMasterDto?> GetLatestPollForGameMasterAsync(Guid se
             await _sessionNotifier.NotifyPollChangedAsync(poll.SessionId);
         }
 
-public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
+        public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -357,6 +371,10 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
 
             if (poll == null)
                 throw new Exception(_localizer["Backend_NoActivePoll"]);
+
+            var metricDefinitions = await context.MetricDefinitions
+                .AsNoTracking()
+                .ToListAsync();
 
             var optionConsequences = await context.SessionPollOptionConsequences
                 .Join(
@@ -389,6 +407,7 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                 var legacyConsequences = voteConsequences
                     .Where(c =>
                         c.OperationType == TestConsequenceOperationType.AddValue &&
+                        c.ValueMode != ModifierValueMode.Metric &&
                         (c.TargetKind == TestConsequenceTargetKind.Attribute ||
                          c.TargetKind == TestConsequenceTargetKind.Gauge))
                     .ToList();
@@ -487,6 +506,7 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                 var commonEngineConsequences = voteConsequences
                     .Where(c => !(
                         c.OperationType == TestConsequenceOperationType.AddValue &&
+                        c.ValueMode != ModifierValueMode.Metric &&
                         (c.TargetKind == TestConsequenceTargetKind.Attribute ||
                          c.TargetKind == TestConsequenceTargetKind.Gauge)))
                     .ToList();
@@ -834,28 +854,125 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                 .Where(m => itemIds.Contains(m.ItemDefinitionId))
                 .ToListAsync();
 
-            var allModifiers = choiceModifiers
+            var rawModifiers = choiceModifiers
                 .Select(m => new RuntimeMetricModifier
                 {
                     TargetType = m.TargetType,
                     TargetId = m.TargetId,
-                    AddValue = m.AddValue
+                    AddValue = m.AddValue,
+                    ValueMode = m.ValueMode,
+                    SourceMetricId = m.SourceMetricId
                 })
                 .Concat(talentModifiers.Select(m => new RuntimeMetricModifier
                 {
                     TargetType = m.TargetType,
                     TargetId = m.TargetId,
-                    AddValue = m.AddValue
+                    AddValue = m.AddValue,
+                    ValueMode = m.ValueMode,
+                    SourceMetricId = m.SourceMetricId
                 }))
                 .Concat(itemModifiers.Select(m => new RuntimeMetricModifier
                 {
                     TargetType = m.TargetType,
                     TargetId = m.TargetId,
-                    AddValue = m.AddValue
+                    AddValue = m.AddValue,
+                    ValueMode = m.ValueMode,
+                    SourceMetricId = m.SourceMetricId
                 }))
                 .ToList();
 
-            var effectiveAttributeValues = attributeDefinitions.ToDictionary(
+            Dictionary<Guid, int> effectiveAttributeValues = attributeDefinitions.ToDictionary(
+                definition => definition.Id,
+                definition =>
+                {
+                    var baseValue = attributeValues.FirstOrDefault(v => v.AttributeDefinitionId == definition.Id)?.Value
+                        ?? definition.DefaultValue;
+
+                    var modifier = rawModifiers
+                        .Where(m => m.ValueMode != ModifierValueMode.Metric && m.TargetType == ModifierTargetType.BaseAttribute && m.TargetId == definition.Id)
+                        .Sum(m => m.AddValue);
+
+                    var effectiveValue = baseValue + modifier;
+                    return Math.Clamp(effectiveValue, definition.MinValue, definition.MaxValue);
+                });
+
+            var derivedDefinitions = await context.DerivedStatDefinitions
+                .AsNoTracking()
+                .Where(d => d.GameSystemId == gameSystemId)
+                .OrderBy(d => d.DisplayOrder).ThenBy(d => d.Name)
+                .ToListAsync();
+
+            var derivedComponentIds = derivedDefinitions.Select(d => d.Id).ToList();
+            var derivedComponents = await context.DerivedStatComponents
+                .AsNoTracking()
+                .Where(c => derivedComponentIds.Contains(c.DerivedStatDefinitionId))
+                .ToListAsync();
+
+            var gaugeDefinitions = await context.GaugeDefinitions
+                .AsNoTracking()
+                .Where(g => g.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var gaugeValues = await context.CharacterGaugeValues
+                .AsNoTracking()
+                .Where(v => v.CharacterId == characterId)
+                .ToListAsync();
+
+            var effectiveGaugeValues = gaugeDefinitions.ToDictionary(
+                definition => definition.Id,
+                definition =>
+                {
+                    var baseValue = gaugeValues.FirstOrDefault(v => v.GaugeDefinitionId == definition.Id)?.Value
+                        ?? definition.DefaultValue;
+
+                    return Math.Clamp(baseValue, definition.MinValue, definition.MaxValue);
+                });
+
+            var preliminaryDerivedValues = new Dictionary<Guid, int>();
+            foreach (var definition in derivedDefinitions)
+            {
+                decimal rawValue = 0m;
+                foreach (var component in derivedComponents.Where(c => c.DerivedStatDefinitionId == definition.Id))
+                {
+                    var sourceValue = effectiveAttributeValues.TryGetValue(component.AttributeDefinitionId, out var attrValue) ? attrValue : 0;
+                    rawValue += sourceValue * (component.Weight / 100m);
+                }
+
+                rawValue = ApplyComputedRoundMode(rawValue, definition.RoundMode);
+                var finalValue = (int)rawValue + rawModifiers
+                    .Where(m => m.ValueMode != ModifierValueMode.Metric && m.TargetType == ModifierTargetType.DerivedStat && m.TargetId == definition.Id)
+                    .Sum(m => m.AddValue);
+
+                preliminaryDerivedValues[definition.Id] = Math.Clamp(finalValue, definition.MinValue, definition.MaxValue);
+            }
+
+            var allMetricDefinitions = await context.MetricDefinitions
+                .AsNoTracking()
+                .Where(m => m.GameSystemId == gameSystemId)
+                .OrderBy(m => m.DisplayOrder).ThenBy(m => m.Name)
+                .ToListAsync();
+
+            var allMetricIds = allMetricDefinitions.Select(m => m.Id).ToList();
+            var components = await context.MetricComponents
+                .AsNoTracking()
+                .Where(c => allMetricIds.Contains(c.MetricDefinitionId))
+                .ToListAsync();
+
+            var formulaSteps = await context.MetricFormulaSteps
+                .AsNoTracking()
+                .Where(c => allMetricIds.Contains(c.MetricDefinitionId))
+                .ToListAsync();
+
+            var allModifiers = ResolveRuntimeModifiers(
+                rawModifiers,
+                allMetricDefinitions,
+                components,
+                formulaSteps,
+                effectiveAttributeValues,
+                effectiveGaugeValues,
+                preliminaryDerivedValues);
+
+            effectiveAttributeValues = attributeDefinitions.ToDictionary(
                 definition => definition.Id,
                 definition =>
                 {
@@ -870,38 +987,94 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                     return Math.Clamp(effectiveValue, definition.MinValue, definition.MaxValue);
                 });
 
-            var components = await context.MetricComponents
-                .AsNoTracking()
-                .Where(c => c.MetricDefinitionId == metricDefinitionId)
-                .ToListAsync();
-
-            decimal rawValue = metricDefinition.BaseValue;
-
-            foreach (var component in components)
+            var derivedValues = new Dictionary<Guid, int>();
+            foreach (var definition in derivedDefinitions)
             {
-                var effectiveValue = effectiveAttributeValues.TryGetValue(component.AttributeDefinitionId, out var sourceValue)
-                    ? sourceValue
-                    : 0;
+                decimal rawValue = 0m;
+                foreach (var component in derivedComponents.Where(c => c.DerivedStatDefinitionId == definition.Id))
+                {
+                    var sourceValue = effectiveAttributeValues.TryGetValue(component.AttributeDefinitionId, out var attrValue) ? attrValue : 0;
+                    rawValue += sourceValue * (component.Weight / 100m);
+                }
 
-                rawValue += effectiveValue * (component.Weight / 100m);
+                rawValue = ApplyComputedRoundMode(rawValue, definition.RoundMode);
+                var finalValue = (int)rawValue + allModifiers
+                    .Where(m => m.TargetType == ModifierTargetType.DerivedStat && m.TargetId == definition.Id)
+                    .Sum(m => m.AddValue);
+
+                derivedValues[definition.Id] = Math.Clamp(finalValue, definition.MinValue, definition.MaxValue);
             }
 
-            rawValue += allModifiers
-                .Where(m => m.TargetType == ModifierTargetType.Metric && m.TargetId == metricDefinitionId)
-                .Sum(m => m.AddValue);
+            var metricValue = MetricFormulaEngine.ComputeSingle(new MetricFormulaEngine.MetricComputationRequest
+            {
+                MetricDefinitions = allMetricDefinitions,
+                FormulaSteps = formulaSteps,
+                LegacyComponents = components,
+                BaseAttributeValues = effectiveAttributeValues,
+                GaugeValues = effectiveGaugeValues,
+                DerivedStatValues = derivedValues,
+                Modifiers = allModifiers.Select(m => new MetricFormulaEngine.ModifierValue
+                {
+                    TargetType = m.TargetType,
+                    TargetId = m.TargetId,
+                    AddValue = m.AddValue
+                }).ToList()
+            }, metricDefinitionId);
 
-            var roundedValue = ApplyComputedRoundMode(rawValue, metricDefinition.RoundMode);
+            if (metricValue < 1)
+                metricValue = 1;
 
-            if (roundedValue < metricDefinition.MinValue)
-                roundedValue = metricDefinition.MinValue;
+            return decimal.Round(metricValue, 2, MidpointRounding.AwayFromZero);
+        }
 
-            if (roundedValue > metricDefinition.MaxValue)
-                roundedValue = metricDefinition.MaxValue;
+        private static List<RuntimeMetricModifier> ResolveRuntimeModifiers(
+            List<RuntimeMetricModifier> rawModifiers,
+            List<MetricDefinition> metricDefinitions,
+            List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> formulaSteps,
+            Dictionary<Guid, int> attributeValues,
+            Dictionary<Guid, int> gaugeValues,
+            Dictionary<Guid, int> derivedValues)
+        {
+            var fixedModifiers = rawModifiers
+                .Where(x => x.ValueMode != ModifierValueMode.Metric || !x.SourceMetricId.HasValue)
+                .Select(x => new RuntimeMetricModifier
+                {
+                    TargetType = x.TargetType,
+                    TargetId = x.TargetId,
+                    AddValue = x.AddValue,
+                    ValueMode = ModifierValueMode.Fixed
+                })
+                .ToList();
 
-            if (roundedValue < 1m)
-                roundedValue = 1m;
+            if (!rawModifiers.Any(x => x.ValueMode == ModifierValueMode.Metric && x.SourceMetricId.HasValue))
+                return fixedModifiers;
 
-            return decimal.Round(roundedValue, 2, MidpointRounding.AwayFromZero);
+            var metricValues = MetricFormulaEngine.ComputeAll(new MetricFormulaEngine.MetricComputationRequest
+            {
+                MetricDefinitions = metricDefinitions,
+                FormulaSteps = formulaSteps,
+                LegacyComponents = metricComponents,
+                BaseAttributeValues = attributeValues,
+                GaugeValues = gaugeValues,
+                DerivedStatValues = derivedValues,
+                Modifiers = fixedModifiers.Select(x => new MetricFormulaEngine.ModifierValue
+                {
+                    TargetType = x.TargetType,
+                    TargetId = x.TargetId,
+                    AddValue = x.AddValue
+                }).ToList()
+            });
+
+            return rawModifiers.Select(x => new RuntimeMetricModifier
+            {
+                TargetType = x.TargetType,
+                TargetId = x.TargetId,
+                AddValue = x.ValueMode == ModifierValueMode.Metric && x.SourceMetricId.HasValue && metricValues.TryGetValue(x.SourceMetricId.Value, out var metricValue)
+                    ? metricValue
+                    : x.AddValue,
+                ValueMode = ModifierValueMode.Fixed
+            }).ToList();
         }
 
         private sealed class RuntimeMetricModifier
@@ -909,6 +1082,8 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
             public ModifierTargetType TargetType { get; set; }
             public Guid TargetId { get; set; }
             public int AddValue { get; set; }
+            public ModifierValueMode ValueMode { get; set; }
+            public Guid? SourceMetricId { get; set; }
         }
 
         private static decimal ApplyComputedRoundMode(decimal value, ComputedValueRoundMode roundMode)
@@ -971,6 +1146,10 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                 ? consequence.Value
                 : -consequence.Value;
 
+            var resolvedValue = consequence.ValueMode == ModifierValueMode.Metric
+                ? (consequence.ModifierMode == TestModifierMode.Bonus ? 1 : -1)
+                : signedValue;
+
             return new CharacterEffectDefinitionDto
             {
                 OperationType = consequence.OperationType switch
@@ -985,7 +1164,11 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                 TargetType = targetType,
                 TargetId = consequence.TargetDefinitionId,
                 TargetName = consequence.TargetNameSnapshot,
-                Value = signedValue
+                Value = resolvedValue,
+                ValueMode = consequence.ValueMode,
+                SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
+                    ? consequence.SourceMetricId
+                    : null
             };
         }
 
@@ -1081,6 +1264,9 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                     if (consequence.TargetDefinitionId == Guid.Empty)
                         throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
 
+                    if (consequence.ValueMode == ModifierValueMode.Metric && !consequence.SourceMetricId.HasValue)
+                        throw new Exception(_localizer["Backend_InvalidPollConsequenceSourceMetric"]);
+
                     // Compatibilité transitoire : l'UI legacy n'envoie pas encore OperationType.
                     if ((int)consequence.OperationType == 0)
                     {
@@ -1097,6 +1283,9 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                             {
                                 throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
                             }
+
+                            if (consequence.ValueMode == ModifierValueMode.Fixed && consequence.Value == 0)
+                                throw new Exception(_localizer["Backend_InvalidPollConsequenceValue"]);
                             break;
 
                         case TestConsequenceOperationType.GrantTalent:
@@ -1188,6 +1377,10 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                 .AsNoTracking()
                 .ToListAsync();
 
+            var metricDefinitions = await context.MetricDefinitions
+                .AsNoTracking()
+                .ToListAsync();
+
             var optionConsequences = await context.SessionPollOptionConsequences
                 .AsNoTracking()
                 .Join(
@@ -1247,7 +1440,13 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
                     TargetDefinitionId = x.consequence.TargetDefinitionId,
                     TargetName = x.consequence.TargetNameSnapshot,
                     ModifierMode = x.consequence.ModifierMode,
-                    Value = x.consequence.Value
+                    Value = x.consequence.Value,
+                    ValueMode = x.consequence.ValueMode,
+                    SourceMetricId = x.consequence.SourceMetricId,
+                    SourceMetricName = x.consequence.SourceMetricId.HasValue
+                        ? metricDefinitions.FirstOrDefault(m => m.Id == x.consequence.SourceMetricId.Value)?.Name ?? string.Empty
+                        : string.Empty,
+                    OperationType = x.consequence.OperationType
                 }).ToList()
             };
         }
@@ -1306,7 +1505,9 @@ public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
         {
             return consequence.OperationType switch
             {
-                TestConsequenceOperationType.AddValue => consequence.Value != 0,
+                TestConsequenceOperationType.AddValue => consequence.ValueMode == ModifierValueMode.Metric
+                    ? consequence.SourceMetricId.HasValue
+                    : consequence.Value != 0,
                 TestConsequenceOperationType.GrantTalent => consequence.TargetDefinitionId != Guid.Empty,
                 TestConsequenceOperationType.RevokeTalent => consequence.TargetDefinitionId != Guid.Empty,
                 TestConsequenceOperationType.GrantItem => consequence.TargetDefinitionId != Guid.Empty,

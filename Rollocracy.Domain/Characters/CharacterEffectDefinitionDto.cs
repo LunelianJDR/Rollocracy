@@ -1,4 +1,5 @@
 using System;
+using Rollocracy.Domain.GameRules;
 
 namespace Rollocracy.Domain.Characters
 {
@@ -14,5 +15,9 @@ namespace Rollocracy.Domain.Characters
         public CharacterEffectOperationType OperationType { get; set; }
 
         public int Value { get; set; }
+
+        public ModifierValueMode ValueMode { get; set; }
+
+        public Guid? SourceMetricId { get; set; }
     }
 }

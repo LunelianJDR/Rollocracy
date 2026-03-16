@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Rollocracy.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Rollocracy.Infrastructure.Persistence;
 namespace Rollocracy.Infrastructure.Migrations
 {
     [DbContext(typeof(RollocracyDbContext))]
-    partial class RollocracyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260316110714_ModifierMetric6C")]
+    partial class ModifierMetric6C
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -134,18 +137,6 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<int?>("CriticalFailureValue")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("CriticalSuccessValue")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("DefaultTestDiceCount")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("DefaultTestDiceSides")
-                        .HasColumnType("integer");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -811,6 +802,13 @@ namespace Rollocracy.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("AttributeDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AttributeNameSnapshot")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("AutoRollAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -819,12 +817,6 @@ namespace Rollocracy.Infrastructure.Migrations
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("CriticalFailureValueSnapshot")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("CriticalSuccessValueSnapshot")
-                        .HasColumnType("integer");
 
                     b.Property<int>("DiceCount")
                         .HasColumnType("integer");
@@ -850,24 +842,11 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<int?>("SuccessThreshold")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("TargetDefinitionId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("TargetKind")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("TargetNameSnapshot")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<int>("TargetScope")
                         .HasColumnType("integer");
 
                     b.Property<int>("TraitFilterMode")
                         .HasColumnType("integer");
-
-                    b.Property<bool>("UseSystemDefaultDice")
-                        .HasColumnType("boolean");
 
                     b.HasKey("Id");
 
@@ -945,9 +924,6 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<int>("OperationType")
                         .HasColumnType("integer");
 
-                    b.Property<Guid?>("SourceMetricId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("TargetDefinitionId")
                         .HasColumnType("uuid");
 
@@ -959,9 +935,6 @@ namespace Rollocracy.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.Property<int>("Value")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ValueMode")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
@@ -1029,9 +1002,6 @@ namespace Rollocracy.Infrastructure.Migrations
 
                     b.Property<bool>("IsSuccess")
                         .HasColumnType("boolean");
-
-                    b.Property<int>("Outcome")
-                        .HasColumnType("integer");
 
                     b.Property<string>("PlayerNameSnapshot")
                         .IsRequired()
@@ -1183,9 +1153,6 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<Guid>("SessionPollOptionId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("SourceMetricId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("TargetDefinitionId")
                         .HasColumnType("uuid");
 
@@ -1197,9 +1164,6 @@ namespace Rollocracy.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.Property<int>("Value")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ValueMode")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
