@@ -985,6 +985,29 @@ namespace Rollocracy.Infrastructure.Services
                 .OrderBy(x => x.Name)
                 .ToListAsync();
 
+            var gaugeDefinitions = await context.GaugeDefinitions
+                .AsNoTracking()
+                .Where(g => g.GameSystemId == gameSystemId)
+                .OrderBy(g => g.Name)
+                .ToListAsync();
+
+            var rawGaugeValues = await context.CharacterGaugeValues
+                .AsNoTracking()
+                .Where(v => v.CharacterId == characterId)
+                .ToListAsync();
+
+            // En 6A, les gauges restent utilisées comme valeurs directes.
+            // On prépare simplement le dictionnaire attendu par le moteur de metrics.
+            var effectiveGaugeValues = gaugeDefinitions.ToDictionary(
+                definition => definition.Id,
+                definition =>
+                {
+                    var baseValue = rawGaugeValues.FirstOrDefault(v => v.GaugeDefinitionId == definition.Id)?.Value
+                        ?? definition.DefaultValue;
+
+                    return Math.Clamp(baseValue, definition.MinValue, definition.MaxValue);
+                });
+
             var traitValues = await context.CharacterTraitValues
                 .AsNoTracking()
                 .Where(v => v.CharacterId == characterId)
@@ -1070,24 +1093,30 @@ namespace Rollocracy.Infrastructure.Services
                      m.TargetType == CharacterEffectTargetType.Metric))
                 .ToListAsync();
 
-            var allModifiers = choiceOptionModifiers
+            var rawModifiers = choiceOptionModifiers
                 .Select(m => new RuntimeModifier
                 {
                     TargetType = m.TargetType,
                     TargetId = m.TargetId,
-                    AddValue = m.AddValue
+                    AddValue = m.AddValue,
+                    ValueMode = m.ValueMode,
+                    SourceMetricId = m.SourceMetricId
                 })
                 .Concat(talentModifiers.Select(m => new RuntimeModifier
                 {
                     TargetType = m.TargetType,
                     TargetId = m.TargetId,
-                    AddValue = m.AddValue
+                    AddValue = m.AddValue,
+                    ValueMode = m.ValueMode,
+                    SourceMetricId = m.SourceMetricId
                 }))
                 .Concat(itemModifiers.Select(m => new RuntimeModifier
                 {
                     TargetType = m.TargetType,
                     TargetId = m.TargetId,
-                    AddValue = m.AddValue
+                    AddValue = m.AddValue,
+                    ValueMode = m.ValueMode,
+                    SourceMetricId = m.SourceMetricId
                 }))
                 .Concat(characterModifiers.Select(m => new RuntimeModifier
                 {
@@ -1099,26 +1128,27 @@ namespace Rollocracy.Infrastructure.Services
                         _ => ModifierTargetType.BaseAttribute
                     },
                     TargetId = m.TargetId,
-                    AddValue = m.AddValue
+                    AddValue = m.AddValue,
+                    ValueMode = ModifierValueMode.Fixed
                 }))
-    .ToList();
+                .ToList();
 
-            var effectiveAttributeValues = attributeDefinitions.ToDictionary(
+            Dictionary<Guid, int> effectiveAttributeValues = attributeDefinitions.ToDictionary(
                 definition => definition.Id,
                 definition =>
                 {
                     var baseValue = attributeValues.FirstOrDefault(v => v.AttributeDefinitionId == definition.Id)?.Value
                         ?? definition.DefaultValue;
 
-                    var modifier = allModifiers
-                        .Where(m => m.TargetType == ModifierTargetType.BaseAttribute && m.TargetId == definition.Id)
+                    var modifier = rawModifiers
+                        .Where(m => m.ValueMode != ModifierValueMode.Metric && m.TargetType == ModifierTargetType.BaseAttribute && m.TargetId == definition.Id)
                         .Sum(m => m.AddValue);
 
                     var effectiveValue = baseValue + modifier;
                     return Math.Clamp(effectiveValue, definition.MinValue, definition.MaxValue);
                 });
 
-            var attributeLines = attributeDefinitions
+            List<CharacterAttributeLineDto> attributeLines = attributeDefinitions
                 .Select(definition => new CharacterAttributeLineDto
                 {
                     Name = definition.Name,
@@ -1139,6 +1169,80 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(c => derivedDefinitionIds.Contains(c.DerivedStatDefinitionId))
                 .ToListAsync();
 
+            var preliminaryDerivedValues = new Dictionary<Guid, int>();
+
+            foreach (var definition in derivedDefinitions)
+            {
+                var value = ComputeWeightedValue(
+                    derivedComponents.Where(c => c.DerivedStatDefinitionId == definition.Id)
+                        .Select(c => new WeightedSourceValue
+                        {
+                            Weight = c.Weight,
+                            Value = effectiveAttributeValues.TryGetValue(c.AttributeDefinitionId, out var sourceValue) ? sourceValue : 0
+                        })
+                        .ToList(),
+                    0,
+                    definition.MinValue,
+                    definition.MaxValue,
+                    definition.RoundMode);
+
+                value += rawModifiers
+                    .Where(m => m.ValueMode != ModifierValueMode.Metric && m.TargetType == ModifierTargetType.DerivedStat && m.TargetId == definition.Id)
+                    .Sum(m => m.AddValue);
+
+                preliminaryDerivedValues[definition.Id] = Math.Clamp(value, definition.MinValue, definition.MaxValue);
+            }
+
+            var metricDefinitions = await context.MetricDefinitions
+                .AsNoTracking()
+                .Where(m => m.GameSystemId == gameSystemId)
+                .OrderBy(m => m.DisplayOrder).ThenBy(m => m.Name)
+                .ToListAsync();
+
+            var metricDefinitionIds = metricDefinitions.Select(m => m.Id).ToList();
+
+            var metricComponents = await context.MetricComponents
+                .AsNoTracking()
+                .Where(c => metricDefinitionIds.Contains(c.MetricDefinitionId))
+                .ToListAsync();
+
+            var metricFormulaSteps = await context.MetricFormulaSteps
+                .AsNoTracking()
+                .Where(x => metricDefinitionIds.Contains(x.MetricDefinitionId))
+                .ToListAsync();
+
+            var resolvedModifiers = ResolveRuntimeModifiers(
+                rawModifiers,
+                metricDefinitions,
+                metricComponents,
+                metricFormulaSteps,
+                effectiveAttributeValues,
+                effectiveGaugeValues,
+                preliminaryDerivedValues);
+
+            effectiveAttributeValues = attributeDefinitions.ToDictionary(
+                definition => definition.Id,
+                definition =>
+                {
+                    var baseValue = attributeValues.FirstOrDefault(v => v.AttributeDefinitionId == definition.Id)?.Value
+                        ?? definition.DefaultValue;
+
+                    var modifier = resolvedModifiers
+                        .Where(m => m.TargetType == ModifierTargetType.BaseAttribute && m.TargetId == definition.Id)
+                        .Sum(m => m.AddValue);
+
+                    var effectiveValue = baseValue + modifier;
+                    return Math.Clamp(effectiveValue, definition.MinValue, definition.MaxValue);
+                });
+
+            attributeLines = attributeDefinitions
+                .Select(definition => new CharacterAttributeLineDto
+                {
+                    Name = definition.Name,
+                    Value = effectiveAttributeValues[definition.Id]
+                })
+                .ToList();
+
             var derivedStatValues = new Dictionary<Guid, int>();
 
             foreach (var definition in derivedDefinitions)
@@ -1156,7 +1260,7 @@ namespace Rollocracy.Infrastructure.Services
                     definition.MaxValue,
                     definition.RoundMode);
 
-                value += allModifiers
+                value += resolvedModifiers
                     .Where(m => m.TargetType == ModifierTargetType.DerivedStat && m.TargetId == definition.Id)
                     .Sum(m => m.AddValue);
 
@@ -1172,43 +1276,23 @@ namespace Rollocracy.Infrastructure.Services
                 })
                 .ToList();
 
-            var metricDefinitions = await context.MetricDefinitions
-                .AsNoTracking()
-                .Where(m => m.GameSystemId == gameSystemId)
-                .OrderBy(m => m.DisplayOrder).ThenBy(m => m.Name)
-                .ToListAsync();
-
-            var metricDefinitionIds = metricDefinitions.Select(m => m.Id).ToList();
-
-            var metricComponents = await context.MetricComponents
-                .AsNoTracking()
-                .Where(c => metricDefinitionIds.Contains(c.MetricDefinitionId))
-                .ToListAsync();
-
-            var metricValues = new Dictionary<Guid, int>();
-
-            foreach (var definition in metricDefinitions)
+            var metricValues = MetricFormulaEngine.ComputeAll(new MetricFormulaEngine.MetricComputationRequest
             {
-                var value = ComputeWeightedValue(
-                    metricComponents.Where(c => c.MetricDefinitionId == definition.Id)
-                        .Select(c => new WeightedSourceValue
-                        {
-                            Weight = c.Weight,
-                            Value = effectiveAttributeValues.TryGetValue(c.AttributeDefinitionId, out var sourceValue) ? sourceValue : 0
-                        })
-                        .ToList(),
-                    definition.BaseValue,
-                    definition.MinValue,
-                    definition.MaxValue,
-                    definition.RoundMode);
-
-                value += allModifiers
-                    .Where(m => m.TargetType == ModifierTargetType.Metric && m.TargetId == definition.Id)
-                    .Sum(m => m.AddValue);
-
-                value = Math.Clamp(value, definition.MinValue, definition.MaxValue);
-                metricValues[definition.Id] = value;
-            }
+                MetricDefinitions = metricDefinitions,
+                FormulaSteps = metricFormulaSteps,
+                LegacyComponents = metricComponents,
+                BaseAttributeValues = effectiveAttributeValues,
+                GaugeValues = effectiveGaugeValues,
+                DerivedStatValues = derivedStatValues,
+                Modifiers = resolvedModifiers
+                    .Select(m => new MetricFormulaEngine.ModifierValue
+                    {
+                        TargetType = m.TargetType,
+                        TargetId = m.TargetId,
+                        AddValue = m.AddValue
+                    })
+                    .ToList()
+            });
 
             var metricLines = metricDefinitions
                 .Select(definition => new CharacterMetricLineDto
@@ -1272,11 +1356,65 @@ namespace Rollocracy.Infrastructure.Services
             return Math.Clamp(asInt, minValue, maxValue);
         }
 
+        private static List<RuntimeModifier> ResolveRuntimeModifiers(
+            List<RuntimeModifier> rawModifiers,
+            List<MetricDefinition> metricDefinitions,
+            List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> metricFormulaSteps,
+            Dictionary<Guid, int> effectiveAttributeValues,
+            Dictionary<Guid, int> effectiveGaugeValues,
+            Dictionary<Guid, int> derivedStatValues)
+        {
+            var fixedModifiers = rawModifiers
+                .Where(x => x.ValueMode != ModifierValueMode.Metric || !x.SourceMetricId.HasValue)
+                .Select(x => new RuntimeModifier
+                {
+                    TargetType = x.TargetType,
+                    TargetId = x.TargetId,
+                    AddValue = x.AddValue,
+                    ValueMode = ModifierValueMode.Fixed
+                })
+                .ToList();
+
+            if (!rawModifiers.Any(x => x.ValueMode == ModifierValueMode.Metric && x.SourceMetricId.HasValue))
+                return fixedModifiers;
+
+            var metricValues = MetricFormulaEngine.ComputeAll(new MetricFormulaEngine.MetricComputationRequest
+            {
+                MetricDefinitions = metricDefinitions,
+                FormulaSteps = metricFormulaSteps,
+                LegacyComponents = metricComponents,
+                BaseAttributeValues = effectiveAttributeValues,
+                GaugeValues = effectiveGaugeValues,
+                DerivedStatValues = derivedStatValues,
+                Modifiers = fixedModifiers
+                    .Select(x => new MetricFormulaEngine.ModifierValue
+                    {
+                        TargetType = x.TargetType,
+                        TargetId = x.TargetId,
+                        AddValue = x.AddValue
+                    })
+                    .ToList()
+            });
+
+            return rawModifiers.Select(x => new RuntimeModifier
+            {
+                TargetType = x.TargetType,
+                TargetId = x.TargetId,
+                AddValue = x.ValueMode == ModifierValueMode.Metric && x.SourceMetricId.HasValue && metricValues.TryGetValue(x.SourceMetricId.Value, out var metricValue)
+                    ? metricValue
+                    : x.AddValue,
+                ValueMode = ModifierValueMode.Fixed
+            }).ToList();
+        }
+
         private sealed class RuntimeModifier
         {
             public ModifierTargetType TargetType { get; set; }
             public Guid TargetId { get; set; }
             public int AddValue { get; set; }
+            public ModifierValueMode ValueMode { get; set; }
+            public Guid? SourceMetricId { get; set; }
         }
 
         private sealed class WeightedSourceValue

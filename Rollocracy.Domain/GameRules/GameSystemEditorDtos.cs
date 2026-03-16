@@ -59,10 +59,23 @@ namespace Rollocracy.Domain.GameRules
         public bool IsDeleted { get; set; }
     }
 
+    public class EditableMetricFormulaStepDto
+    {
+        public Guid? MetricFormulaStepId { get; set; }
+        public int Order { get; set; }
+        public MetricFormulaOperationType OperationType { get; set; }
+        public MetricFormulaSourceType SourceType { get; set; }
+        public Guid? SourceId { get; set; }
+        public decimal ConstantValue { get; set; }
+        public string SourceName { get; set; } = string.Empty;
+        public bool IsDeleted { get; set; }
+    }
+
     public class EditableMetricDefinitionDto
     {
         public Guid? MetricDefinitionId { get; set; }
         public string Name { get; set; } = string.Empty;
+        public string TemporaryKey { get; set; } = string.Empty;
         public int BaseValue { get; set; }
         public int MinValue { get; set; }
         public int MaxValue { get; set; }
@@ -70,6 +83,7 @@ namespace Rollocracy.Domain.GameRules
         public int DisplayOrder { get; set; }
         public bool IsDeleted { get; set; }
         public List<EditableMetricComponentDto> Components { get; set; } = new();
+        public List<EditableMetricFormulaStepDto> FormulaSteps { get; set; } = new();
     }
 
     public class EditableTraitOptionDto
@@ -78,7 +92,6 @@ namespace Rollocracy.Domain.GameRules
         public string Name { get; set; } = string.Empty;
         public bool IsDeleted { get; set; }
 
-        // Modificateurs appliqués lorsque cette option est choisie.
         public List<EditableModifierDefinitionDto> Modifiers { get; set; } = new();
     }
 
@@ -104,15 +117,13 @@ namespace Rollocracy.Domain.GameRules
     public class EditableModifierDefinitionDto
     {
         public Guid? ModifierId { get; set; }
-
         public ModifierTargetType TargetType { get; set; }
-
         public Guid TargetId { get; set; }
-
         public string TargetName { get; set; } = string.Empty;
-
         public int AddValue { get; set; }
-
+        public ModifierValueMode ValueMode { get; set; }
+        public Guid? SourceMetricId { get; set; }
+        public string SourceMetricName { get; set; } = string.Empty;
         public bool IsDeleted { get; set; }
     }
 
@@ -142,6 +153,10 @@ namespace Rollocracy.Domain.GameRules
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public TestResolutionMode TestResolutionMode { get; set; }
+        public int DefaultTestDiceCount { get; set; } = 1;
+        public int DefaultTestDiceSides { get; set; } = 100;
+        public int? CriticalSuccessValue { get; set; }
+        public int? CriticalFailureValue { get; set; }
         public bool IsLockedToSessionCopy { get; set; }
         public bool CanUndoLastChange { get; set; }
 
@@ -163,6 +178,10 @@ namespace Rollocracy.Domain.GameRules
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public TestResolutionMode TestResolutionMode { get; set; }
+        public int DefaultTestDiceCount { get; set; } = 1;
+        public int DefaultTestDiceSides { get; set; } = 100;
+        public int? CriticalSuccessValue { get; set; }
+        public int? CriticalFailureValue { get; set; }
         public bool ConfirmSharedSystemChanges { get; set; }
 
         public List<EditableAttributeDefinitionDto> Attributes { get; set; } = new();

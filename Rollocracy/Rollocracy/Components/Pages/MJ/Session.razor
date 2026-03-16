@@ -114,32 +114,84 @@ else
     {
         <p>@L["GameTest_NoGameSystemForSession"]</p>
     }
-    else if (AvailableAttributes.Count == 0)
+    else if (AvailableAttributes.Count == 0 && AvailableDerivedStats.Count == 0)
     {
         <p>@L["GameTest_NoAttributeAvailable"]</p>
     }
     else
     {
         <div>
+            <label>@L["GameTest_TargetKind"]</label><br />
+            <select @bind="NewTargetKind" @bind:after="OnTestTargetKindChanged">
+                <option value="@GameTestTargetKind.BaseAttribute">@L["GameTest_TargetAttribute"]</option>
+                <option value="@GameTestTargetKind.DerivedStat">@L["TestConsequence_Target_DerivedStat"]</option>
+            </select>
+        </div>
+
+        <div>
             <label>@L["GameTest_Attribute"]</label><br />
             <select @bind="SelectedAttributeId">
                 <option value="">@L["GameTest_SelectAttribute"]</option>
-                @foreach (var attributeDefinition in AvailableAttributes)
+                @if (NewTargetKind == GameTestTargetKind.BaseAttribute)
                 {
-                    <option value="@attributeDefinition.Id.ToString()">@attributeDefinition.Name</option>
+                    @foreach (var attributeDefinition in AvailableAttributes)
+                    {
+                        <option value="@attributeDefinition.Id.ToString()">@attributeDefinition.Name</option>
+                    }
+                }
+                else
+                {
+                    @foreach (var derivedDefinition in AvailableDerivedStats)
+                    {
+                        <option value="@derivedDefinition.DerivedStatDefinitionId?.ToString()">@derivedDefinition.Name</option>
+                    }
                 }
             </select>
         </div>
 
         <div>
-            <label>@L["GameTest_DiceCount"]</label><br />
-            <input type="number" @bind="NewDiceCount" />
+            <label>@L["GameTest_DiceMode"]</label><br />
+            <InputSelect @bind-Value="UseSystemDefaultDice">
+                <option value="true">@L["GameTest_UseSystemDefaultDice"]</option>
+                <option value="false">@L["GameTest_UseCustomDice"]</option>
+            </InputSelect>
         </div>
 
-        <div>
-            <label>@L["GameTest_DiceSides"]</label><br />
-            <input type="number" @bind="NewDiceSides" />
-        </div>
+        @if (UseSystemDefaultDice)
+        {
+            <div>
+                <strong>@L["GameTest_Dice"] :</strong>
+                @($"{AssignedGameSystem.DefaultTestDiceCount}d{AssignedGameSystem.DefaultTestDiceSides}")
+            </div>
+
+            @if (AssignedGameSystem.CriticalSuccessValue.HasValue)
+            {
+                <div>
+                    <strong>@L["GameTest_CriticalSuccessValue"] :</strong>
+                    @AssignedGameSystem.CriticalSuccessValue
+                </div>
+            }
+
+            @if (AssignedGameSystem.CriticalFailureValue.HasValue)
+            {
+                <div>
+                    <strong>@L["GameTest_CriticalFailureValue"] :</strong>
+                    @AssignedGameSystem.CriticalFailureValue
+                </div>
+            }
+        }
+        else
+        {
+            <div>
+                <label>@L["GameTest_DiceCount"]</label><br />
+                <input type="number" @bind="NewDiceCount" />
+            </div>
+
+            <div>
+                <label>@L["GameTest_DiceSides"]</label><br />
+                <input type="number" @bind="NewDiceSides" />
+            </div>
+        }
 
         @if (AssignedGameSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold)
         {
@@ -230,6 +282,8 @@ else
                         <select @bind="row.ApplyOn">
                             <option value="@TestConsequenceApplyOn.OnSuccess">@L["GameTest_OnSuccess"]</option>
                             <option value="@TestConsequenceApplyOn.OnFailure">@L["GameTest_OnFailure"]</option>
+                            <option value="@TestConsequenceApplyOn.OnCriticalSuccess">@L["GameTest_OnCriticalSuccess"]</option>
+                            <option value="@TestConsequenceApplyOn.OnCriticalFailure">@L["GameTest_OnCriticalFailure"]</option>
                         </select>
                     </div>
 
@@ -343,9 +397,32 @@ else
                         </div>
 
                         <div>
-                            @L["GameTest_DifficultyValue"]
-                            <input type="number" @bind="row.Value" />
+                            @L["GameTest_ConsequenceValueMode"]
+                            <select @bind="row.ValueMode">
+                                <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
+                                <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                            </select>
                         </div>
+
+                        @if (row.ValueMode == ModifierValueMode.Metric)
+                        {
+                            <div>
+                                @L["Common_SourceMetric"]
+                                <select @bind="row.SourceMetricId">
+                                    @foreach (var metricDefinition in AvailableMetrics)
+                                    {
+                                        <option value="@metricDefinition.Id">@metricDefinition.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                        else
+                        {
+                            <div>
+                                @L["GameTest_DifficultyValue"]
+                                <input type="number" @bind="row.Value" />
+                            </div>
+                        }
                     }
 
                     <div>
@@ -363,8 +440,17 @@ else
         @if (ActiveTest is not null)
         {
             <hr />
-            <p><strong>@L["GameTest_Attribute"] :</strong> @ActiveTest.AttributeName</p>
+            <p><strong>@L["GameTest_Target"] :</strong> @ActiveTest.AttributeName</p>
             <p><strong>@L["GameTest_Dice"] :</strong> @($"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}")</p>
+            <p><strong>@L["GameTest_DiceMode"] :</strong> @(ActiveTest.UseSystemDefaultDice? L["GameTest_UseSystemDefaultDice"] : L["GameTest_UseCustomDice"])</p>
+            @if (ActiveTest.UseSystemDefaultDice && ActiveTest.CriticalSuccessValue.HasValue)
+            {
+                <p><strong>@L["GameTest_CriticalSuccessValue"] :</strong> @ActiveTest.CriticalSuccessValue</p>
+            }
+            @if (ActiveTest.UseSystemDefaultDice && ActiveTest.CriticalFailureValue.HasValue)
+            {
+                <p><strong>@L["GameTest_CriticalFailureValue"] :</strong> @ActiveTest.CriticalFailureValue</p>
+            }
 
             @if (ActiveTest.ResolutionMode == TestResolutionMode.SuccessThreshold)
             {
@@ -401,6 +487,8 @@ else
             <p><strong>@L["GameTest_RolledCount"] :</strong> @ActiveTest.RolledCount</p>
             <p><strong>@L["GameTest_SuccessCount"] :</strong> @ActiveTest.SuccessCount</p>
             <p><strong>@L["GameTest_FailureCount"] :</strong> @ActiveTest.FailureCount</p>
+            <p><strong>@L["GameTest_CriticalSuccessCount"] :</strong> @ActiveTest.CriticalSuccessCount</p>
+            <p><strong>@L["GameTest_CriticalFailureCount"] :</strong> @ActiveTest.CriticalFailureCount</p>
             <p><strong>@L["GameTest_SuccessRate"] :</strong> @($"{ActiveTest.SuccessRatePercent:F1}%")</p>
             <p><strong>@L["GameTest_BestRoll"] :</strong> @(ActiveTest.BestDiceTotal?.ToString() ?? "-")</p>
             <p><strong>@L["GameTest_WorstRoll"] :</strong> @(ActiveTest.WorstDiceTotal?.ToString() ?? "-")</p>
@@ -434,7 +522,7 @@ else
                         }
                         else
                         {
-                            <span>@(resultLine.IsSuccess? L["GameTest_Success"] : L["GameTest_Failure"])</span>
+                            <span>@GetOutcomeLabel(resultLine.Outcome)</span>
 
                             <div>@L["GameTest_DiceResults"] : @string.Join(" - ", resultLine.DiceResults)</div>
                             <div>@L["GameTest_DiceTotal"] : @resultLine.DiceTotal</div>
@@ -602,9 +690,32 @@ else
                             </div>
 
                             <div>
-                                @L["GameTest_DifficultyValue"]
-                                <input type="number" @bind="consequence.Value" />
+                                @L["GameTest_ConsequenceValueMode"]
+                                <select @bind="consequence.ValueMode">
+                                    <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
+                                    <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                                </select>
                             </div>
+
+                            @if (consequence.ValueMode == ModifierValueMode.Metric)
+                            {
+                                <div>
+                                    @L["Common_SourceMetric"]
+                                    <select @bind="consequence.SourceMetricId">
+                                        @foreach (var metricDefinition in AvailableMetrics)
+                                        {
+                                            <option value="@metricDefinition.Id">@metricDefinition.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+                            else
+                            {
+                                <div>
+                                    @L["GameTest_DifficultyValue"]
+                                    <input type="number" @bind="consequence.Value" />
+                                </div>
+                            }
                         }
 
                         <div>
@@ -704,9 +815,9 @@ else
             <ul>
                 @foreach (var option in LatestPoll.Options)
                 {
-        //            <li>
-         //               @option.Label : @option.VoteCount (@($"{option.VotePercent:F1}%"))
-         //           </li>
+                    //            <li>
+                    //               @option.Label : @option.VoteCount (@($"{option.VotePercent:F1}%"))
+                    //           </li>
                     <li>
                         @option.Label :
                         @option.VoteCount (@($"{option.VotePercent:F1}%"))
@@ -729,7 +840,7 @@ else
                 <ul>
                     @foreach (var voteLine in LatestPoll.Votes)
                     {
-                 //       <li>@voteLine.PlayerName - @voteLine.CharacterName : @voteLine.OptionLabel</li>
+                        //       <li>@voteLine.PlayerName - @voteLine.CharacterName : @voteLine.OptionLabel</li>
                         <li>@voteLine.PlayerName - @voteLine.CharacterName : @voteLine.OptionLabel (@voteLine.VoteWeight.ToString("F2"))</li>
                     }
                 </ul>
@@ -762,13 +873,27 @@ else
                 {
                     <li>
                         @consequence.OptionLabel :
-                        @(consequence.TargetKind == TestConsequenceTargetKind.Gauge ? L["GameTest_TargetGauge"] : L["GameTest_TargetAttribute"])
-                        @(" ")
                         @consequence.TargetName
-                        @(" ")
-                        @(consequence.ModifierMode == TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])
-                        @(" ")
-                        @consequence.Value
+                        @(" - ")
+                        @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
+                        {
+                            @if (consequence.ValueMode == ModifierValueMode.Metric)
+                            {
+                                <span>@(consequence.ModifierMode == TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])</span>
+                                @(" ")
+                                <span>@L["Common_SourceMetric"] : @consequence.SourceMetricName</span>
+                            }
+                            else
+                            {
+                                <span>@(consequence.ModifierMode == TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])</span>
+                                @(" ")
+                                <span>@consequence.Value</span>
+                            }
+                        }
+                        else
+                        {
+                            <span>@consequence.OperationType</span>
+                        }
                     </li>
                 }
             </ul>
@@ -1000,6 +1125,8 @@ else
     private string SelectedGameSystemId = string.Empty;
 
     private string SelectedAttributeId = string.Empty;
+    private GameTestTargetKind NewTargetKind = GameTestTargetKind.BaseAttribute;
+    private bool UseSystemDefaultDice = true;
     private int NewDiceCount = 1;
     private int NewDiceSides = 100;
     private int? NewSuccessThreshold;
@@ -1106,6 +1233,11 @@ else
                     AvailableTalents = editor.Talents;
                     AvailableItems = editor.Items;
                 }
+
+                NewDiceCount = AssignedGameSystem.DefaultTestDiceCount;
+                NewDiceSides = AssignedGameSystem.DefaultTestDiceSides;
+                UseSystemDefaultDice = true;
+                SelectedAttributeId = AvailableAttributes.FirstOrDefault()?.Id.ToString() ?? AvailableDerivedStats.FirstOrDefault()?.DerivedStatDefinitionId?.ToString() ?? string.Empty;
 
                 foreach (var traitDefinition in AvailableTraitDefinitions)
                 {
@@ -1224,9 +1356,13 @@ else
 
             var request = new GameTestCreateRequestDto
             {
-                AttributeDefinitionId = Guid.Parse(SelectedAttributeId),
-                DiceCount = NewDiceCount,
-                DiceSides = NewDiceSides,
+                TargetKind = NewTargetKind,
+                TargetDefinitionId = Guid.Parse(SelectedAttributeId),
+                UseSystemDefaultDice = UseSystemDefaultDice,
+                DiceCount = UseSystemDefaultDice ? AssignedGameSystem?.DefaultTestDiceCount ?? NewDiceCount : NewDiceCount,
+                DiceSides = UseSystemDefaultDice ? AssignedGameSystem?.DefaultTestDiceSides ?? NewDiceSides : NewDiceSides,
+                CriticalSuccessValue = UseSystemDefaultDice ? AssignedGameSystem?.CriticalSuccessValue : null,
+                CriticalFailureValue = UseSystemDefaultDice ? AssignedGameSystem?.CriticalFailureValue : null,
                 SuccessThreshold = NewSuccessThreshold,
                 ModifierMode = NewModifierMode,
                 DifficultyValue = NewDifficultyValue,
@@ -1240,7 +1376,9 @@ else
                     TargetKind = c.TargetKind,
                     TargetDefinitionId = c.TargetDefinitionId,
                     ModifierMode = c.ModifierMode,
-                    Value = c.Value
+                    Value = c.ValueMode == ModifierValueMode.Metric ? 0 : c.Value,
+                    ValueMode = c.ValueMode,
+                    SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null
                 }).ToList()
             };
 
@@ -1323,6 +1461,27 @@ else
         }
     }
 
+    private void OnTestTargetKindChanged()
+    {
+        SelectedAttributeId = NewTargetKind switch
+        {
+            GameTestTargetKind.BaseAttribute => AvailableAttributes.FirstOrDefault()?.Id.ToString() ?? string.Empty,
+            GameTestTargetKind.DerivedStat => AvailableDerivedStats.FirstOrDefault()?.DerivedStatDefinitionId?.ToString() ?? string.Empty,
+            _ => string.Empty
+        };
+    }
+
+    private string GetOutcomeLabel(GameTestOutcome outcome)
+    {
+        return outcome switch
+        {
+            GameTestOutcome.CriticalSuccess => L["GameTest_CriticalSuccess"],
+            GameTestOutcome.CriticalFailure => L["GameTest_CriticalFailure"],
+            GameTestOutcome.Success => L["GameTest_Success"],
+            _ => L["GameTest_Failure"]
+        };
+    }
+
     private void AddSuccessConsequence()
     {
         AddConsequence(TestConsequenceApplyOn.OnSuccess);
@@ -1347,7 +1506,9 @@ else
             TargetKind = targetKind,
             TargetDefinitionId = GetFirstConsequenceTargetId(targetKind),
             ModifierMode = TestModifierMode.Malus,
-            Value = 1
+            Value = 1,
+            ValueMode = ModifierValueMode.Fixed,
+            SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id
         });
     }
 
@@ -1384,6 +1545,8 @@ else
                 row.TargetKind = TestConsequenceTargetKind.Talent;
                 row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
                 row.Value = 0;
+                row.ValueMode = ModifierValueMode.Fixed;
+                row.SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id;
                 break;
 
             case TestConsequenceOperationType.GrantItem:
@@ -1391,6 +1554,8 @@ else
                 row.TargetKind = TestConsequenceTargetKind.Item;
                 row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
                 row.Value = 0;
+                row.ValueMode = ModifierValueMode.Fixed;
+                row.SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id;
                 break;
         }
     }
@@ -1427,6 +1592,8 @@ else
         public Guid TargetDefinitionId { get; set; }
         public TestModifierMode ModifierMode { get; set; }
         public int Value { get; set; }
+        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
+        public Guid? SourceMetricId { get; set; }
     }
 
     private TestTraitFilterMode NewTraitFilterMode = TestTraitFilterMode.AndBetweenGroups;
@@ -1494,6 +1661,10 @@ else
         public TestModifierMode ModifierMode { get; set; }
 
         public int Value { get; set; }
+
+        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
+
+        public Guid? SourceMetricId { get; set; }
     }
 
     private async Task LoadLatestPoll()
@@ -1537,7 +1708,9 @@ else
                         TargetKind = c.TargetKind,
                         TargetDefinitionId = c.TargetDefinitionId,
                         ModifierMode = c.ModifierMode,
-                        Value = c.Value
+                        Value = c.ValueMode == ModifierValueMode.Metric ? 0 : c.Value,
+                        ValueMode = c.ValueMode,
+                        SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null
                     }).ToList()
                 }).ToList(),
                 VoteWeightMode = SelectedPollVoteWeightMode,
@@ -1678,7 +1851,9 @@ else
             TargetDefinitionId = targetDefinitionId,
             ModifierMode = TestModifierMode.Malus,
             OperationType = TestConsequenceOperationType.AddValue,
-            Value = 1
+            Value = 1,
+            ValueMode = ModifierValueMode.Fixed,
+            SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id
         });
 
         return Task.CompletedTask;

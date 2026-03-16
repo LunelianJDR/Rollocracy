@@ -16,6 +16,7 @@ namespace Rollocracy.Domain.GameTests
 
         public string PlayerNameSnapshot { get; set; } = string.Empty;
 
+        // Nom conservé pour compatibilité, même quand le test cible une compétence calculée.
         public int AttributeValueSnapshot { get; set; }
 
         public int EffectiveAttributeValue { get; set; }
@@ -27,6 +28,8 @@ namespace Rollocracy.Domain.GameTests
         public int FinalValue { get; set; }
 
         public bool IsSuccess { get; set; }
+
+        public GameTestOutcome Outcome { get; set; } = GameTestOutcome.Failure;
 
         public bool HasRolled { get; set; }
 

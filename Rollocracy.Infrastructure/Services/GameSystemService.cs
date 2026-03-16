@@ -59,6 +59,10 @@ namespace Rollocracy.Infrastructure.Services
                 Name = name.Trim(),
                 Description = description.Trim(),
                 TestResolutionMode = testResolutionMode,
+                DefaultTestDiceCount = 1,
+                DefaultTestDiceSides = 100,
+                CriticalSuccessValue = null,
+                CriticalFailureValue = null,
                 SourceGameSystemId = null,
                 LockedToSessionId = null
             };
@@ -369,6 +373,10 @@ namespace Rollocracy.Infrastructure.Services
                 Name = $"{sourceSystem.Name} (copie session)",
                 Description = sourceSystem.Description,
                 TestResolutionMode = sourceSystem.TestResolutionMode,
+                DefaultTestDiceCount = sourceSystem.DefaultTestDiceCount,
+                DefaultTestDiceSides = sourceSystem.DefaultTestDiceSides,
+                CriticalSuccessValue = sourceSystem.CriticalSuccessValue,
+                CriticalFailureValue = sourceSystem.CriticalFailureValue,
                 SourceGameSystemId = sourceSystem.Id,
                 LockedToSessionId = sessionId
             };
@@ -604,6 +612,11 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => metricDefinitionIds.Contains(x.MetricDefinitionId))
                 .ToListAsync();
 
+            var metricFormulaSteps = await context.MetricFormulaSteps
+                .AsNoTracking()
+                .Where(x => metricDefinitionIds.Contains(x.MetricDefinitionId))
+                .ToListAsync();
+
             var traits = await context.TraitDefinitions
                 .AsNoTracking()
                 .Where(x => x.GameSystemId == system.Id)
@@ -666,6 +679,10 @@ namespace Rollocracy.Infrastructure.Services
                 Name = system.Name,
                 Description = system.Description,
                 TestResolutionMode = system.TestResolutionMode,
+                DefaultTestDiceCount = system.DefaultTestDiceCount,
+                DefaultTestDiceSides = system.DefaultTestDiceSides,
+                CriticalSuccessValue = system.CriticalSuccessValue,
+                CriticalFailureValue = system.CriticalFailureValue,
                 IsLockedToSessionCopy = system.LockedToSessionId.HasValue,
                 CanUndoLastChange = hasSnapshot,
                 ImpactedSessions = impactedSessions.Select(s => new GameSystemImpactSessionDto
@@ -696,7 +713,21 @@ namespace Rollocracy.Infrastructure.Services
                     MinValue = m.MinValue,
                     MaxValue = m.MaxValue,
                     RoundMode = m.RoundMode,
-                    DisplayOrder = m.DisplayOrder
+                    DisplayOrder = m.DisplayOrder,
+                    FormulaSteps = metricFormulaSteps
+                        .Where(s => s.MetricDefinitionId == m.Id)
+                        .OrderBy(s => s.Order)
+                        .Select(s => new EditableMetricFormulaStepDto
+                        {
+                            MetricFormulaStepId = s.Id,
+                            Order = s.Order,
+                            OperationType = s.OperationType,
+                            SourceType = s.SourceType,
+                            SourceId = s.SourceId,
+                            ConstantValue = s.ConstantValue,
+                            SourceName = ResolveMetricFormulaSourceName(s, attributes, gauges, derivedStats, metricDefinitions)
+                        })
+                        .ToList()
                 }).ToList(),
                 Attributes = attributes.Select(x => new EditableAttributeDefinitionDto
                 {
@@ -747,6 +778,20 @@ namespace Rollocracy.Infrastructure.Services
                             AttributeName = attributes.FirstOrDefault(a => a.Id == c.AttributeDefinitionId)?.Name ?? string.Empty,
                             Weight = c.Weight
                         })
+                        .ToList(),
+                    FormulaSteps = metricFormulaSteps
+                        .Where(s => s.MetricDefinitionId == m.Id)
+                        .OrderBy(s => s.Order)
+                        .Select(s => new EditableMetricFormulaStepDto
+                        {
+                            MetricFormulaStepId = s.Id,
+                            Order = s.Order,
+                            OperationType = s.OperationType,
+                            SourceType = s.SourceType,
+                            SourceId = s.SourceId,
+                            ConstantValue = s.ConstantValue,
+                            SourceName = ResolveMetricFormulaSourceName(s, attributes, gauges, derivedStats, metricDefinitions)
+                        })
                         .ToList()
                 }).ToList(),
                 Traits = traits.Select(t => new EditableTraitDefinitionDto
@@ -766,7 +811,12 @@ namespace Rollocracy.Infrastructure.Services
                                     TargetType = m.TargetType,
                                     TargetId = m.TargetId,
                                     TargetName = ResolveModifierTargetName(m.TargetType, m.TargetId, attributes, derivedStats, metricDefinitions),
-                                    AddValue = m.AddValue
+                                    AddValue = m.AddValue,
+                                    ValueMode = m.ValueMode,
+                                    SourceMetricId = m.SourceMetricId,
+                                    SourceMetricName = m.SourceMetricId.HasValue
+                                    ? metricDefinitions.FirstOrDefault(x => x.Id == m.SourceMetricId.Value)?.Name ?? string.Empty
+                                    : string.Empty
                                 })
                                 .ToList()
                         })
@@ -795,7 +845,12 @@ namespace Rollocracy.Infrastructure.Services
                         TargetType = m.TargetType,
                         TargetId = m.TargetId,
                         TargetName = ResolveModifierTargetName(m.TargetType, m.TargetId, attributes, derivedStats, metricDefinitions),
-                        AddValue = m.AddValue
+                        AddValue = m.AddValue,
+                        ValueMode = m.ValueMode,
+                        SourceMetricId = m.SourceMetricId,
+                        SourceMetricName = m.SourceMetricId.HasValue
+                        ? metricDefinitions.FirstOrDefault(x => x.Id == m.SourceMetricId.Value)?.Name ?? string.Empty
+                        : string.Empty
                     }).ToList()
                 }).ToList(),
                 Items = items.Select(i => new EditableItemDefinitionDto
@@ -812,7 +867,12 @@ namespace Rollocracy.Infrastructure.Services
                             TargetType = m.TargetType,
                             TargetId = m.TargetId,
                             TargetName = ResolveModifierTargetName(m.TargetType, m.TargetId, attributes, derivedStats, metricDefinitions),
-                            AddValue = m.AddValue
+                            AddValue = m.AddValue,
+                            ValueMode = m.ValueMode,
+                            SourceMetricId = m.SourceMetricId,
+                            SourceMetricName = m.SourceMetricId.HasValue
+                            ? metricDefinitions.FirstOrDefault(x => x.Id == m.SourceMetricId.Value)?.Name ?? string.Empty
+                            : string.Empty
                         }).ToList()
                 }).ToList()
             };
@@ -842,9 +902,11 @@ namespace Rollocracy.Infrastructure.Services
                 throw new Exception(_localizer["Backend_GameSystemSharedEditConfirmationRequired"]);
             }
 
+            ValidateGameTestSettings(request.TestResolutionMode, request.DefaultTestDiceCount, request.DefaultTestDiceSides, request.CriticalSuccessValue, request.CriticalFailureValue);
             ValidateBaseAttributes(request.Attributes);
             ValidateDerivedStats(request.DerivedStats, request.Attributes);
-            ValidateMetrics(request.Metrics, request.Attributes);
+            ValidateMetrics(request.Metrics, request.Attributes, request.Gauges, request.DerivedStats);
+            ValidateModifierDefinitions(request.Traits, request.Talents, request.Items, request.Attributes, request.DerivedStats, request.Metrics);
             ValidateHealthGaugeRule(request.Gauges);
             ValidateCatalogTalents(request.Talents);
             ValidateCatalogItems(request.Items);
@@ -859,6 +921,10 @@ namespace Rollocracy.Infrastructure.Services
             system.Name = request.Name.Trim();
             system.Description = request.Description.Trim();
             system.TestResolutionMode = request.TestResolutionMode;
+            system.DefaultTestDiceCount = request.DefaultTestDiceCount;
+            system.DefaultTestDiceSides = request.DefaultTestDiceSides;
+            system.CriticalSuccessValue = request.CriticalSuccessValue;
+            system.CriticalFailureValue = request.CriticalFailureValue;
 
             await SyncAttributesAsync(context, system.Id, affectedCharacters, request.Attributes);
             await SyncDerivedStatsAsync(context, system.Id, request.DerivedStats);
@@ -905,6 +971,10 @@ namespace Rollocracy.Infrastructure.Services
             system.Name = payload.System.Name;
             system.Description = payload.System.Description;
             system.TestResolutionMode = payload.System.TestResolutionMode;
+            system.DefaultTestDiceCount = payload.System.DefaultTestDiceCount;
+            system.DefaultTestDiceSides = payload.System.DefaultTestDiceSides;
+            system.CriticalSuccessValue = payload.System.CriticalSuccessValue;
+            system.CriticalFailureValue = payload.System.CriticalFailureValue;
             system.SourceGameSystemId = payload.System.SourceGameSystemId;
             system.LockedToSessionId = payload.System.LockedToSessionId;
 
@@ -925,6 +995,10 @@ namespace Rollocracy.Infrastructure.Services
             var currentMetricIds = currentMetrics.Select(x => x.Id).ToList();
 
             var currentMetricComponents = await context.MetricComponents
+                .Where(x => currentMetricIds.Contains(x.MetricDefinitionId))
+                .ToListAsync();
+
+            var currentMetricFormulaSteps = await context.MetricFormulaSteps
                 .Where(x => currentMetricIds.Contains(x.MetricDefinitionId))
                 .ToListAsync();
 
@@ -1005,6 +1079,7 @@ namespace Rollocracy.Infrastructure.Services
 
             context.DerivedStatComponents.RemoveRange(currentDerivedComponents);
             context.DerivedStatDefinitions.RemoveRange(currentDerivedStats);
+            context.MetricFormulaSteps.RemoveRange(currentMetricFormulaSteps);
             context.MetricComponents.RemoveRange(currentMetricComponents);
             context.MetricDefinitions.RemoveRange(currentMetrics);
             context.TraitOptions.RemoveRange(currentOptions);
@@ -1028,6 +1103,9 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var component in payload.MetricComponents)
                 context.MetricComponents.Add(component);
+
+            foreach (var step in payload.MetricFormulaSteps)
+                context.MetricFormulaSteps.Add(step);
 
             foreach (var trait in payload.Traits)
                 context.TraitDefinitions.Add(trait);
@@ -1555,6 +1633,10 @@ namespace Rollocracy.Infrastructure.Services
                             entity.TargetType = modifier.TargetType;
                             entity.TargetId = modifier.TargetId;
                             entity.AddValue = modifier.AddValue;
+                            entity.ValueMode = modifier.ValueMode;
+                            entity.SourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
+                                ? modifier.SourceMetricId
+                                : null;
                         }
                         else if (!modifier.IsDeleted)
                         {
@@ -1564,7 +1646,11 @@ namespace Rollocracy.Infrastructure.Services
                                 TraitOptionId = option.TraitOptionId.Value,
                                 TargetType = modifier.TargetType,
                                 TargetId = modifier.TargetId,
-                                AddValue = modifier.AddValue
+                                AddValue = modifier.AddValue,
+                                ValueMode = modifier.ValueMode,
+                                SourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
+                                    ? modifier.SourceMetricId
+                                    : null
                             });
                         }
                     }
@@ -1720,6 +1806,11 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => metricIds.Contains(x.MetricDefinitionId))
                 .ToListAsync();
 
+            var metricFormulaSteps = await context.MetricFormulaSteps
+                .AsNoTracking()
+                .Where(x => metricIds.Contains(x.MetricDefinitionId))
+                .ToListAsync();
+
             var gaugeDefinitions = await context.GaugeDefinitions
                 .AsNoTracking()
                 .Where(x => x.GameSystemId == system.Id)
@@ -1784,6 +1875,10 @@ namespace Rollocracy.Infrastructure.Services
                     Name = system.Name,
                     Description = system.Description,
                     TestResolutionMode = system.TestResolutionMode,
+                    DefaultTestDiceCount = system.DefaultTestDiceCount,
+                    DefaultTestDiceSides = system.DefaultTestDiceSides,
+                    CriticalSuccessValue = system.CriticalSuccessValue,
+                    CriticalFailureValue = system.CriticalFailureValue,
                     SourceGameSystemId = system.SourceGameSystemId,
                     LockedToSessionId = system.LockedToSessionId
                 },
@@ -1890,6 +1985,17 @@ namespace Rollocracy.Infrastructure.Services
             Weight = x.Weight
         };
 
+        private static MetricFormulaStep CloneMetricFormulaStep(MetricFormulaStep x) => new()
+        {
+            Id = x.Id,
+            MetricDefinitionId = x.MetricDefinitionId,
+            Order = x.Order,
+            OperationType = x.OperationType,
+            SourceType = x.SourceType,
+            SourceId = x.SourceId,
+            ConstantValue = x.ConstantValue
+        };
+
         private static TraitDefinition CloneTrait(TraitDefinition x) => new()
         {
             Id = x.Id,
@@ -1930,7 +2036,9 @@ namespace Rollocracy.Infrastructure.Services
             TalentDefinitionId = x.TalentDefinitionId,
             TargetType = x.TargetType,
             TargetId = x.TargetId,
-            AddValue = x.AddValue
+            AddValue = x.AddValue,
+            ValueMode = x.ValueMode,
+            SourceMetricId = x.SourceMetricId
         };
 
         private static ItemDefinition CloneItem(ItemDefinition x) => new()
@@ -1948,7 +2056,9 @@ namespace Rollocracy.Infrastructure.Services
             ItemDefinitionId = x.ItemDefinitionId,
             TargetType = x.TargetType,
             TargetId = x.TargetId,
-            AddValue = x.AddValue
+            AddValue = x.AddValue,
+            ValueMode = x.ValueMode,
+            SourceMetricId = x.SourceMetricId
         };
 
         private static ChoiceOptionModifierDefinition CloneChoiceOptionModifier(ChoiceOptionModifierDefinition x) => new()
@@ -1957,7 +2067,9 @@ namespace Rollocracy.Infrastructure.Services
             TraitOptionId = x.TraitOptionId,
             TargetType = x.TargetType,
             TargetId = x.TargetId,
-            AddValue = x.AddValue
+            AddValue = x.AddValue,
+            ValueMode = x.ValueMode,
+            SourceMetricId = x.SourceMetricId
         };
 
         private static CharacterAttributeValue CloneAttributeValue(CharacterAttributeValue x) => new()
@@ -2045,6 +2157,39 @@ namespace Rollocracy.Infrastructure.Services
                 .ToListAsync();
         }
 
+
+        private void ValidateGameTestSettings(
+            TestResolutionMode resolutionMode,
+            int defaultDiceCount,
+            int defaultDiceSides,
+            int? criticalSuccessValue,
+            int? criticalFailureValue)
+        {
+            if (defaultDiceCount < 1 || defaultDiceCount > 5)
+                throw new Exception(_localizer["Backend_InvalidDiceCount"]);
+
+            if (defaultDiceSides < 2 || defaultDiceSides > 100)
+                throw new Exception(_localizer["Backend_InvalidDiceSides"]);
+
+            var maxDiceTotal = defaultDiceCount * defaultDiceSides;
+
+            if (criticalSuccessValue.HasValue && (criticalSuccessValue.Value < 1 || criticalSuccessValue.Value > maxDiceTotal))
+                throw new Exception(_localizer["Backend_InvalidCriticalSuccessValue"]);
+
+            if (criticalFailureValue.HasValue && (criticalFailureValue.Value < 1 || criticalFailureValue.Value > maxDiceTotal))
+                throw new Exception(_localizer["Backend_InvalidCriticalFailureValue"]);
+
+            if (criticalSuccessValue.HasValue && criticalFailureValue.HasValue)
+            {
+                var overlaps = resolutionMode == TestResolutionMode.SuccessThreshold
+                    ? criticalFailureValue.Value >= criticalSuccessValue.Value
+                    : criticalSuccessValue.Value >= criticalFailureValue.Value;
+
+                if (overlaps)
+                    throw new Exception(_localizer["Backend_InvalidCriticalRanges"]);
+            }
+        }
+
         private void ValidateBaseAttributes(List<EditableAttributeDefinitionDto> attributes)
         {
             foreach (var attribute in attributes.Where(x => !x.IsDeleted))
@@ -2119,18 +2264,29 @@ namespace Rollocracy.Infrastructure.Services
 
         private void ValidateMetrics(
             List<EditableMetricDefinitionDto> metrics,
-            List<EditableAttributeDefinitionDto> attributes)
+            List<EditableAttributeDefinitionDto> attributes,
+            List<EditableGaugeDefinitionDto> gauges,
+            List<EditableDerivedStatDefinitionDto> derivedStats)
         {
             var availableAttributeIds = attributes
                 .Where(x => !x.IsDeleted && x.AttributeDefinitionId.HasValue)
                 .Select(x => x.AttributeDefinitionId!.Value)
                 .ToHashSet();
 
-            foreach (var attribute in attributes.Where(x => !x.IsDeleted && !x.AttributeDefinitionId.HasValue && !string.IsNullOrWhiteSpace(x.Name)))
-            {
-                // Les nouvelles caractéristiques recevront un nouvel Id au sync ;
-                // ici on ne peut pas encore les relier depuis les metrics.
-            }
+            var availableGaugeIds = gauges
+                .Where(x => !x.IsDeleted && x.GaugeDefinitionId.HasValue)
+                .Select(x => x.GaugeDefinitionId!.Value)
+                .ToHashSet();
+
+            var availableDerivedIds = derivedStats
+                .Where(x => !x.IsDeleted && x.DerivedStatDefinitionId.HasValue)
+                .Select(x => x.DerivedStatDefinitionId!.Value)
+                .ToHashSet();
+
+            var availableMetricIds = metrics
+                .Where(x => !x.IsDeleted && x.MetricDefinitionId.HasValue)
+                .Select(x => x.MetricDefinitionId!.Value)
+                .ToHashSet();
 
             foreach (var metric in metrics.Where(x => !x.IsDeleted))
             {
@@ -2140,19 +2296,32 @@ namespace Rollocracy.Infrastructure.Services
                 if (metric.MinValue > metric.MaxValue)
                     throw new Exception(_localizer["Backend_InvalidMetricRange"]);
 
-                if (metric.BaseValue < metric.MinValue || metric.BaseValue > metric.MaxValue)
-                    throw new Exception(_localizer["Backend_InvalidMetricBaseValue"]);
-
-            /*    
-                if (metric.Components.Count(x => !x.IsDeleted) == 0)
-                    throw new Exception(_localizer["Backend_GameSystemMetricNeedsComponent"]);
-            */
-                foreach (var component in metric.Components.Where(x => !x.IsDeleted))
+                foreach (var step in metric.FormulaSteps.Where(x => !x.IsDeleted))
                 {
-                    if (component.Weight < 0)
-                        throw new Exception(_localizer["Backend_InvalidMetricWeight"]);
+                    if (step.OperationType == MetricFormulaOperationType.Divide)
+                    {
+                        if (step.SourceType != MetricFormulaSourceType.Constant || step.ConstantValue == 0m)
+                            throw new Exception("A metric formula division must use a non-zero constant.");
+                    }
+
+                    if (step.SourceType != MetricFormulaSourceType.Constant && !step.SourceId.HasValue)
+                        throw new Exception("A metric formula source is missing its target id.");
+
+                    if (step.SourceType == MetricFormulaSourceType.BaseAttribute && step.SourceId.HasValue && !availableAttributeIds.Contains(step.SourceId.Value))
+                        throw new Exception("A metric formula references an unknown base attribute.");
+
+                    if (step.SourceType == MetricFormulaSourceType.Gauge && step.SourceId.HasValue && !availableGaugeIds.Contains(step.SourceId.Value))
+                        throw new Exception("A metric formula references an unknown gauge.");
+
+                    if (step.SourceType == MetricFormulaSourceType.DerivedStat && step.SourceId.HasValue && !availableDerivedIds.Contains(step.SourceId.Value))
+                        throw new Exception("A metric formula references an unknown derived stat.");
+
+                    if (step.SourceType == MetricFormulaSourceType.Metric && step.SourceId.HasValue && availableMetricIds.Count > 0 && !availableMetricIds.Contains(step.SourceId.Value))
+                        throw new Exception("A metric formula references an unknown metric.");
                 }
             }
+
+            ValidateMetricFormulaCycles(metrics);
         }
 
         private async Task SyncMetricsAsync(
@@ -2171,6 +2340,10 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => currentDefinitionIds.Contains(x.MetricDefinitionId))
                 .ToListAsync();
 
+            var currentSteps = await context.MetricFormulaSteps
+                .Where(x => currentDefinitionIds.Contains(x.MetricDefinitionId))
+                .ToListAsync();
+
             var requestExistingIds = requestMetrics
                 .Where(x => x.MetricDefinitionId.HasValue)
                 .Select(x => x.MetricDefinitionId!.Value)
@@ -2185,11 +2358,9 @@ namespace Rollocracy.Infrastructure.Services
 
             if (removedIds.Count > 0)
             {
-                context.MetricComponents.RemoveRange(
-                    currentComponents.Where(x => removedIds.Contains(x.MetricDefinitionId)));
-
-                context.MetricDefinitions.RemoveRange(
-                    currentDefinitions.Where(x => removedIds.Contains(x.Id)));
+                context.MetricFormulaSteps.RemoveRange(currentSteps.Where(x => removedIds.Contains(x.MetricDefinitionId)));
+                context.MetricComponents.RemoveRange(currentComponents.Where(x => removedIds.Contains(x.MetricDefinitionId)));
+                context.MetricDefinitions.RemoveRange(currentDefinitions.Where(x => removedIds.Contains(x.Id)));
             }
 
             foreach (var item in requestMetrics.Where(x => x.MetricDefinitionId.HasValue && !x.IsDeleted))
@@ -2202,54 +2373,40 @@ namespace Rollocracy.Infrastructure.Services
                 entity.RoundMode = item.RoundMode;
                 entity.DisplayOrder = item.DisplayOrder;
 
-                var existingComponents = currentComponents
-                    .Where(x => x.MetricDefinitionId == entity.Id)
-                    .ToList();
+                context.MetricComponents.RemoveRange(currentComponents.Where(x => x.MetricDefinitionId == entity.Id));
+                context.MetricFormulaSteps.RemoveRange(currentSteps.Where(x => x.MetricDefinitionId == entity.Id));
 
-                var requestExistingComponentIds = item.Components
-                    .Where(x => x.MetricComponentId.HasValue)
-                    .Select(x => x.MetricComponentId!.Value)
-                    .ToHashSet();
-
-                var removedComponentIds = item.Components
-                    .Where(x => x.MetricComponentId.HasValue && x.IsDeleted)
-                    .Select(x => x.MetricComponentId!.Value)
-                    .Union(existingComponents.Where(x => !requestExistingComponentIds.Contains(x.Id)).Select(x => x.Id))
-                    .Distinct()
-                    .ToList();
-
-                if (removedComponentIds.Count > 0)
-                {
-                    context.MetricComponents.RemoveRange(
-                        existingComponents.Where(x => removedComponentIds.Contains(x.Id)));
-                }
-
-                foreach (var componentDto in item.Components.Where(x => x.MetricComponentId.HasValue && !x.IsDeleted))
-                {
-                    var component = existingComponents.First(x => x.Id == componentDto.MetricComponentId!.Value);
-                    component.AttributeDefinitionId = componentDto.AttributeDefinitionId;
-                    component.Weight = componentDto.Weight;
-                }
-
-                foreach (var componentDto in item.Components.Where(x => !x.MetricComponentId.HasValue && !x.IsDeleted))
+                foreach (var componentDto in item.Components.Where(x => !x.IsDeleted))
                 {
                     context.MetricComponents.Add(new MetricComponent
                     {
-                        Id = Guid.NewGuid(),
+                        Id = componentDto.MetricComponentId ?? Guid.NewGuid(),
                         MetricDefinitionId = entity.Id,
                         AttributeDefinitionId = componentDto.AttributeDefinitionId,
                         Weight = componentDto.Weight
                     });
                 }
-            }
 
-            var newlyCreatedDefinitions = new List<(Guid DefinitionId, EditableMetricDefinitionDto Dto)>();
+                foreach (var stepDto in item.FormulaSteps.Where(x => !x.IsDeleted).OrderBy(x => x.Order))
+                {
+                    context.MetricFormulaSteps.Add(new MetricFormulaStep
+                    {
+                        Id = stepDto.MetricFormulaStepId ?? Guid.NewGuid(),
+                        MetricDefinitionId = entity.Id,
+                        Order = stepDto.Order,
+                        OperationType = stepDto.OperationType,
+                        SourceType = stepDto.SourceType,
+                        SourceId = stepDto.SourceId,
+                        ConstantValue = stepDto.ConstantValue
+                    });
+                }
+            }
 
             foreach (var item in requestMetrics.Where(x => !x.MetricDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
             {
                 var definitionId = Guid.NewGuid();
 
-                var definition = new MetricDefinition
+                context.MetricDefinitions.Add(new MetricDefinition
                 {
                     Id = definitionId,
                     GameSystemId = gameSystemId,
@@ -2259,30 +2416,108 @@ namespace Rollocracy.Infrastructure.Services
                     MaxValue = item.MaxValue,
                     RoundMode = item.RoundMode,
                     DisplayOrder = item.DisplayOrder
-                };
+                });
 
-                context.MetricDefinitions.Add(definition);
-                newlyCreatedDefinitions.Add((definitionId, item));
-            }
-
-            if (newlyCreatedDefinitions.Count > 0)
-            {
-                await context.SaveChangesAsync();
-
-                foreach (var created in newlyCreatedDefinitions)
+                foreach (var componentDto in item.Components.Where(x => !x.IsDeleted))
                 {
-                    foreach (var componentDto in created.Dto.Components.Where(x => !x.IsDeleted))
+                    context.MetricComponents.Add(new MetricComponent
                     {
-                        context.MetricComponents.Add(new MetricComponent
-                        {
-                            Id = Guid.NewGuid(),
-                            MetricDefinitionId = created.DefinitionId,
-                            AttributeDefinitionId = componentDto.AttributeDefinitionId,
-                            Weight = componentDto.Weight
-                        });
-                    }
+                        Id = Guid.NewGuid(),
+                        MetricDefinitionId = definitionId,
+                        AttributeDefinitionId = componentDto.AttributeDefinitionId,
+                        Weight = componentDto.Weight
+                    });
+                }
+
+                foreach (var stepDto in item.FormulaSteps.Where(x => !x.IsDeleted).OrderBy(x => x.Order))
+                {
+                    context.MetricFormulaSteps.Add(new MetricFormulaStep
+                    {
+                        Id = Guid.NewGuid(),
+                        MetricDefinitionId = definitionId,
+                        Order = stepDto.Order,
+                        OperationType = stepDto.OperationType,
+                        SourceType = stepDto.SourceType,
+                        SourceId = stepDto.SourceId,
+                        ConstantValue = stepDto.ConstantValue
+                    });
                 }
             }
+        }
+
+        private void ValidateMetricFormulaCycles(List<EditableMetricDefinitionDto> metrics)
+        {
+            var graph = metrics
+                .Where(x => !x.IsDeleted)
+                .ToDictionary(
+                    x => x.MetricDefinitionId ?? Guid.Empty,
+                    x => x.FormulaSteps
+                        .Where(s => !s.IsDeleted && s.SourceType == MetricFormulaSourceType.Metric && s.SourceId.HasValue)
+                        .Select(s => s.SourceId!.Value)
+                        .Distinct()
+                        .ToList());
+
+            var visited = new HashSet<Guid>();
+            var visiting = new HashSet<Guid>();
+
+            foreach (var node in graph.Keys.Where(x => x != Guid.Empty))
+            {
+                Visit(node);
+            }
+
+            void Visit(Guid node)
+            {
+                if (visited.Contains(node))
+                    return;
+
+                if (!visiting.Add(node))
+                    throw new Exception("A metric dependency cycle was detected.");
+
+                if (graph.TryGetValue(node, out var children))
+                {
+                    foreach (var child in children.Where(x => x != Guid.Empty && graph.ContainsKey(x)))
+                        Visit(child);
+                }
+
+                visiting.Remove(node);
+                visited.Add(node);
+            }
+        }
+
+        private static string ResolveMetricFormulaSourceName(
+            EditableMetricFormulaStepDto step,
+            List<AttributeDefinition> attributes,
+            List<GaugeDefinition> gauges,
+            List<DerivedStatDefinition> derivedStats,
+            List<MetricDefinition> metrics)
+        {
+            if (!step.SourceId.HasValue)
+                return step.SourceType == MetricFormulaSourceType.Constant ? step.ConstantValue.ToString() : string.Empty;
+
+            return step.SourceType switch
+            {
+                MetricFormulaSourceType.BaseAttribute => attributes.FirstOrDefault(x => x.Id == step.SourceId.Value)?.Name ?? string.Empty,
+                MetricFormulaSourceType.Gauge => gauges.FirstOrDefault(x => x.Id == step.SourceId.Value)?.Name ?? string.Empty,
+                MetricFormulaSourceType.DerivedStat => derivedStats.FirstOrDefault(x => x.Id == step.SourceId.Value)?.Name ?? string.Empty,
+                MetricFormulaSourceType.Metric => metrics.FirstOrDefault(x => x.Id == step.SourceId.Value)?.Name ?? string.Empty,
+                MetricFormulaSourceType.Constant => step.ConstantValue.ToString(),
+                _ => string.Empty
+            };
+        }
+
+        private static string ResolveMetricFormulaSourceName(
+            MetricFormulaStep step,
+            List<AttributeDefinition> attributes,
+            List<GaugeDefinition> gauges,
+            List<DerivedStatDefinition> derivedStats,
+            List<MetricDefinition> metrics)
+        {
+            return ResolveMetricFormulaSourceName(new EditableMetricFormulaStepDto
+            {
+                SourceType = step.SourceType,
+                SourceId = step.SourceId,
+                ConstantValue = step.ConstantValue
+            }, attributes, gauges, derivedStats, metrics);
         }
 
         private void ValidateHealthGaugeRule(List<EditableGaugeDefinitionDto> gauges)
@@ -2291,6 +2526,72 @@ namespace Rollocracy.Infrastructure.Services
 
             if (remainingHealthGaugeCount <= 0)
                 throw new Exception(_localizer["Backend_GameSystemMustKeepAtLeastOneHealthGauge"]);
+        }
+
+        private void ValidateModifierDefinitions(
+            List<EditableTraitDefinitionDto> requestTraits,
+            List<EditableTalentDefinitionDto> requestTalents,
+            List<EditableItemDefinitionDto> requestItems,
+            List<EditableAttributeDefinitionDto> attributes,
+            List<EditableDerivedStatDefinitionDto> derivedStats,
+            List<EditableMetricDefinitionDto> metrics)
+        {
+            var availableAttributeIds = attributes
+                .Where(x => !x.IsDeleted && x.AttributeDefinitionId.HasValue)
+                .Select(x => x.AttributeDefinitionId!.Value)
+                .ToHashSet();
+
+            var availableDerivedIds = derivedStats
+                .Where(x => !x.IsDeleted && x.DerivedStatDefinitionId.HasValue)
+                .Select(x => x.DerivedStatDefinitionId!.Value)
+                .ToHashSet();
+
+            var availableMetricIds = metrics
+                .Where(x => !x.IsDeleted && x.MetricDefinitionId.HasValue)
+                .Select(x => x.MetricDefinitionId!.Value)
+                .ToHashSet();
+
+            foreach (var option in requestTraits.Where(x => !x.IsDeleted).SelectMany(x => x.Options).Where(x => !x.IsDeleted))
+            {
+                ValidateModifierCollection(option.Modifiers, availableAttributeIds, availableDerivedIds, availableMetricIds);
+            }
+
+            foreach (var talent in requestTalents.Where(x => !x.IsDeleted))
+            {
+                ValidateModifierCollection(talent.Modifiers, availableAttributeIds, availableDerivedIds, availableMetricIds);
+            }
+
+            foreach (var item in requestItems.Where(x => !x.IsDeleted))
+            {
+                ValidateModifierCollection(item.Modifiers, availableAttributeIds, availableDerivedIds, availableMetricIds);
+            }
+        }
+
+        private void ValidateModifierCollection(
+            List<EditableModifierDefinitionDto> modifiers,
+            HashSet<Guid> availableAttributeIds,
+            HashSet<Guid> availableDerivedIds,
+            HashSet<Guid> availableMetricIds)
+        {
+            foreach (var modifier in modifiers.Where(x => !x.IsDeleted))
+            {
+                var isValidTarget = modifier.TargetType switch
+                {
+                    ModifierTargetType.BaseAttribute => availableAttributeIds.Contains(modifier.TargetId),
+                    ModifierTargetType.DerivedStat => availableDerivedIds.Contains(modifier.TargetId),
+                    ModifierTargetType.Metric => availableMetricIds.Contains(modifier.TargetId),
+                    _ => false
+                };
+
+                if (!isValidTarget)
+                    throw new Exception(_localizer["Backend_InvalidModifierTarget"]);
+
+                if (modifier.ValueMode == ModifierValueMode.Metric)
+                {
+                    if (!modifier.SourceMetricId.HasValue || !availableMetricIds.Contains(modifier.SourceMetricId.Value))
+                        throw new Exception(_localizer["Backend_InvalidModifierSourceMetric"]);
+                }
+            }
         }
 
         private void ValidateCatalogTalents(List<EditableTalentDefinitionDto> requestTalents)
@@ -2453,6 +2754,10 @@ namespace Rollocracy.Infrastructure.Services
                         entity.TargetType = modifier.TargetType;
                         entity.TargetId = modifier.TargetId;
                         entity.AddValue = modifier.AddValue;
+                        entity.ValueMode = modifier.ValueMode;
+                        entity.SourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
+                            ? modifier.SourceMetricId
+                            : null;
                     }
                     else if (!modifier.IsDeleted)
                     {
@@ -2462,7 +2767,11 @@ namespace Rollocracy.Infrastructure.Services
                             TalentDefinitionId = talent.TalentDefinitionId.Value,
                             TargetType = modifier.TargetType,
                             TargetId = modifier.TargetId,
-                            AddValue = modifier.AddValue
+                            AddValue = modifier.AddValue,
+                            ValueMode = modifier.ValueMode,
+                            SourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
+                            ? modifier.SourceMetricId
+                            : null
                         });
                     }
                 }
@@ -2495,6 +2804,10 @@ namespace Rollocracy.Infrastructure.Services
                         entity.TargetType = modifier.TargetType;
                         entity.TargetId = modifier.TargetId;
                         entity.AddValue = modifier.AddValue;
+                        entity.ValueMode = modifier.ValueMode;
+                        entity.SourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
+                            ? modifier.SourceMetricId
+                            : null;
                     }
                     else if (!modifier.IsDeleted)
                     {
@@ -2504,7 +2817,11 @@ namespace Rollocracy.Infrastructure.Services
                             ItemDefinitionId = item.ItemDefinitionId.Value,
                             TargetType = modifier.TargetType,
                             TargetId = modifier.TargetId,
-                            AddValue = modifier.AddValue
+                            AddValue = modifier.AddValue,
+                            ValueMode = modifier.ValueMode,
+                            SourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
+                                ? modifier.SourceMetricId
+                                : null
                         });
                     }
                 }
@@ -2566,6 +2883,7 @@ namespace Rollocracy.Infrastructure.Services
             public List<DerivedStatComponent> DerivedStatComponents { get; set; } = new();
             public List<MetricDefinition> Metrics { get; set; } = new();
             public List<MetricComponent> MetricComponents { get; set; } = new();
+            public List<MetricFormulaStep> MetricFormulaSteps { get; set; } = new();
             public List<TraitDefinition> Traits { get; set; } = new();
             public List<TraitOption> TraitOptions { get; set; } = new();
             public List<GaugeDefinition> Gauges { get; set; } = new();
@@ -2588,6 +2906,10 @@ namespace Rollocracy.Infrastructure.Services
             public string Name { get; set; } = string.Empty;
             public string Description { get; set; } = string.Empty;
             public TestResolutionMode TestResolutionMode { get; set; }
+            public int DefaultTestDiceCount { get; set; }
+            public int DefaultTestDiceSides { get; set; }
+            public int? CriticalSuccessValue { get; set; }
+            public int? CriticalFailureValue { get; set; }
             public Guid? SourceGameSystemId { get; set; }
             public Guid? LockedToSessionId { get; set; }
         }

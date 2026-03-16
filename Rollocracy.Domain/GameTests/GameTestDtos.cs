@@ -30,15 +30,29 @@ namespace Rollocracy.Domain.GameTests
 
         // Utilisé uniquement pour AddValue
         public int Value { get; set; }
+
+        // 6D : valeur fixe ou metric source
+        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
+
+        // 6D : metric utilisée quand ValueMode = Metric
+        public Guid? SourceMetricId { get; set; }
     }
 
     public class GameTestCreateRequestDto
     {
-        public Guid AttributeDefinitionId { get; set; }
+        public GameTestTargetKind TargetKind { get; set; } = GameTestTargetKind.BaseAttribute;
+
+        public Guid TargetDefinitionId { get; set; }
+
+        public bool UseSystemDefaultDice { get; set; } = true;
 
         public int DiceCount { get; set; }
 
         public int DiceSides { get; set; }
+
+        public int? CriticalSuccessValue { get; set; }
+
+        public int? CriticalFailureValue { get; set; }
 
         public int? SuccessThreshold { get; set; }
 
@@ -59,13 +73,21 @@ namespace Rollocracy.Domain.GameTests
     {
         public Guid GameTestId { get; set; }
 
+        public GameTestTargetKind TargetKind { get; set; }
+
         public string AttributeName { get; set; } = string.Empty;
 
         public TestResolutionMode ResolutionMode { get; set; }
 
+        public bool UseSystemDefaultDice { get; set; }
+
         public int DiceCount { get; set; }
 
         public int DiceSides { get; set; }
+
+        public int? CriticalSuccessValue { get; set; }
+
+        public int? CriticalFailureValue { get; set; }
 
         public int? SuccessThreshold { get; set; }
 
@@ -94,6 +116,8 @@ namespace Rollocracy.Domain.GameTests
 
         public bool IsSuccess { get; set; }
 
+        public GameTestOutcome Outcome { get; set; }
+
         public bool IsAutoRolled { get; set; }
     }
 
@@ -108,6 +132,8 @@ namespace Rollocracy.Domain.GameTests
         public bool HasRolled { get; set; }
 
         public bool IsSuccess { get; set; }
+
+        public GameTestOutcome Outcome { get; set; }
 
         public bool IsAutoRolled { get; set; }
 
@@ -126,13 +152,21 @@ namespace Rollocracy.Domain.GameTests
     {
         public Guid GameTestId { get; set; }
 
+        public GameTestTargetKind TargetKind { get; set; }
+
         public string AttributeName { get; set; } = string.Empty;
 
         public TestResolutionMode ResolutionMode { get; set; }
 
+        public bool UseSystemDefaultDice { get; set; }
+
         public int DiceCount { get; set; }
 
         public int DiceSides { get; set; }
+
+        public int? CriticalSuccessValue { get; set; }
+
+        public int? CriticalFailureValue { get; set; }
 
         public int? SuccessThreshold { get; set; }
 
@@ -155,6 +189,10 @@ namespace Rollocracy.Domain.GameTests
         public int SuccessCount { get; set; }
 
         public int FailureCount { get; set; }
+
+        public int CriticalSuccessCount { get; set; }
+
+        public int CriticalFailureCount { get; set; }
 
         public double SuccessRatePercent { get; set; }
 

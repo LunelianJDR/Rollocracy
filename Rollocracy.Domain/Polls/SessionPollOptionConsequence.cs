@@ -1,5 +1,6 @@
 ﻿using System;
 using Rollocracy.Domain.GameTests;
+using Rollocracy.Domain.GameRules;
 
 namespace Rollocracy.Domain.Polls
 {
@@ -18,6 +19,10 @@ namespace Rollocracy.Domain.Polls
         public TestModifierMode ModifierMode { get; set; }
 
         public int Value { get; set; }
+
+        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
+
+        public Guid? SourceMetricId { get; set; }
 
         public TestConsequenceOperationType OperationType { get; set; }
     }

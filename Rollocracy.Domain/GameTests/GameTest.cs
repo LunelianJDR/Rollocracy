@@ -9,15 +9,23 @@ namespace Rollocracy.Domain.GameTests
 
         public Guid SessionId { get; set; }
 
-        public Guid AttributeDefinitionId { get; set; }
+        public GameTestTargetKind TargetKind { get; set; }
 
-        public string AttributeNameSnapshot { get; set; } = string.Empty;
+        public Guid TargetDefinitionId { get; set; }
+
+        public string TargetNameSnapshot { get; set; } = string.Empty;
 
         public TestResolutionMode ResolutionModeSnapshot { get; set; }
+
+        public bool UseSystemDefaultDice { get; set; }
 
         public int DiceCount { get; set; }
 
         public int DiceSides { get; set; }
+
+        public int? CriticalSuccessValueSnapshot { get; set; }
+
+        public int? CriticalFailureValueSnapshot { get; set; }
 
         public int? SuccessThreshold { get; set; }
 

@@ -1,5 +1,7 @@
 ﻿using System;
 
+using Rollocracy.Domain.GameRules;
+
 namespace Rollocracy.Domain.GameTests
 {
     public class GameTestConsequence
@@ -21,6 +23,12 @@ namespace Rollocracy.Domain.GameTests
 
         // Pour Add / Remove value
         public int Value { get; set; }
+
+        // 6D : valeur fixe ou metric source
+        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
+
+        // 6D : metric utilisée quand ValueMode = Metric
+        public Guid? SourceMetricId { get; set; }
 
         // Nouveau : type d'opération métier
         public TestConsequenceOperationType OperationType { get; set; }

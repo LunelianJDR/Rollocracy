@@ -54,6 +54,28 @@ else
         </select>
     </div>
 
+    <div>
+        <label>@L["EditGameSystem_DefaultTestDiceCount"]</label><br />
+        <input type="number" @bind="CurrentSystem.DefaultTestDiceCount" />
+    </div>
+
+    <div>
+        <label>@L["EditGameSystem_DefaultTestDiceSides"]</label><br />
+        <input type="number" @bind="CurrentSystem.DefaultTestDiceSides" />
+    </div>
+
+    <div>
+        <label>@L["EditGameSystem_CriticalSuccessValue"]</label><br />
+        <input type="number" @bind="CurrentSystem.CriticalSuccessValue" />
+        <div><small>@L["EditGameSystem_CriticalHelp"]</small></div>
+    </div>
+
+    <div>
+        <label>@L["EditGameSystem_CriticalFailureValue"]</label><br />
+        <input type="number" @bind="CurrentSystem.CriticalFailureValue" />
+        <div><small>@L["EditGameSystem_CriticalHelp"]</small></div>
+    </div>
+
     @if (!CurrentSystem.IsLockedToSessionCopy && CurrentSystem.ImpactedSessions.Count > 0)
     {
         <div class="alert alert-warning" style="margin-top:12px;">
@@ -289,43 +311,80 @@ else
                     <input type="number" @bind="metric.DisplayOrder" />
                 </div>
 
-                <div style="margin-top:8px;">
-                    <button @onclick="() => AddMetricComponentRow(metric)">@L["EditGameSystem_AddMetricComponentRow"]</button>
+                <div style="margin-top:12px;">
+                    <strong>@L["EditGameSystem_MetricFormulaSteps"]</strong>
+                    <p>@L["EditGameSystem_MetricFormulaHelp"]</p>
+
+                    @if (metric.Components.Any(x => !x.IsDeleted) && !metric.FormulaSteps.Any(x => !x.IsDeleted))
+                    {
+                        <p><em>@L["EditGameSystem_MetricLegacyComponentsNotice"]</em></p>
+                    }
+
+                    <button @onclick="() => AddMetricFormulaStepRow(metric)">@L["EditGameSystem_AddMetricFormulaStep"]</button>
                 </div>
 
                 <div style="margin-left:20px; margin-top:8px;">
-                    @foreach (var component in metric.Components)
+                    @foreach (var step in metric.FormulaSteps.OrderBy(x => x.Order).ThenBy(x => x.MetricFormulaStepId))
                     {
                         <div style="margin-top:8px; border:1px dashed #aaa; padding:8px;">
-                            @if (component.IsDeleted)
+                            @if (step.IsDeleted)
                             {
-                                <span><strong>@GetBaseAttributeName(component.AttributeDefinitionId)</strong> - @L["EditGameSystem_PendingDeletion"]</span>
-                                <button @onclick="() => component.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                                <span><strong>@GetMetricFormulaStepSummary(step)</strong> - @L["EditGameSystem_PendingDeletion"]</span>
+                                <button @onclick="() => step.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
                             }
                             else
                             {
                                 <div>
-                                    <label>@L["EditGameSystem_ComponentAttribute"]</label><br />
-                                    <select @bind="component.AttributeDefinitionId">
-                                        @foreach (var attributeRef in CurrentSystem.AvailableBaseAttributes)
-                                        {
-                                            <option value="@attributeRef.AttributeDefinitionId">@attributeRef.Name</option>
-                                        }
+                                    <label>@L["EditGameSystem_MetricFormulaOrder"]</label><br />
+                                    <input type="number" @bind="step.Order" />
+                                </div>
+                                <div>
+                                    <label>@L["EditGameSystem_MetricFormulaOperation"]</label><br />
+                                    <select @bind="step.OperationType">
+                                        <option value="@MetricFormulaOperationType.Add">@L["EditGameSystem_MetricFormulaOperation_Add"]</option>
+                                        <option value="@MetricFormulaOperationType.Subtract">@L["EditGameSystem_MetricFormulaOperation_Subtract"]</option>
+                                        <option value="@MetricFormulaOperationType.Multiply">@L["EditGameSystem_MetricFormulaOperation_Multiply"]</option>
+                                        <option value="@MetricFormulaOperationType.Divide">@L["EditGameSystem_MetricFormulaOperation_Divide"]</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label>@L["EditGameSystem_ComponentWeight"]</label><br />
-                                    <input type="number" @bind="component.Weight" />
+                                    <label>@L["EditGameSystem_MetricFormulaSourceType"]</label><br />
+                                    <select value="@step.SourceType" @onchange="e => OnMetricFormulaSourceTypeChanged(metric, step, e.Value?.ToString())">
+                                        <option value="@MetricFormulaSourceType.BaseAttribute">@L["EditGameSystem_MetricFormulaSourceType_BaseAttribute"]</option>
+                                        <option value="@MetricFormulaSourceType.Gauge">@L["EditGameSystem_MetricFormulaSourceType_Gauge"]</option>
+                                        <option value="@MetricFormulaSourceType.DerivedStat">@L["EditGameSystem_MetricFormulaSourceType_DerivedStat"]</option>
+                                        <option value="@MetricFormulaSourceType.Metric">@L["EditGameSystem_MetricFormulaSourceType_Metric"]</option>
+                                        <option value="@MetricFormulaSourceType.Constant">@L["EditGameSystem_MetricFormulaSourceType_Constant"]</option>
+                                    </select>
                                 </div>
-                                <p>@L["EditGameSystem_ComponentWeightHelp"]</p>
 
-                                @if (component.MetricComponentId.HasValue)
+                                @if (step.SourceType == MetricFormulaSourceType.Constant)
                                 {
-                                    <button @onclick="() => component.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                    <div>
+                                        <label>@L["EditGameSystem_MetricFormulaConstant"]</label><br />
+                                        <input type="number" step="0.01" @bind="step.ConstantValue" />
+                                    </div>
                                 }
                                 else
                                 {
-                                    <button @onclick="() => metric.Components.Remove(component)">@L["EditGameSystem_Delete"]</button>
+                                    <div>
+                                        <label>@L["EditGameSystem_MetricFormulaSource"]</label><br />
+                                        <select @bind="step.SourceId">
+                                            @foreach (var option in GetMetricFormulaSourceOptions(metric, step.SourceType))
+                                            {
+                                                <option value="@option.Id">@option.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                }
+
+                                @if (step.MetricFormulaStepId.HasValue)
+                                {
+                                    <button @onclick="() => step.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                }
+                                else
+                                {
+                                    <button @onclick="() => metric.FormulaSteps.Remove(step)">@L["EditGameSystem_Delete"]</button>
                                 }
                             }
                         </div>
@@ -430,7 +489,24 @@ else
                                                 </select>
                                             }
 
-                                            <input type="number" @bind="mod.AddValue" />
+                                            <select @bind="mod.ValueMode">
+                                                <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
+                                                <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                                            </select>
+
+                                            @if (mod.ValueMode == ModifierValueMode.Metric)
+                                            {
+                                                <select @bind="mod.SourceMetricId">
+                                                    @foreach (var sourceMetric in CurrentSystem.AvailableMetrics)
+                                                    {
+                                                        <option value="@sourceMetric.MetricDefinitionId">@sourceMetric.Name</option>
+                                                    }
+                                                </select>
+                                            }
+                                            else
+                                            {
+                                                <input type="number" @bind="mod.AddValue" />
+                                            }
 
                                             @if (mod.ModifierId.HasValue)
                                             {
@@ -513,7 +589,7 @@ else
         </div>
     }
 
- //   SECTION TALENTS
+    //   SECTION TALENTS
 
     <h4>@L["EditGameSystem_TalentsSection"]</h4>
     <button @onclick="AddTalentRow">@L["EditGameSystem_AddTalentRow"]</button>
@@ -575,7 +651,24 @@ else
                             </select>
                         }
 
-                        <input type="number" @bind="mod.AddValue" />
+                        <select @bind="mod.ValueMode">
+                            <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
+                            <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                        </select>
+
+                        @if (mod.ValueMode == ModifierValueMode.Metric)
+                        {
+                            <select @bind="mod.SourceMetricId">
+                                @foreach (var sourceMetric in CurrentSystem.AvailableMetrics)
+                                {
+                                    <option value="@sourceMetric.MetricDefinitionId">@sourceMetric.Name</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <input type="number" @bind="mod.AddValue" />
+                        }
 
                         @if (mod.ModifierId.HasValue)
                         {
@@ -668,7 +761,24 @@ else
                             </select>
                         }
 
-                        <input type="number" @bind="mod.AddValue" />
+                        <select @bind="mod.ValueMode">
+                            <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
+                            <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                        </select>
+
+                        @if (mod.ValueMode == ModifierValueMode.Metric)
+                        {
+                            <select @bind="mod.SourceMetricId">
+                                @foreach (var sourceMetric in CurrentSystem.AvailableMetrics)
+                                {
+                                    <option value="@sourceMetric.MetricDefinitionId">@sourceMetric.Name</option>
+                                }
+                            </select>
+                        }
+                        else
+                        {
+                            <input type="number" @bind="mod.AddValue" />
+                        }
 
                         @if (mod.ModifierId.HasValue)
                         {
@@ -834,6 +944,7 @@ else
         CurrentSystem?.Metrics.Add(new EditableMetricDefinitionDto
         {
             Name = string.Empty,
+            TemporaryKey = Guid.NewGuid().ToString("N"),
             BaseValue = 0,
             MinValue = 0,
             MaxValue = 100,
@@ -842,20 +953,126 @@ else
         });
     }
 
-    private void AddMetricComponentRow(EditableMetricDefinitionDto metric)
+    private void AddMetricFormulaStepRow(EditableMetricDefinitionDto metric)
     {
-        if (CurrentSystem is null || CurrentSystem.AvailableBaseAttributes.Count == 0)
-            return;
+        var firstAttribute = CurrentSystem?.AvailableBaseAttributes.FirstOrDefault();
 
-        var attribute = CurrentSystem.AvailableBaseAttributes.First();
-
-        metric.Components.Add(new EditableMetricComponentDto
+        metric.FormulaSteps.Add(new EditableMetricFormulaStepDto
         {
-            AttributeDefinitionId = attribute.AttributeDefinitionId,
-            AttributeName = attribute.Name,
-            Weight = 100
+            Order = metric.FormulaSteps.Count,
+            OperationType = MetricFormulaOperationType.Add,
+            SourceType = firstAttribute is not null ? MetricFormulaSourceType.BaseAttribute : MetricFormulaSourceType.Constant,
+            SourceId = firstAttribute?.AttributeDefinitionId,
+            ConstantValue = 0m
         });
     }
+
+    private IReadOnlyList<MetricFormulaSourceOption> GetMetricFormulaSourceOptions(
+        EditableMetricDefinitionDto metric,
+        MetricFormulaSourceType sourceType)
+    {
+        if (CurrentSystem is null)
+            return Array.Empty<MetricFormulaSourceOption>();
+
+        return sourceType switch
+        {
+            MetricFormulaSourceType.BaseAttribute => CurrentSystem.AvailableBaseAttributes
+                .Select(x => new MetricFormulaSourceOption(x.AttributeDefinitionId, x.Name))
+                .ToList(),
+            MetricFormulaSourceType.Gauge => CurrentSystem.Gauges
+                .Where(x => !x.IsDeleted && x.GaugeDefinitionId.HasValue)
+                .Select(x => new MetricFormulaSourceOption(x.GaugeDefinitionId!.Value, x.Name))
+                .ToList(),
+            MetricFormulaSourceType.DerivedStat => CurrentSystem.DerivedStats
+                .Where(x => !x.IsDeleted && x.DerivedStatDefinitionId.HasValue)
+                .Select(x => new MetricFormulaSourceOption(x.DerivedStatDefinitionId!.Value, x.Name))
+                .ToList(),
+            MetricFormulaSourceType.Metric => CurrentSystem.Metrics
+                .Where(x => !x.IsDeleted && x.MetricDefinitionId.HasValue && x.MetricDefinitionId != metric.MetricDefinitionId)
+                .Select(x => new MetricFormulaSourceOption(x.MetricDefinitionId!.Value, x.Name))
+                .ToList(),
+            _ => Array.Empty<MetricFormulaSourceOption>()
+        };
+    }
+
+    private void OnMetricFormulaSourceTypeChanged(
+        EditableMetricDefinitionDto metric,
+        EditableMetricFormulaStepDto step,
+        string? rawValue)
+    {
+        if (!Enum.TryParse<MetricFormulaSourceType>(rawValue, out var sourceType))
+            return;
+
+        step.SourceType = sourceType;
+
+        if (sourceType == MetricFormulaSourceType.Constant)
+        {
+            step.SourceId = null;
+            return;
+        }
+
+        var firstOption = GetMetricFormulaSourceOptions(metric, sourceType).FirstOrDefault();
+        step.SourceId = firstOption?.Id;
+    }
+
+    private string GetMetricFormulaStepSummary(EditableMetricFormulaStepDto step)
+    {
+        var operation = step.OperationType switch
+        {
+            MetricFormulaOperationType.Add => L["EditGameSystem_MetricFormulaOperation_Add"].Value,
+            MetricFormulaOperationType.Subtract => L["EditGameSystem_MetricFormulaOperation_Subtract"].Value,
+            MetricFormulaOperationType.Multiply => L["EditGameSystem_MetricFormulaOperation_Multiply"].Value,
+            MetricFormulaOperationType.Divide => L["EditGameSystem_MetricFormulaOperation_Divide"].Value,
+            _ => string.Empty
+        };
+
+        var source = step.SourceType == MetricFormulaSourceType.Constant
+            ? step.ConstantValue.ToString()
+            : GetMetricFormulaSourceLabel(step);
+
+        return $"{operation} {source}";
+    }
+
+    private string GetMetricFormulaSourceLabel(EditableMetricFormulaStepDto step)
+    {
+        if (CurrentSystem is null || !step.SourceId.HasValue)
+            return step.SourceName;
+
+        return step.SourceType switch
+        {
+            MetricFormulaSourceType.BaseAttribute => CurrentSystem.AvailableBaseAttributes.FirstOrDefault(x => x.AttributeDefinitionId == step.SourceId.Value)?.Name ?? step.SourceName,
+            MetricFormulaSourceType.Gauge => CurrentSystem.Gauges.FirstOrDefault(x => x.GaugeDefinitionId == step.SourceId.Value)?.Name ?? step.SourceName,
+            MetricFormulaSourceType.DerivedStat => CurrentSystem.DerivedStats.FirstOrDefault(x => x.DerivedStatDefinitionId == step.SourceId.Value)?.Name ?? step.SourceName,
+            MetricFormulaSourceType.Metric => CurrentSystem.Metrics.FirstOrDefault(x => x.MetricDefinitionId == step.SourceId.Value)?.Name ?? step.SourceName,
+            MetricFormulaSourceType.Constant => step.ConstantValue.ToString(),
+            _ => step.SourceName
+        };
+    }
+
+    private void PrepareMetricsForSave(List<EditableMetricDefinitionDto> metrics)
+    {
+        foreach (var metric in metrics.Where(x => !x.IsDeleted))
+        {
+            var activeSteps = metric.FormulaSteps
+                .Where(x => !x.IsDeleted)
+                .OrderBy(x => x.Order)
+                .ThenBy(x => x.MetricFormulaStepId)
+                .ToList();
+
+            for (var index = 0; index < activeSteps.Count; index++)
+            {
+                activeSteps[index].Order = index;
+            }
+
+            if (activeSteps.Count > 0)
+            {
+                // Dès qu'une formule existe, on cesse de renvoyer les anciens composants pondérés.
+                metric.Components.Clear();
+            }
+        }
+    }
+
+    private sealed record MetricFormulaSourceOption(Guid Id, string Name);
 
     private void AddTraitRow()
     {
@@ -868,16 +1085,18 @@ else
     }
 
     private void AddTraitOptionModifierRow(EditableTraitOptionDto option)
-{
-    var firstAttribute = CurrentSystem?.AvailableBaseAttributes.FirstOrDefault();
-
-    option.Modifiers.Add(new EditableModifierDefinitionDto
     {
-        TargetType = ModifierTargetType.BaseAttribute,
-        TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
-        AddValue = 0
-    });
-}
+        var firstAttribute = CurrentSystem?.AvailableBaseAttributes.FirstOrDefault();
+
+        option.Modifiers.Add(new EditableModifierDefinitionDto
+        {
+            TargetType = ModifierTargetType.BaseAttribute,
+            TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
+            AddValue = 0,
+            ValueMode = ModifierValueMode.Fixed,
+            SourceMetricId = CurrentSystem?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId
+        });
+    }
 
     private void AddGaugeRow()
     {
@@ -940,11 +1159,17 @@ else
 
         ShowSharedConfirm = false;
 
+        PrepareMetricsForSave(CurrentSystem.Metrics);
+
         var request = new GameSystemApplyChangesRequestDto
         {
             Name = CurrentSystem.Name,
             Description = CurrentSystem.Description,
             TestResolutionMode = CurrentSystem.TestResolutionMode,
+            DefaultTestDiceCount = CurrentSystem.DefaultTestDiceCount,
+            DefaultTestDiceSides = CurrentSystem.DefaultTestDiceSides,
+            CriticalSuccessValue = CurrentSystem.CriticalSuccessValue,
+            CriticalFailureValue = CurrentSystem.CriticalFailureValue,
             ConfirmSharedSystemChanges = confirmShared,
             Attributes = CurrentSystem.Attributes,
             DerivedStats = CurrentSystem.DerivedStats,
@@ -1004,7 +1229,9 @@ else
         {
             TargetType = ModifierTargetType.BaseAttribute,
             TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
-            AddValue = 0
+            AddValue = 0,
+            ValueMode = ModifierValueMode.Fixed,
+            SourceMetricId = CurrentSystem?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId
         });
     }
 
@@ -1016,7 +1243,9 @@ else
         {
             TargetType = ModifierTargetType.BaseAttribute,
             TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
-            AddValue = 0
+            AddValue = 0,
+            ValueMode = ModifierValueMode.Fixed,
+            SourceMetricId = CurrentSystem?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId
         });
     }
 }
