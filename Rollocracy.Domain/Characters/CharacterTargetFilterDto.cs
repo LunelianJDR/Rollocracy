@@ -12,6 +12,9 @@ namespace Rollocracy.Domain.Characters
 
         public bool OnlyOnline { get; set; }
 
+        // 7D — PNJ filtering
+        public bool IncludeNpcs { get; set; } = true;
+
         public List<Guid> TraitOptionIds { get; set; } = new();
 
         public List<Guid> TalentIds { get; set; } = new();

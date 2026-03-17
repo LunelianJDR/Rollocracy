@@ -30,7 +30,7 @@ else if (Character is null)
 else
 {
     <p><strong>@L["EditCharacter_PlayerName"] :</strong> @Character.PlayerName</p>
-    <p><strong>@L["EditCharacter_Status"] :</strong> @(Character.IsAlive ? L["Common_Alive"] : L["Common_Dead"])</p>
+    <p><strong>@L["EditCharacter_Status"] :</strong> @(Character.IsAlive? L["Common_Alive"] : L["Common_Dead"])</p>
 
     @if (Character.DiedAtUtc.HasValue && !Character.IsAlive)
     {
@@ -170,6 +170,7 @@ else
 @code {
     [Parameter] public Guid SessionId { get; set; }
     [Parameter] public Guid CharacterId { get; set; }
+    [SupplyParameterFromQuery(Name = "room")] public Guid? RoomPlayerSessionId { get; set; }
 
     private bool IsLoaded;
     private bool RedirectToHome;
@@ -193,15 +194,6 @@ else
         }
 
         CurrentUserId = Guid.Parse(userIdValue);
-
-        var canCreateSessions = await SessionService.CanUserCreateSessionsAsync(CurrentUserId);
-
-        if (!canCreateSessions)
-        {
-            RedirectToHome = true;
-            IsLoaded = true;
-            return;
-        }
 
         await LoadCharacter();
         IsLoaded = true;
@@ -264,6 +256,12 @@ else
 
     private void BackToSession()
     {
+        if (RoomPlayerSessionId.HasValue)
+        {
+            Navigation.NavigateTo($"/player/room/{RoomPlayerSessionId.Value}");
+            return;
+        }
+
         Navigation.NavigateTo($"/mj/session/{SessionId}");
     }
 }

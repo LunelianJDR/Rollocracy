@@ -16,6 +16,13 @@ namespace Rollocracy.Domain.Interfaces
             Dictionary<Guid, int> attributeValues,
             Dictionary<Guid, Guid> traitSelections);
 
+        Task<Character> CreateNpcAsync(
+            Guid playerSessionId,
+            string name,
+            string biography,
+            Dictionary<Guid, int> attributeValues,
+            Dictionary<Guid, Guid> traitSelections);
+
         Task<CharacterSheetDto?> GetCharacterSheetAsync(Guid playerSessionId, Guid characterId);
 
         Task<SessionPublicStatsDto> GetSessionPublicStatsAsync(Guid sessionId);
@@ -23,9 +30,29 @@ namespace Rollocracy.Domain.Interfaces
         Task<List<SessionCharacterSummaryDto>> GetSessionCharacterSummariesAsync(
             Guid sessionId,
             bool includeOffline,
+            bool includeDead,
+            bool includeNpcs);
+
+        Task<List<SessionCharacterSummaryDto>> GetSessionCharacterSummariesAsync(
+            Guid sessionId,
+            bool includeOffline,
             bool includeDead);
 
+        Task<List<SessionCharacterSummaryDto>> GetSessionCharacterSummariesForPlayerAsync(
+            Guid playerSessionId,
+            bool includeOffline,
+            bool includeDead,
+            bool includeNpcs);
+
+        Task<List<SessionCharacterSummaryDto>> GetSessionCharacterSummariesForPlayerAsync(
+            Guid playerSessionId,
+            bool includeOffline,
+            bool includeDead);
+
+        Task<Guid> GetPlayerSessionIdForUserAsync(Guid sessionId, Guid userAccountId);
         Task<CharacterSheetDto?> GetCharacterSheetForSessionAsync(Guid sessionId, Guid characterId);
+
+        Task<CharacterSheetDto?> GetCharacterSheetForPlayerAsync(Guid playerSessionId, Guid characterId);
 
         Task<EditableCharacterDto?> GetEditableCharacterForSessionAsync(
             Guid sessionId,

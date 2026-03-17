@@ -17,5 +17,7 @@ namespace Rollocracy.Domain.Entities
         public DateTime? DiedAtUtc { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public bool IsNpc { get; set; }
     }
 }

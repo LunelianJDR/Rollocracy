@@ -70,7 +70,7 @@ else
             <p>@L["GameTest_DiceTotal"] : @ActiveTest.Result.DiceTotal</p>
             <p>@L["GameTest_AttributeValue"] : @ActiveTest.Result.AttributeValue</p>
             <p>@L["GameTest_FinalValue"] : @ActiveTest.Result.FinalValue</p>
-            <p>@L["GameTest_Result"] : @(ActiveTest.Result.IsSuccess ? L["GameTest_Success"] : L["GameTest_Failure"])</p>
+            <p>@L["GameTest_Result"] : @(ActiveTest.Result.IsSuccess? L["GameTest_Success"] : L["GameTest_Failure"])</p>
 
             @if (ActiveTest.Result.IsAutoRolled)
             {
@@ -127,7 +127,7 @@ else
 
             @if (LatestPoll.HasVoted && LatestPoll.VoteWeight.HasValue)
             {
-                <p>@L["Poll_YourVoteWeight", LatestPoll.VoteWeight.Value.ToString("F2") ]</p>
+                <p>@L["Poll_YourVoteWeight", LatestPoll.VoteWeight.Value.ToString("F2")]</p>
             }
         }
     }
@@ -181,6 +181,64 @@ else
         }
     }
 
+    @if (State.CanViewSessionCharacters)
+    {
+        <hr />
+        <h4>@L["SessionPage_CharactersSection"]</h4>
+
+        <div>
+            <label>
+                <input type="checkbox" @bind="SpecialIncludeOffline" @bind:after="LoadSpecialRoleCharacters" />
+                @L["SessionPage_ShowOfflineCharacters"]
+            </label>
+        </div>
+
+        <div>
+            <label>
+                <input type="checkbox" @bind="SpecialIncludeDead" @bind:after="LoadSpecialRoleCharacters" />
+                @L["SessionPage_ShowDeadCharacters"]
+            </label>
+        </div>
+
+        @if (State.CanEditSessionGameSystem && State.SessionGameSystemId.HasValue)
+        {
+            <button @onclick="EditSessionGameSystem">@L["SessionPage_EditSessionGameSystem"]</button>
+        }
+
+        @if (SpecialRoleCharacters.Count == 0)
+        {
+            <p>@L["SessionPage_NoCharactersToDisplay"]</p>
+        }
+        else
+        {
+            <ul>
+                @foreach (var character in SpecialRoleCharacters)
+                {
+                    <li>
+                        <button @onclick="() => LoadObservedCharacter(character.CharacterId)">@character.CharacterName</button>
+                        <span>
+                            - @(character.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                            - @(character.IsOnline? L["Common_Online"] : L["Common_Offline"])
+                            - @character.PlayerName
+                        </span>
+                    </li>
+                }
+            </ul>
+        }
+
+        @if (ObservedCharacterSheet is not null)
+        {
+            <hr />
+            <h4>@L["SessionPage_SelectedCharacterSheet"]</h4>
+            @RenderCharacterSheet(ObservedCharacterSheet, true)
+
+            @if (State.CanEditSessionCharacters)
+            {
+                <button @onclick="EditObservedCharacter">@L["EditCharacter_Title"]</button>
+            }
+        }
+    }
+
     @if (!string.IsNullOrWhiteSpace(Message))
     {
         <p>@Message</p>
@@ -196,6 +254,10 @@ else
     private PlayerRoomStateDto? State;
     private CharacterSheetDto? ViewedDeadCharacter;
     private ActivePlayerGameTestDto? ActiveTest;
+    private List<SessionCharacterSummaryDto> SpecialRoleCharacters { get; set; } = new();
+    private CharacterSheetDto? ObservedCharacterSheet;
+    private bool SpecialIncludeOffline;
+    private bool SpecialIncludeDead;
     private HubConnection? hubConnection;
     private bool PresenceJoined;
 
@@ -222,7 +284,17 @@ else
             Message = string.Empty;
             State = await CharacterService.GetPlayerRoomStateAsync(PlayerSessionId);
             ViewedDeadCharacter = null;
+            ObservedCharacterSheet = null;
             StartCreationCountdownIfNeeded();
+
+            if (State.CanViewSessionCharacters)
+            {
+                await LoadSpecialRoleCharacters();
+            }
+            else
+            {
+                SpecialRoleCharacters.Clear();
+            }
         }
         catch (Exception ex)
         {
@@ -336,6 +408,61 @@ else
         }
     }
 
+    private async Task LoadSpecialRoleCharacters()
+    {
+        try
+        {
+            if (State is null || !State.CanViewSessionCharacters)
+            {
+                SpecialRoleCharacters.Clear();
+                ObservedCharacterSheet = null;
+                return;
+            }
+
+            SpecialRoleCharacters = await CharacterService.GetSessionCharacterSummariesForPlayerAsync(
+                PlayerSessionId,
+                SpecialIncludeOffline,
+                SpecialIncludeDead);
+
+            if (ObservedCharacterSheet is not null)
+            {
+                ObservedCharacterSheet = await CharacterService.GetCharacterSheetForPlayerAsync(PlayerSessionId, ObservedCharacterSheet.CharacterId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task LoadObservedCharacter(Guid characterId)
+    {
+        try
+        {
+            ObservedCharacterSheet = await CharacterService.GetCharacterSheetForPlayerAsync(PlayerSessionId, characterId);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void EditObservedCharacter()
+    {
+        if (State is null || ObservedCharacterSheet is null || !State.CanEditSessionCharacters)
+            return;
+
+        Navigation.NavigateTo($"/mj/session/{State.SessionId}/characters/{ObservedCharacterSheet.CharacterId}/edit?room={PlayerSessionId}");
+    }
+
+    private void EditSessionGameSystem()
+    {
+        if (State?.SessionGameSystemId is null || !State.CanEditSessionGameSystem)
+            return;
+
+        Navigation.NavigateTo($"/mj/gamesystems/{State.SessionGameSystemId.Value}");
+    }
+
     private RenderFragment RenderCharacterSheet(CharacterSheetDto sheet, bool readOnly) => builder =>
     {
         var seq = 0;
@@ -438,9 +565,12 @@ else
 
         if (readOnly)
         {
-            builder.OpenElement(seq++, "p");
-            builder.AddContent(seq++, L["PlayerRoom_ReadOnlyDeadCharacter"]);
-            builder.CloseElement();
+            @if (!sheet.IsAlive)
+            {
+                builder.OpenElement(seq++, "p");
+                builder.AddContent(seq++, L["PlayerRoom_ReadOnlyDeadCharacter"]);
+                builder.CloseElement();
+            }
         }
     };
 

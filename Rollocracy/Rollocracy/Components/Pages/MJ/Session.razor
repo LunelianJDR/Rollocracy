@@ -108,6 +108,51 @@ else
 
     <hr />
 
+    <h4>@L["SessionPage_SpecialRolesSection"]</h4>
+
+    <div>
+        <button @onclick="AddSpecialRole">@L["SessionPage_AddSpecialRole"]</button>
+    </div>
+
+    @if (ShowSpecialRoleEditor)
+    {
+        <div style="margin-top:8px;">
+            <select @bind="SelectedSpecialRolePlayerSessionId">
+                <option value="">@L["SessionPage_SelectPlayer"]</option>
+                @foreach (var player in SpecialRoleEligiblePlayers)
+                {
+                    <option value="@player.Id">@player.PlayerName</option>
+                }
+            </select>
+
+            <select @bind="SelectedSpecialRole">
+                <option value="@SessionSpecialRole.Observer">@L["SessionSpecialRole_Observer"]</option>
+                <option value="@SessionSpecialRole.Assistant">@L["SessionSpecialRole_Assistant"]</option>
+            </select>
+
+            <button @onclick="ValidateSpecialRole">@L["Common_Save"]</button>
+        </div>
+    }
+
+    @if (SpecialRoleAssignments.Count == 0)
+    {
+        <p>@L["SessionPage_NoSpecialRoles"]</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var player in SpecialRoleAssignments)
+            {
+                <li>
+                    @player.PlayerName - @(player.SpecialRole == SessionSpecialRole.Assistant ? L["SessionSpecialRole_Assistant"] : L["SessionSpecialRole_Observer"])
+                    <button @onclick="() => RemoveSpecialRole(player.Id)">@L["EditGameSystem_Delete"]</button>
+                </li>
+            }
+        </ul>
+    }
+
+    <hr />
+
     <h4>@L["GameTest_GameMasterSectionTitle"]</h4>
 
     @if (AssignedGameSystem is null)
@@ -904,6 +949,10 @@ else
 
     <h4>@L["SessionPage_CharactersSection"]</h4>
 
+    <div style="margin-bottom:12px;">
+        <button @onclick="CreateNpc">@L["SessionPage_CreateNpc"]</button>
+    </div>
+
     <div>
         <label>
             <input type="checkbox" @bind="ShowPlayerName" />
@@ -946,6 +995,13 @@ else
         </label>
     </div>
 
+    <div>
+        <label>
+            <input type="checkbox" @bind="IncludeNpcs" @bind:after="RefreshCharacterSection" />
+            @L["SessionPage_ShowNpcs"]
+        </label>
+    </div>
+
     @if (Characters.Count == 0)
     {
         <p>@L["SessionPage_NoCharactersToDisplay"]</p>
@@ -963,6 +1019,10 @@ else
                     <span>
                         - @(character.IsAlive? L["Common_Alive"] : L["Common_Dead"])
                         - @(character.IsOnline? L["Common_Online"] : L["Common_Offline"])
+                        @if (character.IsNpc)
+                        {
+                            <text> - @L["Common_Npc"]</text>
+                        }
                     </span>
 
                     @if (ShowPlayerName)
@@ -1100,6 +1160,11 @@ else
     private List<EditableDerivedStatDefinitionDto> AvailableDerivedStats = new();
     private List<EditableTalentDefinitionDto> AvailableTalents = new();
     private List<EditableItemDefinitionDto> AvailableItems = new();
+    private List<PlayerSession> SpecialRoleEligiblePlayers = new();
+    private List<PlayerSession> SpecialRoleAssignments = new();
+    private string SelectedSpecialRolePlayerSessionId = string.Empty;
+    private SessionSpecialRole SelectedSpecialRole = SessionSpecialRole.Observer;
+    private bool ShowSpecialRoleEditor;
 
     private TestModifierMode NewModifierMode = TestModifierMode.Bonus;
     private int NewDifficultyValue = 0;
@@ -1117,6 +1182,7 @@ else
     private bool ShowGauges;
     private bool IncludeOffline;
     private bool IncludeDead;
+    private bool IncludeNpcs;
 
     private Guid CurrentUserId;
     private string CurrentUsername = string.Empty;
@@ -1215,6 +1281,9 @@ else
         AvailableItems.Clear();
         SelectedGameSystemId = string.Empty;
 
+        SpecialRoleEligiblePlayers = await SessionService.GetEligibleSpecialRolePlayersAsync(SessionId, CurrentUserId);
+        SpecialRoleAssignments = await SessionService.GetPlayersWithSpecialRolesAsync(SessionId, CurrentUserId);
+
         if (CurrentSession?.GameSystemId is Guid gameSystemId)
         {
             AssignedGameSystem = await GameSystemService.GetGameSystemByIdAsync(gameSystemId, CurrentUserId);
@@ -1260,7 +1329,7 @@ else
     private async Task RefreshSessionVisuals()
     {
         SessionStats = await CharacterService.GetSessionPublicStatsAsync(SessionId);
-        Characters = await CharacterService.GetSessionCharacterSummariesAsync(SessionId, IncludeOffline, IncludeDead);
+        Characters = await CharacterService.GetSessionCharacterSummariesAsync(SessionId, IncludeOffline, IncludeDead, IncludeNpcs);
 
         if (SelectedCharacterSheet is not null)
         {
@@ -1292,6 +1361,57 @@ else
     private void GoToCreateGameSystem()
     {
         Navigation.NavigateTo("/mj/gamesystems");
+    }
+
+    private void AddSpecialRole()
+    {
+        ShowSpecialRoleEditor = true;
+
+        if (string.IsNullOrWhiteSpace(SelectedSpecialRolePlayerSessionId) && SpecialRoleEligiblePlayers.Count > 0)
+        {
+            SelectedSpecialRolePlayerSessionId = SpecialRoleEligiblePlayers.First().Id.ToString();
+        }
+    }
+
+    private async Task ValidateSpecialRole()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(SelectedSpecialRolePlayerSessionId))
+            {
+                Message = L["SessionPage_SelectPlayer"];
+                return;
+            }
+
+            await SessionService.AssignSpecialRoleAsync(
+                SessionId,
+                CurrentUserId,
+                Guid.Parse(SelectedSpecialRolePlayerSessionId),
+                SelectedSpecialRole);
+
+            ShowSpecialRoleEditor = false;
+            await LoadSessionData();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task RemoveSpecialRole(Guid playerSessionId)
+    {
+        try
+        {
+            Message = string.Empty;
+            await SessionService.RemoveSpecialRoleAsync(SessionId, CurrentUserId, playerSessionId);
+            await LoadSessionData();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
     }
 
     private async Task AssignSelectedGameSystem()
@@ -1880,6 +2000,12 @@ else
             return;
 
         Navigation.NavigateTo($"/mj/session/{SessionId}/characters/{SelectedCharacterSheet.CharacterId}/edit");
+    }
+
+    private async Task CreateNpc()
+    {
+        var playerSessionId = await CharacterService.GetPlayerSessionIdForUserAsync(SessionId, CurrentUserId);
+        Navigation.NavigateTo($"/player/create-character/{playerSessionId}?npc=true");
     }
 
 }

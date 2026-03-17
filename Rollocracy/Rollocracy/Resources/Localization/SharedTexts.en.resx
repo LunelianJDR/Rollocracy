@@ -1786,4 +1786,52 @@
 	<data name="Backend_InvalidModifierOperation" xml:space="preserve">
   <value>Invalid modifier operation.</value>
 </data>
+	<data name="SessionPage_SpecialRolesSection" xml:space="preserve">
+  <value>Special roles</value>
+</data>
+	<data name="SessionPage_AddSpecialRole" xml:space="preserve">
+  <value>Add a special role</value>
+</data>
+	<data name="SessionPage_SelectPlayer" xml:space="preserve">
+  <value>Select a player</value>
+</data>
+	<data name="SessionPage_NoSpecialRoles" xml:space="preserve">
+  <value>No special roles assigned.</value>
+</data>
+	<data name="SessionSpecialRole_Observer" xml:space="preserve">
+  <value>Observer</value>
+</data>
+	<data name="SessionSpecialRole_Assistant" xml:space="preserve">
+  <value>Assistant</value>
+</data>
+	<data name="Backend_InvalidSpecialRole" xml:space="preserve">
+  <value>Invalid special role.</value>
+</data>
+	<data name="Backend_SpecialRoleRequiresCharacter" xml:space="preserve">
+  <value>This player must have created at least one character in the session to receive a special role.</value>
+</data>
+	<data name="Backend_PlayerCannotViewSessionCharacters" xml:space="preserve">
+  <value>This player is not allowed to view other characters' sheets.</value>
+</data>
+	<data name="Backend_PlayerCannotEditSessionCharacters" xml:space="preserve">
+  <value>This player is not allowed to edit other characters' sheets.</value>
+</data>
+	<data name="CreateCharacter_TitleNpc" xml:space="preserve">
+  <value>Create an NPC</value>
+</data>
+	<data name="CreateCharacter_SubmitNpc" xml:space="preserve">
+  <value>Create this NPC</value>
+</data>
+	<data name="MassDistribution_IncludeNpcs" xml:space="preserve">
+  <value>Include NPCs</value>
+</data>
+	<data name="SessionPage_CreateNpc" xml:space="preserve">
+  <value>Create NPC</value>
+</data>
+	<data name="SessionPage_ShowNpcs" xml:space="preserve">
+  <value>Show NPCs</value>
+</data>
+	<data name="Common_Npc" xml:space="preserve">
+  <value>NPC</value>
+</data>
 </root>

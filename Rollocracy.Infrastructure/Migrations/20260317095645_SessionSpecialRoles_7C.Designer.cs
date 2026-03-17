@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Rollocracy.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Rollocracy.Infrastructure.Persistence;
 namespace Rollocracy.Infrastructure.Migrations
 {
     [DbContext(typeof(RollocracyDbContext))]
-    partial class RollocracyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260317095645_SessionSpecialRoles_7C")]
+    partial class SessionSpecialRoles_7C
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -115,9 +118,6 @@ namespace Rollocracy.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsAlive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsNpc")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")

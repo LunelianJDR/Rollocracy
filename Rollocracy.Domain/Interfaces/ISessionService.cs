@@ -31,6 +31,14 @@ namespace Rollocracy.Domain.Interfaces
 
         Task<int> GetAliveCharacterCountAsync(Guid sessionId);
 
+        Task<List<PlayerSession>> GetEligibleSpecialRolePlayersAsync(Guid sessionId, Guid gameMasterUserAccountId);
+
+        Task<List<PlayerSession>> GetPlayersWithSpecialRolesAsync(Guid sessionId, Guid gameMasterUserAccountId);
+
+        Task AssignSpecialRoleAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid playerSessionId, SessionSpecialRole role);
+
+        Task RemoveSpecialRoleAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid playerSessionId);
+
         Task AssignGameSystemToSessionAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid gameSystemId);
 
         Task<bool> CanUserCreateSessionsAsync(Guid userAccountId);

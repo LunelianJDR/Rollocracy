@@ -877,16 +877,13 @@ else
 
         CurrentUserId = Guid.Parse(userIdValue);
 
-        var canCreateSessions = await SessionService.CanUserCreateSessionsAsync(CurrentUserId);
+        await LoadEditor();
 
-        if (!canCreateSessions)
+        if (CurrentSystem is null)
         {
-            RedirectToHome = true;
             IsLoaded = true;
             return;
         }
-
-        await LoadEditor();
         IsLoaded = true;
     }
 

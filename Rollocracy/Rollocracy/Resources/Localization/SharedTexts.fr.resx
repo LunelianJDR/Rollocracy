@@ -1787,4 +1787,52 @@
 	<data name="Backend_InvalidModifierOperation" xml:space="preserve">
   <value>Opération de modificateur invalide.</value>
 </data>
+	<data name="SessionPage_SpecialRolesSection" xml:space="preserve">
+  <value>Rôles spéciaux</value>
+</data>
+	<data name="SessionPage_AddSpecialRole" xml:space="preserve">
+  <value>Ajouter un rôle spécial</value>
+</data>
+	<data name="SessionPage_SelectPlayer" xml:space="preserve">
+  <value>Sélectionner un joueur</value>
+</data>
+	<data name="SessionPage_NoSpecialRoles" xml:space="preserve">
+  <value>Aucun rôle spécial attribué.</value>
+</data>
+	<data name="SessionSpecialRole_Observer" xml:space="preserve">
+  <value>Observateur</value>
+</data>
+	<data name="SessionSpecialRole_Assistant" xml:space="preserve">
+  <value>Assistant</value>
+</data>
+	<data name="Backend_InvalidSpecialRole" xml:space="preserve">
+  <value>Rôle spécial invalide.</value>
+</data>
+	<data name="Backend_SpecialRoleRequiresCharacter" xml:space="preserve">
+  <value>Ce joueur doit avoir créé au moins un personnage dans la session pour recevoir un rôle spécial.</value>
+</data>
+	<data name="Backend_PlayerCannotViewSessionCharacters" xml:space="preserve">
+  <value>Ce joueur n'a pas le droit de consulter les fiches des autres personnages.</value>
+</data>
+	<data name="Backend_PlayerCannotEditSessionCharacters" xml:space="preserve">
+  <value>Ce joueur n'a pas le droit de modifier les fiches des autres personnages.</value>
+</data>
+	<data name="CreateCharacter_TitleNpc" xml:space="preserve">
+  <value>Créer un PNJ</value>
+</data>
+	<data name="CreateCharacter_SubmitNpc" xml:space="preserve">
+  <value>Créer ce PNJ</value>
+</data>
+	<data name="MassDistribution_IncludeNpcs" xml:space="preserve">
+  <value>Inclure les PNJ</value>
+</data>
+	<data name="SessionPage_CreateNpc" xml:space="preserve">
+  <value>Créer un PNJ</value>
+</data>
+	<data name="SessionPage_ShowNpcs" xml:space="preserve">
+  <value>Afficher les PNJ</value>
+</data>
+	<data name="Common_Npc" xml:space="preserve">
+  <value>PNJ</value>
+</data>
 </root>
