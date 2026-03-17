@@ -634,7 +634,7 @@ namespace Rollocracy.Infrastructure.Services
             // Modificateurs portés directement par les options de traits
             var choiceOptionModifiers = await context.Set<ChoiceOptionModifierDefinition>()
                 .AsNoTracking()
-                .Where(x => options.Select(o => o.Id).Contains(x.TraitOptionId))
+                .Where(x => options.Select(o => o.Id).Contains(x.ChoiceOptionDefinitionId))
                 .ToListAsync();
 
             var gauges = await context.GaugeDefinitions
@@ -804,19 +804,17 @@ namespace Rollocracy.Infrastructure.Services
                             TraitOptionId = o.Id,
                             Name = o.Name,
                             Modifiers = choiceOptionModifiers
-                                .Where(m => m.TraitOptionId == o.Id)
+                                .Where(m => m.ChoiceOptionDefinitionId == o.Id)
                                 .Select(m => new EditableModifierDefinitionDto
                                 {
-                                    ModifierId = m.Id,
+                                    Id = m.Id,
+                                    OperationType = m.OperationType,
                                     TargetType = m.TargetType,
                                     TargetId = m.TargetId,
-                                    TargetName = ResolveModifierTargetName(m.TargetType, m.TargetId, attributes, derivedStats, metricDefinitions),
-                                    AddValue = m.AddValue,
+                                    TargetNameSnapshot = m.TargetNameSnapshot,
+                                    Value = m.Value,
                                     ValueMode = m.ValueMode,
-                                    SourceMetricId = m.SourceMetricId,
-                                    SourceMetricName = m.SourceMetricId.HasValue
-                                    ? metricDefinitions.FirstOrDefault(x => x.Id == m.SourceMetricId.Value)?.Name ?? string.Empty
-                                    : string.Empty
+                                    SourceMetricId = m.SourceMetricId
                                 })
                                 .ToList()
                         })
@@ -841,16 +839,14 @@ namespace Rollocracy.Infrastructure.Services
                     .Where(m => m.TalentDefinitionId == t.Id)
                     .Select(m => new EditableModifierDefinitionDto
                     {
-                        ModifierId = m.Id,
+                        Id = m.Id,
+                        OperationType = ModifierOperationType.AddValue,
                         TargetType = m.TargetType,
                         TargetId = m.TargetId,
-                        TargetName = ResolveModifierTargetName(m.TargetType, m.TargetId, attributes, derivedStats, metricDefinitions),
-                        AddValue = m.AddValue,
+                        TargetNameSnapshot = ResolveModifierTargetName(m.TargetType, m.TargetId, attributes, derivedStats, metricDefinitions, talents, items),
+                        Value = m.AddValue,
                         ValueMode = m.ValueMode,
-                        SourceMetricId = m.SourceMetricId,
-                        SourceMetricName = m.SourceMetricId.HasValue
-                        ? metricDefinitions.FirstOrDefault(x => x.Id == m.SourceMetricId.Value)?.Name ?? string.Empty
-                        : string.Empty
+                        SourceMetricId = m.SourceMetricId
                     }).ToList()
                 }).ToList(),
                 Items = items.Select(i => new EditableItemDefinitionDto
@@ -863,16 +859,14 @@ namespace Rollocracy.Infrastructure.Services
                         .Where(m => m.ItemDefinitionId == i.Id)
                         .Select(m => new EditableModifierDefinitionDto
                         {
-                            ModifierId = m.Id,
+                            Id = m.Id,
+                            OperationType = ModifierOperationType.AddValue,
                             TargetType = m.TargetType,
                             TargetId = m.TargetId,
-                            TargetName = ResolveModifierTargetName(m.TargetType, m.TargetId, attributes, derivedStats, metricDefinitions),
-                            AddValue = m.AddValue,
+                            TargetNameSnapshot = ResolveModifierTargetName(m.TargetType, m.TargetId, attributes, derivedStats, metricDefinitions, talents, items),
+                            Value = m.AddValue,
                             ValueMode = m.ValueMode,
-                            SourceMetricId = m.SourceMetricId,
-                            SourceMetricName = m.SourceMetricId.HasValue
-                            ? metricDefinitions.FirstOrDefault(x => x.Id == m.SourceMetricId.Value)?.Name ?? string.Empty
-                            : string.Empty
+                            SourceMetricId = m.SourceMetricId
                         }).ToList()
                 }).ToList()
             };
@@ -1013,7 +1007,7 @@ namespace Rollocracy.Infrastructure.Services
                 .ToListAsync();
 
             var currentChoiceOptionModifiers = await context.Set<ChoiceOptionModifierDefinition>()
-                .Where(x => currentOptions.Select(o => o.Id).Contains(x.TraitOptionId))
+                .Where(x => currentOptions.Select(o => o.Id).Contains(x.ChoiceOptionDefinitionId))
                 .ToListAsync();
 
             var currentAttributes = await context.AttributeDefinitions
@@ -1526,7 +1520,7 @@ namespace Rollocracy.Infrastructure.Services
                         .ToListAsync();
 
                     var optionModifiersToDelete = await context.Set<ChoiceOptionModifierDefinition>()
-                        .Where(x => removedOptionIds.Contains(x.TraitOptionId))
+                        .Where(x => removedOptionIds.Contains(x.ChoiceOptionDefinitionId))
                         .ToListAsync();
 
                     context.CharacterTraitValues.RemoveRange(traitValuesToDelete);
@@ -1566,7 +1560,7 @@ namespace Rollocracy.Infrastructure.Services
                 var optionsToDelete = currentOptions.Where(x => removedTraitIds.Contains(x.TraitDefinitionId)).ToList();
 
                 var optionModifiersToDelete = await context.Set<ChoiceOptionModifierDefinition>()
-                    .Where(x => optionsToDelete.Select(o => o.Id).Contains(x.TraitOptionId))
+                    .Where(x => optionsToDelete.Select(o => o.Id).Contains(x.ChoiceOptionDefinitionId))
                     .ToListAsync();
 
                 context.CharacterTraitValues.RemoveRange(valuesToDelete);
@@ -1617,40 +1611,54 @@ namespace Rollocracy.Infrastructure.Services
                         continue;
 
                     var currentModifiers = await context.Set<ChoiceOptionModifierDefinition>()
-                        .Where(x => x.TraitOptionId == option.TraitOptionId.Value)
+                        .Where(x => x.ChoiceOptionDefinitionId == option.TraitOptionId.Value)
                         .ToListAsync();
+
+                    var incomingIds = option.Modifiers
+                        .Where(x => x.Id != Guid.Empty)
+                        .Select(x => x.Id)
+                        .ToHashSet();
+
+                    var toDelete = currentModifiers
+                        .Where(x => !incomingIds.Contains(x.Id))
+                        .ToList();
+
+                    if (toDelete.Count > 0)
+                        context.Set<ChoiceOptionModifierDefinition>().RemoveRange(toDelete);
 
                     foreach (var modifier in option.Modifiers)
                     {
-                        if (modifier.IsDeleted && modifier.ModifierId.HasValue)
+                        var sourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
+                            ? modifier.SourceMetricId
+                            : null;
+
+                        var targetNameSnapshot = modifier.TargetNameSnapshot ?? string.Empty;
+
+                        var existing = currentModifiers.FirstOrDefault(x => x.Id == modifier.Id);
+
+                        if (existing is not null)
                         {
-                            var entity = currentModifiers.First(x => x.Id == modifier.ModifierId.Value);
-                            context.Set<ChoiceOptionModifierDefinition>().Remove(entity);
+                            existing.OperationType = modifier.OperationType;
+                            existing.TargetType = modifier.TargetType;
+                            existing.TargetId = modifier.TargetId;
+                            existing.TargetNameSnapshot = targetNameSnapshot;
+                            existing.ValueMode = modifier.ValueMode;
+                            existing.Value = modifier.Value;
+                            existing.SourceMetricId = sourceMetricId;
                         }
-                        else if (modifier.ModifierId.HasValue)
-                        {
-                            var entity = currentModifiers.First(x => x.Id == modifier.ModifierId.Value);
-                            entity.TargetType = modifier.TargetType;
-                            entity.TargetId = modifier.TargetId;
-                            entity.AddValue = modifier.AddValue;
-                            entity.ValueMode = modifier.ValueMode;
-                            entity.SourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
-                                ? modifier.SourceMetricId
-                                : null;
-                        }
-                        else if (!modifier.IsDeleted)
+                        else
                         {
                             context.Set<ChoiceOptionModifierDefinition>().Add(new ChoiceOptionModifierDefinition
                             {
-                                Id = Guid.NewGuid(),
-                                TraitOptionId = option.TraitOptionId.Value,
+                                Id = modifier.Id == Guid.Empty ? Guid.NewGuid() : modifier.Id,
+                                ChoiceOptionDefinitionId = option.TraitOptionId.Value,
+                                OperationType = modifier.OperationType,
                                 TargetType = modifier.TargetType,
                                 TargetId = modifier.TargetId,
-                                AddValue = modifier.AddValue,
+                                TargetNameSnapshot = targetNameSnapshot,
                                 ValueMode = modifier.ValueMode,
-                                SourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
-                                    ? modifier.SourceMetricId
-                                    : null
+                                Value = modifier.Value,
+                                SourceMetricId = sourceMetricId
                             });
                         }
                     }
@@ -1791,7 +1799,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var choiceOptionModifiers = await context.ChoiceOptionModifierDefinitions
                 .AsNoTracking()
-                .Where(x => traitOptionIds.Contains(x.TraitOptionId))
+                .Where(x => traitOptionIds.Contains(x.ChoiceOptionDefinitionId))
                 .ToListAsync();
 
             var metricDefinitions = await context.MetricDefinitions
@@ -1921,13 +1929,17 @@ namespace Rollocracy.Infrastructure.Services
             Guid targetId,
             List<AttributeDefinition> attributes,
             List<DerivedStatDefinition> derivedStats,
-            List<MetricDefinition> metrics)
+            List<MetricDefinition> metrics,
+            List<TalentDefinition>? talents = null,
+            List<ItemDefinition>? items = null)
         {
             return targetType switch
             {
                 ModifierTargetType.BaseAttribute => attributes.FirstOrDefault(x => x.Id == targetId)?.Name ?? string.Empty,
                 ModifierTargetType.DerivedStat => derivedStats.FirstOrDefault(x => x.Id == targetId)?.Name ?? string.Empty,
                 ModifierTargetType.Metric => metrics.FirstOrDefault(x => x.Id == targetId)?.Name ?? string.Empty,
+                ModifierTargetType.Talent => talents?.FirstOrDefault(x => x.Id == targetId)?.Name ?? string.Empty,
+                ModifierTargetType.Item => items?.FirstOrDefault(x => x.Id == targetId)?.Name ?? string.Empty,
                 _ => string.Empty
             };
         }
@@ -2064,11 +2076,13 @@ namespace Rollocracy.Infrastructure.Services
         private static ChoiceOptionModifierDefinition CloneChoiceOptionModifier(ChoiceOptionModifierDefinition x) => new()
         {
             Id = x.Id,
-            TraitOptionId = x.TraitOptionId,
+            ChoiceOptionDefinitionId = x.ChoiceOptionDefinitionId,
+            OperationType = x.OperationType,
             TargetType = x.TargetType,
             TargetId = x.TargetId,
-            AddValue = x.AddValue,
+            TargetNameSnapshot = x.TargetNameSnapshot,
             ValueMode = x.ValueMode,
+            Value = x.Value,
             SourceMetricId = x.SourceMetricId
         };
 
@@ -2551,19 +2565,29 @@ namespace Rollocracy.Infrastructure.Services
                 .Select(x => x.MetricDefinitionId!.Value)
                 .ToHashSet();
 
+            var availableTalentIds = requestTalents
+                .Where(x => !x.IsDeleted && x.TalentDefinitionId.HasValue)
+                .Select(x => x.TalentDefinitionId!.Value)
+                .ToHashSet();
+
+            var availableItemIds = requestItems
+                .Where(x => !x.IsDeleted && x.ItemDefinitionId.HasValue)
+                .Select(x => x.ItemDefinitionId!.Value)
+                .ToHashSet();
+
             foreach (var option in requestTraits.Where(x => !x.IsDeleted).SelectMany(x => x.Options).Where(x => !x.IsDeleted))
             {
-                ValidateModifierCollection(option.Modifiers, availableAttributeIds, availableDerivedIds, availableMetricIds);
+                ValidateModifierCollection(option.Modifiers, availableAttributeIds, availableDerivedIds, availableMetricIds, availableTalentIds, availableItemIds, true);
             }
 
             foreach (var talent in requestTalents.Where(x => !x.IsDeleted))
             {
-                ValidateModifierCollection(talent.Modifiers, availableAttributeIds, availableDerivedIds, availableMetricIds);
+                ValidateModifierCollection(talent.Modifiers, availableAttributeIds, availableDerivedIds, availableMetricIds, availableTalentIds, availableItemIds, false);
             }
 
             foreach (var item in requestItems.Where(x => !x.IsDeleted))
             {
-                ValidateModifierCollection(item.Modifiers, availableAttributeIds, availableDerivedIds, availableMetricIds);
+                ValidateModifierCollection(item.Modifiers, availableAttributeIds, availableDerivedIds, availableMetricIds, availableTalentIds, availableItemIds, false);
             }
         }
 
@@ -2571,25 +2595,46 @@ namespace Rollocracy.Infrastructure.Services
             List<EditableModifierDefinitionDto> modifiers,
             HashSet<Guid> availableAttributeIds,
             HashSet<Guid> availableDerivedIds,
-            HashSet<Guid> availableMetricIds)
+            HashSet<Guid> availableMetricIds,
+            HashSet<Guid> availableTalentIds,
+            HashSet<Guid> availableItemIds,
+            bool allowGrantRevoke)
         {
-            foreach (var modifier in modifiers.Where(x => !x.IsDeleted))
+            foreach (var modifier in modifiers)
             {
-                var isValidTarget = modifier.TargetType switch
+                if (modifier.OperationType == ModifierOperationType.AddValue)
                 {
-                    ModifierTargetType.BaseAttribute => availableAttributeIds.Contains(modifier.TargetId),
-                    ModifierTargetType.DerivedStat => availableDerivedIds.Contains(modifier.TargetId),
-                    ModifierTargetType.Metric => availableMetricIds.Contains(modifier.TargetId),
-                    _ => false
-                };
+                    var isValidTarget = modifier.TargetType switch
+                    {
+                        ModifierTargetType.BaseAttribute => availableAttributeIds.Contains(modifier.TargetId),
+                        ModifierTargetType.DerivedStat => availableDerivedIds.Contains(modifier.TargetId),
+                        ModifierTargetType.Metric => availableMetricIds.Contains(modifier.TargetId),
+                        _ => false
+                    };
 
-                if (!isValidTarget)
-                    throw new Exception(_localizer["Backend_InvalidModifierTarget"]);
+                    if (!isValidTarget)
+                        throw new Exception(_localizer["Backend_InvalidModifierTarget"]);
 
-                if (modifier.ValueMode == ModifierValueMode.Metric)
+                    if (modifier.ValueMode == ModifierValueMode.Metric)
+                    {
+                        if (!modifier.SourceMetricId.HasValue || !availableMetricIds.Contains(modifier.SourceMetricId.Value))
+                            throw new Exception(_localizer["Backend_InvalidModifierSourceMetric"]);
+                    }
+                }
+                else
                 {
-                    if (!modifier.SourceMetricId.HasValue || !availableMetricIds.Contains(modifier.SourceMetricId.Value))
-                        throw new Exception(_localizer["Backend_InvalidModifierSourceMetric"]);
+                    if (!allowGrantRevoke)
+                        throw new Exception(_localizer["Backend_InvalidModifierOperation"]);
+
+                    var isValidTarget = modifier.TargetType switch
+                    {
+                        ModifierTargetType.Talent => availableTalentIds.Contains(modifier.TargetId),
+                        ModifierTargetType.Item => availableItemIds.Contains(modifier.TargetId),
+                        _ => false
+                    };
+
+                    if (!isValidTarget)
+                        throw new Exception(_localizer["Backend_InvalidModifierTarget"]);
                 }
             }
         }
@@ -2741,37 +2786,45 @@ namespace Rollocracy.Infrastructure.Services
                     .Where(x => x.TalentDefinitionId == talent.TalentDefinitionId.Value)
                     .ToListAsync();
 
+                var incomingIds = talent.Modifiers
+                    .Where(x => x.Id != Guid.Empty)
+                    .Select(x => x.Id)
+                    .ToHashSet();
+
+                var toDelete = currentModifiers
+                    .Where(x => !incomingIds.Contains(x.Id))
+                    .ToList();
+
+                if (toDelete.Count > 0)
+                    context.TalentModifierDefinitions.RemoveRange(toDelete);
+
                 foreach (var modifier in talent.Modifiers)
                 {
-                    if (modifier.IsDeleted && modifier.ModifierId.HasValue)
+                    var sourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
+                        ? modifier.SourceMetricId
+                        : null;
+
+                    var existing = currentModifiers.FirstOrDefault(x => x.Id == modifier.Id);
+
+                    if (existing is not null)
                     {
-                        var entity = currentModifiers.First(x => x.Id == modifier.ModifierId.Value);
-                        context.TalentModifierDefinitions.Remove(entity);
+                        existing.TargetType = modifier.TargetType;
+                        existing.TargetId = modifier.TargetId;
+                        existing.AddValue = modifier.Value;
+                        existing.ValueMode = modifier.ValueMode;
+                        existing.SourceMetricId = sourceMetricId;
                     }
-                    else if (modifier.ModifierId.HasValue)
-                    {
-                        var entity = currentModifiers.First(x => x.Id == modifier.ModifierId.Value);
-                        entity.TargetType = modifier.TargetType;
-                        entity.TargetId = modifier.TargetId;
-                        entity.AddValue = modifier.AddValue;
-                        entity.ValueMode = modifier.ValueMode;
-                        entity.SourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
-                            ? modifier.SourceMetricId
-                            : null;
-                    }
-                    else if (!modifier.IsDeleted)
+                    else
                     {
                         context.TalentModifierDefinitions.Add(new TalentModifierDefinition
                         {
-                            Id = Guid.NewGuid(),
+                            Id = modifier.Id == Guid.Empty ? Guid.NewGuid() : modifier.Id,
                             TalentDefinitionId = talent.TalentDefinitionId.Value,
                             TargetType = modifier.TargetType,
                             TargetId = modifier.TargetId,
-                            AddValue = modifier.AddValue,
+                            AddValue = modifier.Value,
                             ValueMode = modifier.ValueMode,
-                            SourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
-                            ? modifier.SourceMetricId
-                            : null
+                            SourceMetricId = sourceMetricId
                         });
                     }
                 }
@@ -2791,37 +2844,45 @@ namespace Rollocracy.Infrastructure.Services
                     .Where(x => x.ItemDefinitionId == item.ItemDefinitionId.Value)
                     .ToListAsync();
 
+                var incomingIds = item.Modifiers
+                    .Where(x => x.Id != Guid.Empty)
+                    .Select(x => x.Id)
+                    .ToHashSet();
+
+                var toDelete = currentModifiers
+                    .Where(x => !incomingIds.Contains(x.Id))
+                    .ToList();
+
+                if (toDelete.Count > 0)
+                    context.ItemModifierDefinitions.RemoveRange(toDelete);
+
                 foreach (var modifier in item.Modifiers)
                 {
-                    if (modifier.IsDeleted && modifier.ModifierId.HasValue)
+                    var sourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
+                        ? modifier.SourceMetricId
+                        : null;
+
+                    var existing = currentModifiers.FirstOrDefault(x => x.Id == modifier.Id);
+
+                    if (existing is not null)
                     {
-                        var entity = currentModifiers.First(x => x.Id == modifier.ModifierId.Value);
-                        context.ItemModifierDefinitions.Remove(entity);
+                        existing.TargetType = modifier.TargetType;
+                        existing.TargetId = modifier.TargetId;
+                        existing.AddValue = modifier.Value;
+                        existing.ValueMode = modifier.ValueMode;
+                        existing.SourceMetricId = sourceMetricId;
                     }
-                    else if (modifier.ModifierId.HasValue)
-                    {
-                        var entity = currentModifiers.First(x => x.Id == modifier.ModifierId.Value);
-                        entity.TargetType = modifier.TargetType;
-                        entity.TargetId = modifier.TargetId;
-                        entity.AddValue = modifier.AddValue;
-                        entity.ValueMode = modifier.ValueMode;
-                        entity.SourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
-                            ? modifier.SourceMetricId
-                            : null;
-                    }
-                    else if (!modifier.IsDeleted)
+                    else
                     {
                         context.ItemModifierDefinitions.Add(new ItemModifierDefinition
                         {
-                            Id = Guid.NewGuid(),
+                            Id = modifier.Id == Guid.Empty ? Guid.NewGuid() : modifier.Id,
                             ItemDefinitionId = item.ItemDefinitionId.Value,
                             TargetType = modifier.TargetType,
                             TargetId = modifier.TargetId,
-                            AddValue = modifier.AddValue,
+                            AddValue = modifier.Value,
                             ValueMode = modifier.ValueMode,
-                            SourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
-                                ? modifier.SourceMetricId
-                                : null
+                            SourceMetricId = sourceMetricId
                         });
                     }
                 }

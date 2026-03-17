@@ -452,73 +452,102 @@ else
                                 <div style="margin-top:8px;">
                                     <h5>@L["EditGameSystem_ModifiersSection"]</h5>
 
-                                    @foreach (var mod in option.Modifiers.Where(x => !x.IsDeleted))
+                                    @foreach (var mod in option.Modifiers)
                                     {
                                         <div style="margin-left:20px; margin-top:8px;">
-                                            <select @bind="mod.TargetType">
-                                                <option value="@ModifierTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
-                                                <option value="@ModifierTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
-                                                <option value="@ModifierTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                                            <select @bind="mod.OperationType">
+                                                <option value="@ModifierOperationType.AddValue">@L["EditGameSystem_ModifierOperation_AddValue"]</option>
+                                                <option value="@ModifierOperationType.Grant">@L["EditGameSystem_ModifierOperation_Grant"]</option>
+                                                <option value="@ModifierOperationType.Revoke">@L["EditGameSystem_ModifierOperation_Revoke"]</option>
                                             </select>
 
-                                            @if (mod.TargetType == ModifierTargetType.BaseAttribute)
+                                            @if (mod.OperationType == ModifierOperationType.AddValue)
                                             {
-                                                <select @bind="mod.TargetId">
-                                                    @foreach (var target in CurrentSystem.AvailableBaseAttributes)
-                                                    {
-                                                        <option value="@target.AttributeDefinitionId">@target.Name</option>
-                                                    }
+                                                <select @bind="mod.TargetType">
+                                                    <option value="@ModifierTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
+                                                    <option value="@ModifierTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
+                                                    <option value="@ModifierTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
                                                 </select>
-                                            }
-                                            else if (mod.TargetType == ModifierTargetType.DerivedStat)
-                                            {
-                                                <select @bind="mod.TargetId">
-                                                    @foreach (var target in CurrentSystem.AvailableDerivedStats)
-                                                    {
-                                                        <option value="@target.DerivedStatDefinitionId">@target.Name</option>
-                                                    }
-                                                </select>
-                                            }
-                                            else if (mod.TargetType == ModifierTargetType.Metric)
-                                            {
-                                                <select @bind="mod.TargetId">
-                                                    @foreach (var target in CurrentSystem.AvailableMetrics)
-                                                    {
-                                                        <option value="@target.MetricDefinitionId">@target.Name</option>
-                                                    }
-                                                </select>
-                                            }
 
-                                            <select @bind="mod.ValueMode">
-                                                <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
-                                                <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
-                                            </select>
+                                                @if (mod.TargetType == ModifierTargetType.BaseAttribute)
+                                                {
+                                                    <select @bind="mod.TargetId">
+                                                        @foreach (var target in CurrentSystem.AvailableBaseAttributes)
+                                                        {
+                                                            <option value="@target.AttributeDefinitionId">@target.Name</option>
+                                                        }
+                                                    </select>
+                                                }
+                                                else if (mod.TargetType == ModifierTargetType.DerivedStat)
+                                                {
+                                                    <select @bind="mod.TargetId">
+                                                        @foreach (var target in CurrentSystem.AvailableDerivedStats)
+                                                        {
+                                                            <option value="@target.DerivedStatDefinitionId">@target.Name</option>
+                                                        }
+                                                    </select>
+                                                }
+                                                else if (mod.TargetType == ModifierTargetType.Metric)
+                                                {
+                                                    <select @bind="mod.TargetId">
+                                                        @foreach (var target in CurrentSystem.AvailableMetrics)
+                                                        {
+                                                            <option value="@target.MetricDefinitionId">@target.Name</option>
+                                                        }
+                                                    </select>
+                                                }
 
-                                            @if (mod.ValueMode == ModifierValueMode.Metric)
-                                            {
-                                                <select @bind="mod.SourceMetricId">
-                                                    @foreach (var sourceMetric in CurrentSystem.AvailableMetrics)
-                                                    {
-                                                        <option value="@sourceMetric.MetricDefinitionId">@sourceMetric.Name</option>
-                                                    }
+                                                <select @bind="mod.ValueMode">
+                                                    <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
+                                                    <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
                                                 </select>
+
+                                                @if (mod.ValueMode == ModifierValueMode.Metric)
+                                                {
+                                                    <select @bind="mod.SourceMetricId">
+                                                        @foreach (var sourceMetric in CurrentSystem.AvailableMetrics)
+                                                        {
+                                                            <option value="@sourceMetric.MetricDefinitionId">@sourceMetric.Name</option>
+                                                        }
+                                                    </select>
+                                                }
+                                                else
+                                                {
+                                                    <input type="number" @bind="mod.Value" />
+                                                }
                                             }
                                             else
                                             {
-                                                <input type="number" @bind="mod.AddValue" />
+                                                <select @bind="mod.TargetType">
+                                                    <option value="@ModifierTargetType.Talent">@L["EditGameSystem_ModifierTarget_Talent"]</option>
+                                                    <option value="@ModifierTargetType.Item">@L["EditGameSystem_ModifierTarget_Item"]</option>
+                                                </select>
+
+                                                @if (mod.TargetType == ModifierTargetType.Talent)
+                                                {
+                                                    <select @bind="mod.TargetId">
+                                                        @foreach (var target in CurrentSystem.Talents.Where(x => !x.IsDeleted && x.TalentDefinitionId.HasValue))
+                                                        {
+                                                            var targetId = target.TalentDefinitionId.GetValueOrDefault();
+                                                            <option value="@targetId">@target.Name</option>
+                                                        }
+                                                    </select>
+                                                }
+                                                else
+                                                {
+                                                    <select @bind="mod.TargetId">
+                                                        @foreach (var target in CurrentSystem.Items.Where(x => !x.IsDeleted && x.ItemDefinitionId.HasValue))
+                                                        {
+                                                            var targetId = target.ItemDefinitionId.GetValueOrDefault();
+                                                            <option value="@targetId">@target.Name</option>
+                                                        }
+                                                    </select>
+                                                }
                                             }
 
-                                            @if (mod.ModifierId.HasValue)
-                                            {
-                                                <button @onclick="() => mod.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
-                                            }
-                                            else
-                                            {
-                                                <button @onclick="() => option.Modifiers.Remove(mod)">@L["EditGameSystem_Delete"]</button>
-                                            }
+                                            <button @onclick="() => option.Modifiers.Remove(mod)">@L["EditGameSystem_Delete"]</button>
                                         </div>
                                     }
-
                                     <button @onclick="() => AddTraitOptionModifierRow(option)">
                                         @L["EditGameSystem_AddModifierRow"]
                                     </button>
@@ -614,7 +643,7 @@ else
                 </div>
                 <h5>@L["EditGameSystem_ModifiersSection"]</h5>
 
-                @foreach (var mod in talent.Modifiers.Where(x => !x.IsDeleted))
+                @foreach (var mod in talent.Modifiers)
                 {
                     <div style="margin-left:20px; margin-top:8px;">
                         <select @bind="mod.TargetType">
@@ -667,17 +696,10 @@ else
                         }
                         else
                         {
-                            <input type="number" @bind="mod.AddValue" />
+                            <input type="number" @bind="mod.Value" />
                         }
 
-                        @if (mod.ModifierId.HasValue)
-                        {
-                            <button @onclick="() => mod.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
-                        }
-                        else
-                        {
-                            <button @onclick="() => talent.Modifiers.Remove(mod)">@L["EditGameSystem_Delete"]</button>
-                        }
+                        <button @onclick="() => talent.Modifiers.Remove(mod)">@L["EditGameSystem_Delete"]</button>
                     </div>
                 }
 
@@ -724,7 +746,7 @@ else
                 </div>
                 <h5>@L["EditGameSystem_ModifiersSection"]</h5>
 
-                @foreach (var mod in item.Modifiers.Where(x => !x.IsDeleted))
+                @foreach (var mod in item.Modifiers)
                 {
                     <div style="margin-left:20px; margin-top:8px;">
                         <select @bind="mod.TargetType">
@@ -777,17 +799,10 @@ else
                         }
                         else
                         {
-                            <input type="number" @bind="mod.AddValue" />
+                            <input type="number" @bind="mod.Value" />
                         }
 
-                        @if (mod.ModifierId.HasValue)
-                        {
-                            <button @onclick="() => mod.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
-                        }
-                        else
-                        {
-                            <button @onclick="() => item.Modifiers.Remove(mod)">@L["EditGameSystem_Delete"]</button>
-                        }
+                        <button @onclick="() => item.Modifiers.Remove(mod)">@L["EditGameSystem_Delete"]</button>
                     </div>
                 }
 
@@ -1090,9 +1105,10 @@ else
 
         option.Modifiers.Add(new EditableModifierDefinitionDto
         {
+            OperationType = ModifierOperationType.AddValue,
             TargetType = ModifierTargetType.BaseAttribute,
             TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
-            AddValue = 0,
+            Value = 0,
             ValueMode = ModifierValueMode.Fixed,
             SourceMetricId = CurrentSystem?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId
         });
@@ -1229,7 +1245,7 @@ else
         {
             TargetType = ModifierTargetType.BaseAttribute,
             TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
-            AddValue = 0,
+            Value = 0,
             ValueMode = ModifierValueMode.Fixed,
             SourceMetricId = CurrentSystem?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId
         });
@@ -1243,7 +1259,7 @@ else
         {
             TargetType = ModifierTargetType.BaseAttribute,
             TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
-            AddValue = 0,
+            Value = 0,
             ValueMode = ModifierValueMode.Fixed,
             SourceMetricId = CurrentSystem?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId
         });

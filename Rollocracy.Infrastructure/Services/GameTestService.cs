@@ -1131,7 +1131,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var choiceOptionModifiers = await context.ChoiceOptionModifierDefinitions
                 .AsNoTracking()
-                .Where(m => traitOptionIds.Contains(m.TraitOptionId))
+                .Where(m => traitOptionIds.Contains(m.ChoiceOptionDefinitionId))
                 .ToListAsync();
 
             var characterTalentIds = await context.CharacterTalents
@@ -1170,7 +1170,7 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     TargetType = m.TargetType,
                     TargetId = m.TargetId,
-                    AddValue = m.AddValue,
+                    AddValue = m.Value,
                     ValueMode = m.ValueMode,
                     SourceMetricId = m.SourceMetricId
                 })

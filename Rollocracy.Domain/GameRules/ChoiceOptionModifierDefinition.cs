@@ -1,21 +1,24 @@
 using System;
 
-namespace Rollocracy.Domain.GameRules
+namespace Rollocracy.Domain.GameRules;
+
+public class ChoiceOptionModifierDefinition
 {
-    public class ChoiceOptionModifierDefinition
-    {
-        public Guid Id { get; set; }
+    public Guid Id { get; set; }
 
-        public Guid TraitOptionId { get; set; }
+    public Guid ChoiceOptionDefinitionId { get; set; }
 
-        public ModifierTargetType TargetType { get; set; }
+    public ModifierOperationType OperationType { get; set; }
 
-        public Guid TargetId { get; set; }
+    public ModifierTargetType TargetType { get; set; }
 
-        public int AddValue { get; set; }
+    public Guid TargetId { get; set; }
 
-        public ModifierValueMode ValueMode { get; set; }
+    public string TargetNameSnapshot { get; set; } = string.Empty;
 
-        public Guid? SourceMetricId { get; set; }
-    }
+    public ModifierValueMode ValueMode { get; set; }
+
+    public int Value { get; set; }
+
+    public Guid? SourceMetricId { get; set; }
 }
