@@ -52,12 +52,21 @@ namespace Rollocracy.Infrastructure.Services
 
             var aliveCharacter = playerCharacters.FirstOrDefault(c => c.IsAlive);
 
+            var sessionGameSystem = session.GameSystemId.HasValue
+                ? await context.GameSystems.AsNoTracking().FirstOrDefaultAsync(gs => gs.Id == session.GameSystemId.Value)
+                : null;
+
             var result = new PlayerRoomStateDto
             {
                 PlayerSessionId = playerSessionId,
                 SessionId = session.Id,
                 HasAssignedGameSystem = session.GameSystemId.HasValue,
-                SessionStats = stats
+                SessionGameSystemId = session.GameSystemId,
+                SessionStats = stats,
+                SpecialRole = playerSession.SpecialRole,
+                CanViewSessionCharacters = playerSession.SpecialRole == SessionSpecialRole.Observer || playerSession.SpecialRole == SessionSpecialRole.Assistant,
+                CanEditSessionCharacters = playerSession.SpecialRole == SessionSpecialRole.Assistant,
+                CanEditSessionGameSystem = playerSession.SpecialRole == SessionSpecialRole.Assistant && sessionGameSystem?.LockedToSessionId == session.Id
             };
 
             if (aliveCharacter != null)
@@ -240,6 +249,129 @@ namespace Rollocracy.Infrastructure.Services
                 Name = name.Trim(),
                 Biography = biography?.Trim() ?? string.Empty,
                 IsAlive = true,
+                IsNpc = false,
+                DiedAtUtc = null
+            };
+
+            context.Characters.Add(character);
+
+            foreach (var attributeDefinition in attributeDefinitions)
+            {
+                var value = GenerateAttributeDefaultValue(attributeDefinition);
+
+                if (attributeValues.TryGetValue(attributeDefinition.Id, out var submittedValue))
+                {
+                    value = submittedValue;
+                }
+
+                value = Math.Clamp(value, attributeDefinition.MinValue, attributeDefinition.MaxValue);
+
+                context.CharacterAttributeValues.Add(new CharacterAttributeValue
+                {
+                    Id = Guid.NewGuid(),
+                    CharacterId = character.Id,
+                    AttributeDefinitionId = attributeDefinition.Id,
+                    Value = value
+                });
+            }
+
+            foreach (var traitDefinition in traitDefinitions)
+            {
+                if (!traitSelections.TryGetValue(traitDefinition.Id, out var selectedOptionId))
+                    throw new Exception(_localizer["Backend_MissingTraitSelection"]);
+
+                var optionExists = await context.TraitOptions
+                    .AsNoTracking()
+                    .AnyAsync(o => o.Id == selectedOptionId && o.TraitDefinitionId == traitDefinition.Id);
+
+                if (!optionExists)
+                    throw new Exception(_localizer["Backend_InvalidTraitSelection"]);
+
+                context.CharacterTraitValues.Add(new CharacterTraitValue
+                {
+                    Id = Guid.NewGuid(),
+                    CharacterId = character.Id,
+                    TraitDefinitionId = traitDefinition.Id,
+                    TraitOptionId = selectedOptionId
+                });
+            }
+
+            foreach (var gaugeDefinition in gaugeDefinitions)
+            {
+                context.CharacterGaugeValues.Add(new CharacterGaugeValue
+                {
+                    Id = Guid.NewGuid(),
+                    CharacterId = character.Id,
+                    GaugeDefinitionId = gaugeDefinition.Id,
+                    Value = gaugeDefinition.DefaultValue
+                });
+
+                if (gaugeDefinition.IsHealthGauge && gaugeDefinition.DefaultValue <= 0)
+                {
+                    character.IsAlive = false;
+                    character.DiedAtUtc = DateTime.UtcNow;
+                }
+            }
+
+            await context.SaveChangesAsync();
+
+            return character;
+        }
+
+        public async Task<Character> CreateNpcAsync(
+            Guid playerSessionId,
+            string name,
+            string biography,
+            Dictionary<Guid, int> attributeValues,
+            Dictionary<Guid, Guid> traitSelections)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps => ps.Id == playerSessionId);
+
+            if (playerSession == null)
+                throw new Exception(_localizer["Backend_PlayerSessionNotFound"]);
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == playerSession.SessionId);
+
+            if (session == null)
+                throw new Exception(_localizer["Backend_SessionNotFound"]);
+
+            if (!session.GameSystemId.HasValue)
+                throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
+
+            if (string.IsNullOrWhiteSpace(name))
+                throw new Exception(_localizer["Backend_CharacterNameRequired"]);
+
+            var gameSystemId = session.GameSystemId.Value;
+
+            var attributeDefinitions = await context.AttributeDefinitions
+                .AsNoTracking()
+                .Where(a => a.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var traitDefinitions = await context.TraitDefinitions
+                .AsNoTracking()
+                .Where(t => t.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var gaugeDefinitions = await context.GaugeDefinitions
+                .AsNoTracking()
+                .Where(g => g.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var character = new Character
+            {
+                Id = Guid.NewGuid(),
+                PlayerSessionId = playerSessionId,
+                Name = name.Trim(),
+                Biography = biography?.Trim() ?? string.Empty,
+                IsAlive = true,
+                IsNpc = true,
                 DiedAtUtc = null
             };
 
@@ -320,58 +452,104 @@ namespace Rollocracy.Infrastructure.Services
             return await BuildSessionStatsAsync(context, sessionId);
         }
 
+        public async Task<Guid> GetPlayerSessionIdForUserAsync(Guid sessionId, Guid userAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps => ps.SessionId == sessionId && ps.UserAccountId == userAccountId);
+
+            if (playerSession == null)
+                throw new Exception(_localizer["Backend_PlayerSessionNotFound"]);
+
+            return playerSession.Id;
+        }
+
+        public async Task<List<SessionCharacterSummaryDto>> GetSessionCharacterSummariesAsync(
+            Guid sessionId,
+            bool includeOffline,
+            bool includeDead,
+            bool includeNpcs)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await GetSessionCharacterSummariesInternalAsync(context, sessionId, includeOffline, includeDead, includeNpcs);
+        }
+
         public async Task<List<SessionCharacterSummaryDto>> GetSessionCharacterSummariesAsync(
             Guid sessionId,
             bool includeOffline,
             bool includeDead)
         {
+            return await GetSessionCharacterSummariesAsync(
+                sessionId,
+                includeOffline,
+                includeDead,
+                includeNpcs: false);
+        }
+
+        public async Task<List<SessionCharacterSummaryDto>> GetSessionCharacterSummariesForPlayerAsync(
+            Guid playerSessionId,
+            bool includeOffline,
+            bool includeDead)
+        {
+            return await GetSessionCharacterSummariesForPlayerAsync(
+                playerSessionId,
+                includeOffline,
+                includeDead,
+                includeNpcs: false);
+        }
+
+        public async Task<List<SessionCharacterSummaryDto>> GetSessionCharacterSummariesForPlayerAsync(
+            Guid playerSessionId,
+            bool includeOffline,
+            bool includeDead,
+            bool includeNpcs)
+        {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
-            var rows = await context.Characters
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps => ps.Id == playerSessionId);
+
+            if (playerSession == null)
+                throw new Exception(_localizer["Backend_PlayerSessionNotFound"]);
+
+            if (playerSession.SpecialRole != SessionSpecialRole.Observer && playerSession.SpecialRole != SessionSpecialRole.Assistant)
+                throw new Exception(_localizer["Backend_PlayerCannotViewSessionCharacters"]);
+
+            return await GetSessionCharacterSummariesInternalAsync(context, playerSession.SessionId, includeOffline, includeDead, includeNpcs);
+        }
+
+        public async Task<CharacterSheetDto?> GetCharacterSheetForPlayerAsync(Guid playerSessionId, Guid characterId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps => ps.Id == playerSessionId);
+
+            if (playerSession == null)
+                throw new Exception(_localizer["Backend_PlayerSessionNotFound"]);
+
+            if (playerSession.SpecialRole != SessionSpecialRole.Observer && playerSession.SpecialRole != SessionSpecialRole.Assistant)
+                throw new Exception(_localizer["Backend_PlayerCannotViewSessionCharacters"]);
+
+            var row = await context.Characters
                 .AsNoTracking()
                 .Join(
                     context.PlayerSessions.AsNoTracking(),
                     character => character.PlayerSessionId,
-                    playerSession => playerSession.Id,
-                    (character, playerSession) => new { character, playerSession })
-                .Where(x => x.playerSession.SessionId == sessionId)
-                .OrderBy(x => x.character.Name)
-                .ToListAsync();
+                    sessionPlayer => sessionPlayer.Id,
+                    (character, sessionPlayer) => new { character, sessionPlayer })
+                .FirstOrDefaultAsync(x =>
+                    x.character.Id == characterId &&
+                    x.sessionPlayer.SessionId == playerSession.SessionId);
 
-            var result = new List<SessionCharacterSummaryDto>();
+            if (row == null)
+                return null;
 
-            foreach (var row in rows)
-            {
-                var isOnline = _presenceTracker.IsPlayerOnline(row.playerSession.Id);
-
-                if (!includeOffline && !isOnline)
-                    continue;
-
-                if (!includeDead && !row.character.IsAlive)
-                    continue;
-
-                var sheet = await BuildCharacterSheetAsync(context, row.playerSession.Id, row.character.Id);
-                if (sheet == null)
-                    continue;
-
-                result.Add(new SessionCharacterSummaryDto
-                {
-                    CharacterId = row.character.Id,
-                    CharacterName = row.character.Name,
-                    PlayerName = row.playerSession.PlayerName,
-                    IsAlive = row.character.IsAlive,
-                    IsOnline = isOnline,
-                    Attributes = sheet.Attributes,
-                    DerivedStats = sheet.DerivedStats,
-                    Metrics = sheet.Metrics,
-                    Traits = sheet.Traits,
-                    Gauges = sheet.Gauges,
-                    Talents = sheet.Talents,
-                    Items = sheet.Items
-                });
-            }
-
-            return result;
+            return await BuildCharacterSheetAsync(context, row.sessionPlayer.Id, row.character.Id);
         }
 
         public async Task<CharacterSheetDto?> GetCharacterSheetForSessionAsync(Guid sessionId, Guid characterId)
@@ -404,11 +582,13 @@ namespace Rollocracy.Infrastructure.Services
 
             var session = await context.Sessions
                 .AsNoTracking()
-                .FirstOrDefaultAsync(s =>
-                    s.Id == sessionId &&
-                    s.GameMasterUserAccountId == gameMasterUserAccountId);
+                .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (session == null)
+                return null;
+
+            var canEditCharacter = await CanUserEditCharacterInSessionAsync(context, sessionId, gameMasterUserAccountId);
+            if (!canEditCharacter)
                 return null;
 
             if (!session.GameSystemId.HasValue)
@@ -441,12 +621,14 @@ namespace Rollocracy.Infrastructure.Services
 
             var session = await context.Sessions
                 .AsNoTracking()
-                .FirstOrDefaultAsync(s =>
-                    s.Id == sessionId &&
-                    s.GameMasterUserAccountId == gameMasterUserAccountId);
+                .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (session == null)
                 throw new Exception(_localizer["Backend_SessionNotFound"]);
+
+            var canEditCharacter = await CanUserEditCharacterInSessionAsync(context, sessionId, gameMasterUserAccountId);
+            if (!canEditCharacter)
+                throw new Exception(_localizer["Backend_PlayerCannotEditSessionCharacters"]);
 
             if (!session.GameSystemId.HasValue)
                 throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
@@ -744,6 +926,86 @@ namespace Rollocracy.Infrastructure.Services
                 AliveCharactersCount = aliveCharactersCount,
                 TotalCharactersCount = totalCharactersCount
             };
+        }
+
+        private async Task<List<SessionCharacterSummaryDto>> GetSessionCharacterSummariesInternalAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            bool includeOffline,
+            bool includeDead,
+            bool includeNpcs)
+        {
+            var rows = await context.Characters
+                .AsNoTracking()
+                .Join(
+                    context.PlayerSessions.AsNoTracking(),
+                    character => character.PlayerSessionId,
+                    playerSession => playerSession.Id,
+                    (character, playerSession) => new { character, playerSession })
+                .Where(x => x.playerSession.SessionId == sessionId)
+                .OrderBy(x => x.character.Name)
+                .ToListAsync();
+
+            var result = new List<SessionCharacterSummaryDto>();
+
+            foreach (var row in rows)
+            {
+                var isOnline = row.character.IsNpc || _presenceTracker.IsPlayerOnline(row.playerSession.Id);
+
+                if (!includeOffline && !isOnline)
+                    continue;
+
+                if (!includeDead && !row.character.IsAlive)
+                    continue;
+
+                if (!includeNpcs && row.character.IsNpc)
+                    continue;
+
+                var sheet = await BuildCharacterSheetAsync(context, row.playerSession.Id, row.character.Id);
+                if (sheet == null)
+                    continue;
+
+                result.Add(new SessionCharacterSummaryDto
+                {
+                    CharacterId = row.character.Id,
+                    CharacterName = row.character.Name,
+                    PlayerName = row.playerSession.PlayerName,
+                    IsAlive = row.character.IsAlive,
+                    IsOnline = isOnline,
+                    IsNpc = row.character.IsNpc,
+                    Attributes = sheet.Attributes,
+                    DerivedStats = sheet.DerivedStats,
+                    Metrics = sheet.Metrics,
+                    Traits = sheet.Traits,
+                    Gauges = sheet.Gauges,
+                    Talents = sheet.Talents,
+                    Items = sheet.Items
+                });
+            }
+
+            return result;
+        }
+
+        private async Task<bool> CanUserEditCharacterInSessionAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            Guid userAccountId)
+        {
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == sessionId);
+
+            if (session == null)
+                return false;
+
+            if (session.GameMasterUserAccountId == userAccountId)
+                return true;
+
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps => ps.SessionId == sessionId && ps.UserAccountId == userAccountId);
+
+            return playerSession?.SpecialRole == SessionSpecialRole.Assistant;
         }
 
         private async Task<CharacterSheetDto?> BuildCharacterSheetAsync(

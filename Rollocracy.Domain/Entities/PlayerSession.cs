@@ -14,6 +14,8 @@ namespace Rollocracy.Domain.Entities
 
         public bool IsGameMaster { get; set; }
 
+        public SessionSpecialRole SpecialRole { get; set; } = SessionSpecialRole.None;
+
         public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
     }
 }

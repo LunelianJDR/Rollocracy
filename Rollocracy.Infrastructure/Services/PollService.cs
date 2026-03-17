@@ -276,7 +276,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var aliveCharacter = await context.Characters
                 .AsNoTracking()
-                .Where(c => c.PlayerSessionId == playerSessionId && c.IsAlive)
+                .Where(c => c.PlayerSessionId == playerSessionId && c.IsAlive && !c.IsNpc)
                 .OrderByDescending(c => c.CreatedAt)
                 .FirstOrDefaultAsync();
 

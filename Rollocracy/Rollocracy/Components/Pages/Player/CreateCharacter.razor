@@ -9,7 +9,7 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
-<h3>@L["CreateCharacter_Title"]</h3>
+<h3>@(IsNpc? L["CreateCharacter_TitleNpc"] : L["CreateCharacter_Title"])</h3>
 
 @if (!IsLoaded)
 {
@@ -58,7 +58,9 @@ else
         </div>
     }
 
-    <button @onclick="HandleCreateCharacter">@L["CreateCharacter_Submit"]</button>
+    <button @onclick="HandleCreateCharacter">
+        @(IsNpc? L["CreateCharacter_SubmitNpc"] : L["CreateCharacter_Submit"])
+    </button>
 
     @if (!string.IsNullOrWhiteSpace(Message))
     {
@@ -68,6 +70,9 @@ else
 
 @code {
     [Parameter] public Guid PlayerSessionId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "npc")]
+    public bool IsNpc { get; set; }
 
     private bool IsLoaded;
     private string Message = string.Empty;
@@ -118,12 +123,24 @@ else
         {
             Message = string.Empty;
 
-            await CharacterService.CreateCharacterAsync(
-                PlayerSessionId,
-                CharacterName,
-                Biography,
-                AttributeValues,
-                TraitSelections);
+            if (IsNpc)
+            {
+                await CharacterService.CreateNpcAsync(
+                    PlayerSessionId,
+                    CharacterName,
+                    Biography,
+                    AttributeValues,
+                    TraitSelections);
+            }
+            else
+            {
+                await CharacterService.CreateCharacterAsync(
+                    PlayerSessionId,
+                    CharacterName,
+                    Biography,
+                    AttributeValues,
+                    TraitSelections);
+            }
 
             if (Template is not null)
             {

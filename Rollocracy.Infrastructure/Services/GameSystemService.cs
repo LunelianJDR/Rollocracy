@@ -383,11 +383,18 @@ namespace Rollocracy.Infrastructure.Services
 
             context.GameSystems.Add(clonedSystem);
 
+            // On persiste d'abord le système cloné pour garantir l'existence
+            // du parent avant l'insertion des définitions enfants.
+            await context.SaveChangesAsync();
+
             var attributeMap = new Dictionary<Guid, Guid>();
             var traitMap = new Dictionary<Guid, Guid>();
             var traitOptionMap = new Dictionary<Guid, Guid>();
             var gaugeMap = new Dictionary<Guid, Guid>();
             var derivedStatMap = new Dictionary<Guid, Guid>();
+            var metricMap = new Dictionary<Guid, Guid>();
+            var talentMap = new Dictionary<Guid, Guid>();
+            var itemMap = new Dictionary<Guid, Guid>();
 
             var sourceAttributes = await context.AttributeDefinitions
                 .AsNoTracking()
@@ -499,6 +506,72 @@ namespace Rollocracy.Infrastructure.Services
                 derivedStatMap[sourceDerivedStat.Id] = clonedDerivedStatId;
             }
 
+            var sourceMetrics = await context.MetricDefinitions
+                .AsNoTracking()
+                .Where(m => m.GameSystemId == sourceSystem.Id)
+                .ToListAsync();
+
+            foreach (var sourceMetric in sourceMetrics)
+            {
+                var clonedMetricId = Guid.NewGuid();
+
+                context.MetricDefinitions.Add(new MetricDefinition
+                {
+                    Id = clonedMetricId,
+                    GameSystemId = clonedSystem.Id,
+                    Name = sourceMetric.Name,
+                    BaseValue = sourceMetric.BaseValue,
+                    MinValue = sourceMetric.MinValue,
+                    MaxValue = sourceMetric.MaxValue,
+                    RoundMode = sourceMetric.RoundMode,
+                    DisplayOrder = sourceMetric.DisplayOrder
+                });
+
+                metricMap[sourceMetric.Id] = clonedMetricId;
+            }
+
+            var sourceTalents = await context.TalentDefinitions
+                .AsNoTracking()
+                .Where(t => t.GameSystemId == sourceSystem.Id)
+                .ToListAsync();
+
+            foreach (var sourceTalent in sourceTalents)
+            {
+                var clonedTalentId = Guid.NewGuid();
+
+                context.TalentDefinitions.Add(new TalentDefinition
+                {
+                    Id = clonedTalentId,
+                    GameSystemId = clonedSystem.Id,
+                    Name = sourceTalent.Name,
+                    Description = sourceTalent.Description,
+                    DisplayOrder = sourceTalent.DisplayOrder
+                });
+
+                talentMap[sourceTalent.Id] = clonedTalentId;
+            }
+
+            var sourceItems = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(i => i.GameSystemId == sourceSystem.Id)
+                .ToListAsync();
+
+            foreach (var sourceItem in sourceItems)
+            {
+                var clonedItemId = Guid.NewGuid();
+
+                context.ItemDefinitions.Add(new ItemDefinition
+                {
+                    Id = clonedItemId,
+                    GameSystemId = clonedSystem.Id,
+                    Name = sourceItem.Name,
+                    Description = sourceItem.Description,
+                    DisplayOrder = sourceItem.DisplayOrder
+                });
+
+                itemMap[sourceItem.Id] = clonedItemId;
+            }
+
             await context.SaveChangesAsync();
 
             var sourceDerivedComponents = await context.DerivedStatComponents
@@ -514,6 +587,106 @@ namespace Rollocracy.Infrastructure.Services
                     DerivedStatDefinitionId = derivedStatMap[component.DerivedStatDefinitionId],
                     AttributeDefinitionId = attributeMap[component.AttributeDefinitionId],
                     Weight = component.Weight
+                });
+            }
+
+            var sourceMetricComponents = await context.MetricComponents
+                .AsNoTracking()
+                .Where(c => metricMap.Keys.Contains(c.MetricDefinitionId))
+                .ToListAsync();
+
+            foreach (var component in sourceMetricComponents)
+            {
+                context.MetricComponents.Add(new MetricComponent
+                {
+                    Id = Guid.NewGuid(),
+                    MetricDefinitionId = metricMap[component.MetricDefinitionId],
+                    AttributeDefinitionId = attributeMap[component.AttributeDefinitionId],
+                    Weight = component.Weight
+                });
+            }
+
+            var sourceMetricSteps = await context.MetricFormulaSteps
+                .AsNoTracking()
+                .Where(s => metricMap.Keys.Contains(s.MetricDefinitionId))
+                .ToListAsync();
+
+            foreach (var step in sourceMetricSteps)
+            {
+                context.MetricFormulaSteps.Add(new MetricFormulaStep
+                {
+                    Id = Guid.NewGuid(),
+                    MetricDefinitionId = metricMap[step.MetricDefinitionId],
+                    Order = step.Order,
+                    OperationType = step.OperationType,
+                    SourceType = step.SourceType,
+                    SourceId = MapClonedFormulaSourceId(step.SourceType, step.SourceId, attributeMap, gaugeMap, derivedStatMap, metricMap),
+                    ConstantValue = step.ConstantValue
+                });
+            }
+
+            var sourceChoiceOptionModifiers = await context.ChoiceOptionModifierDefinitions
+                .AsNoTracking()
+                .Where(m => traitOptionMap.Keys.Contains(m.ChoiceOptionDefinitionId))
+                .ToListAsync();
+
+            foreach (var modifier in sourceChoiceOptionModifiers)
+            {
+                context.ChoiceOptionModifierDefinitions.Add(new ChoiceOptionModifierDefinition
+                {
+                    Id = Guid.NewGuid(),
+                    ChoiceOptionDefinitionId = traitOptionMap[modifier.ChoiceOptionDefinitionId],
+                    OperationType = modifier.OperationType,
+                    TargetType = modifier.TargetType,
+                    TargetId = MapClonedModifierTargetId(modifier.TargetType, modifier.TargetId, attributeMap, derivedStatMap, metricMap, talentMap, itemMap),
+                    TargetNameSnapshot = modifier.TargetNameSnapshot,
+                    ValueMode = modifier.ValueMode,
+                    Value = modifier.Value,
+                    SourceMetricId = modifier.SourceMetricId.HasValue && metricMap.ContainsKey(modifier.SourceMetricId.Value)
+                        ? metricMap[modifier.SourceMetricId.Value]
+                        : null
+                });
+            }
+
+            var sourceTalentModifiers = await context.TalentModifierDefinitions
+                .AsNoTracking()
+                .Where(m => talentMap.Keys.Contains(m.TalentDefinitionId))
+                .ToListAsync();
+
+            foreach (var modifier in sourceTalentModifiers)
+            {
+                context.TalentModifierDefinitions.Add(new TalentModifierDefinition
+                {
+                    Id = Guid.NewGuid(),
+                    TalentDefinitionId = talentMap[modifier.TalentDefinitionId],
+                    TargetType = modifier.TargetType,
+                    TargetId = MapClonedModifierTargetId(modifier.TargetType, modifier.TargetId, attributeMap, derivedStatMap, metricMap, talentMap, itemMap),
+                    AddValue = modifier.AddValue,
+                    ValueMode = modifier.ValueMode,
+                    SourceMetricId = modifier.SourceMetricId.HasValue && metricMap.ContainsKey(modifier.SourceMetricId.Value)
+                        ? metricMap[modifier.SourceMetricId.Value]
+                        : null
+                });
+            }
+
+            var sourceItemModifiers = await context.ItemModifierDefinitions
+                .AsNoTracking()
+                .Where(m => itemMap.Keys.Contains(m.ItemDefinitionId))
+                .ToListAsync();
+
+            foreach (var modifier in sourceItemModifiers)
+            {
+                context.ItemModifierDefinitions.Add(new ItemModifierDefinition
+                {
+                    Id = Guid.NewGuid(),
+                    ItemDefinitionId = itemMap[modifier.ItemDefinitionId],
+                    TargetType = modifier.TargetType,
+                    TargetId = MapClonedModifierTargetId(modifier.TargetType, modifier.TargetId, attributeMap, derivedStatMap, metricMap, talentMap, itemMap),
+                    AddValue = modifier.AddValue,
+                    ValueMode = modifier.ValueMode,
+                    SourceMetricId = modifier.SourceMetricId.HasValue && metricMap.ContainsKey(modifier.SourceMetricId.Value)
+                        ? metricMap[modifier.SourceMetricId.Value]
+                        : null
                 });
             }
 
@@ -569,12 +742,7 @@ namespace Rollocracy.Infrastructure.Services
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
-            await EnsureUserCanManageGameSystemsAsync(context, ownerUserAccountId);
-
-            var system = await context.GameSystems
-                .AsNoTracking()
-                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
-
+            var system = await GetEditableGameSystemAsync(context, gameSystemId, ownerUserAccountId);
             if (system == null)
                 return null;
 
@@ -879,10 +1047,7 @@ namespace Rollocracy.Infrastructure.Services
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
-            await EnsureUserCanManageGameSystemsAsync(context, ownerUserAccountId);
-
-            var system = await context.GameSystems
-                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
+            var system = await GetEditableGameSystemForUpdateAsync(context, gameSystemId, ownerUserAccountId);
 
             if (system == null)
                 throw new Exception(_localizer["Backend_GameSystemNotFound"]);
@@ -939,10 +1104,7 @@ namespace Rollocracy.Infrastructure.Services
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
-            await EnsureUserCanManageGameSystemsAsync(context, ownerUserAccountId);
-
-            var system = await context.GameSystems
-                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
+            var system = await GetEditableGameSystemForUpdateAsync(context, gameSystemId, ownerUserAccountId);
 
             if (system == null)
                 throw new Exception(_localizer["Backend_GameSystemNotFound"]);
@@ -2902,6 +3064,114 @@ namespace Rollocracy.Infrastructure.Services
                 context.GameSystemSnapshots.RemoveRange(snapshotsToDelete);
                 await context.SaveChangesAsync();
             }
+        }
+
+        private async Task<GameSystem?> GetEditableGameSystemAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            Guid userAccountId)
+        {
+            var system = await context.GameSystems
+                .AsNoTracking()
+                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId);
+
+            if (system == null)
+                return null;
+
+            if (system.OwnerUserAccountId == userAccountId)
+            {
+                await EnsureUserCanManageGameSystemsAsync(context, userAccountId);
+                return system;
+            }
+
+            if (system.LockedToSessionId.HasValue)
+            {
+                var sessionPlayer = await context.PlayerSessions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(ps =>
+                        ps.SessionId == system.LockedToSessionId.Value &&
+                        ps.UserAccountId == userAccountId &&
+                        ps.SpecialRole == SessionSpecialRole.Assistant);
+
+                if (sessionPlayer != null)
+                    return system;
+            }
+
+            return null;
+        }
+
+        private async Task<GameSystem?> GetEditableGameSystemForUpdateAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            Guid userAccountId)
+        {
+            var system = await context.GameSystems
+                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId);
+
+            if (system == null)
+                return null;
+
+            if (system.OwnerUserAccountId == userAccountId)
+            {
+                await EnsureUserCanManageGameSystemsAsync(context, userAccountId);
+                return system;
+            }
+
+            if (system.LockedToSessionId.HasValue)
+            {
+                var sessionPlayer = await context.PlayerSessions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(ps =>
+                        ps.SessionId == system.LockedToSessionId.Value &&
+                        ps.UserAccountId == userAccountId &&
+                        ps.SpecialRole == SessionSpecialRole.Assistant);
+
+                if (sessionPlayer != null)
+                    return system;
+            }
+
+            return null;
+        }
+
+        private static Guid? MapClonedFormulaSourceId(
+            MetricFormulaSourceType sourceType,
+            Guid? sourceId,
+            Dictionary<Guid, Guid> attributeMap,
+            Dictionary<Guid, Guid> gaugeMap,
+            Dictionary<Guid, Guid> derivedStatMap,
+            Dictionary<Guid, Guid> metricMap)
+        {
+            if (!sourceId.HasValue)
+                return null;
+
+            return sourceType switch
+            {
+                MetricFormulaSourceType.BaseAttribute => attributeMap.GetValueOrDefault(sourceId.Value),
+                MetricFormulaSourceType.Gauge => gaugeMap.GetValueOrDefault(sourceId.Value),
+                MetricFormulaSourceType.DerivedStat => derivedStatMap.GetValueOrDefault(sourceId.Value),
+                MetricFormulaSourceType.Metric => metricMap.GetValueOrDefault(sourceId.Value),
+                _ => sourceId
+            };
+        }
+
+        private static Guid MapClonedModifierTargetId(
+            ModifierTargetType targetType,
+            Guid targetId,
+            Dictionary<Guid, Guid> attributeMap,
+            Dictionary<Guid, Guid> derivedStatMap,
+            Dictionary<Guid, Guid> metricMap,
+            Dictionary<Guid, Guid> talentMap,
+            Dictionary<Guid, Guid> itemMap)
+        {
+            return targetType switch
+            {
+                ModifierTargetType.BaseAttribute when attributeMap.ContainsKey(targetId) => attributeMap[targetId],
+                ModifierTargetType.DerivedStat when derivedStatMap.ContainsKey(targetId) => derivedStatMap[targetId],
+                ModifierTargetType.Metric when metricMap.ContainsKey(targetId) => metricMap[targetId],
+                ModifierTargetType.Talent when talentMap.ContainsKey(targetId) => talentMap[targetId],
+                ModifierTargetType.Item when itemMap.ContainsKey(targetId) => itemMap[targetId],
+                _ => targetId
+            };
         }
 
         private async Task EnsureUserCanManageGameSystemsAsync(

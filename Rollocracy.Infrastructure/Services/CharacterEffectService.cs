@@ -342,6 +342,9 @@ namespace Rollocracy.Infrastructure.Services
                 if (filter.OnlyDead && character.IsAlive)
                     continue;
 
+                if (!filter.IncludeNpcs && character.IsNpc)
+                    continue;
+
                 var playerSession = playerSessions.First(x => x.Id == character.PlayerSessionId);
 
                 if (filter.OnlyOnline && !_presenceTracker.IsPlayerOnline(playerSession.Id))

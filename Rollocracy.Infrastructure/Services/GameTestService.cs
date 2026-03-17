@@ -96,7 +96,7 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x =>
                     x.PlayerSession.SessionId == sessionId &&
                     x.Character.IsAlive &&
-                    !x.PlayerSession.IsGameMaster)
+                    (!x.PlayerSession.IsGameMaster || x.Character.IsNpc))
                 .OrderBy(x => x.Character.Name)
                 .ToListAsync();
 

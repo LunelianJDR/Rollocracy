@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rollocracy.Domain.Entities;
 
 namespace Rollocracy.Domain.Characters
 {
@@ -111,11 +112,16 @@ namespace Rollocracy.Domain.Characters
         public Guid PlayerSessionId { get; set; }
         public Guid SessionId { get; set; }
         public bool HasAssignedGameSystem { get; set; }
+        public Guid? SessionGameSystemId { get; set; }
         public CharacterSheetDto? AliveCharacter { get; set; }
         public List<CharacterListItemDto> DeadCharacters { get; set; } = new();
         public bool CanCreateNewCharacter { get; set; }
         public DateTime? CanCreateNewCharacterAtUtc { get; set; }
         public SessionPublicStatsDto SessionStats { get; set; } = new();
+        public SessionSpecialRole SpecialRole { get; set; } = SessionSpecialRole.None;
+        public bool CanViewSessionCharacters { get; set; }
+        public bool CanEditSessionCharacters { get; set; }
+        public bool CanEditSessionGameSystem { get; set; }
     }
 
     public class SessionCharacterSummaryDto
@@ -125,6 +131,7 @@ namespace Rollocracy.Domain.Characters
         public string PlayerName { get; set; } = string.Empty;
         public bool IsAlive { get; set; }
         public bool IsOnline { get; set; }
+        public bool IsNpc { get; set; }
 
         public List<CharacterAttributeLineDto> Attributes { get; set; } = new();
         public List<CharacterDerivedStatLineDto> DerivedStats { get; set; } = new();
