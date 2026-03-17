@@ -1,10 +1,11 @@
+namespace Rollocracy.Domain.GameRules;
 
-namespace Rollocracy.Domain.GameRules
+public enum ModifierTargetType
 {
-    public enum ModifierTargetType
-    {
-        BaseAttribute = 0,
-        DerivedStat = 1,
-        Metric = 2
-    }
+    BaseAttribute = 0,
+    Gauge = 1,
+    DerivedStat = 2,
+    Metric = 3,
+    Talent = 4,
+    Item = 5
 }

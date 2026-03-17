@@ -1769,4 +1769,22 @@
 	<data name="Backend_InvalidTestTargetDefinition" xml:space="preserve">
   <value>Cible de test invalide.</value>
 </data>
+	<data name="EditGameSystem_ModifierOperation_AddValue" xml:space="preserve">
+  <value>Ajouter une valeur</value>
+</data>
+	<data name="EditGameSystem_ModifierOperation_Grant" xml:space="preserve">
+  <value>Donner</value>
+</data>
+	<data name="EditGameSystem_ModifierOperation_Revoke" xml:space="preserve">
+  <value>Retirer</value>
+</data>
+	<data name="EditGameSystem_ModifierTarget_Talent" xml:space="preserve">
+  <value>Talent</value>
+</data>
+	<data name="EditGameSystem_ModifierTarget_Item" xml:space="preserve">
+  <value>Objet</value>
+</data>
+	<data name="Backend_InvalidModifierOperation" xml:space="preserve">
+  <value>Opération de modificateur invalide.</value>
+</data>
 </root>

@@ -151,7 +151,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var choiceModifiers = await context.ChoiceOptionModifierDefinitions
                 .AsNoTracking()
-                .Where(x => traitOptionIds.Contains(x.TraitOptionId))
+                .Where(x => traitOptionIds.Contains(x.ChoiceOptionDefinitionId))
                 .ToListAsync();
 
             var talentModifiers = await context.TalentModifierDefinitions
@@ -312,7 +312,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var choiceModifiers = await context.ChoiceOptionModifierDefinitions
                 .AsNoTracking()
-                .Where(x => traitOptionIds.Contains(x.TraitOptionId))
+                .Where(x => traitOptionIds.Contains(x.ChoiceOptionDefinitionId))
                 .ToListAsync();
 
             var talentModifiers = await context.TalentModifierDefinitions
@@ -358,25 +358,38 @@ namespace Rollocracy.Infrastructure.Services
                         continue;
                 }
 
+                var characterTraitOptionIds = traitValues
+                    .Where(x => x.CharacterId == character.Id)
+                    .Select(x => x.TraitOptionId)
+                    .ToHashSet();
+
+                var effectiveTalentIds = BuildEffectiveOwnedDefinitionIds(
+                    characterTalents
+                        .Where(x => x.CharacterId == character.Id)
+                        .Select(x => x.TalentDefinitionId),
+                    choiceModifiers
+                        .Where(x => characterTraitOptionIds.Contains(x.ChoiceOptionDefinitionId))
+                        .ToList(),
+                    ModifierTargetType.Talent);
+
                 if (filter.TalentIds.Count > 0)
                 {
-                    var ownedTalentIds = characterTalents
-                        .Where(x => x.CharacterId == character.Id)
-                        .Select(x => x.TalentDefinitionId)
-                        .ToHashSet();
-
-                    if (!filter.TalentIds.All(x => ownedTalentIds.Contains(x)))
+                    if (!filter.TalentIds.All(x => effectiveTalentIds.Contains(x)))
                         continue;
                 }
 
+                var effectiveItemIds = BuildEffectiveOwnedDefinitionIds(
+                    characterItems
+                        .Where(x => x.CharacterId == character.Id)
+                        .Select(x => x.ItemDefinitionId),
+                    choiceModifiers
+                        .Where(x => characterTraitOptionIds.Contains(x.ChoiceOptionDefinitionId))
+                        .ToList(),
+                    ModifierTargetType.Item);
+
                 if (filter.ItemIds.Count > 0)
                 {
-                    var ownedItemIds = characterItems
-                        .Where(x => x.CharacterId == character.Id)
-                        .Select(x => x.ItemDefinitionId)
-                        .ToHashSet();
-
-                    if (!filter.ItemIds.All(x => ownedItemIds.Contains(x)))
+                    if (!filter.ItemIds.All(x => effectiveItemIds.Contains(x)))
                         continue;
                 }
 
@@ -775,23 +788,31 @@ namespace Rollocracy.Infrastructure.Services
                 .Select(tv => tv.TraitOptionId)
                 .ToHashSet();
 
-            var characterTalentIds = characterTalents
-                .Where(ct => ct.CharacterId == characterId)
-                .Select(ct => ct.TalentDefinitionId)
-                .ToHashSet();
+            var characterChoiceModifiers = choiceModifiers
+                .Where(x => characterTraitOptionIds.Contains(x.ChoiceOptionDefinitionId))
+                .ToList();
 
-            var characterItemIds = characterItems
-                .Where(ci => ci.CharacterId == characterId)
-                .Select(ci => ci.ItemDefinitionId)
-                .ToHashSet();
+            var characterTalentIds = BuildEffectiveOwnedDefinitionIds(
+                characterTalents
+                    .Where(ct => ct.CharacterId == characterId)
+                    .Select(ct => ct.TalentDefinitionId),
+                characterChoiceModifiers,
+                ModifierTargetType.Talent);
 
-            var choiceRuntimeModifiers = choiceModifiers
-                .Where(x => characterTraitOptionIds.Contains(x.TraitOptionId))
+            var characterItemIds = BuildEffectiveOwnedDefinitionIds(
+                characterItems
+                    .Where(ci => ci.CharacterId == characterId)
+                    .Select(ci => ci.ItemDefinitionId),
+                characterChoiceModifiers,
+                ModifierTargetType.Item);
+
+            var choiceRuntimeModifiers = characterChoiceModifiers
+                .Where(x => x.OperationType == ModifierOperationType.AddValue)
                 .Select(x => new RuntimeModifier
                 {
                     TargetType = x.TargetType,
                     TargetId = x.TargetId,
-                    AddValue = x.AddValue,
+                    AddValue = x.Value,
                     ValueMode = x.ValueMode,
                     SourceMetricId = x.SourceMetricId
                 });
@@ -920,6 +941,34 @@ namespace Rollocracy.Infrastructure.Services
                     allModifiers),
                 _ => 0
             };
+        }
+
+
+        private static HashSet<Guid> BuildEffectiveOwnedDefinitionIds(
+            IEnumerable<Guid> directIds,
+            List<ChoiceOptionModifierDefinition> choiceOptionModifiers,
+            ModifierTargetType targetType)
+        {
+            var scores = directIds
+                .GroupBy(x => x)
+                .ToDictionary(x => x.Key, x => x.Count());
+
+            foreach (var modifier in choiceOptionModifiers.Where(x => x.TargetType == targetType))
+            {
+                if (modifier.OperationType == ModifierOperationType.Grant)
+                {
+                    scores[modifier.TargetId] = scores.GetValueOrDefault(modifier.TargetId) + 1;
+                }
+                else if (modifier.OperationType == ModifierOperationType.Revoke)
+                {
+                    scores[modifier.TargetId] = scores.GetValueOrDefault(modifier.TargetId) - 1;
+                }
+            }
+
+            return scores
+                .Where(x => x.Value > 0)
+                .Select(x => x.Key)
+                .ToHashSet();
         }
 
         private static int ResolveDerivedStatValue(

@@ -1037,24 +1037,34 @@ namespace Rollocracy.Infrastructure.Services
 
             var choiceOptionModifiers = await context.Set<ChoiceOptionModifierDefinition>()
                 .AsNoTracking()
-                .Where(m => traitOptionIds.Contains(m.TraitOptionId))
+                .Where(m => traitOptionIds.Contains(m.ChoiceOptionDefinitionId))
                 .ToListAsync();
 
-            var characterTalentIds = await context.CharacterTalents
+            var directCharacterTalentIds = await context.CharacterTalents
                 .AsNoTracking()
                 .Where(x => x.CharacterId == characterId)
                 .Select(x => x.TalentDefinitionId)
                 .ToListAsync();
 
-            var characterItemIds = await context.CharacterItems
+            var directCharacterItemIds = await context.CharacterItems
                 .AsNoTracking()
                 .Where(x => x.CharacterId == characterId)
                 .Select(x => x.ItemDefinitionId)
                 .ToListAsync();
 
+            var effectiveTalentIds = BuildEffectiveOwnedDefinitionIds(
+                directCharacterTalentIds,
+                choiceOptionModifiers,
+                ModifierTargetType.Talent);
+
+            var effectiveItemIds = BuildEffectiveOwnedDefinitionIds(
+                directCharacterItemIds,
+                choiceOptionModifiers,
+                ModifierTargetType.Item);
+
             var talentLines = await context.TalentDefinitions
                 .AsNoTracking()
-                .Where(t => characterTalentIds.Contains(t.Id))
+                .Where(t => effectiveTalentIds.Contains(t.Id))
                 .OrderBy(t => t.DisplayOrder).ThenBy(t => t.Name)
                 .Select(t => new CharacterNameLineDto
                 {
@@ -1065,7 +1075,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var itemLines = await context.ItemDefinitions
                 .AsNoTracking()
-                .Where(i => characterItemIds.Contains(i.Id))
+                .Where(i => effectiveItemIds.Contains(i.Id))
                 .OrderBy(i => i.DisplayOrder).ThenBy(i => i.Name)
                 .Select(i => new CharacterNameLineDto
                 {
@@ -1076,12 +1086,12 @@ namespace Rollocracy.Infrastructure.Services
 
             var talentModifiers = await context.TalentModifierDefinitions
                 .AsNoTracking()
-                .Where(m => characterTalentIds.Contains(m.TalentDefinitionId))
+                .Where(m => effectiveTalentIds.Contains(m.TalentDefinitionId))
                 .ToListAsync();
 
             var itemModifiers = await context.ItemModifierDefinitions
                 .AsNoTracking()
-                .Where(m => characterItemIds.Contains(m.ItemDefinitionId))
+                .Where(m => effectiveItemIds.Contains(m.ItemDefinitionId))
                 .ToListAsync();
 
             var characterModifiers = await context.CharacterModifiers
@@ -1094,11 +1104,12 @@ namespace Rollocracy.Infrastructure.Services
                 .ToListAsync();
 
             var rawModifiers = choiceOptionModifiers
+                .Where(m => m.OperationType == ModifierOperationType.AddValue)
                 .Select(m => new RuntimeModifier
                 {
                     TargetType = m.TargetType,
                     TargetId = m.TargetId,
-                    AddValue = m.AddValue,
+                    AddValue = m.Value,
                     ValueMode = m.ValueMode,
                     SourceMetricId = m.SourceMetricId
                 })
@@ -1406,6 +1417,34 @@ namespace Rollocracy.Infrastructure.Services
                     : x.AddValue,
                 ValueMode = ModifierValueMode.Fixed
             }).ToList();
+        }
+
+
+        private static HashSet<Guid> BuildEffectiveOwnedDefinitionIds(
+            IEnumerable<Guid> directIds,
+            List<ChoiceOptionModifierDefinition> choiceOptionModifiers,
+            ModifierTargetType targetType)
+        {
+            var scores = directIds
+                .GroupBy(x => x)
+                .ToDictionary(x => x.Key, x => x.Count());
+
+            foreach (var modifier in choiceOptionModifiers.Where(x => x.TargetType == targetType))
+            {
+                if (modifier.OperationType == ModifierOperationType.Grant)
+                {
+                    scores[modifier.TargetId] = scores.GetValueOrDefault(modifier.TargetId) + 1;
+                }
+                else if (modifier.OperationType == ModifierOperationType.Revoke)
+                {
+                    scores[modifier.TargetId] = scores.GetValueOrDefault(modifier.TargetId) - 1;
+                }
+            }
+
+            return scores
+                .Where(x => x.Value > 0)
+                .Select(x => x.Key)
+                .ToHashSet();
         }
 
         private sealed class RuntimeModifier
