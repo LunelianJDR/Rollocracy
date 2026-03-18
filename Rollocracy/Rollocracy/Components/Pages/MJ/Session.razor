@@ -349,6 +349,7 @@ else
                             @L["GameTest_ConsequenceTargetKind"]
                             <select value="@((int)row.TargetKind)" @onchange="e => ChangeConsequenceTargetKind(row, e.Value?.ToString())">
                                 <option value="@((int)TestConsequenceTargetKind.Gauge)">@L["GameTest_TargetGauge"]</option>
+                                <option value="@((int)TestConsequenceTargetKind.SessionGauge)">@L["SessionPage_TargetSessionGauge"]</option>
                                 <option value="@((int)TestConsequenceTargetKind.Attribute)">@L["GameTest_TargetAttribute"]</option>
                                 <option value="@((int)TestConsequenceTargetKind.DerivedStat)">@L["TestConsequence_Target_DerivedStat"]</option>
                                 <option value="@((int)TestConsequenceTargetKind.Metric)">@L["TestConsequence_Target_Metric"]</option>
@@ -381,6 +382,15 @@ else
                                 @foreach (var gaugeDefinition in AvailableGaugeDefinitions)
                                 {
                                     <option value="@gaugeDefinition.Id">@gaugeDefinition.Name</option>
+                                }
+                            </select>
+                        }
+                        else if (row.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                        {
+                            <select @bind="row.TargetDefinitionId">
+                                @foreach (var gauge in SessionGauges)
+                                {
+                                    <option value="@gauge.SessionGaugeId">@gauge.Name</option>
                                 }
                             </select>
                         }
@@ -642,6 +652,7 @@ else
                                 @L["GameTest_ConsequenceTargetKind"]
                                 <select @bind="consequence.TargetKind">
                                     <option value="@TestConsequenceTargetKind.Gauge">@L["GameTest_TargetGauge"]</option>
+                                    <option value="@TestConsequenceTargetKind.SessionGauge">@L["SessionPage_TargetSessionGauge"]</option>
                                     <option value="@TestConsequenceTargetKind.Attribute">@L["GameTest_TargetAttribute"]</option>
                                     <option value="@TestConsequenceTargetKind.DerivedStat">@L["TestConsequence_Target_DerivedStat"]</option>
                                     <option value="@TestConsequenceTargetKind.Metric">@L["TestConsequence_Target_Metric"]</option>
@@ -674,6 +685,15 @@ else
                                     @foreach (var gaugeDefinition in AvailableGaugeDefinitions)
                                     {
                                         <option value="@gaugeDefinition.Id">@gaugeDefinition.Name</option>
+                                    }
+                                </select>
+                            }
+                            else if (consequence.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                            {
+                                <select @bind="consequence.TargetDefinitionId">
+                                    @foreach (var gauge in SessionGauges)
+                                    {
+                                        <option value="@gauge.SessionGaugeId">@gauge.Name</option>
                                     }
                                 </select>
                             }
@@ -947,6 +967,63 @@ else
 
     <hr />
 
+    <h4>@L["SessionPage_SessionGaugesSection"]</h4>
+
+    @if (SessionGauges.Count == 0)
+    {
+        <p>@L["SessionPage_NoSessionGauges"]</p>
+    }
+    else
+    {
+        <ul>
+            @foreach (var gauge in SessionGauges)
+            {
+                <li>
+                    <strong>@gauge.Name</strong> : @gauge.CurrentValue / @gauge.MaxValue
+                    (min @gauge.MinValue)
+                    <button @onclick="() => AskDeleteSessionGauge(gauge.SessionGaugeId)">
+                        @L["EditGameSystem_Delete"]
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+
+    <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
+        <div>
+            <label>@L["SessionPage_SessionGaugeName"]</label><br />
+            <input @bind="NewSessionGaugeName" />
+        </div>
+
+        <div>
+            <label>@L["SessionPage_SessionGaugeMinValue"]</label><br />
+            <input type="number" @bind="NewSessionGaugeMinValue" />
+        </div>
+
+        <div>
+            <label>@L["SessionPage_SessionGaugeMaxValue"]</label><br />
+            <input type="number" @bind="NewSessionGaugeMaxValue" />
+        </div>
+
+        <div>
+            <label>@L["SessionPage_SessionGaugeCurrentValue"]</label><br />
+            <input type="number" @bind="NewSessionGaugeCurrentValue" />
+        </div>
+
+        <button @onclick="CreateSessionGauge">@L["SessionPage_AddSessionGauge"]</button>
+    </div>
+
+    @if (PendingSessionGaugeDeleteId.HasValue)
+    {
+        <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
+            <p>@L["SessionPage_ConfirmDeleteSessionGauge"]</p>
+            <button @onclick="ConfirmDeleteSessionGauge">@L["Common_Confirm"]</button>
+            <button @onclick="CancelDeleteSessionGauge">@L["Common_Cancel"]</button>
+        </div>
+    }
+
+    <hr />
+
     <h4>@L["SessionPage_CharactersSection"]</h4>
 
     <div style="margin-bottom:12px;">
@@ -1149,6 +1226,12 @@ else
     private List<GameSystem> OwnedGameSystems = new();
     private List<AttributeDefinition> AvailableAttributes = new();
     private List<SessionCharacterSummaryDto> Characters = new();
+    private List<SessionGaugeDto> SessionGauges = new();
+    private string NewSessionGaugeName = string.Empty;
+    private int NewSessionGaugeMinValue = 0;
+    private int NewSessionGaugeMaxValue = 10;
+    private int NewSessionGaugeCurrentValue = 10;
+    private Guid? PendingSessionGaugeDeleteId;
     private CharacterSheetDto? SelectedCharacterSheet;
     private SessionPublicStatsDto SessionStats = new();
     private GameMasterActiveGameTestDto? ActiveTest;
@@ -1283,6 +1366,7 @@ else
 
         SpecialRoleEligiblePlayers = await SessionService.GetEligibleSpecialRolePlayersAsync(SessionId, CurrentUserId);
         SpecialRoleAssignments = await SessionService.GetPlayersWithSpecialRolesAsync(SessionId, CurrentUserId);
+        SessionGauges = await SessionService.GetSessionGaugesAsync(SessionId, CurrentUserId);
 
         if (CurrentSession?.GameSystemId is Guid gameSystemId)
         {
@@ -1324,6 +1408,64 @@ else
         await RefreshSessionVisuals();
         await LoadActiveTest();
         await LoadLatestPoll();
+    }
+
+        private async Task CreateSessionGauge()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            await SessionService.CreateSessionGaugeAsync(
+                SessionId,
+                CurrentUserId,
+                NewSessionGaugeName,
+                NewSessionGaugeMinValue,
+                NewSessionGaugeMaxValue,
+                NewSessionGaugeCurrentValue);
+
+            NewSessionGaugeName = string.Empty;
+            NewSessionGaugeMinValue = 0;
+            NewSessionGaugeMaxValue = 10;
+            NewSessionGaugeCurrentValue = 10;
+
+            await LoadSessionData();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void AskDeleteSessionGauge(Guid sessionGaugeId)
+    {
+        PendingSessionGaugeDeleteId = sessionGaugeId;
+    }
+
+    private Task CancelDeleteSessionGauge()
+    {
+        PendingSessionGaugeDeleteId = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task ConfirmDeleteSessionGauge()
+    {
+        if (!PendingSessionGaugeDeleteId.HasValue)
+            return;
+
+        try
+        {
+            Message = string.Empty;
+
+            await SessionService.DeleteSessionGaugeAsync(SessionId, CurrentUserId, PendingSessionGaugeDeleteId.Value);
+            PendingSessionGaugeDeleteId = null;
+
+            await LoadSessionData();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
     }
 
     private async Task RefreshSessionVisuals()
@@ -1694,6 +1836,7 @@ else
         return targetKind switch
         {
             TestConsequenceTargetKind.Gauge => AvailableGaugeDefinitions.FirstOrDefault()?.Id ?? Guid.Empty,
+            TestConsequenceTargetKind.SessionGauge => SessionGauges.FirstOrDefault()?.SessionGaugeId ?? Guid.Empty,
             TestConsequenceTargetKind.Attribute => AvailableAttributes.FirstOrDefault()?.Id ?? Guid.Empty,
             TestConsequenceTargetKind.DerivedStat => AvailableDerivedStats.FirstOrDefault()?.DerivedStatDefinitionId ?? Guid.Empty,
             TestConsequenceTargetKind.Metric => AvailableMetrics.FirstOrDefault()?.Id ?? Guid.Empty,

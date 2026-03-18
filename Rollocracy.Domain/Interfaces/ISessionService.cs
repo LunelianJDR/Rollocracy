@@ -1,4 +1,5 @@
-﻿using Rollocracy.Domain.Entities;
+﻿using Rollocracy.Domain.Characters;
+using Rollocracy.Domain.Entities;
 
 namespace Rollocracy.Domain.Interfaces
 {
@@ -46,6 +47,18 @@ namespace Rollocracy.Domain.Interfaces
         Task<int> GetUserMaxPlayersPerSessionAsync(Guid userAccountId);
 
         Task<SessionSettingsDto?> GetSessionSettingsAsync(Guid sessionId, Guid gameMasterUserAccountId, string baseUri);
+
+        Task<List<SessionGaugeDto>> GetSessionGaugesAsync(Guid sessionId, Guid gameMasterUserAccountId);
+
+        Task<SessionGauge> CreateSessionGaugeAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            string name,
+            int minValue,
+            int maxValue,
+            int currentValue);
+
+        Task DeleteSessionGaugeAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid sessionGaugeId);
 
         Task<Session> UpdateSessionSettingsAsync(
             Guid sessionId,

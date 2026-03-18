@@ -5,6 +5,7 @@ using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
+using System.Text.Json;
 
 namespace Rollocracy.Infrastructure.Services
 {
@@ -13,15 +14,18 @@ namespace Rollocracy.Infrastructure.Services
         private readonly IDbContextFactory<RollocracyDbContext> _contextFactory;
         private readonly IStringLocalizer _localizer;
         private readonly IPresenceTracker _presenceTracker;
+        private readonly ICharacterEffectService _characterEffectService;
 
         public CharacterService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
             IStringLocalizerFactory localizerFactory,
-            IPresenceTracker presenceTracker)
+            IPresenceTracker presenceTracker,
+            ICharacterEffectService characterEffectService)
         {
             _contextFactory = contextFactory;
             _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
             _presenceTracker = presenceTracker;
+            _characterEffectService = characterEffectService;
         }
 
         public async Task<PlayerRoomStateDto> GetPlayerRoomStateAsync(Guid playerSessionId)
@@ -464,6 +468,203 @@ namespace Rollocracy.Infrastructure.Services
                 throw new Exception(_localizer["Backend_PlayerSessionNotFound"]);
 
             return playerSession.Id;
+        }
+
+        public async Task<RandomDrawEditorDto?> GetRandomDrawEditorAsync(Guid sessionId, Guid userAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == userAccountId);
+
+            if (session == null)
+                return null;
+
+            if (!session.GameSystemId.HasValue)
+                throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
+
+            var gameSystemId = session.GameSystemId.Value;
+
+            var traitDefinitions = await context.TraitDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var traitDefinitionIds = traitDefinitions.Select(x => x.Id).ToList();
+
+            var traitOptions = await context.TraitOptions
+                .AsNoTracking()
+                .Where(x => traitDefinitionIds.Contains(x.TraitDefinitionId))
+                .OrderBy(x => x.Name)
+                .ToListAsync();
+
+            var talents = await context.TalentDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.Name)
+                .ToListAsync();
+
+            var items = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.Name)
+                .ToListAsync();
+
+            var attributes = await context.AttributeDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .OrderBy(x => x.Name)
+                .ToListAsync();
+
+            var gauges = await context.GaugeDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .OrderBy(x => x.Name)
+                .ToListAsync();
+
+            var derivedStats = await context.DerivedStatDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.Name)
+                .ToListAsync();
+
+            var metrics = await context.MetricDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.Name)
+                .ToListAsync();
+
+            var existingDrawCount = await context.SessionRandomDraws
+                .AsNoTracking()
+                .CountAsync(x => x.SessionId == sessionId);
+
+            var recentDraws = await context.SessionRandomDraws
+                .AsNoTracking()
+                .Where(x => x.SessionId == sessionId)
+                .OrderByDescending(x => x.CreatedAtUtc)
+                .Take(5)
+                .ToListAsync();
+
+            return new RandomDrawEditorDto
+            {
+                SessionId = session.Id,
+                SessionName = session.SessionName,
+                SuggestedName = string.Format(_localizer["RandomDraw_DefaultNameFormat"], existingDrawCount + 1),
+                TraitOptions = traitOptions.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
+                Talents = talents.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
+                Items = items.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
+                BaseAttributes = attributes.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
+                Gauges = gauges.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
+                DerivedStats = derivedStats.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
+                Metrics = metrics.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
+                RecentDraws = recentDraws
+                    .Select(x => new RandomDrawHistoryItemDto
+                    {
+                        DrawId = x.Id,
+                        Name = x.Name,
+                        RequestedCount = x.RequestedCount,
+                        CreatedAtUtc = x.CreatedAtUtc,
+                        Results = DeserializeRandomDrawResults(x.ResultSnapshotJson)
+                    })
+                    .ToList()
+            };
+        }
+
+        public async Task<RandomDrawResultDto> ExecuteRandomDrawAsync(
+            Guid sessionId,
+            Guid userAccountId,
+            RandomDrawRequestDto request)
+        {
+            if (request.DrawCount <= 0)
+                throw new Exception(_localizer["Backend_RandomDrawCountRequired"]);
+
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == userAccountId);
+
+            if (session == null)
+                throw new Exception(_localizer["Backend_SessionAccessDenied"]);
+
+            var candidateCharacters = await _characterEffectService.GetTargetCharactersAsync(sessionId, request.Filter);
+
+            if (candidateCharacters.Count == 0)
+                throw new Exception(_localizer["Backend_NoEligibleCharactersForRandomDraw"]);
+
+            if (candidateCharacters.Count < request.DrawCount)
+                throw new Exception(_localizer["Backend_NotEnoughEligibleCharactersForRandomDraw"]);
+
+            var existingDrawCount = await context.SessionRandomDraws
+                .AsNoTracking()
+                .CountAsync(x => x.SessionId == sessionId);
+
+            var resolvedName = string.IsNullOrWhiteSpace(request.Name)
+                ? string.Format(_localizer["RandomDraw_DefaultNameFormat"], existingDrawCount + 1)
+                : request.Name.Trim();
+
+            var pool = candidateCharacters.ToList();
+
+            for (var i = pool.Count - 1; i > 0; i--)
+            {
+                var swapIndex = Random.Shared.Next(i + 1);
+                (pool[i], pool[swapIndex]) = (pool[swapIndex], pool[i]);
+            }
+
+            var selectedCharacters = pool
+                .Take(request.DrawCount)
+                .Select(x => new RandomDrawResultCharacterDto
+                {
+                    CharacterId = x.Id,
+                    CharacterName = x.Name,
+                    IsAlive = x.IsAlive,
+                    IsNpc = x.IsNpc
+                })
+                .ToList();
+
+            var entity = new SessionRandomDraw
+            {
+                Id = Guid.NewGuid(),
+                SessionId = sessionId,
+                CreatedByUserAccountId = userAccountId,
+                Name = resolvedName,
+                RequestedCount = request.DrawCount,
+                ResultSnapshotJson = JsonSerializer.Serialize(selectedCharacters),
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            context.SessionRandomDraws.Add(entity);
+            await context.SaveChangesAsync();
+
+            return new RandomDrawResultDto
+            {
+                DrawId = entity.Id,
+                Name = entity.Name,
+                RequestedCount = entity.RequestedCount,
+                CreatedAtUtc = entity.CreatedAtUtc,
+                Results = selectedCharacters
+            };
+        }
+
+        private static List<RandomDrawResultCharacterDto> DeserializeRandomDrawResults(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new List<RandomDrawResultCharacterDto>();
+
+            try
+            {
+                return JsonSerializer.Deserialize<List<RandomDrawResultCharacterDto>>(json)
+                    ?? new List<RandomDrawResultCharacterDto>();
+            }
+            catch
+            {
+                return new List<RandomDrawResultCharacterDto>();
+            }
         }
 
         public async Task<List<SessionCharacterSummaryDto>> GetSessionCharacterSummariesAsync(

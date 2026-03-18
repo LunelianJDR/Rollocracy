@@ -1834,4 +1834,85 @@
 	<data name="Common_Npc" xml:space="preserve">
   <value>NPC</value>
 </data>
+	<data name="RandomDraw_Title" xml:space="preserve">
+  <value>Random draw</value>
+</data>
+	<data name="RandomDraw_Session" xml:space="preserve">
+  <value>Session</value>
+</data>
+	<data name="RandomDraw_Name" xml:space="preserve">
+  <value>Draw name</value>
+</data>
+	<data name="RandomDraw_Count" xml:space="preserve">
+  <value>Number of characters to draw</value>
+</data>
+	<data name="RandomDraw_FilterSection" xml:space="preserve">
+  <value>Filters</value>
+</data>
+	<data name="RandomDraw_Execute" xml:space="preserve">
+  <value>Run draw</value>
+</data>
+	<data name="RandomDraw_LastResult" xml:space="preserve">
+  <value>Last result</value>
+</data>
+	<data name="RandomDraw_History" xml:space="preserve">
+  <value>Last 5 draws</value>
+</data>
+	<data name="RandomDraw_NoHistory" xml:space="preserve">
+  <value>No draw recorded.</value>
+</data>
+	<data name="RandomDraw_NotFound" xml:space="preserve">
+  <value>Random draw page not found or access denied.</value>
+</data>
+	<data name="RandomDraw_DefaultNameFormat" xml:space="preserve">
+  <value>Draw #{0}</value>
+</data>
+	<data name="Backend_RandomDrawCountRequired" xml:space="preserve">
+  <value>The number of characters to draw must be greater than 0.</value>
+</data>
+	<data name="Backend_NoEligibleCharactersForRandomDraw" xml:space="preserve">
+  <value>No character matches the draw filters.</value>
+</data>
+	<data name="Backend_NotEnoughEligibleCharactersForRandomDraw" xml:space="preserve">
+  <value>The requested number of characters exceeds the number of eligible characters.</value>
+</data>
+	<data name="SessionPage_SessionGaugesSection" xml:space="preserve">
+  <value>Session gauges</value>
+</data>
+	<data name="SessionPage_NoSessionGauges" xml:space="preserve">
+  <value>No session gauges.</value>
+</data>
+	<data name="SessionPage_SessionGaugeName" xml:space="preserve">
+  <value>Name</value>
+</data>
+	<data name="SessionPage_SessionGaugeMinValue" xml:space="preserve">
+  <value>Min value</value>
+</data>
+	<data name="SessionPage_SessionGaugeMaxValue" xml:space="preserve">
+  <value>Max value</value>
+</data>
+	<data name="SessionPage_SessionGaugeCurrentValue" xml:space="preserve">
+  <value>Current value</value>
+</data>
+	<data name="SessionPage_AddSessionGauge" xml:space="preserve">
+  <value>Add gauge</value>
+</data>
+	<data name="SessionPage_ConfirmDeleteSessionGauge" xml:space="preserve">
+  <value>Confirm deletion of this session gauge?</value>
+</data>
+	<data name="SessionPage_TargetSessionGauge" xml:space="preserve">
+  <value>Session gauge</value>
+</data>
+	<data name="Backend_SessionGaugeNameRequired" xml:space="preserve">
+  <value>Session gauge name is required.</value>
+</data>
+	<data name="Backend_SessionGaugeRangeInvalid" xml:space="preserve">
+  <value>Invalid session gauge range.</value>
+</data>
+	<data name="Backend_SessionGaugeLimitReached" xml:space="preserve">
+  <value>A session cannot have more than 12 gauges.</value>
+</data>
+	<data name="Backend_SessionGaugeNotFound" xml:space="preserve">
+  <value>Session gauge not found.</value>
+</data>
 </root>

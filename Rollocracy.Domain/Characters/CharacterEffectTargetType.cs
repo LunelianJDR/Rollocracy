@@ -8,6 +8,7 @@ namespace Rollocracy.Domain.Characters
         DerivedStat = 2,
         Metric = 3,
         Talent = 4,
-        Item = 5
+        Item = 5,
+        SessionGauge = 6
     }
 }

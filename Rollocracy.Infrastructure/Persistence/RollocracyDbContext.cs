@@ -66,6 +66,10 @@ namespace Rollocracy.Infrastructure.Persistence
 
         public DbSet<MassDistributionBatch> MassDistributionBatches => Set<MassDistributionBatch>();
 
+        public DbSet<SessionGauge> SessionGauges => Set<SessionGauge>();
+
+        public DbSet<SessionRandomDraw> SessionRandomDraws => Set<SessionRandomDraw>();
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -148,6 +152,27 @@ namespace Rollocracy.Infrastructure.Persistence
 
                 entity.Property(x => x.UndoneAtUtc)
                     .HasColumnType("timestamp with time zone");
+            });
+
+            modelBuilder.Entity<SessionGauge>(entity =>
+            {
+                entity.HasIndex(x => x.SessionId);
+                entity.HasIndex(x => new { x.SessionId, x.Name });
+
+                entity.Property(x => x.Name)
+                    .HasColumnType("text");
+            });
+
+            modelBuilder.Entity<SessionRandomDraw>(entity =>
+            {
+                entity.HasIndex(x => x.SessionId);
+                entity.HasIndex(x => new { x.SessionId, x.CreatedAtUtc });
+
+                entity.Property(x => x.Name)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.ResultSnapshotJson)
+                    .HasColumnType("text");
             });
         }
     }
