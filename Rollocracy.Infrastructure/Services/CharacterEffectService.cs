@@ -77,6 +77,10 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(g => g.GameSystemId == gameSystemId)
                 .ToListAsync();
 
+            var sessionGauges = await context.SessionGauges
+                .Where(g => g.SessionId == sessionId)
+                .ToListAsync();
+
             var derivedDefinitions = await context.DerivedStatDefinitions
                 .AsNoTracking()
                 .Where(d => d.GameSystemId == gameSystemId)
@@ -101,6 +105,7 @@ namespace Rollocracy.Infrastructure.Services
                 effects,
                 attributeDefinitions,
                 gaugeDefinitions,
+                sessionGauges,
                 derivedDefinitions,
                 metricDefinitions,
                 talentDefinitions,
@@ -184,6 +189,7 @@ namespace Rollocracy.Infrastructure.Services
                         effect,
                         attributeDefinitions,
                         gaugeDefinitions,
+                        sessionGauges,
                         derivedDefinitions,
                         metricDefinitions,
                         derivedComponents,
@@ -480,6 +486,7 @@ namespace Rollocracy.Infrastructure.Services
             List<CharacterEffectDefinitionDto> effects,
             List<AttributeDefinition> attributeDefinitions,
             List<GaugeDefinition> gaugeDefinitions,
+            List<SessionGauge> sessionGauges,
             List<DerivedStatDefinition> derivedDefinitions,
             List<MetricDefinition> metricDefinitions,
             List<TalentDefinition> talentDefinitions,
@@ -494,6 +501,7 @@ namespace Rollocracy.Infrastructure.Services
                             effect,
                             attributeDefinitions,
                             gaugeDefinitions,
+                            sessionGauges,
                             derivedDefinitions,
                             metricDefinitions);
                         break;
@@ -526,6 +534,7 @@ namespace Rollocracy.Infrastructure.Services
             CharacterEffectDefinitionDto effect,
             List<AttributeDefinition> attributeDefinitions,
             List<GaugeDefinition> gaugeDefinitions,
+            List<SessionGauge> sessionGauges,
             List<DerivedStatDefinition> derivedDefinitions,
             List<MetricDefinition> metricDefinitions)
         {
@@ -533,6 +542,7 @@ namespace Rollocracy.Infrastructure.Services
             {
                 CharacterEffectTargetType.BaseAttribute => attributeDefinitions.Any(x => x.Id == effect.TargetId),
                 CharacterEffectTargetType.Gauge => gaugeDefinitions.Any(x => x.Id == effect.TargetId),
+                CharacterEffectTargetType.SessionGauge => sessionGauges.Any(x => x.Id == effect.TargetId),
                 CharacterEffectTargetType.DerivedStat => derivedDefinitions.Any(x => x.Id == effect.TargetId),
                 CharacterEffectTargetType.Metric => metricDefinitions.Any(x => x.Id == effect.TargetId),
                 _ => false
@@ -551,6 +561,7 @@ namespace Rollocracy.Infrastructure.Services
             CharacterEffectDefinitionDto effect,
             List<AttributeDefinition> attributeDefinitions,
             List<GaugeDefinition> gaugeDefinitions,
+            List<SessionGauge> sessionGauges,
             List<DerivedStatDefinition> derivedDefinitions,
             List<MetricDefinition> metricDefinitions,
             List<DerivedStatComponent> derivedComponents,
@@ -593,6 +604,17 @@ namespace Rollocracy.Infrastructure.Services
                         talentModifiers,
                         itemModifiers,
                         characterModifiers);
+
+                    if (effect.TargetType == CharacterEffectTargetType.SessionGauge)
+                    {
+                        var gauge = sessionGauges.First(x => x.Id == effect.TargetId);
+
+                        gauge.CurrentValue = Math.Clamp(
+                            gauge.CurrentValue + resolvedEffectValue,
+                            gauge.MinValue,
+                            gauge.MaxValue);
+                    }
+                    else if (effect.TargetType == CharacterEffectTargetType.BaseAttribute)
 
                     if (effect.TargetType == CharacterEffectTargetType.BaseAttribute)
                     {

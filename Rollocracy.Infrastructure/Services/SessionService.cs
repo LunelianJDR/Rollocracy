@@ -3,6 +3,7 @@ using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
+using Rollocracy.Domain.Characters;
 
 namespace Rollocracy.Infrastructure.Services
 {
@@ -427,6 +428,84 @@ namespace Rollocracy.Infrastructure.Services
 
             await context.SaveChangesAsync();
             return session;
+        }
+
+        public async Task<List<SessionGaugeDto>> GetSessionGaugesAsync(Guid sessionId, Guid gameMasterUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            await EnsureGameMasterOwnsSessionAsync(context, sessionId, gameMasterUserAccountId);
+
+            return await context.SessionGauges
+                .AsNoTracking()
+                .Where(x => x.SessionId == sessionId)
+                .OrderBy(x => x.CreatedAtUtc)
+                .Select(x => new SessionGaugeDto
+                {
+                    SessionGaugeId = x.Id,
+                    Name = x.Name,
+                    MinValue = x.MinValue,
+                    MaxValue = x.MaxValue,
+                    CurrentValue = x.CurrentValue
+                })
+                .ToListAsync();
+        }
+
+        public async Task<SessionGauge> CreateSessionGaugeAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            string name,
+            int minValue,
+            int maxValue,
+            int currentValue)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            await EnsureGameMasterOwnsSessionAsync(context, sessionId, gameMasterUserAccountId);
+
+            var trimmedName = name.Trim();
+
+            if (string.IsNullOrWhiteSpace(trimmedName))
+                throw new Exception(_localizer["Backend_SessionGaugeNameRequired"]);
+
+            if (maxValue < minValue)
+                throw new Exception(_localizer["Backend_SessionGaugeRangeInvalid"]);
+
+            var existingCount = await context.SessionGauges
+                .AsNoTracking()
+                .CountAsync(x => x.SessionId == sessionId);
+
+            if (existingCount >= 12)
+                throw new Exception(_localizer["Backend_SessionGaugeLimitReached"]);
+
+            var entity = new SessionGauge
+            {
+                Id = Guid.NewGuid(),
+                SessionId = sessionId,
+                Name = trimmedName,
+                MinValue = minValue,
+                MaxValue = maxValue,
+                CurrentValue = Math.Clamp(currentValue, minValue, maxValue),
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            context.SessionGauges.Add(entity);
+            await context.SaveChangesAsync();
+
+            return entity;
+        }
+
+        public async Task DeleteSessionGaugeAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid sessionGaugeId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            await EnsureGameMasterOwnsSessionAsync(context, sessionId, gameMasterUserAccountId);
+
+            var entity = await context.SessionGauges
+                .FirstOrDefaultAsync(x => x.Id == sessionGaugeId && x.SessionId == sessionId);
+
+            if (entity == null)
+                throw new Exception(_localizer["Backend_SessionGaugeNotFound"]);
+
+            context.SessionGauges.Remove(entity);
+            await context.SaveChangesAsync();
         }
 
         private async Task<int> GetOnlineLivingPlayersCountAsync(RollocracyDbContext context, Guid sessionId, Guid? excludedPlayerSessionId)

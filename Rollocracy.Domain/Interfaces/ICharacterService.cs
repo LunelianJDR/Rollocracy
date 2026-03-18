@@ -50,6 +50,14 @@ namespace Rollocracy.Domain.Interfaces
             bool includeDead);
 
         Task<Guid> GetPlayerSessionIdForUserAsync(Guid sessionId, Guid userAccountId);
+
+        Task<RandomDrawEditorDto?> GetRandomDrawEditorAsync(Guid sessionId, Guid userAccountId);
+
+        Task<RandomDrawResultDto> ExecuteRandomDrawAsync(
+            Guid sessionId,
+            Guid userAccountId,
+            RandomDrawRequestDto request);
+
         Task<CharacterSheetDto?> GetCharacterSheetForSessionAsync(Guid sessionId, Guid characterId);
 
         Task<CharacterSheetDto?> GetCharacterSheetForPlayerAsync(Guid playerSessionId, Guid characterId);

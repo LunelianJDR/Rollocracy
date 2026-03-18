@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using Rollocracy.Domain.Entities;
 
 namespace Rollocracy.Domain.Characters
@@ -211,8 +212,75 @@ namespace Rollocracy.Domain.Characters
         public List<Guid> SelectedItemIds { get; set; } = new();
     }
 
+    public class SessionGaugeDto
+    {
+        public Guid SessionGaugeId {  get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int MinValue { get; set; }
+        public int MaxValue { get; set; }
+        public int CurrentValue { get; set; }
+    }
+
+    public class CreateSessionGaugeRequestDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public int MinValue { get; set; }
+        public int MaxValue { get; set; }
+        public int CurrentValue { get; set; }
+    }
+
     public class CharacterUpdateResultDto
     {
         public bool ResurrectionBlocked { get; set; }
+    }
+
+    public class RandomDrawResultCharacterDto
+    {
+        public Guid CharacterId { get; set; }
+        public string CharacterName { get; set; } = string.Empty;
+        public bool IsAlive { get; set; }
+        public bool IsNpc { get; set; }
+    }
+
+    public class RandomDrawHistoryItemDto
+    {
+        public Guid DrawId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int RequestedCount { get; set; }
+        public DateTime CreatedAtUtc { get; set; }
+        public List<RandomDrawResultCharacterDto> Results { get; set; } = new();
+    }
+
+    public class RandomDrawEditorDto
+    {
+        public Guid SessionId { get; set; }
+        public string SessionName { get; set; } = string.Empty;
+        public string SuggestedName { get; set; } = string.Empty;
+
+        public List<NamedReferenceDto> TraitOptions { get; set; } = new();
+        public List<NamedReferenceDto> Talents { get; set; } = new();
+        public List<NamedReferenceDto> Items { get; set; } = new();
+        public List<NamedReferenceDto> BaseAttributes { get; set; } = new();
+        public List<NamedReferenceDto> Gauges { get; set; } = new();
+        public List<NamedReferenceDto> DerivedStats { get; set; } = new();
+        public List<NamedReferenceDto> Metrics { get; set; } = new();
+
+        public List<RandomDrawHistoryItemDto> RecentDraws { get; set; } = new();
+    }
+
+    public class RandomDrawRequestDto
+    {
+        public string Name { get; set; } = string.Empty;
+        public int DrawCount { get; set; } = 1;
+        public CharacterTargetFilterDto Filter { get; set; } = new();
+    }
+
+    public class RandomDrawResultDto
+    {
+        public Guid DrawId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int RequestedCount { get; set; }
+        public DateTime CreatedAtUtc { get; set; }
+        public List<RandomDrawResultCharacterDto> Results { get; set; } = new();
     }
 }

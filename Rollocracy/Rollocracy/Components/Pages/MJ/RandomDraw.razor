@@ -1,0 +1,339 @@
+﻿@page "/mj/session/{SessionId:guid}/random-draw"
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Characters
+@using Rollocracy.Domain.Interfaces
+@using Rollocracy.Domain.GameRules
+@using Rollocracy.Localization
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ICharacterService CharacterService
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
+
+<h3>@L["RandomDraw_Title"]</h3>
+
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToHome)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (Editor is null)
+{
+    <p>@L["RandomDraw_NotFound"]</p>
+}
+else
+{
+    <p><strong>@L["RandomDraw_Session"] :</strong> @Editor.SessionName</p>
+
+    <div class="mb-3">
+        <label>@L["RandomDraw_Name"]</label><br />
+        <input @bind="Request.Name" />
+    </div>
+
+    <div class="mb-3">
+        <label>@L["RandomDraw_Count"]</label><br />
+        <input type="number" min="1" @bind="Request.DrawCount" />
+    </div>
+
+    <h4>@L["RandomDraw_FilterSection"]</h4>
+
+    <div>
+        <label><input type="checkbox" @bind="Request.Filter.OnlyAlive" /> @L["MassDistribution_FilterOnlyAlive"]</label>
+    </div>
+    <div>
+        <label><input type="checkbox" @bind="Request.Filter.OnlyDead" /> @L["MassDistribution_FilterOnlyDead"]</label>
+    </div>
+    <div>
+        <label><input type="checkbox" @bind="Request.Filter.OnlyOnline" /> @L["MassDistribution_FilterOnlyOnline"]</label>
+    </div>
+    <div>
+        <label><input type="checkbox" @bind="Request.Filter.IncludeNpcs" /> @L["MassDistribution_IncludeNpcs"]</label>
+    </div>
+
+    <div style="margin-top:12px;">
+        <label>@L["MassDistribution_TraitOptionFilters"]</label><br />
+        <select @bind="SelectedTraitOptionId">
+            <option value="">--</option>
+            @foreach (var item in Editor.TraitOptions)
+            {
+                <option value="@item.Id">@item.Name</option>
+            }
+        </select>
+        <button @onclick="AddTraitOptionFilter">@L["MassDistribution_AddFilter"]</button>
+
+        @foreach (var item in Request.Filter.TraitOptionIds.ToList())
+        {
+            var reference = Editor.TraitOptions.FirstOrDefault(x => x.Id == item);
+            <div>
+                @reference?.Name
+                <button @onclick="() => Request.Filter.TraitOptionIds.Remove(item)">@L["EditGameSystem_Delete"]</button>
+            </div>
+        }
+    </div>
+
+    <div style="margin-top:12px;">
+        <label>@L["MassDistribution_TalentFilters"]</label><br />
+        <select @bind="SelectedTalentFilterId">
+            <option value="">--</option>
+            @foreach (var item in Editor.Talents)
+            {
+                <option value="@item.Id">@item.Name</option>
+            }
+        </select>
+        <button @onclick="AddTalentFilter">@L["MassDistribution_AddFilter"]</button>
+
+        @foreach (var item in Request.Filter.TalentIds.ToList())
+        {
+            var reference = Editor.Talents.FirstOrDefault(x => x.Id == item);
+            <div>
+                @reference?.Name
+                <button @onclick="() => Request.Filter.TalentIds.Remove(item)">@L["EditGameSystem_Delete"]</button>
+            </div>
+        }
+    </div>
+
+    <div style="margin-top:12px;">
+        <label>@L["MassDistribution_ItemFilters"]</label><br />
+        <select @bind="SelectedItemFilterId">
+            <option value="">--</option>
+            @foreach (var item in Editor.Items)
+            {
+                <option value="@item.Id">@item.Name</option>
+            }
+        </select>
+        <button @onclick="AddItemFilter">@L["MassDistribution_AddFilter"]</button>
+
+        @foreach (var item in Request.Filter.ItemIds.ToList())
+        {
+            var reference = Editor.Items.FirstOrDefault(x => x.Id == item);
+            <div>
+                @reference?.Name
+                <button @onclick="() => Request.Filter.ItemIds.Remove(item)">@L["EditGameSystem_Delete"]</button>
+            </div>
+        }
+    </div>
+
+    <div style="margin-top:12px;">
+        <h5>@L["MassDistribution_ValueFilters"]</h5>
+        <button @onclick="AddValueFilter">@L["MassDistribution_AddValueFilter"]</button>
+
+        @foreach (var valueFilter in Request.Filter.ValueFilters)
+        {
+            <div style="margin-top:8px; margin-left:20px;">
+                <select @bind="valueFilter.TargetType">
+                    <option value="@CharacterEffectTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
+                    <option value="@CharacterEffectTargetType.Gauge">@L["MassDistribution_Target_Gauge"]</option>
+                    <option value="@CharacterEffectTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
+                    <option value="@CharacterEffectTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                </select>
+
+                @if (valueFilter.TargetType == CharacterEffectTargetType.BaseAttribute)
+                {
+                    <select @bind="valueFilter.TargetId">
+                        @foreach (var item in Editor.BaseAttributes)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                }
+                else if (valueFilter.TargetType == CharacterEffectTargetType.Gauge)
+                {
+                    <select @bind="valueFilter.TargetId">
+                        @foreach (var item in Editor.Gauges)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                }
+                else if (valueFilter.TargetType == CharacterEffectTargetType.DerivedStat)
+                {
+                    <select @bind="valueFilter.TargetId">
+                        @foreach (var item in Editor.DerivedStats)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                }
+                else if (valueFilter.TargetType == CharacterEffectTargetType.Metric)
+                {
+                    <select @bind="valueFilter.TargetId">
+                        @foreach (var item in Editor.Metrics)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                }
+
+                <select @bind="valueFilter.ComparisonType">
+                    <option value="@CharacterValueComparisonType.Equal">=</option>
+                    <option value="@CharacterValueComparisonType.NotEqual">!=</option>
+                    <option value="@CharacterValueComparisonType.GreaterThan">&gt;</option>
+                    <option value="@CharacterValueComparisonType.GreaterThanOrEqual">&gt;=</option>
+                    <option value="@CharacterValueComparisonType.LessThan">&lt;</option>
+                    <option value="@CharacterValueComparisonType.LessThanOrEqual">&lt;=</option>
+                </select>
+
+                <input type="number" @bind="valueFilter.Value" />
+                <button @onclick="() => Request.Filter.ValueFilters.Remove(valueFilter)">@L["EditGameSystem_Delete"]</button>
+            </div>
+        }
+    </div>
+
+    <div style="margin-top:20px;">
+        <button @onclick="ExecuteDraw">@L["RandomDraw_Execute"]</button>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <p style="margin-top:12px;">@Message</p>
+    }
+
+    @if (LastDraw is not null)
+    {
+        <h4 style="margin-top:20px;">@L["RandomDraw_LastResult"]</h4>
+        <p><strong>@LastDraw.Name</strong></p>
+        <ul>
+            @foreach (var item in LastDraw.Results)
+            {
+                <li>
+                    @item.CharacterName
+                    @if (item.IsNpc)
+                    {
+                        <text> (@L["Common_Npc"])</text>
+                    }
+                </li>
+            }
+        </ul>
+    }
+
+    <h4 style="margin-top:20px;">@L["RandomDraw_History"]</h4>
+
+    @if (Editor.RecentDraws.Count == 0)
+    {
+        <p>@L["RandomDraw_NoHistory"]</p>
+    }
+    else
+    {
+        @foreach (var draw in Editor.RecentDraws)
+        {
+            <div style="margin-top:8px; padding:8px; border:1px solid #ccc;">
+                <div><strong>@draw.Name</strong></div>
+                <div>
+                    @string.Join(" | ", draw.Results.Select(x => x.CharacterName + (x.IsNpc ? $" ({L["Common_Npc"]})" : string.Empty)))
+                </div>
+            </div>
+        }
+    }
+}
+
+@code {
+    [Parameter] public Guid SessionId { get; set; }
+
+    private Guid CurrentUserId;
+    private bool IsLoaded;
+    private bool RedirectToHome;
+    private string Message = string.Empty;
+
+    private RandomDrawEditorDto? Editor;
+    private RandomDrawRequestDto Request = new();
+    private RandomDrawResultDto? LastDraw;
+
+    private string SelectedTraitOptionId = string.Empty;
+    private string SelectedTalentFilterId = string.Empty;
+    private string SelectedItemFilterId = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!isAuthenticated || string.IsNullOrWhiteSpace(userIdValue))
+        {
+            RedirectToHome = true;
+            IsLoaded = true;
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+        await LoadEditorAsync();
+        IsLoaded = true;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToHome)
+            Navigation.NavigateTo("/", forceLoad: true);
+
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadEditorAsync()
+    {
+        Editor = await CharacterService.GetRandomDrawEditorAsync(SessionId, CurrentUserId);
+        if (Editor is not null)
+        {
+            Request.Name = Editor.SuggestedName;
+            if (Request.DrawCount <= 0)
+                Request.DrawCount = 1;
+            Request.Filter.IncludeNpcs = true;
+        }
+    }
+
+    private void AddTraitOptionFilter()
+    {
+        if (Guid.TryParse(SelectedTraitOptionId, out var id) && !Request.Filter.TraitOptionIds.Contains(id))
+            Request.Filter.TraitOptionIds.Add(id);
+    }
+
+    private void AddTalentFilter()
+    {
+        if (Guid.TryParse(SelectedTalentFilterId, out var id) && !Request.Filter.TalentIds.Contains(id))
+            Request.Filter.TalentIds.Add(id);
+    }
+
+    private void AddItemFilter()
+    {
+        if (Guid.TryParse(SelectedItemFilterId, out var id) && !Request.Filter.ItemIds.Contains(id))
+            Request.Filter.ItemIds.Add(id);
+    }
+
+    private void AddValueFilter()
+    {
+        var firstAttribute = Editor?.BaseAttributes.FirstOrDefault();
+
+        Request.Filter.ValueFilters.Add(new CharacterValueFilterDto
+        {
+            TargetType = CharacterEffectTargetType.BaseAttribute,
+            TargetId = firstAttribute?.Id ?? Guid.Empty,
+            ComparisonType = CharacterValueComparisonType.GreaterThanOrEqual,
+            Value = 0
+        });
+    }
+
+    private async Task ExecuteDraw()
+    {
+        try
+        {
+            Message = string.Empty;
+            LastDraw = await CharacterService.ExecuteRandomDrawAsync(SessionId, CurrentUserId, Request);
+            await LoadEditorAsync();
+            if (Editor is not null)
+            {
+                Request.Name = Editor.SuggestedName;
+            }
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+}

@@ -7,6 +7,7 @@
         DerivedStat = 3,
         Metric = 4,
         Talent = 5,
-        Item = 6
+        Item = 6,
+        SessionGauge = 7
     }
 }

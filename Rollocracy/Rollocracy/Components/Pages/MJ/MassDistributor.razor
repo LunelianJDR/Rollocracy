@@ -13,6 +13,7 @@
 @inject IMassDistributionService MassDistributionService
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
+@inject ISessionService SessionService
 
 <h3>@L["MassDistribution_Title"]</h3>
 
@@ -212,6 +213,7 @@ else
                 <select @bind="effect.TargetType">
                     <option value="@CharacterEffectTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
                     <option value="@CharacterEffectTargetType.Gauge">@L["MassDistribution_Target_Gauge"]</option>
+                    <option value="@CharacterEffectTargetType.SessionGauge">@L["SessionPage_TargetSessionGauge"]</option>
                     <option value="@CharacterEffectTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
                     <option value="@CharacterEffectTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
                 </select>
@@ -231,6 +233,15 @@ else
                         @foreach (var item in Editor.Gauges)
                         {
                             <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                }
+                else if (effect.TargetType == CharacterEffectTargetType.SessionGauge)
+                {
+                    <select @bind="effect.TargetId">
+                        @foreach (var item in SessionGauges)
+                        {
+                            <option value="@item.SessionGaugeId">@item.Name</option>
                         }
                     </select>
                 }
@@ -335,6 +346,7 @@ else
     private string Message = string.Empty;
 
     private MassDistributionEditorDto? Editor;
+    private List<SessionGaugeDto> SessionGauges = new();
     private MassDistributionRequestDto Request = new();
 
     private string SelectedTraitOptionId = string.Empty;
@@ -361,6 +373,8 @@ else
 
         CurrentUserId = Guid.Parse(userIdValue);
         Editor = await MassDistributionService.GetEditorAsync(SessionId, CurrentUserId);
+
+        SessionGauges = await SessionService.GetSessionGaugesAsync(SessionId, CurrentUserId);
 
         LastBatch = await MassDistributionService.GetLastBatchAsync(SessionId, CurrentUserId);
 

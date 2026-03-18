@@ -144,6 +144,7 @@ namespace Rollocracy.Infrastructure.Services
                         context,
                         consequence.TargetKind,
                         consequence.TargetDefinitionId,
+                        sessionId,
                         gameSystemId.Value);
 
                     context.SessionPollOptionConsequences.Add(new SessionPollOptionConsequence
@@ -1135,6 +1136,7 @@ namespace Rollocracy.Infrastructure.Services
             {
                 TestConsequenceTargetKind.Attribute => CharacterEffectTargetType.BaseAttribute,
                 TestConsequenceTargetKind.Gauge => CharacterEffectTargetType.Gauge,
+                TestConsequenceTargetKind.SessionGauge => CharacterEffectTargetType.SessionGauge,
                 TestConsequenceTargetKind.DerivedStat => CharacterEffectTargetType.DerivedStat,
                 TestConsequenceTargetKind.Metric => CharacterEffectTargetType.Metric,
                 TestConsequenceTargetKind.Talent => CharacterEffectTargetType.Talent,
@@ -1173,10 +1175,11 @@ namespace Rollocracy.Infrastructure.Services
         }
 
         private async Task<string> ResolveConsequenceTargetNameAsync(
-    RollocracyDbContext context,
-    TestConsequenceTargetKind targetKind,
-    Guid targetDefinitionId,
-    Guid gameSystemId)
+            RollocracyDbContext context,
+            TestConsequenceTargetKind targetKind,
+            Guid targetDefinitionId,
+            Guid sessionId,
+            Guid gameSystemId)
         {
             switch (targetKind)
             {
@@ -1189,6 +1192,16 @@ namespace Rollocracy.Infrastructure.Services
                         throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
 
                     return gauge.Name;
+
+                case TestConsequenceTargetKind.SessionGauge:
+                    var sessionGauge = await context.SessionGauges
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(g => g.Id == targetDefinitionId && g.SessionId == sessionId);
+
+                    if (sessionGauge == null)
+                        throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
+
+                    return sessionGauge.Name;
 
                 case TestConsequenceTargetKind.Attribute:
                     var attribute = await context.AttributeDefinitions
@@ -1278,6 +1291,7 @@ namespace Rollocracy.Infrastructure.Services
                         case TestConsequenceOperationType.AddValue:
                             if (consequence.TargetKind != TestConsequenceTargetKind.Attribute &&
                                 consequence.TargetKind != TestConsequenceTargetKind.Gauge &&
+                                consequence.TargetKind != TestConsequenceTargetKind.SessionGauge &&
                                 consequence.TargetKind != TestConsequenceTargetKind.DerivedStat &&
                                 consequence.TargetKind != TestConsequenceTargetKind.Metric)
                             {

@@ -171,7 +171,11 @@ namespace Rollocracy.Infrastructure.Services
                         throw new Exception(_localizer["Backend_InvalidTestConsequenceSourceMetric"]);
                 }
 
-                var resolvedTargetName = await ResolveConsequenceTargetNameAsync(context, consequence, session.GameSystemId.Value);
+                var resolvedTargetName = await ResolveConsequenceTargetNameAsync(
+                    context,
+                    consequence,
+                    session.Id,
+                    session.GameSystemId.Value);
 
                 context.GameTestConsequences.Add(new GameTestConsequence
                 {
@@ -990,6 +994,7 @@ namespace Rollocracy.Infrastructure.Services
             {
                 TestConsequenceTargetKind.Attribute => CharacterEffectTargetType.BaseAttribute,
                 TestConsequenceTargetKind.Gauge => CharacterEffectTargetType.Gauge,
+                TestConsequenceTargetKind.SessionGauge => CharacterEffectTargetType.SessionGauge,
                 TestConsequenceTargetKind.DerivedStat => CharacterEffectTargetType.DerivedStat,
                 TestConsequenceTargetKind.Metric => CharacterEffectTargetType.Metric,
                 TestConsequenceTargetKind.Talent => CharacterEffectTargetType.Talent,
@@ -1425,9 +1430,10 @@ namespace Rollocracy.Infrastructure.Services
         }
 
         private async Task<string> ResolveConsequenceTargetNameAsync(
-    RollocracyDbContext context,
-    GameTestConsequenceDraftDto consequence,
-    Guid gameSystemId)
+            RollocracyDbContext context,
+            GameTestConsequenceDraftDto consequence,
+            Guid sessionId,
+            Guid gameSystemId)
         {
             switch (consequence.TargetKind)
             {
@@ -1440,6 +1446,16 @@ namespace Rollocracy.Infrastructure.Services
                         throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
 
                     return gauge.Name;
+
+                case TestConsequenceTargetKind.SessionGauge:
+                    var sessionGauge = await context.SessionGauges
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.SessionId == sessionId);
+
+                    if (sessionGauge == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return sessionGauge.Name;
 
                 case TestConsequenceTargetKind.Attribute:
                     var attribute = await context.AttributeDefinitions
@@ -1557,6 +1573,7 @@ namespace Rollocracy.Infrastructure.Services
                     case TestConsequenceOperationType.AddValue:
                         if (consequence.TargetKind != TestConsequenceTargetKind.Attribute &&
                             consequence.TargetKind != TestConsequenceTargetKind.Gauge &&
+                            consequence.TargetKind != TestConsequenceTargetKind.SessionGauge &&
                             consequence.TargetKind != TestConsequenceTargetKind.DerivedStat &&
                             consequence.TargetKind != TestConsequenceTargetKind.Metric)
                         {
