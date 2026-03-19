@@ -95,17 +95,17 @@
             <div class="rc-nav__section">
                 <div class="rc-nav__section-title">@L["Layout_CurrentSessionSection"]</div>
 
-                <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}")" Match="NavLinkMatch.Prefix" title="@L["Layout_ViewCharacters"]">
+                <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}")" Match="NavLinkMatch.All" title="@L["Layout_ViewCharacters"]">
                     <span class="rc-nav__icon">▣</span>
                     <span class="rc-nav__label">@L["Layout_ViewCharacters"]</span>
                 </NavLink>
 
-                <a class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}#game-test-section")" title="@L["Layout_Test"]">
+                <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}/test")" title="@L["Layout_Test"]">
                     <span class="rc-nav__icon">⚄</span>
                     <span class="rc-nav__label">@L["Layout_Test"]</span>
-                </a>
+                </NavLink>
 
-                <a class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}#poll-section")" title="@L["Layout_Poll"]">
+                <a class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}/poll")" title="@L["Layout_Poll"]">
                     <span class="rc-nav__icon">☰</span>
                     <span class="rc-nav__label">@L["Layout_Poll"]</span>
                 </a>

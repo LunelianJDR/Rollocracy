@@ -96,7 +96,7 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x =>
                     x.PlayerSession.SessionId == sessionId &&
                     x.Character.IsAlive &&
-                    (!x.PlayerSession.IsGameMaster || x.Character.IsNpc))
+                    (request.IncludeNpcs || !x.Character.IsNpc))
                 .OrderBy(x => x.Character.Name)
                 .ToListAsync();
 
@@ -140,7 +140,7 @@ namespace Rollocracy.Infrastructure.Services
                 TraitFilterMode = request.TraitFilterMode,
                 IsClosed = false,
                 CreatedAtUtc = DateTime.UtcNow,
-                AutoRollAtUtc = DateTime.UtcNow.AddSeconds(20)
+                AutoRollAtUtc = DateTime.UtcNow.AddSeconds(request.AutoRollDelaySeconds)
             };
 
             context.GameTests.Add(test);
@@ -231,7 +231,25 @@ namespace Rollocracy.Infrastructure.Services
 
             await context.SaveChangesAsync();
 
-            _scheduler.ScheduleAutoRoll(test.Id, TimeSpan.FromSeconds(20));
+            var npcPlayerSessionIds = candidateRows
+                .Where(x => x.Character.IsNpc)
+                .Select(x => x.PlayerSession.Id)
+                .Distinct()
+                .ToList();
+
+            foreach (var npcPlayerSessionId in npcPlayerSessionIds)
+            {
+                await RollForPlayerAsync(npcPlayerSessionId, test.Id, true);
+            }
+
+            if (request.AutoRollDelaySeconds == 0)
+            {
+                await AutoRollPendingAsync(test.Id);
+            }
+            else
+            {
+                _scheduler.ScheduleAutoRoll(test.Id, TimeSpan.FromSeconds(request.AutoRollDelaySeconds));
+            }
 
             await _sessionNotifier.NotifyTestChangedAsync(sessionId);
 
@@ -1543,6 +1561,15 @@ namespace Rollocracy.Infrastructure.Services
 
             if (request.DifficultyValue < 0)
                 throw new Exception(_localizer["Backend_InvalidDifficultyValue"]);
+
+            if (request.AutoRollDelaySeconds != 0 &&
+                request.AutoRollDelaySeconds != 10 &&
+                request.AutoRollDelaySeconds != 20 &&
+                request.AutoRollDelaySeconds != 30 &&
+                request.AutoRollDelaySeconds != 40)
+            {
+                throw new Exception(_localizer["Common_Error"]);
+            }
 
             foreach (var consequence in request.Consequences)
             {

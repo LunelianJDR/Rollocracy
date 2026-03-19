@@ -64,6 +64,10 @@ namespace Rollocracy.Domain.GameTests
 
         public TestTraitFilterMode TraitFilterMode { get; set; }
 
+        public bool IncludeNpcs { get; set; }
+
+        public int AutoRollDelaySeconds { get; set; } = 20;
+
         public List<GameTestTraitFilterGroupDto> TraitFilters { get; set; } = new();
 
         public List<GameTestConsequenceDraftDto> Consequences { get; set; } = new();

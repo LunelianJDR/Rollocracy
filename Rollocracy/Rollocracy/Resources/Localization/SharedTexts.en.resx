@@ -871,7 +871,7 @@
   <value>Difficulty mode</value>
 </data>
 	<data name="GameTest_DifficultyValue" xml:space="preserve">
-  <value>Difficulty value</value>
+  <value>Difficulty modifier</value>
 </data>
 	<data name="GameTest_DifficultySummary" xml:space="preserve">
   <value>Difficulty</value>
@@ -900,11 +900,8 @@
 	<data name="GameTest_Consequences" xml:space="preserve">
   <value>Consequences</value>
 </data>
-	<data name="GameTest_AddSuccessConsequence" xml:space="preserve">
-  <value>Add success consequence</value>
-</data>
-	<data name="GameTest_AddFailureConsequence" xml:space="preserve">
-  <value>Add failure consequence</value>
+	<data name="GameTest_AddConsequence" xml:space="preserve">
+  <value>Add consequence</value>
 </data>
 	<data name="GameTest_NoConsequence" xml:space="preserve">
   <value>No consequence.</value>
@@ -1961,6 +1958,30 @@
   <value>Session settings</value>
 </data>
 	<data name="Layout_NoPassword" xml:space="preserve">
-  <value>Pas de mot de passe</value>
+  <value>No password</value>
+</data>
+	<data name="GameTest_AutoRollDelay" xml:space="preserve">
+  <value>Auto-roll delay</value>
+</data>
+	<data name="GameTest_IncludeNpcs" xml:space="preserve">
+  <value>Include NPCs</value>
+</data>
+	<data name="GameTest_ExcludeNpcs" xml:space="preserve">
+  <value>Exclude NPCs</value>
+</data>
+	<data name="GameTest_AfterModifier" xml:space="preserve">
+  <value>after modifier</value>
+</data>
+	<data name="GameTest_Difference" xml:space="preserve">
+  <value>Difference</value>
+</data>
+	<data name="Poll_CurrentOrLatest" xml:space="preserve">
+  <value>Current or latest poll</value>
+</data>
+	<data name="Poll_ConsequenceOperation" xml:space="preserve">
+  <value>Consequence operation</value>
+</data>
+	<data name="Poll_WeightedPercent" xml:space="preserve">
+  <value>Weighted percentage</value>
 </data>
 </root>

@@ -1,3 +1,9 @@
+/* =========================================================
+   ROLLOCRACY - GLOBAL THEME TOKENS
+   ---------------------------------------------------------
+   Centralizes colors, radii, sizing and transitions used by
+   the layout and tool pages. Light theme is the default.
+   ========================================================= */
 :root {
     --rc-bg: #FFFAF3;
     --rc-bg-alt: #FAF4ED;
@@ -30,6 +36,12 @@ html[data-theme="dark"] {
     --rc-shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
 }
 
+/* =========================================================
+   GLOBAL RESET / BASE ELEMENTS
+   ---------------------------------------------------------
+   Base typography, spacing, inputs, buttons and generic HTML
+   elements used throughout the site.
+   ========================================================= */
 html,
 body {
     margin: 0;
@@ -99,6 +111,63 @@ code {
     font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
+h1, h2, h3, h4, h5, h6 {
+    color: var(--rc-text);
+    margin-top: 0;
+}
+
+p, label, li, span, div {
+    color: var(--rc-text);
+}
+
+hr {
+    border: none;
+    border-top: 1px solid var(--rc-border);
+    margin: 1.25rem 0;
+}
+
+ul {
+    padding-left: 1.2rem;
+}
+
+/* Generic app buttons outside icon/sidebar links */
+.rc-main button:not(.icon-button):not(.rc-nav__link),
+.rc-main .btn,
+.rc-main a.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0.65rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--rc-border);
+    background: var(--rc-surface);
+    color: var(--rc-text);
+    transition: background var(--rc-transition), border-color var(--rc-transition), transform var(--rc-transition), box-shadow var(--rc-transition);
+}
+
+    .rc-main button:not(.icon-button):not(.rc-nav__link):hover,
+    .rc-main .btn:hover,
+    .rc-main a.btn:hover {
+        background: var(--rc-bg-alt);
+        border-color: var(--rc-accent);
+        transform: translateY(-1px);
+    }
+
+    .rc-main button:not(.icon-button):not(.rc-nav__link):focus,
+    .rc-main .btn:focus,
+    .rc-main a.btn:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(40, 105, 131, 0.15);
+    }
+
+html[data-theme="dark"] .rc-main button:not(.icon-button):not(.rc-nav__link):focus,
+html[data-theme="dark"] .rc-main .btn:focus,
+html[data-theme="dark"] .rc-main a.btn:focus {
+    box-shadow: 0 0 0 3px rgba(196, 167, 231, 0.18);
+}
+
+/* Blazor fatal error strip */
 #blazor-error-ui {
     background: #fff0c7;
     color: #5c4400;
@@ -119,8 +188,12 @@ code {
         cursor: pointer;
     }
 
-/* ---------- GLOBAL SHELL ---------- */
-
+/* =========================================================
+   GLOBAL SHELL
+   ---------------------------------------------------------
+   Main 2-column app shell: collapsible sidebar + topbar +
+   scrollable content area.
+   ========================================================= */
 .rc-shell {
     display: grid;
     grid-template-columns: var(--rc-sidebar-width) 1fr;
@@ -140,7 +213,7 @@ code {
     border-right: 1px solid var(--rc-border);
     min-width: 0;
     overflow: hidden;
-    box-shadow: inset -1px 0 0 rgba(0,0,0,0.02);
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.02);
 }
 
 .rc-shell__main {
@@ -168,8 +241,11 @@ code {
     box-shadow: var(--rc-shadow);
 }
 
-/* ---------- TOP BAR ---------- */
-
+/* =========================================================
+   TOP BAR / BRAND / SESSION STRIP
+   ---------------------------------------------------------
+   Header row with site branding and session quick info.
+   ========================================================= */
 .rc-topbar {
     display: flex;
     align-items: center;
@@ -223,8 +299,6 @@ code {
     color: var(--rc-text);
 }
 
-/* ---------- SESSION STRIP ---------- */
-
 .rc-session-strip {
     display: flex;
     align-items: center;
@@ -271,8 +345,12 @@ code {
     gap: 0.4rem;
 }
 
-/* ---------- NAV ---------- */
-
+/* =========================================================
+   NAVIGATION SIDEBAR
+   ---------------------------------------------------------
+   Welcome area, top action buttons and navigation links.
+   Includes collapsed-state behavior.
+   ========================================================= */
 .rc-nav {
     display: flex;
     flex-direction: column;
@@ -447,116 +525,12 @@ code {
     padding-right: 0.65rem;
 }
 
-/* ---------- GENERIC CONTENT ---------- */
-
-h1, h2, h3, h4, h5, h6 {
-    color: var(--rc-text);
-    margin-top: 0;
-}
-
-p, label, li, span, div {
-    color: var(--rc-text);
-}
-
-hr {
-    border: none;
-    border-top: 1px solid var(--rc-border);
-    margin: 1.25rem 0;
-}
-
-ul {
-    padding-left: 1.2rem;
-}
-
-.rc-main button:not(.icon-button):not(.rc-nav__link),
-.rc-main .btn,
-.rc-main a.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 42px;
-    padding: 0.65rem 1rem;
-    border-radius: 999px;
-    border: 1px solid var(--rc-border);
-    background: var(--rc-surface);
-    color: var(--rc-text);
-    transition: background var(--rc-transition), border-color var(--rc-transition), transform var(--rc-transition), box-shadow var(--rc-transition);
-}
-
-    .rc-main button:not(.icon-button):not(.rc-nav__link):hover,
-    .rc-main .btn:hover,
-    .rc-main a.btn:hover {
-        background: var(--rc-bg-alt);
-        border-color: var(--rc-accent);
-        transform: translateY(-1px);
-    }
-
-    .rc-main button:not(.icon-button):not(.rc-nav__link):focus,
-    .rc-main .btn:focus,
-    .rc-main a.btn:focus {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(40, 105, 131, 0.15);
-    }
-
-html[data-theme="dark"] .rc-main button:not(.icon-button):not(.rc-nav__link):focus,
-html[data-theme="dark"] .rc-main .btn:focus,
-html[data-theme="dark"] .rc-main a.btn:focus {
-    box-shadow: 0 0 0 3px rgba(196, 167, 231, 0.18);
-}
-
-@media (max-width: 960px) {
-    .rc-shell {
-        grid-template-columns: 1fr;
-    }
-
-        .rc-shell.sidebar-collapsed {
-            grid-template-columns: 1fr;
-        }
-
-    .rc-shell__sidebar {
-        display: none;
-    }
-
-    .rc-session-strip {
-        justify-content: flex-start;
-    }
-
-    .rc-topbar {
-        height: auto;
-        min-height: var(--rc-topbar-height);
-        align-items: flex-start;
-        flex-direction: column;
-        justify-content: center;
-        padding-top: 0.9rem;
-        padding-bottom: 0.9rem;
-    }
-
-    .rc-main {
-        padding: 1rem;
-    }
-
-    .rc-main__content {
-        min-height: auto;
-        padding: 1rem;
-    }
-
-    .rc-nav__welcome-name,
-    .rc-session-strip__value,
-    .rc-session-strip__value--link,
-    .rc-main code {
-        max-width: 600px;
-    }
-
-    .rc-session-strip__value--link,
-    .rc-nav__welcome-name {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-}
-
-/* ---------- I-1.B : CHARACTER VIEW MJ ---------- */
-
+/* =========================================================
+   I-1.B - MJ CHARACTER VIEW
+   ---------------------------------------------------------
+   Card grid for character browsing and the right-side detail
+   panel used by the MJ interface.
+   ========================================================= */
 .rc-character-view {
     display: flex;
     flex-direction: column;
@@ -615,13 +589,9 @@ html[data-theme="dark"] .rc-main a.btn:focus {
     align-items: start;
 }
 
-.rc-character-view__layout.has-selection {
-    grid-template-columns: minmax(0, 1fr) 420px;
-}
-/*
-.rc-character-view__layout.has-selection .rc-character-view__grid {
-    grid-template-columns: repeat(auto-fill, minmax(225px, 1fr));
-}*/
+    .rc-character-view__layout.has-selection {
+        grid-template-columns: minmax(0, 1fr) 420px;
+    }
 
 .rc-character-view__grid {
     display: grid;
@@ -703,16 +673,13 @@ html[data-theme="dark"] .rc-character-card.selected {
     color: var(--rc-text-soft);
 }
 
-    .rc-character-chip.alive {
+    .rc-character-chip.alive,
+    .rc-character-chip.online {
         color: var(--rc-accent);
     }
 
     .rc-character-chip.dead {
         color: #b25555;
-    }
-
-    .rc-character-chip.online {
-        color: var(--rc-accent);
     }
 
     .rc-character-chip.offline {
@@ -772,7 +739,8 @@ html[data-theme="dark"] .rc-character-card.selected {
     width: 100%;
 }
 
-.rc-character-gauge-line {
+.rc-character-gauge-line,
+.rc-health-gauge__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -794,15 +762,6 @@ html[data-theme="dark"] .rc-character-card.selected {
     flex-direction: column;
     gap: 0.35rem;
     width: 100%;
-}
-
-.rc-health-gauge__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    font-size: 0.8rem;
-    font-weight: 600;
 }
 
 .rc-health-gauge__track {
@@ -907,6 +866,520 @@ html[data-theme="dark"] .rc-character-card.selected {
     color: var(--rc-text-soft);
 }
 
+/* =========================================================
+   I-1.C.1 - MJ GAME TEST TOOL
+   ---------------------------------------------------------
+   Shared tool layout, form grid, result cards, stat cards,
+   slider styles and inline feedback messages.
+   ========================================================= */
+.rc-tool-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.rc-tool-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.rc-tool-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--rc-border);
+    background: var(--rc-surface);
+    border-radius: 22px;
+    box-shadow: var(--rc-shadow);
+}
+
+.rc-tool-panel__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.rc-tool-panel__header--top-aligned {
+    align-items: flex-start;
+}
+
+.rc-tool-panel__header-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.rc-tool-panel__title {
+    margin: 0 0 0.25rem 0;
+    font-size: 1.05rem;
+}
+
+.rc-tool-panel__subtitle {
+    margin: 0;
+    color: var(--rc-text-soft);
+    font-size: 0.9rem;
+}
+
+.rc-tool-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem 1rem;
+}
+
+.rc-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.rc-form-field--full {
+    grid-column: 1 / -1;
+}
+
+.rc-form-field label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--rc-text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.rc-form-field > input,
+.rc-form-field > select,
+.rc-form-field > textarea,
+.rc-form-field > .input-select,
+.rc-form-field > .form-select {
+    width: 100%;
+    max-width: none;
+}
+
+.rc-form-field--readonly .rc-readonly-value {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0.7rem 0.9rem;
+    border-radius: 12px;
+    background: var(--rc-bg-alt);
+    border: 1px solid var(--rc-border);
+    color: var(--rc-text);
+    font-weight: 600;
+}
+
+.rc-tool-subsection {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-top: 0.25rem;
+}
+
+.rc-tool-subsection__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.rc-tool-subsection__title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--rc-text);
+}
+
+.rc-tool-inline-actions,
+.rc-tool-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.rc-tool-actions {
+    justify-content: flex-start;
+}
+
+.rc-tool-inline-actions--right,
+.rc-tool-actions--right {
+    justify-content: flex-end;
+    width: 100%;
+}
+
+.rc-tool-muted {
+    margin: 0;
+    color: var(--rc-text-soft);
+}
+
+.rc-filter-groups,
+.rc-consequence-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.rc-filter-group-card,
+.rc-consequence-card {
+    padding: 0.85rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 18px;
+    background: var(--rc-surface-2);
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.rc-filter-group-card__title {
+    font-weight: 700;
+    color: var(--rc-text);
+}
+
+.rc-filter-group-card__options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.rc-consequence-card__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem 1rem;
+}
+
+.rc-inline-warning {
+    padding: 0.8rem 1rem;
+    border-radius: 16px;
+    border: 1px solid var(--rc-border);
+    background: var(--rc-bg-alt);
+    color: var(--rc-text);
+}
+
+.rc-inline-error {
+    margin-top: -0.25rem;
+    margin-bottom: 0.25rem;
+    padding: 0.85rem 1rem;
+    border-radius: 16px;
+    border: 1px solid rgba(178, 85, 85, 0.35);
+    background: rgba(178, 85, 85, 0.08);
+    color: #8f2f2f;
+    font-weight: 600;
+}
+
+html[data-theme="dark"] .rc-inline-error {
+    background: rgba(178, 85, 85, 0.14);
+    color: #f2b7b7;
+}
+
+.rc-test-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.rc-stat-card {
+    padding: 0.9rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 18px;
+    background: var(--rc-surface-2);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-height: 92px;
+    justify-content: center;
+}
+
+.rc-stat-card__label {
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--rc-text-soft);
+    font-weight: 700;
+}
+
+.rc-stat-card__value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--rc-text);
+}
+
+.rc-test-result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
+    gap: 0.9rem;
+}
+
+.rc-test-result-card {
+    padding: 0.95rem;
+    border-radius: 18px;
+    border: 1px solid var(--rc-border);
+    background: var(--rc-surface-2);
+    box-shadow: var(--rc-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+    .rc-test-result-card.pending {
+        opacity: 0.88;
+    }
+
+    .rc-test-result-card.success {
+        border-color: rgba(40, 105, 131, 0.35);
+    }
+
+    .rc-test-result-card.critical-success {
+        border-color: rgba(40, 105, 131, 0.55);
+        box-shadow: 0 0 0 2px rgba(40, 105, 131, 0.12), var(--rc-shadow);
+    }
+
+    .rc-test-result-card.failure {
+        border-color: rgba(178, 85, 85, 0.35);
+    }
+
+    .rc-test-result-card.critical-failure {
+        border-color: rgba(178, 85, 85, 0.55);
+        box-shadow: 0 0 0 2px rgba(178, 85, 85, 0.12), var(--rc-shadow);
+    }
+
+html[data-theme="dark"] .rc-test-result-card.critical-success {
+    box-shadow: 0 0 0 2px rgba(196, 167, 231, 0.18), var(--rc-shadow);
+}
+
+.rc-test-result-card__header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    text-align: center;
+}
+
+.rc-test-result-card__title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--rc-text);
+    word-break: break-word;
+}
+
+.rc-test-result-card__player {
+    font-size: 0.88rem;
+    color: var(--rc-text-soft);
+    word-break: break-word;
+}
+
+.rc-test-result-card__status,
+.rc-test-result-card__highlight {
+    display: flex;
+    justify-content: center;
+}
+
+.rc-test-result-card__highlight {
+    margin-top: -0.1rem;
+}
+
+.rc-test-result-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.rc-result-banner {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border: 1px solid var(--rc-border);
+    background: var(--rc-bg-alt);
+    color: var(--rc-text);
+}
+
+    .rc-result-banner.pending {
+        color: var(--rc-text-soft);
+    }
+
+    .rc-result-banner.success {
+        background: rgba(40, 105, 131, 0.12);
+        color: #1d6b3c;
+        border-color: rgba(40, 105, 131, 0.35);
+    }
+
+    .rc-result-banner.failure {
+        background: rgba(178, 85, 85, 0.12);
+        color: #a13f3f;
+        border-color: rgba(178, 85, 85, 0.35);
+    }
+
+    .rc-result-banner.critical,
+    .rc-final-value.critical {
+        text-decoration: underline;
+        text-underline-offset: 0.16em;
+    }
+
+.rc-final-value {
+    font-size: 1.4rem;
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+}
+
+    .rc-final-value.success,
+    .rc-diff-positive {
+        color: #1d6b3c;
+    }
+
+    .rc-final-value.failure,
+    .rc-diff-negative {
+        color: #a13f3f;
+    }
+
+.rc-test-result-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: baseline;
+    font-size: 0.88rem;
+}
+
+    .rc-test-result-line span {
+        color: var(--rc-text-soft);
+    }
+
+    .rc-test-result-line strong {
+        color: var(--rc-text);
+        text-align: right;
+    }
+
+.rc-test-result-note {
+    margin-top: 0.2rem;
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--rc-text-soft);
+}
+
+/* =========================================================
+   SLIDERS - OUTILS MJ
+   Le remplissage est porté par l'input lui-même.
+   La piste native est rendue transparente.
+========================================================= */
+
+.rc-difficulty-slider {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.rc-difficulty-slider input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    max-width: none;
+    height: 8px;
+    border-radius: 999px;
+    outline: none;
+    border: 1px solid var(--rc-border);
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+}
+
+/* Slider délai : remplissage depuis la gauche */
+.rc-difficulty-slider input[type="range"].rc-difficulty-slider--classic {
+    background: linear-gradient( to right, var(--rc-accent) 0%, var(--rc-accent) var(--slider-progress, 0%), var(--rc-bg-alt) var(--slider-progress, 0%), var(--rc-bg-alt) 100% );
+}
+
+/* Slider difficulté : remplissage depuis le centre */
+.rc-difficulty-slider input[type="range"].rc-difficulty-slider--centered {
+    background: linear-gradient( to right, var(--rc-bg-alt) 0%, var(--rc-bg-alt) var(--difficulty-progress-start, 50%), var(--difficulty-progress-color, transparent) var(--difficulty-progress-start, 50%), var(--difficulty-progress-color, transparent) var(--difficulty-progress-end, 50%), var(--rc-bg-alt) var(--difficulty-progress-end, 50%), var(--rc-bg-alt) 100% );
+}
+
+/* On neutralise la piste native WebKit/Blink */
+.rc-difficulty-slider input[type="range"]::-webkit-slider-runnable-track {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    border: none;
+    height: 8px;
+}
+
+/* Thumb WebKit/Blink */
+.rc-difficulty-slider input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--rc-accent);
+    border: 2px solid var(--rc-surface);
+    box-shadow: var(--rc-shadow);
+    margin-top: -6px;
+    cursor: pointer;
+}
+
+/* Thumb Firefox */
+.rc-difficulty-slider input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--rc-accent);
+    border: 2px solid var(--rc-surface);
+    box-shadow: var(--rc-shadow);
+    cursor: pointer;
+}
+
+/* Piste Firefox : transparente aussi */
+.rc-difficulty-slider input[type="range"]::-moz-range-track {
+    background: transparent;
+    border: none;
+    height: 8px;
+}
+
+.rc-difficulty-slider__ticks {
+    display: grid;
+    gap: 0;
+    font-size: 0.72rem;
+    color: var(--rc-text-soft);
+    text-align: center;
+    align-items: start;
+}
+
+
+    .rc-difficulty-slider__ticks > span {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 1.4rem;
+        transition: transform 120ms ease, color 120ms ease, font-size 120ms ease, font-weight 120ms ease;
+    }
+
+        .rc-difficulty-slider__ticks > span.active {
+            font-weight: 800;
+            font-size: 0.9rem;
+            transform: scale(1.08);
+        }
+
+        .rc-difficulty-slider__ticks > span.active-positive {
+            color: #1d6b3c;
+        }
+
+        .rc-difficulty-slider__ticks > span.active-negative {
+            color: #a13f3f;
+        }
+
+        .rc-difficulty-slider__ticks > span.active-neutral {
+            color: var(--rc-text);
+        }
+
+/* =========================================================
+   RESPONSIVE RULES
+   ---------------------------------------------------------
+   Breakpoints for shell, cards and tool pages.
+   ========================================================= */
 @media (max-width: 1600px) {
     .rc-character-view__layout.has-selection {
         grid-template-columns: minmax(0, 1fr) 380px;
@@ -921,6 +1394,16 @@ html[data-theme="dark"] .rc-character-card.selected {
     }
 }
 
+@media (max-width: 1480px) {
+    .rc-tool-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .rc-test-stats-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: 1280px) {
     .rc-character-view__layout,
     .rc-character-view__layout.has-selection {
@@ -930,6 +1413,63 @@ html[data-theme="dark"] .rc-character-card.selected {
     .rc-character-detail-panel {
         position: static;
         min-height: auto;
+    }
+}
+
+@media (max-width: 960px) {
+    .rc-shell,
+    .rc-shell.sidebar-collapsed {
+        grid-template-columns: 1fr;
+    }
+
+    .rc-shell__sidebar {
+        display: none;
+    }
+
+    .rc-session-strip {
+        justify-content: flex-start;
+    }
+
+    .rc-topbar {
+        height: auto;
+        min-height: var(--rc-topbar-height);
+        align-items: flex-start;
+        flex-direction: column;
+        justify-content: center;
+        padding-top: 0.9rem;
+        padding-bottom: 0.9rem;
+    }
+
+    .rc-main {
+        padding: 1rem;
+    }
+
+    .rc-main__content {
+        min-height: auto;
+        padding: 1rem;
+    }
+
+    .rc-nav__welcome-name,
+    .rc-session-strip__value,
+    .rc-session-strip__value--link,
+    .rc-main code {
+        max-width: 600px;
+    }
+
+    .rc-session-strip__value--link,
+    .rc-nav__welcome-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .rc-tool-form-grid,
+    .rc-consequence-card__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .rc-test-stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
@@ -952,4 +1492,128 @@ html[data-theme="dark"] .rc-character-card.selected {
     }
 }
 
+@media (max-width: 640px) {
+    .rc-test-stats-grid,
+    .rc-test-result-grid {
+        grid-template-columns: 1fr;
+    }
+}
 
+/* =========================================================
+   I-1.C.2 - MJ POLL PAGE
+   ---------------------------------------------------------
+   Compléments visuels spécifiques à la page sondage.
+   ========================================================= */
+
+.rc-consequence-card--nested {
+    background: var(--rc-surface);
+    border-style: dashed;
+}
+
+.rc-stat-card__value--small {
+    font-size: 0.95rem;
+    line-height: 1.35;
+}
+
+.rc-poll-vote-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.9rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 18px;
+    background: var(--rc-surface-2);
+}
+
+.rc-poll-vote-group__title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--rc-text);
+}
+
+.rc-poll-vote-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+
+.rc-poll-vote-card {
+    padding: 0.85rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 16px;
+    background: var(--rc-surface);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    box-shadow: var(--rc-shadow);
+}
+
+.rc-poll-vote-card__character {
+    font-weight: 700;
+    color: var(--rc-text);
+    word-break: break-word;
+}
+
+.rc-poll-vote-card__player {
+    font-size: 0.88rem;
+    color: var(--rc-text-soft);
+    word-break: break-word;
+}
+
+.rc-poll-vote-card__weight {
+    margin-top: 0.2rem;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--rc-accent);
+}
+
+/* =========================================================
+   I-1.C.2 - POLL RESULTS ADJUSTMENTS
+   ---------------------------------------------------------
+   Mise en valeur du vote majoritaire et jauge pondérée.
+   ========================================================= */
+
+.rc-poll-option-card--winner {
+    border-color: var(--rc-accent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--rc-accent) 38%, transparent), var(--rc-shadow);
+}
+
+.rc-poll-option-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin-top: 0.35rem;
+}
+
+.rc-poll-option-progress__label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.88rem;
+    color: var(--rc-text-soft);
+}
+
+    .rc-poll-option-progress__label strong {
+        color: var(--rc-text);
+    }
+
+.rc-poll-option-progress__track {
+    position: relative;
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--rc-bg-alt);
+    border: 1px solid var(--rc-border);
+}
+
+.rc-poll-option-progress__fill {
+    height: 100%;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--rc-text-soft) 45%, var(--rc-bg-alt));
+}
+
+    .rc-poll-option-progress__fill.winner {
+        background: var(--rc-accent);
+    }
