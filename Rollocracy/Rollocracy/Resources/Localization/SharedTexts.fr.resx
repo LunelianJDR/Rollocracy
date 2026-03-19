@@ -281,16 +281,16 @@
   <value>Slug</value>
 </data>
 	<data name="SessionPage_JoinUrl" xml:space="preserve">
-  <value>URL de jointure</value>
+  <value>URL</value>
 </data>
 	<data name="SessionPage_Password" xml:space="preserve">
-  <value>Mot de passe de la session</value>
+  <value>Mot de passe</value>
 </data>
 	<data name="SessionPage_ShowPassword" xml:space="preserve">
-  <value>Afficher le mot de passe de la session</value>
+  <value>Afficher le mot de passe</value>
 </data>
 	<data name="SessionPage_HidePassword" xml:space="preserve">
-  <value>Masquer le mot de passe de la session</value>
+  <value>Masquer le mot de passe</value>
 </data>
 	<data name="SessionPage_GameSystemSection" xml:space="preserve">
   <value>Système de jeu de la session</value>
@@ -1915,5 +1915,53 @@
 </data>
 	<data name="Backend_SessionGaugeNotFound" xml:space="preserve">
   <value>Jauge de session introuvable.</value>
+</data>
+	<data name="Layout_Welcome" xml:space="preserve">
+  <value>Bienvenue</value>
+</data>
+	<data name="Layout_Guest" xml:space="preserve">
+  <value>Invité</value>
+</data>
+	<data name="Layout_CycleTheme" xml:space="preserve">
+  <value>Changer de thème</value>
+</data>
+	<data name="Layout_SupportSoon" xml:space="preserve">
+  <value>Soutien bientôt disponible</value>
+</data>
+	<data name="Layout_ToggleSidebar" xml:space="preserve">
+  <value>Réduire / agrandir le menu</value>
+</data>
+	<data name="Layout_UserSection" xml:space="preserve">
+  <value>Utilisateur</value>
+</data>
+	<data name="Layout_AccountSettings" xml:space="preserve">
+  <value>Paramètres du compte</value>
+</data>
+	<data name="Layout_OutsideSessionSection" xml:space="preserve">
+  <value>Hors session</value>
+</data>
+	<data name="Layout_GameSystems" xml:space="preserve">
+  <value>Systèmes de jeu</value>
+</data>
+	<data name="Layout_GameSessions" xml:space="preserve">
+  <value>Sessions de jeu</value>
+</data>
+	<data name="Layout_CurrentSessionSection" xml:space="preserve">
+  <value>Session en cours</value>
+</data>
+	<data name="Layout_ViewCharacters" xml:space="preserve">
+  <value>Vue personnages</value>
+</data>
+	<data name="Layout_Test" xml:space="preserve">
+  <value>Test</value>
+</data>
+	<data name="Layout_Poll" xml:space="preserve">
+  <value>Sondage</value>
+</data>
+	<data name="Layout_SessionSettings" xml:space="preserve">
+  <value>Paramètres de la session</value>
+</data>
+	<data name="Layout_NoPassword" xml:space="preserve">
+  <value>No password</value>
 </data>
 </root>

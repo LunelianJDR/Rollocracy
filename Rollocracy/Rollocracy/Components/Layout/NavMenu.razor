@@ -1,111 +1,142 @@
-﻿@using System.Security.Claims
-@using Microsoft.AspNetCore.Components.Authorization
+﻿@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
 @using Rollocracy.Localization
-
 @inject IStringLocalizer<SharedTexts> L
-@inject Rollocracy.Domain.Interfaces.ISessionService SessionService
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Rollocracy</a>
-    </div>
-</div>
+<div class="rc-nav @(IsCollapsed ? "collapsed" : string.Empty)">
+    <div class="rc-nav__header">
+        <div class="rc-nav__header-actions">
+            <button type="button"
+                    class="icon-button"
+                    title="@L["Layout_CycleTheme"]"
+                    @onclick="async () => await OnCycleTheme.InvokeAsync()">
+                @ThemeGlyph
+            </button>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+            <button type="button"
+                    class="icon-button"
+                    title="@L["Layout_SupportSoon"]"
+                    disabled>
+                ❤
+            </button>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler')?.click()">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
+            <button type="button"
+                    class="icon-button"
+                    title="@L["Layout_ToggleSidebar"]"
+                    @onclick="async () => await OnToggleSidebar.InvokeAsync()">
+                @(IsCollapsed ? "»" : "«")
+            </button>
         </div>
 
-        <AuthorizeView>
-            <Authorizing>
-                <div class="nav-item px-3">
-                    <span class="nav-link">@L["Common_Loading"]</span>
-                </div>
-            </Authorizing>
+        <div class="rc-nav__welcome">
+            <div class="rc-nav__welcome-label">@L["Layout_Welcome"]</div>
+            <div class="rc-nav__welcome-name">
+                @(string.IsNullOrWhiteSpace(CurrentUserDisplayName)
+                    ? L["Layout_Guest"]
+                    : CurrentUserDisplayName)
+            </div>
+        </div>
+    </div>
 
-            <NotAuthorized>
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="login">
-                        <span class="bi bi-box-arrow-in-right" aria-hidden="true"></span> @L["Home_Login"]
+    <nav class="rc-nav__sections">
+        <div class="rc-nav__section">
+            <div class="rc-nav__section-title">@L["Layout_UserSection"]</div>
+
+            <AuthorizeView>
+                <Authorizing>
+                    <span class="rc-nav__loading">@L["Common_Loading"]</span>
+                </Authorizing>
+
+                <NotAuthorized>
+                    <NavLink class="rc-nav__link" href="/login" title="@L["Home_Login"]">
+                        <span class="rc-nav__icon">⇥</span>
+                        <span class="rc-nav__label">@L["Home_Login"]</span>
                     </NavLink>
-                </div>
 
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="register">
-                        <span class="bi bi-person-plus" aria-hidden="true"></span> @L["Home_Register"]
+                    <NavLink class="rc-nav__link" href="/register" title="@L["Home_Register"]">
+                        <span class="rc-nav__icon">＋</span>
+                        <span class="rc-nav__label">@L["Home_Register"]</span>
                     </NavLink>
-                </div>
-            </NotAuthorized>
+                </NotAuthorized>
 
-            <Authorized Context="authState">
-                <div class="nav-item px-3">
-                    <a class="nav-link" href="/auth/logout">
-                        <span class="bi bi-box-arrow-right" aria-hidden="true"></span> @L["Home_Logout"]
+                <Authorized>
+                    <a class="rc-nav__link" href="/auth/logout" title="@L["Home_Logout"]">
+                        <span class="rc-nav__icon">⇤</span>
+                        <span class="rc-nav__label">@L["Home_Logout"]</span>
                     </a>
-                </div>
 
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="join">
-                        <span class="bi bi-door-open" aria-hidden="true"></span> @L["Home_JoinSession"]
-                    </NavLink>
-                </div>
+                    <button type="button" class="rc-nav__link rc-nav__link--disabled" disabled title="@L["Layout_AccountSettings"]">
+                        <span class="rc-nav__icon">⚙</span>
+                        <span class="rc-nav__label">@L["Layout_AccountSettings"]</span>
+                    </button>
+                </Authorized>
+            </AuthorizeView>
+        </div>
 
-                @if (CanShowMjMenus)
-                {
-                    <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="mj/create-session">
-                            <span class="bi bi-plus-square" aria-hidden="true"></span> @L["Home_CreateSession"]
-                        </NavLink>
-                    </div>
+        @if (CanShowMjMenus)
+        {
+            <div class="rc-nav__section">
+                <div class="rc-nav__section-title">@L["Layout_OutsideSessionSection"]</div>
 
-                    <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="mj/sessions">
-                            <span class="bi bi-play-circle" aria-hidden="true"></span> @L["Home_ResumeSession"]
-                        </NavLink>
-                    </div>
+                <NavLink class="rc-nav__link" href="/mj/gamesystems" title="@L["Layout_GameSystems"]">
+                    <span class="rc-nav__icon">◫</span>
+                    <span class="rc-nav__label">@L["Layout_GameSystems"]</span>
+                </NavLink>
 
-                    <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="mj/gamesystems">
-                            <span class="bi bi-diagram-3" aria-hidden="true"></span> @L["Home_GameSystems"]
-                        </NavLink>
-                    </div>
-                }
-            </Authorized>
-        </AuthorizeView>
+                <NavLink class="rc-nav__link" href="/mj/sessions" title="@L["Layout_GameSessions"]">
+                    <span class="rc-nav__icon">◎</span>
+                    <span class="rc-nav__label">@L["Layout_GameSessions"]</span>
+                </NavLink>
+            </div>
+        }
+
+        @if (CanShowMjMenus && CurrentSessionId.HasValue)
+        {
+            <div class="rc-nav__section">
+                <div class="rc-nav__section-title">@L["Layout_CurrentSessionSection"]</div>
+
+                <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}")" Match="NavLinkMatch.Prefix" title="@L["Layout_ViewCharacters"]">
+                    <span class="rc-nav__icon">▣</span>
+                    <span class="rc-nav__label">@L["Layout_ViewCharacters"]</span>
+                </NavLink>
+
+                <a class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}#game-test-section")" title="@L["Layout_Test"]">
+                    <span class="rc-nav__icon">⚄</span>
+                    <span class="rc-nav__label">@L["Layout_Test"]</span>
+                </a>
+
+                <a class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}#poll-section")" title="@L["Layout_Poll"]">
+                    <span class="rc-nav__icon">☰</span>
+                    <span class="rc-nav__label">@L["Layout_Poll"]</span>
+                </a>
+
+                <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}/mass-distribution")" title="@L["MassDistribution_Title"]">
+                    <span class="rc-nav__icon">✦</span>
+                    <span class="rc-nav__label">@L["MassDistribution_Title"]</span>
+                </NavLink>
+
+                <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}/random-draw")" title="@L["RandomDraw_Title"]">
+                    <span class="rc-nav__icon">⟡</span>
+                    <span class="rc-nav__label">@L["RandomDraw_Title"]</span>
+                </NavLink>
+
+                <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}/settings")" title="@L["Layout_SessionSettings"]">
+                    <span class="rc-nav__icon">⚙</span>
+                    <span class="rc-nav__label">@L["Layout_SessionSettings"]</span>
+                </NavLink>
+            </div>
+        }
     </nav>
 </div>
 
 @code {
-    private bool CanShowMjMenus;
+    [Parameter] public bool IsCollapsed { get; set; }
+    [Parameter] public string CurrentUserDisplayName { get; set; } = string.Empty;
+    [Parameter] public bool CanShowMjMenus { get; set; }
+    [Parameter] public Guid? CurrentSessionId { get; set; }
+    [Parameter] public string CurrentTheme { get; set; } = "light";
+    [Parameter] public EventCallback OnToggleSidebar { get; set; }
+    [Parameter] public EventCallback OnCycleTheme { get; set; }
 
-    protected override async Task OnInitializedAsync()
-    {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated != true)
-        {
-            CanShowMjMenus = false;
-            return;
-        }
-
-        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrWhiteSpace(userIdValue) || !Guid.TryParse(userIdValue, out var userId))
-        {
-            CanShowMjMenus = false;
-            return;
-        }
-
-        CanShowMjMenus = await SessionService.CanUserCreateSessionsAsync(userId);
-    }
-
-    [Inject]
-    private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
+    private string ThemeGlyph => CurrentTheme == "dark" ? "☾" : "☀";
 }

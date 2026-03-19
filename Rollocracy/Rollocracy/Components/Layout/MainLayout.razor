@@ -1,19 +1,78 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Characters
+@using Rollocracy.Domain.Entities
+@using Rollocracy.Localization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ISessionService SessionService
+@inject ICharacterService CharacterService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject IStringLocalizer<SharedTexts> L
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
+<div class="rc-shell @(IsSidebarCollapsed ? "sidebar-collapsed" : string.Empty)">
+    <aside class="rc-shell__sidebar">
+        <NavMenu IsCollapsed="IsSidebarCollapsed"
+                 CurrentUserDisplayName="@CurrentUserDisplayName"
+                 CanShowMjMenus="@CanShowMjMenus"
+                 CurrentSessionId="@CurrentSessionId"
+                 CurrentTheme="@CurrentTheme"
+                 OnToggleSidebar="ToggleSidebar"
+                 OnCycleTheme="CycleTheme" />
+    </aside>
+
+    <div class="rc-shell__main">
+        <header class="rc-topbar">
+            <div class="rc-topbar__left">
+                <a class="rc-brand" href="/">
+                    <span class="rc-brand__mark">R</span>
+                    <span class="rc-brand__text">Rollocracy</span>
+                </a>
+            </div>
+
+            <div class="rc-topbar__right">
+                @if (CurrentSession is not null)
+                {
+                    <div class="rc-session-strip">
+                        <div class="rc-session-strip__group">
+                            <span class="rc-session-strip__label">@L["SessionPage_JoinUrl"]</span>
+                            <code class="rc-session-strip__value rc-session-strip__value--link">@JoinUrl</code>
+                        </div>
+
+                        <div class="rc-session-strip__group">
+                            <span class="rc-session-strip__label">@L["SessionPage_Password"]</span>
+                            <div class="rc-session-strip__password">
+                                <code class="rc-session-strip__value">@DisplayedPassword</code>
+                                @if (!string.IsNullOrWhiteSpace(CurrentSession.SessionPassword))
+                                {
+                                    <button type="button"
+                                            class="icon-button"
+                                            @onclick="ToggleSessionPasswordVisibility"
+                                            title="@(ShowSessionPassword? L["SessionPage_HidePassword"] : L["SessionPage_ShowPassword"])">
+                                        @(ShowSessionPassword ? "👁" : "👁")
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="rc-session-strip__group">
+                            <span class="rc-session-strip__label">@L["SessionPage_ConnectedPlayers"]</span>
+                            <span class="rc-session-strip__value">@(CurrentSessionStats?.ConnectedPlayersCount ?? 0)</span>
+                        </div>
+                    </div>
+                }
+            </div>
+        </header>
+
+        <main class="rc-main">
+            <article class="rc-main__content">
+                @Body
+            </article>
+        </main>
     </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
-        </div>
-
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
 </div>
 
 <div id="blazor-error-ui">
@@ -21,3 +80,136 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    private bool IsSidebarCollapsed;
+    private bool CanShowMjMenus;
+    private bool ShowSessionPassword;
+
+    private string CurrentTheme = "light";
+    private string CurrentUserDisplayName = string.Empty;
+    private string JoinUrl = string.Empty;
+
+    private Guid? CurrentSessionId;
+    private Session? CurrentSession;
+    private SessionPublicStatsDto? CurrentSessionStats;
+
+    private string DisplayedPassword
+        => CurrentSession is null
+            ? string.Empty
+            : string.IsNullOrWhiteSpace(CurrentSession.SessionPassword)
+                ? L["Layout_NoPassword"]
+                : ShowSessionPassword
+                    ? CurrentSession.SessionPassword
+                    : "••••";
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+            return;
+
+        var theme = await JS.InvokeAsync<string>("rollocracyTheme.getTheme");
+        CurrentTheme = string.IsNullOrWhiteSpace(theme) ? "light" : theme;
+        await JS.InvokeVoidAsync("rollocracyTheme.applyTheme", CurrentTheme);
+
+        await RefreshShellContextAsync();
+        StateHasChanged();
+    }
+
+    private async Task RefreshShellContextAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        CurrentUserDisplayName = user.Identity?.IsAuthenticated == true
+            ? user.Identity?.Name ?? string.Empty
+            : string.Empty;
+
+        CanShowMjMenus = false;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!string.IsNullOrWhiteSpace(userIdValue) && Guid.TryParse(userIdValue, out var userId))
+        {
+            CanShowMjMenus = await SessionService.CanUserCreateSessionsAsync(userId);
+        }
+
+        CurrentSessionId = TryExtractCurrentSessionId();
+        CurrentSession = null;
+        CurrentSessionStats = null;
+        JoinUrl = string.Empty;
+        ShowSessionPassword = false;
+
+        if (!CurrentSessionId.HasValue)
+            return;
+
+        CurrentSession = await SessionService.GetSessionByIdAsync(CurrentSessionId.Value);
+        if (CurrentSession is null)
+            return;
+
+        CurrentSessionStats = await CharacterService.GetSessionPublicStatsAsync(CurrentSessionId.Value);
+
+        if (!string.IsNullOrWhiteSpace(CurrentUserDisplayName))
+        {
+            JoinUrl = $"{Navigation.BaseUri}{CurrentUserDisplayName}/{CurrentSession.SessionSlug}";
+        }
+        else
+        {
+            JoinUrl = $"{Navigation.BaseUri}{CurrentSession.SessionSlug}";
+        }
+    }
+
+    private Guid? TryExtractCurrentSessionId()
+    {
+        var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+        if (string.IsNullOrWhiteSpace(relativePath))
+            return null;
+
+        var segments = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (segments.Length < 3)
+            return null;
+
+        if (!segments[0].Equals("mj", StringComparison.OrdinalIgnoreCase) ||
+            !segments[1].Equals("session", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        return Guid.TryParse(segments[2], out var sessionId) ? sessionId : null;
+    }
+
+    private Task ToggleSidebar()
+    {
+        IsSidebarCollapsed = !IsSidebarCollapsed;
+        return Task.CompletedTask;
+    }
+
+    private async Task CycleTheme()
+    {
+        CurrentTheme = CurrentTheme == "light" ? "dark" : "light";
+        await JS.InvokeVoidAsync("rollocracyTheme.setTheme", CurrentTheme);
+    }
+
+    private Task ToggleSessionPasswordVisibility()
+    {
+        ShowSessionPassword = !ShowSessionPassword;
+        return Task.CompletedTask;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await RefreshShellContextAsync();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

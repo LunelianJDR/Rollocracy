@@ -281,10 +281,10 @@
   <value>Slug</value>
 </data>
 	<data name="SessionPage_JoinUrl" xml:space="preserve">
-  <value>Join URL</value>
+  <value>URL</value>
 </data>
 	<data name="SessionPage_Password" xml:space="preserve">
-  <value>Session password</value>
+  <value>Password</value>
 </data>
 	<data name="SessionPage_ShowPassword" xml:space="preserve">
   <value>Show session password</value>
@@ -1914,5 +1914,53 @@
 </data>
 	<data name="Backend_SessionGaugeNotFound" xml:space="preserve">
   <value>Session gauge not found.</value>
+</data>
+	<data name="Layout_Welcome" xml:space="preserve">
+  <value>Welcome</value>
+</data>
+	<data name="Layout_Guest" xml:space="preserve">
+  <value>Guest</value>
+</data>
+	<data name="Layout_CycleTheme" xml:space="preserve">
+  <value>Change theme</value>
+</data>
+	<data name="Layout_SupportSoon" xml:space="preserve">
+  <value>Support coming soon</value>
+</data>
+	<data name="Layout_ToggleSidebar" xml:space="preserve">
+  <value>Collapse / expand menu</value>
+</data>
+	<data name="Layout_UserSection" xml:space="preserve">
+  <value>User</value>
+</data>
+	<data name="Layout_AccountSettings" xml:space="preserve">
+  <value>Account settings</value>
+</data>
+	<data name="Layout_OutsideSessionSection" xml:space="preserve">
+  <value>Outside session</value>
+</data>
+	<data name="Layout_GameSystems" xml:space="preserve">
+  <value>Game systems</value>
+</data>
+	<data name="Layout_GameSessions" xml:space="preserve">
+  <value>Game sessions</value>
+</data>
+	<data name="Layout_CurrentSessionSection" xml:space="preserve">
+  <value>Current session</value>
+</data>
+	<data name="Layout_ViewCharacters" xml:space="preserve">
+  <value>Character view</value>
+</data>
+	<data name="Layout_Test" xml:space="preserve">
+  <value>Test</value>
+</data>
+	<data name="Layout_Poll" xml:space="preserve">
+  <value>Poll</value>
+</data>
+	<data name="Layout_SessionSettings" xml:space="preserve">
+  <value>Session settings</value>
+</data>
+	<data name="Layout_NoPassword" xml:space="preserve">
+  <value>Pas de mot de passe</value>
 </data>
 </root>

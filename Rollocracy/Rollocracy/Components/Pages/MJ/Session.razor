@@ -1024,192 +1024,304 @@ else
 
     <hr />
 
-    <h4>@L["SessionPage_CharactersSection"]</h4>
+    <hr />
 
-    <div style="margin-bottom:12px;">
-        <button @onclick="CreateNpc">@L["SessionPage_CreateNpc"]</button>
+<section class="rc-character-view">
+    <div class="rc-character-view__top">
+        <div class="rc-character-view__heading">
+            <h4>@L["SessionPage_CharactersSection"]</h4>
+            <p class="rc-character-view__subtitle">@L["SessionPage_NoCharactersToDisplay"]</p>
+        </div>
+
+        <div class="rc-character-view__actions">
+            <button @onclick="CreateNpc">@L["SessionPage_CreateNpc"]</button>
+        </div>
     </div>
 
-    <div>
-        <label>
-            <input type="checkbox" @bind="ShowPlayerName" />
-            @L["SessionPage_ShowPlayerName"]
-        </label>
-    </div>
-
-    <div>
-        <label>
+    <div class="rc-character-view__filters">
+        <label class="rc-filter-toggle">
             <input type="checkbox" @bind="ShowAttributes" />
-            @L["SessionPage_ShowAttributes"]
+            <span>@L["SessionPage_ShowAttributes"]</span>
         </label>
-    </div>
 
-    <div>
-        <label>
+        <label class="rc-filter-toggle">
             <input type="checkbox" @bind="ShowTraits" />
-            @L["SessionPage_ShowTraits"]
+            <span>@L["SessionPage_ShowTraits"]</span>
         </label>
-    </div>
 
-    <div>
-        <label>
+        <label class="rc-filter-toggle">
             <input type="checkbox" @bind="ShowGauges" />
-            @L["SessionPage_ShowGauges"]
+            <span>@L["SessionPage_ShowGauges"]</span>
         </label>
-    </div>
 
-    <div>
-        <label>
+        <label class="rc-filter-toggle">
             <input type="checkbox" @bind="IncludeOffline" @bind:after="RefreshCharacterSection" />
-            @L["SessionPage_ShowOfflineCharacters"]
+            <span>@L["SessionPage_ShowOfflineCharacters"]</span>
         </label>
-    </div>
 
-    <div>
-        <label>
+        <label class="rc-filter-toggle">
             <input type="checkbox" @bind="IncludeDead" @bind:after="RefreshCharacterSection" />
-            @L["SessionPage_ShowDeadCharacters"]
+            <span>@L["SessionPage_ShowDeadCharacters"]</span>
         </label>
-    </div>
 
-    <div>
-        <label>
+        <label class="rc-filter-toggle">
             <input type="checkbox" @bind="IncludeNpcs" @bind:after="RefreshCharacterSection" />
-            @L["SessionPage_ShowNpcs"]
+            <span>@L["SessionPage_ShowNpcs"]</span>
         </label>
     </div>
 
-    @if (Characters.Count == 0)
-    {
-        <p>@L["SessionPage_NoCharactersToDisplay"]</p>
-    }
-    else
-    {
-        <ul>
-            @foreach (var character in Characters)
-            {
-                <li style="margin-bottom: 1rem;">
-                    <button @onclick="() => LoadCharacterDetails(character.CharacterId)">
-                        @character.CharacterName
-                    </button>
-
-                    <span>
-                        - @(character.IsAlive? L["Common_Alive"] : L["Common_Dead"])
-                        - @(character.IsOnline? L["Common_Online"] : L["Common_Offline"])
-                        @if (character.IsNpc)
-                        {
-                            <text> - @L["Common_Npc"]</text>
-                        }
-                    </span>
-
-                    @if (ShowPlayerName)
+        <div class="rc-character-view__layout @(SelectedCharacterSheet is not null ? "has-selection" : string.Empty)">
+            <div class="rc-character-view__grid">
+                @if (Characters.Count == 0)
+                {
+                    <div class="rc-empty-panel">
+                        <p>@L["SessionPage_NoCharactersToDisplay"]</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var character in Characters)
                     {
-                        <div><strong>@L["SessionPage_PlayerName"] :</strong> @character.PlayerName</div>
+                        var healthGauges = character.Gauges.Where(g => g.IsHealthGauge).ToList();
+                        var regularGauges = character.Gauges.Where(g => !g.IsHealthGauge).ToList();
+                        var isSelected = SelectedCharacterSheet?.CharacterId == character.CharacterId;
+
+                        <button type="button"
+                                class="rc-character-card @(isSelected ? "selected" : string.Empty)"
+                                @onclick="() => ToggleCharacterDetails(character.CharacterId)">
+
+                            <div class="rc-character-card__header">
+                                <div class="rc-character-card__title-wrap">
+                                    <div class="rc-character-card__title">@character.CharacterName</div>
+
+                                    <div class="rc-character-card__player">
+                                        <span class="rc-character-card__player-name">@character.PlayerName</span>
+                                    </div>
+
+                                    <div class="rc-character-card__meta-row">
+                                        <span class="rc-character-chip @(character.IsAlive ? "alive" : "dead")">
+                                            @(character.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                        </span>
+
+                                        <span class="rc-character-chip @(character.IsOnline ? "online" : "offline")">
+                                            @(character.IsOnline? L["Common_Online"] : L["Common_Offline"])
+                                        </span>
+
+                                        @if (character.IsNpc)
+                                        {
+                                            <span class="rc-character-chip npc">@L["Common_Npc"]</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (ShowAttributes && character.Attributes.Count > 0)
+                            {
+                                <div class="rc-character-card__section">
+                                    <div class="rc-character-card__section-title">@L["PlayerRoom_Attributes"]</div>
+                                    <div class="rc-character-inline-list">
+                                        @foreach (var attributeItem in character.Attributes)
+                                        {
+                                            <span class="rc-inline-pill">@attributeItem.Name: @attributeItem.Value</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (ShowTraits && character.DerivedStats.Count > 0)
+                            {
+                                <div class="rc-character-card__section">
+                                    <div class="rc-character-card__section-title">@L["PlayerRoom_DerivedStats"]</div>
+                                    <div class="rc-character-inline-list">
+                                        @foreach (var derived in character.DerivedStats)
+                                        {
+                                            <span class="rc-inline-pill">@derived.Name: @derived.Value</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (ShowTraits && character.Traits.Count > 0)
+                            {
+                                <div class="rc-character-card__section">
+                                    <div class="rc-character-card__section-title">@L["PlayerRoom_Traits"]</div>
+                                    <div class="rc-character-inline-list">
+                                        @foreach (var trait in character.Traits)
+                                        {
+                                            <span class="rc-inline-pill">@trait.TraitName: @trait.OptionName</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (ShowGauges && regularGauges.Count > 0)
+                            {
+                                <div class="rc-character-card__section">
+                                    <div class="rc-character-card__section-title">@L["PlayerRoom_Gauges"]</div>
+                                    <div class="rc-character-gauges">
+                                        @foreach (var gauge in regularGauges)
+                                        {
+                                            <div class="rc-character-gauge-line">
+                                                <span class="rc-character-gauge-line__name">@gauge.Name</span>
+                                                <span class="rc-character-gauge-line__value">@gauge.Value / @gauge.MaxValue</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (healthGauges.Count > 0)
+                            {
+                                <div class="rc-character-card__footer">
+                                    @foreach (var gauge in healthGauges)
+                                    {
+                                        var percent = gauge.MaxValue <= 0
+                                            ? 0
+                                            : Math.Clamp((int)Math.Round((double)gauge.Value * 100 / gauge.MaxValue), 0, 100);
+
+                                        <div class="rc-health-gauge">
+                                            <div class="rc-health-gauge__header">
+                                                <span>@gauge.Name</span>
+                                                <span>@gauge.Value / @gauge.MaxValue</span>
+                                            </div>
+                                            <div class="rc-health-gauge__track">
+                                                <div class="rc-health-gauge__fill" style="@($"width:{percent}%")"></div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </button>
                     }
+                }
+            </div>
 
-                    @if (ShowAttributes && character.Attributes.Count > 0)
-                    {
+            @if (SelectedCharacterSheet is not null)
+            {
+                <aside class="rc-character-detail-panel">
+                    <div class="rc-character-detail-panel__header">
                         <div>
-                            <strong>@L["PlayerRoom_Attributes"] :</strong>
-                            @string.Join(" | ", character.Attributes.Select(a => $"{a.Name}: {a.Value}"))
+                            <h5 class="rc-character-detail-panel__title">@SelectedCharacterSheet.Name</h5>
+                            <div class="rc-character-detail-panel__meta">
+                                <span class="rc-character-chip @(SelectedCharacterSheet.IsAlive ? "alive" : "dead")">
+                                    @(SelectedCharacterSheet.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                </span>
+                                @if (SelectedCharacterSummary?.IsNpc == true)
+                                {
+                                    <span class="rc-character-chip npc">@L["Common_Npc"]</span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="rc-character-detail-panel__actions">
+                            @if (!ShowCharacterBioPanel)
+                            {
+                                <button @onclick="EditSelectedCharacter">@L["SessionPage_EditCharacter"]</button>
+                                <button @onclick="ShowCharacterBio">@L["PlayerRoom_CharacterBiography"]</button>
+                            }
+                            else
+                            {
+                                <button @onclick="EditSelectedCharacter">@L["SessionPage_EditCharacter"]</button>
+                                <button @onclick="HideCharacterBio">@L["Common_Cancel"]</button>
+                            }
+                        </div>
+                    </div>
+
+                    @if (ShowCharacterBioPanel)
+                    {
+                        <div class="rc-character-detail-panel__body">
+                            @if (string.IsNullOrWhiteSpace(SelectedCharacterSheet.Biography))
+                            {
+                                <p>@L["EditCharacter_NotFound"]</p>
+                            }
+                            else
+                            {
+                                <p class="rc-character-bio">@SelectedCharacterSheet.Biography</p>
+                            }
                         </div>
                     }
-
-                    @if (ShowTraits && character.Traits.Count > 0)
+                    else
                     {
-                        <div>
-                            <strong>@L["PlayerRoom_Traits"] :</strong>
-                            @string.Join(" | ", character.Traits.Select(t => $"{t.TraitName}: {t.OptionName}"))
+                        <div class="rc-character-detail-panel__body">
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["SessionPage_PlayerName"]</div>
+                                <div>@(SelectedCharacterSummary?.PlayerName ?? "-")</div>
+                            </div>
+
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["PlayerRoom_Attributes"]</div>
+                                <ul class="rc-detail-list">
+                                    @foreach (var attributeLine in SelectedCharacterSheet.Attributes)
+                                    {
+                                        <li>@attributeLine.Name : @attributeLine.Value</li>
+                                    }
+                                </ul>
+                            </div>
+
+                            @if (SelectedCharacterSheet.DerivedStats.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["PlayerRoom_DerivedStats"]</div>
+                                    <ul class="rc-detail-list">
+                                        @foreach (var derivedLine in SelectedCharacterSheet.DerivedStats)
+                                        {
+                                            <li>@derivedLine.Name : @derivedLine.Value</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["PlayerRoom_Traits"]</div>
+                                <ul class="rc-detail-list">
+                                    @foreach (var traitLine in SelectedCharacterSheet.Traits)
+                                    {
+                                        <li>@traitLine.TraitName : @traitLine.OptionName</li>
+                                    }
+                                </ul>
+                            </div>
+
+                            @if (SelectedCharacterSheet.Talents?.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["EditCharacter_Talents"]</div>
+                                    <ul class="rc-detail-list">
+                                        @foreach (var talentLine in SelectedCharacterSheet.Talents)
+                                        {
+                                            <li>@talentLine.Name</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            @if (SelectedCharacterSheet.Items?.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["EditCharacter_Items"]</div>
+                                    <ul class="rc-detail-list">
+                                        @foreach (var itemLine in SelectedCharacterSheet.Items)
+                                        {
+                                            <li>@itemLine.Name</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["PlayerRoom_Gauges"]</div>
+                                <ul class="rc-detail-list">
+                                    @foreach (var gaugeLine in SelectedCharacterSheet.Gauges)
+                                    {
+                                        <li>@gaugeLine.Name : @gaugeLine.Value / @gaugeLine.MaxValue</li>
+                                    }
+                                </ul>
+                            </div>
                         </div>
                     }
-
-                    @if (ShowGauges && character.Gauges.Count > 0)
-                    {
-                        <div>
-                            <strong>@L["PlayerRoom_Gauges"] :</strong>
-                            @string.Join(" | ", character.Gauges.Select(g => $"{g.Name}: {g.Value}/{g.MaxValue}"))
-                        </div>
-                    }
-                </li>
+                </aside>
             }
-        </ul>
-    }
-
-    @if (SelectedCharacterSheet is not null)
-    {
-        <hr />
-        <h4>@L["SessionPage_SelectedCharacterSheet"]</h4>
-        <button @onclick="EditSelectedCharacter">@L["SessionPage_EditCharacter"]</button>
-        <p><strong>@L["PlayerRoom_CharacterName"] :</strong> @SelectedCharacterSheet.Name</p>
-        <p><strong>@L["PlayerRoom_CharacterStatus"] :</strong> @(SelectedCharacterSheet.IsAlive? L["Common_Alive"] : L["Common_Dead"])</p>
-
-        @if (!string.IsNullOrWhiteSpace(SelectedCharacterSheet.Biography))
-        {
-            <p><strong>@L["PlayerRoom_CharacterBiography"] :</strong> @SelectedCharacterSheet.Biography</p>
-        }
-
-        <h5>@L["PlayerRoom_Attributes"]</h5>
-        <ul>
-            @foreach (var attributeLine in SelectedCharacterSheet.Attributes)
-            {
-                <li>@attributeLine.Name : @attributeLine.Value</li>
-            }
-        </ul>
-
-        @if (SelectedCharacterSheet.DerivedStats != null && SelectedCharacterSheet.DerivedStats.Count > 0)
-        {
-            <h5>@L["PlayerRoom_DerivedStats"]</h5>
-            <ul>
-                @foreach (var derivedLine in SelectedCharacterSheet.DerivedStats)
-                {
-                    <li>@derivedLine.Name : @derivedLine.Value</li>
-                }
-            </ul>
-        }
-
-        <h5>@L["PlayerRoom_Traits"]</h5>
-        <ul>
-            @foreach (var traitLine in SelectedCharacterSheet.Traits)
-            {
-                <li>@traitLine.TraitName : @traitLine.OptionName</li>
-            }
-        </ul>
-
-        @if (SelectedCharacterSheet.Talents != null && SelectedCharacterSheet.Talents.Count > 0)
-        {
-            <h5>@L["EditCharacter_Talents"]</h5>
-            <ul>
-                @foreach (var talentLine in SelectedCharacterSheet.Talents)
-                {
-                    <li>@talentLine.Name</li>
-                }
-            </ul>
-        }
-
-        @if (SelectedCharacterSheet.Items != null && SelectedCharacterSheet.Items.Count > 0)
-        {
-            <h5>@L["EditCharacter_Items"]</h5>
-            <ul>
-                @foreach (var itemLine in SelectedCharacterSheet.Items)
-                {
-                    <li>@itemLine.Name</li>
-                }
-            </ul>
-        }
-
-        <h5>@L["PlayerRoom_Gauges"]</h5>
-        <ul>
-            @foreach (var gaugeLine in SelectedCharacterSheet.Gauges)
-            {
-                <li>@gaugeLine.Name : @gaugeLine.Value / @gaugeLine.MaxValue</li>
-            }
-        </ul>
-    }
-
-    @if (!string.IsNullOrWhiteSpace(Message))
-    {
-        <p>@Message</p>
-    }
+        </div>
+    </section>
 
     <hr />
 
@@ -1259,13 +1371,18 @@ else
     private bool IsLoaded;
     private bool ShowSessionPassword;
 
-    private bool ShowPlayerName;
     private bool ShowAttributes;
     private bool ShowTraits;
     private bool ShowGauges;
     private bool IncludeOffline;
     private bool IncludeDead;
     private bool IncludeNpcs;
+    private bool ShowCharacterBioPanel;
+
+    private SessionCharacterSummaryDto? SelectedCharacterSummary
+    => SelectedCharacterSheet is null
+        ? null
+        : Characters.FirstOrDefault(x => x.CharacterId == SelectedCharacterSheet.CharacterId);
 
     private Guid CurrentUserId;
     private string CurrentUsername = string.Empty;
@@ -1490,9 +1607,17 @@ else
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task LoadCharacterDetails(Guid characterId)
+    private async Task ToggleCharacterDetails(Guid characterId)
     {
+        if (SelectedCharacterSheet?.CharacterId == characterId)
+        {
+            SelectedCharacterSheet = null;
+            ShowCharacterBioPanel = false;
+            return;
+        }
+
         SelectedCharacterSheet = await CharacterService.GetCharacterSheetForSessionAsync(SessionId, characterId);
+        ShowCharacterBioPanel = false;
     }
 
     private void ToggleSessionPasswordVisibility()
@@ -2134,6 +2259,18 @@ else
             NewPollOptions[optionIndex].Consequences.Remove(row);
         }
 
+        return Task.CompletedTask;
+    }
+
+    private Task ShowCharacterBio()
+    {
+        ShowCharacterBioPanel = true;
+        return Task.CompletedTask;
+    }
+
+    private Task HideCharacterBio()
+    {
+        ShowCharacterBioPanel = false;
         return Task.CompletedTask;
     }
 
