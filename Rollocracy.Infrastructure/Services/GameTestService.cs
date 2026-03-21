@@ -82,6 +82,25 @@ namespace Rollocracy.Infrastructure.Services
             var criticalSuccessValue = request.UseSystemDefaultDice ? gameSystem.CriticalSuccessValue : null;
             var criticalFailureValue = request.UseSystemDefaultDice ? gameSystem.CriticalFailureValue : null;
 
+            var effectiveFilter = request.AdvancedFilter ?? new CharacterTargetFilterDto();
+
+            effectiveFilter.IncludeNpcs = request.IncludeNpcs;
+            effectiveFilter.OnlyDead = false;
+            effectiveFilter.OnlyOnline = request.TargetScope == TestTargetScope.OnlineLivingCharacters;
+            effectiveFilter.OnlyAlive = true;
+
+            // Compatibilité legacy : si jamais l'ancien UI alimente encore TraitFilters.
+            if (effectiveFilter.TraitOptionIds.Count == 0 && request.TraitFilters.Count > 0)
+            {
+                effectiveFilter.TraitOptionIds = request.TraitFilters
+                    .SelectMany(x => x.SelectedOptionIds)
+                    .Distinct()
+                    .ToList();
+            }
+
+            var targetCharacters = await _characterEffectService.GetTargetCharactersAsync(sessionId, effectiveFilter);
+            var targetCharacterIds = targetCharacters.Select(x => x.Id).ToHashSet();
+
             var candidateRows = await context.Characters
                 .AsNoTracking()
                 .Join(
@@ -93,10 +112,7 @@ namespace Rollocracy.Infrastructure.Services
                         Character = character,
                         PlayerSession = playerSession
                     })
-                .Where(x =>
-                    x.PlayerSession.SessionId == sessionId &&
-                    x.Character.IsAlive &&
-                    (request.IncludeNpcs || !x.Character.IsNpc))
+                .Where(x => targetCharacterIds.Contains(x.Character.Id))
                 .OrderBy(x => x.Character.Name)
                 .ToListAsync();
 

@@ -6,6 +6,17 @@
 <div class="rc-nav @(IsCollapsed ? "collapsed" : string.Empty)">
     <div class="rc-nav__header">
         <div class="rc-nav__header-actions">
+            
+            @if (IsCollapsed)
+            {
+                <button type="button"
+                        class="icon-button"
+                        title="@L["Layout_ToggleSidebar"]"
+                        @onclick="async () => await OnToggleSidebar.InvokeAsync()">
+                    @(IsCollapsed ? "»" : "«")
+                </button>
+            }
+
             <button type="button"
                     class="icon-button"
                     title="@L["Layout_CycleTheme"]"
@@ -20,12 +31,15 @@
                 ❤
             </button>
 
-            <button type="button"
-                    class="icon-button"
-                    title="@L["Layout_ToggleSidebar"]"
-                    @onclick="async () => await OnToggleSidebar.InvokeAsync()">
-                @(IsCollapsed ? "»" : "«")
-            </button>
+            @if(!IsCollapsed)
+            {
+                <button type="button"
+                        class="icon-button"
+                        title="@L["Layout_ToggleSidebar"]"
+                        @onclick="async () => await OnToggleSidebar.InvokeAsync()">
+                    @(IsCollapsed ? "»" : "«")
+                </button>
+            }
         </div>
 
         <div class="rc-nav__welcome">

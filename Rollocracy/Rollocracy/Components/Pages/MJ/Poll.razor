@@ -11,6 +11,7 @@
 @using Rollocracy.Domain.GameTests
 @using Rollocracy.Domain.Polls
 @using Rollocracy.Localization
+@using Rollocracy.Components.Pages.MJ.Shared
 @using DomainSession = Rollocracy.Domain.Entities.Session
 @using System.Globalization
 
@@ -18,6 +19,7 @@
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
 @inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
 @inject Rollocracy.Domain.Interfaces.IPollService PollService
+@inject Rollocracy.Domain.Interfaces.ICharacterService CharacterService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IStringLocalizer<SharedTexts> L
 
@@ -467,14 +469,17 @@ else
                                         }
                                         else
                                         {
-                                            <div class="rc-poll-vote-grid">
+                                            <div class="rc-test-result-grid">
                                                 @foreach (var voteLine in votesForOption)
                                                 {
-                                                    <div class="rc-poll-vote-card">
-                                                        <div class="rc-poll-vote-card__character">@voteLine.CharacterName</div>
-                                                        <div class="rc-poll-vote-card__player">@voteLine.PlayerName</div>
-                                                        <div class="rc-poll-vote-card__weight">@voteLine.VoteWeight.ToString("F2")</div>
-                                                    </div>
+                                                    if (CharacterSummariesById.TryGetValue(voteLine.CharacterId, out var summary))
+                                                    {
+                                                        <CharacterResultSummaryCard Character="summary">
+                                                            <HeaderContent>
+                                                                <div class="rc-poll-vote-card__weight">@voteLine.VoteWeight.ToString("F2")</div>
+                                                            </HeaderContent>
+                                                        </CharacterResultSummaryCard>
+                                                    }
                                                 }
                                             </div>
                                         }
@@ -548,6 +553,7 @@ else
     private List<EditableTalentDefinitionDto> AvailableTalents = new();
     private List<EditableItemDefinitionDto> AvailableItems = new();
     private List<SessionGaugeDto> SessionGauges = new();
+    private Dictionary<Guid, SessionCharacterSummaryDto> CharacterSummariesById = new();
 
     private PollForGameMasterDto? LatestPoll;
     private List<PollForGameMasterDto> RecentPolls = new();
@@ -647,6 +653,7 @@ else
         }
 
         SessionGauges = await SessionService.GetSessionGaugesAsync(SessionId, CurrentUserId);
+        await LoadCharacterSummariesAsync();
         await LoadLatestPoll();
     }
 
@@ -926,5 +933,16 @@ else
         public int Value { get; set; }
         public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
         public Guid? SourceMetricId { get; set; }
+    }
+
+    private async Task LoadCharacterSummariesAsync()
+    {
+        var characters = await CharacterService.GetSessionCharacterSummariesAsync(
+            SessionId,
+            includeOffline: true,
+            includeDead: true,
+            includeNpcs: true);
+
+        CharacterSummariesById = characters.ToDictionary(x => x.CharacterId, x => x);
     }
 }

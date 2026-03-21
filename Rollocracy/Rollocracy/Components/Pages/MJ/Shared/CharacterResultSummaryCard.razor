@@ -1,0 +1,55 @@
+﻿@using Rollocracy.Domain.Characters
+
+<div class="rc-character-result-card @AdditionalClass">
+    @if (HeaderContent is not null)
+    {
+        <div class="rc-character-result-card__header-extra">
+            @HeaderContent
+        </div>
+    }
+
+    <div class="rc-character-result-card__name">@Character.CharacterName</div>
+    <div class="rc-character-result-card__player">@Character.PlayerName</div>
+
+    @if (Character.Attributes.Count > 0)
+    {
+        <div class="rc-character-result-card__attributes">
+            @foreach (var traitLine in Character.Traits)
+            {
+                <span class="rc-inline-pill">@traitLine.TraitName : @traitLine.OptionName</span>
+            }
+        </div>
+    }
+
+    @{
+        var healthGauges = Character.Gauges.Where(x => x.IsHealthGauge).ToList();
+    }
+
+    @if (healthGauges.Count > 0)
+    {
+        <div class="rc-character-result-card__gauges">
+            @foreach (var gauge in healthGauges)
+            {
+                var percent = gauge.MaxValue <= 0
+                    ? 0
+                    : Math.Clamp((int)Math.Round((double)gauge.Value * 100 / gauge.MaxValue), 0, 100);
+
+                <div class="rc-health-gauge rc-health-gauge--compact">
+                    <div class="rc-health-gauge__header">
+                        <span>@gauge.Name</span>
+                        <span>@gauge.Value / @gauge.MaxValue</span>
+                    </div>
+                    <div class="rc-health-gauge__track">
+                        <div class="rc-health-gauge__fill" style="@($"width:{percent}%")"></div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public SessionCharacterSummaryDto Character { get; set; } = new();
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public string AdditionalClass { get; set; } = string.Empty;
+}

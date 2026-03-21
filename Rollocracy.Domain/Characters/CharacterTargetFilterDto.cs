@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Rollocracy.Domain.Characters
 {
-    // Filtre commun de ciblage. Certains champs sont préparés pour les prochaines livraisons.
+    // Filtre commun de ciblage.
     public class CharacterTargetFilterDto
     {
         public bool OnlyAlive { get; set; }
@@ -12,8 +12,11 @@ namespace Rollocracy.Domain.Characters
 
         public bool OnlyOnline { get; set; }
 
-        // 7D — PNJ filtering
         public bool IncludeNpcs { get; set; } = true;
+
+        // false = au moins une condition
+        // true = toutes les conditions
+        public bool MatchAllConditions { get; set; } = true;
 
         public List<Guid> TraitOptionIds { get; set; } = new();
 
@@ -23,12 +26,10 @@ namespace Rollocracy.Domain.Characters
 
         public List<CharacterValueFilterDto> ValueFilters { get; set; } = new();
 
-        // Préparation pour 5B : filtrage sur le dernier sondage.
         public Guid? LastPollSelectedOptionId { get; set; }
 
         public bool FilterOnLastPollResponse { get; set; }
 
-        // Préparation pour 5B : filtrage sur la réussite / l'échec au dernier test.
         public bool? MustHaveSucceededLastTest { get; set; }
 
         public bool FilterOnLastTestResult { get; set; }

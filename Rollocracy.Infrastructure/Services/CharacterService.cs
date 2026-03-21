@@ -491,6 +491,8 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => x.GameSystemId == gameSystemId)
                 .ToListAsync();
 
+            var traitDefinitionNamesById = traitDefinitions.ToDictionary(x => x.Id, x => x.Name);
+
             var traitDefinitionIds = traitDefinitions.Select(x => x.Id).ToList();
 
             var traitOptions = await context.TraitOptions
@@ -555,7 +557,17 @@ namespace Rollocracy.Infrastructure.Services
                 SessionId = session.Id,
                 SessionName = session.SessionName,
                 SuggestedName = string.Format(_localizer["RandomDraw_DefaultNameFormat"], existingDrawCount + 1),
-                TraitOptions = traitOptions.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
+                TraitOptions = traitOptions
+                    .Select(x => new GroupedNamedReferenceDto
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        GroupId = x.TraitDefinitionId,
+                        GroupName = traitDefinitionNamesById.TryGetValue(x.TraitDefinitionId, out var groupName)
+                            ? groupName
+                            : string.Empty
+                    })
+                    .ToList(),
                 Talents = talents.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
                 Items = items.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
                 BaseAttributes = attributes.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
@@ -597,8 +609,7 @@ namespace Rollocracy.Infrastructure.Services
             if (candidateCharacters.Count == 0)
                 throw new Exception(_localizer["Backend_NoEligibleCharactersForRandomDraw"]);
 
-            if (candidateCharacters.Count < request.DrawCount)
-                throw new Exception(_localizer["Backend_NotEnoughEligibleCharactersForRandomDraw"]);
+            var actualDrawCount = Math.Min(request.DrawCount, candidateCharacters.Count);
 
             var existingDrawCount = await context.SessionRandomDraws
                 .AsNoTracking()
@@ -617,7 +628,7 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             var selectedCharacters = pool
-                .Take(request.DrawCount)
+                .Take(actualDrawCount)
                 .Select(x => new RandomDrawResultCharacterDto
                 {
                     CharacterId = x.Id,

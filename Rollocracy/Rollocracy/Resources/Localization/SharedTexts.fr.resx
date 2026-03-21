@@ -281,7 +281,7 @@
   <value>Slug</value>
 </data>
 	<data name="SessionPage_JoinUrl" xml:space="preserve">
-  <value>URL</value>
+  <value>Rejoindre la session :</value>
 </data>
 	<data name="SessionPage_Password" xml:space="preserve">
   <value>Mot de passe</value>
@@ -1976,13 +1976,67 @@
 	<data name="GameTest_Difference" xml:space="preserve">
   <value>Différence</value>
 </data>
-	<data name="Poll_CurrentOrLatest" xml:space="preserve">
-  <value>Sondage actuel ou dernier sondage</value>
-</data>
-	<data name="Poll_ConsequenceOperation" xml:space="preserve">
-  <value>Opération de conséquence</value>
-</data>
 	<data name="Poll_WeightedPercent" xml:space="preserve">
   <value>Pourcentage pondéré</value>
+</data>
+	<data name="MassDistribution_NoValueFilters" xml:space="preserve">
+  <value>Aucun filtre de valeur défini.</value>
+</data>
+	<data name="MassDistribution_NoEffects" xml:space="preserve">
+  <value>Aucun effet défini.</value>
+</data>
+	<data name="MassDistribution_NoPreview" xml:space="preserve">
+  <value>Aucune prévisualisation pour le moment.</value>
+</data>
+	<data name="MassDistribution_FilterTarget" xml:space="preserve">
+  <value>Cible du filtre</value>
+</data>
+	<data name="MassDistribution_Comparison" xml:space="preserve">
+  <value>Comparaison</value>
+</data>
+	<data name="RandomDraw_NoValueFilters" xml:space="preserve">
+  <value>Aucun filtre de valeur défini.</value>
+</data>
+	<data name="RandomDraw_NoResultYet" xml:space="preserve">
+  <value>Aucun tirage effectué pour le moment.</value>
+</data>
+	<data name="Common_Type" xml:space="preserve">
+  <value>Type</value>
+</data>
+	<data name="RandomDraw_TooManyRequestedWarning" xml:space="preserve">
+  <value>Attention : il y a plus de personnages demandés que de personnages éligibles, tous les personnages éligibles ont donc été tirés au sort.</value>
+</data>
+	<data name="Common_AdvancedFilters" xml:space="preserve">
+  <value>Filtres avancés</value>
+</data>
+	<data name="Common_Show" xml:space="preserve">
+  <value>Afficher</value>
+</data>
+	<data name="Common_Hide" xml:space="preserve">
+  <value>Masquer</value>
+</data>
+	<data name="MassDistribution_FilterMode" xml:space="preserve">
+  <value>Mode de combinaison</value>
+</data>
+	<data name="MassDistribution_FilterModeAny" xml:space="preserve">
+  <value>Doit remplir au moins une condition</value>
+</data>
+	<data name="MassDistribution_FilterModeAll" xml:space="preserve">
+  <value>Doit remplir chaque condition</value>
+</data>
+	<data name="MassDistribution_FilterTarget" xml:space="preserve">
+  <value>Cible du filtre</value>
+</data>
+	<data name="MassDistribution_Comparison" xml:space="preserve">
+  <value>Comparaison</value>
+</data>
+<data name="AudienceFilter_OnlinePlayers" xml:space="preserve">
+  <value>Personnages en ligne</value>
+</data>
+	<data name="AudienceFilter_AlivePlayers" xml:space="preserve">
+  <value>Tous les personnages en vie</value>
+</data>
+	<data name="AudienceFilter_IncludeNPCs" xml:space="preserve">
+  <value>Inclure les PNJ</value>
 </data>
 </root>

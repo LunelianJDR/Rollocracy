@@ -48,6 +48,8 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => x.GameSystemId == gameSystemId)
                 .ToListAsync();
 
+            var traitDefinitionNamesById = traitDefinitions.ToDictionary(x => x.Id, x => x.Name);
+
             var traitDefinitionIds = traitDefinitions.Select(x => x.Id).ToList();
 
             var traitOptions = await context.TraitOptions
@@ -100,7 +102,17 @@ namespace Rollocracy.Infrastructure.Services
             {
                 SessionId = session.Id,
                 SessionName = session.SessionName,
-                TraitOptions = traitOptions.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
+                TraitOptions = traitOptions
+                    .Select(x => new GroupedNamedReferenceDto
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        GroupId = x.TraitDefinitionId,
+                        GroupName = traitDefinitionNamesById.TryGetValue(x.TraitDefinitionId, out var groupName)
+                            ? groupName
+                            : string.Empty
+                    })
+                    .ToList(),
                 Talents = talents.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
                 Items = items.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),
                 BaseAttributes = attributes.Select(x => new NamedReferenceDto { Id = x.Id, Name = x.Name }).ToList(),

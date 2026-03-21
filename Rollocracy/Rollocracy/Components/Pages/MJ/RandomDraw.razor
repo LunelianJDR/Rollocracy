@@ -8,6 +8,7 @@
 @using Rollocracy.Domain.Interfaces
 @using Rollocracy.Domain.GameRules
 @using Rollocracy.Localization
+@using Rollocracy.Components.Pages.MJ.Shared
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ICharacterService CharacterService
@@ -30,207 +31,125 @@ else if (Editor is null)
 }
 else
 {
-    <p><strong>@L["RandomDraw_Session"] :</strong> @Editor.SessionName</p>
+    <section class="rc-tool-section">
+        <div class="rc-tool-layout">
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h5 class="rc-tool-panel__title">@L["RandomDraw_Title"]</h5>
+                        <p class="rc-tool-panel__subtitle">@Editor.SessionName · @L["RandomDraw_FilterSection"]</p>
+                    </div>
 
-    <div class="mb-3">
-        <label>@L["RandomDraw_Name"]</label><br />
-        <input @bind="Request.Name" />
-    </div>
+                    <div class="rc-tool-inline-actions">
+                        <button @onclick="ExecuteDraw">@L["RandomDraw_Execute"]</button>
+                    </div>
+                </div>
 
-    <div class="mb-3">
-        <label>@L["RandomDraw_Count"]</label><br />
-        <input type="number" min="1" @bind="Request.DrawCount" />
-    </div>
-
-    <h4>@L["RandomDraw_FilterSection"]</h4>
-
-    <div>
-        <label><input type="checkbox" @bind="Request.Filter.OnlyAlive" /> @L["MassDistribution_FilterOnlyAlive"]</label>
-    </div>
-    <div>
-        <label><input type="checkbox" @bind="Request.Filter.OnlyDead" /> @L["MassDistribution_FilterOnlyDead"]</label>
-    </div>
-    <div>
-        <label><input type="checkbox" @bind="Request.Filter.OnlyOnline" /> @L["MassDistribution_FilterOnlyOnline"]</label>
-    </div>
-    <div>
-        <label><input type="checkbox" @bind="Request.Filter.IncludeNpcs" /> @L["MassDistribution_IncludeNpcs"]</label>
-    </div>
-
-    <div style="margin-top:12px;">
-        <label>@L["MassDistribution_TraitOptionFilters"]</label><br />
-        <select @bind="SelectedTraitOptionId">
-            <option value="">--</option>
-            @foreach (var item in Editor.TraitOptions)
-            {
-                <option value="@item.Id">@item.Name</option>
-            }
-        </select>
-        <button @onclick="AddTraitOptionFilter">@L["MassDistribution_AddFilter"]</button>
-
-        @foreach (var item in Request.Filter.TraitOptionIds.ToList())
-        {
-            var reference = Editor.TraitOptions.FirstOrDefault(x => x.Id == item);
-            <div>
-                @reference?.Name
-                <button @onclick="() => Request.Filter.TraitOptionIds.Remove(item)">@L["EditGameSystem_Delete"]</button>
-            </div>
-        }
-    </div>
-
-    <div style="margin-top:12px;">
-        <label>@L["MassDistribution_TalentFilters"]</label><br />
-        <select @bind="SelectedTalentFilterId">
-            <option value="">--</option>
-            @foreach (var item in Editor.Talents)
-            {
-                <option value="@item.Id">@item.Name</option>
-            }
-        </select>
-        <button @onclick="AddTalentFilter">@L["MassDistribution_AddFilter"]</button>
-
-        @foreach (var item in Request.Filter.TalentIds.ToList())
-        {
-            var reference = Editor.Talents.FirstOrDefault(x => x.Id == item);
-            <div>
-                @reference?.Name
-                <button @onclick="() => Request.Filter.TalentIds.Remove(item)">@L["EditGameSystem_Delete"]</button>
-            </div>
-        }
-    </div>
-
-    <div style="margin-top:12px;">
-        <label>@L["MassDistribution_ItemFilters"]</label><br />
-        <select @bind="SelectedItemFilterId">
-            <option value="">--</option>
-            @foreach (var item in Editor.Items)
-            {
-                <option value="@item.Id">@item.Name</option>
-            }
-        </select>
-        <button @onclick="AddItemFilter">@L["MassDistribution_AddFilter"]</button>
-
-        @foreach (var item in Request.Filter.ItemIds.ToList())
-        {
-            var reference = Editor.Items.FirstOrDefault(x => x.Id == item);
-            <div>
-                @reference?.Name
-                <button @onclick="() => Request.Filter.ItemIds.Remove(item)">@L["EditGameSystem_Delete"]</button>
-            </div>
-        }
-    </div>
-
-    <div style="margin-top:12px;">
-        <h5>@L["MassDistribution_ValueFilters"]</h5>
-        <button @onclick="AddValueFilter">@L["MassDistribution_AddValueFilter"]</button>
-
-        @foreach (var valueFilter in Request.Filter.ValueFilters)
-        {
-            <div style="margin-top:8px; margin-left:20px;">
-                <select @bind="valueFilter.TargetType">
-                    <option value="@CharacterEffectTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
-                    <option value="@CharacterEffectTargetType.Gauge">@L["MassDistribution_Target_Gauge"]</option>
-                    <option value="@CharacterEffectTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
-                    <option value="@CharacterEffectTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
-                </select>
-
-                @if (valueFilter.TargetType == CharacterEffectTargetType.BaseAttribute)
+                @if (!string.IsNullOrWhiteSpace(Message))
                 {
-                    <select @bind="valueFilter.TargetId">
-                        @foreach (var item in Editor.BaseAttributes)
-                        {
-                            <option value="@item.Id">@item.Name</option>
-                        }
-                    </select>
-                }
-                else if (valueFilter.TargetType == CharacterEffectTargetType.Gauge)
-                {
-                    <select @bind="valueFilter.TargetId">
-                        @foreach (var item in Editor.Gauges)
-                        {
-                            <option value="@item.Id">@item.Name</option>
-                        }
-                    </select>
-                }
-                else if (valueFilter.TargetType == CharacterEffectTargetType.DerivedStat)
-                {
-                    <select @bind="valueFilter.TargetId">
-                        @foreach (var item in Editor.DerivedStats)
-                        {
-                            <option value="@item.Id">@item.Name</option>
-                        }
-                    </select>
-                }
-                else if (valueFilter.TargetType == CharacterEffectTargetType.Metric)
-                {
-                    <select @bind="valueFilter.TargetId">
-                        @foreach (var item in Editor.Metrics)
-                        {
-                            <option value="@item.Id">@item.Name</option>
-                        }
-                    </select>
+                    <div class="@(IsWarning ? "rc-inline-warning" : "rc-inline-error")">
+                        @Message
+                    </div>
                 }
 
-                <select @bind="valueFilter.ComparisonType">
-                    <option value="@CharacterValueComparisonType.Equal">=</option>
-                    <option value="@CharacterValueComparisonType.NotEqual">!=</option>
-                    <option value="@CharacterValueComparisonType.GreaterThan">&gt;</option>
-                    <option value="@CharacterValueComparisonType.GreaterThanOrEqual">&gt;=</option>
-                    <option value="@CharacterValueComparisonType.LessThan">&lt;</option>
-                    <option value="@CharacterValueComparisonType.LessThanOrEqual">&lt;=</option>
-                </select>
+                <div class="rc-tool-form-grid">
+                    <div class="rc-form-field">
+                        <label>@L["RandomDraw_Name"]</label>
+                        <input @bind="Request.Name" />
+                    </div>
 
-                <input type="number" @bind="valueFilter.Value" />
-                <button @onclick="() => Request.Filter.ValueFilters.Remove(valueFilter)">@L["EditGameSystem_Delete"]</button>
-            </div>
-        }
-    </div>
+                    <div class="rc-form-field">
+                        <label>@L["RandomDraw_Count"]</label>
+                        <input type="number" min="1" @bind="Request.DrawCount" />
+                    </div>
+                </div>
 
-    <div style="margin-top:20px;">
-        <button @onclick="ExecuteDraw">@L["RandomDraw_Execute"]</button>
-    </div>
+                <div class="rc-tool-subsection">
+                    <div class="rc-tool-subsection__title">@L["MassDistribution_FilterSection"]</div>
 
-    @if (!string.IsNullOrWhiteSpace(Message))
-    {
-        <p style="margin-top:12px;">@Message</p>
-    }
+                    <div class="rc-filter-groups">
+                        <CharacterAudienceFilters Title="@L["GameTest_TargetScope"]"
+                                                    OnlyOnline="Request.Filter.OnlyOnline"
+                                                    OnlyAlive="Request.Filter.OnlyAlive"
+                                                    IncludeNpcs="Request.Filter.IncludeNpcs"
+                                                    OnlyOnlineChanged="@(value => { Request.Filter.OnlyOnline = value; if (value) Request.Filter.OnlyAlive = false; })"
+                                                    OnlyAliveChanged="@(value => { Request.Filter.OnlyAlive = value; if (value) Request.Filter.OnlyOnline = false; })"
+                                                    IncludeNpcsChanged="@(value => Request.Filter.IncludeNpcs = value)" />
+                        
+                        <CharacterAdvancedFilters Filter="Request.Filter"
+                                                  TraitOptionGroups="AdvancedTraitOptionGroups"
+                                                  TalentOptions="AdvancedTalentOptions"
+                                                  ItemOptions="AdvancedItemOptions"
+                                                  AttributeTargets="AdvancedAttributeTargets"
+                                                  GaugeTargets="AdvancedGaugeTargets"
+                                                  DerivedStatTargets="AdvancedDerivedTargets"
+                                                  MetricTargets="AdvancedMetricTargets" />
+                    </div>
 
-    @if (LastDraw is not null)
-    {
-        <h4 style="margin-top:20px;">@L["RandomDraw_LastResult"]</h4>
-        <p><strong>@LastDraw.Name</strong></p>
-        <ul>
-            @foreach (var item in LastDraw.Results)
-            {
-                <li>
-                    @item.CharacterName
-                    @if (item.IsNpc)
-                    {
-                        <text> (@L["Common_Npc"])</text>
-                    }
-                </li>
-            }
-        </ul>
-    }
+                </div>
 
-    <h4 style="margin-top:20px;">@L["RandomDraw_History"]</h4>
-
-    @if (Editor.RecentDraws.Count == 0)
-    {
-        <p>@L["RandomDraw_NoHistory"]</p>
-    }
-    else
-    {
-        @foreach (var draw in Editor.RecentDraws)
-        {
-            <div style="margin-top:8px; padding:8px; border:1px solid #ccc;">
-                <div><strong>@draw.Name</strong></div>
-                <div>
-                    @string.Join(" | ", draw.Results.Select(x => x.CharacterName + (x.IsNpc ? $" ({L["Common_Npc"]})" : string.Empty)))
+                <div class="rc-tool-actions rc-tool-actions--right">
+                    <button @onclick="ExecuteDraw">@L["RandomDraw_Execute"]</button>
                 </div>
             </div>
-        }
-    }
+
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header">
+                    <div>
+                        <h5 class="rc-tool-panel__title">@L["RandomDraw_LastResult"]</h5>
+                        <p class="rc-tool-panel__subtitle">
+                            @(LastDraw is null ? L["RandomDraw_NoResultYet"] : LastDraw.Name)
+                        </p>
+                    </div>
+                </div>
+
+                @if (LastDraw is null || LastDraw.Results.Count == 0)
+                {
+                    <div class="rc-empty-panel">
+                        <p>@L["RandomDraw_NoResultYet"]</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="rc-test-result-grid">
+                        @foreach (var item in LastDraw.Results)
+                        {
+                            if (CharacterSummariesById.TryGetValue(item.CharacterId, out var summary))
+                            {
+                                <CharacterResultSummaryCard Character="summary" />
+                            }
+                        }
+                    </div>
+                }
+
+                <div class="rc-tool-subsection">
+                    <div class="rc-tool-subsection__title">@L["RandomDraw_History"]</div>
+
+                    @if (Editor.RecentDraws.Count == 0)
+                    {
+                        <div class="rc-empty-panel rc-empty-panel--small">
+                            <p>@L["RandomDraw_NoHistory"]</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="rc-random-draw-history">
+                            @foreach (var draw in Editor.RecentDraws)
+                            {
+                                <div class="rc-random-draw-history__item">
+                                    <div class="rc-random-draw-history__title">@draw.Name</div>
+
+                                    <div class="rc-random-draw-history__result">
+                                        @string.Join(" | ", draw.Results.Select(x => x.CharacterName + (x.IsNpc ? $" ({L["Common_Npc"]})" : string.Empty)))
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
 }
 
 @code {
@@ -240,14 +159,49 @@ else
     private bool IsLoaded;
     private bool RedirectToHome;
     private string Message = string.Empty;
+    private bool IsWarning;
 
     private RandomDrawEditorDto? Editor;
     private RandomDrawRequestDto Request = new();
     private RandomDrawResultDto? LastDraw;
+    private Dictionary<Guid, SessionCharacterSummaryDto> CharacterSummariesById = new();
 
-    private string SelectedTraitOptionId = string.Empty;
-    private string SelectedTalentFilterId = string.Empty;
-    private string SelectedItemFilterId = string.Empty;
+    private List<CharacterFilterGroupItem> AdvancedTraitOptionGroups
+    => Editor?.TraitOptions
+        .GroupBy(x => new { x.GroupId, x.GroupName })
+        .OrderBy(x => x.Key.GroupName)
+        .Select(group => new CharacterFilterGroupItem
+        {
+            GroupName = group.Key.GroupName,
+            Options = group
+                .OrderBy(x => x.Name)
+                .Select(x => new CharacterFilterReferenceItem
+                {
+                    Id = x.Id,
+                    Name = x.Name
+                })
+                .ToList()
+        })
+        .ToList()
+        ?? new List<CharacterFilterGroupItem>();
+
+    private List<CharacterFilterReferenceItem> AdvancedTalentOptions
+        => Editor?.Talents.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
+
+    private List<CharacterFilterReferenceItem> AdvancedItemOptions
+        => Editor?.Items.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
+
+    private List<CharacterFilterReferenceItem> AdvancedAttributeTargets
+        => Editor?.BaseAttributes.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
+
+    private List<CharacterFilterReferenceItem> AdvancedGaugeTargets
+        => Editor?.Gauges.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
+
+    private List<CharacterFilterReferenceItem> AdvancedDerivedTargets
+        => Editor?.DerivedStats.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
+
+    private List<CharacterFilterReferenceItem> AdvancedMetricTargets
+        => Editor?.Metrics.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -279,31 +233,17 @@ else
     private async Task LoadEditorAsync()
     {
         Editor = await CharacterService.GetRandomDrawEditorAsync(SessionId, CurrentUserId);
+        await LoadCharacterSummariesAsync();
+
         if (Editor is not null)
         {
             Request.Name = Editor.SuggestedName;
+
             if (Request.DrawCount <= 0)
                 Request.DrawCount = 1;
+
             Request.Filter.IncludeNpcs = true;
         }
-    }
-
-    private void AddTraitOptionFilter()
-    {
-        if (Guid.TryParse(SelectedTraitOptionId, out var id) && !Request.Filter.TraitOptionIds.Contains(id))
-            Request.Filter.TraitOptionIds.Add(id);
-    }
-
-    private void AddTalentFilter()
-    {
-        if (Guid.TryParse(SelectedTalentFilterId, out var id) && !Request.Filter.TalentIds.Contains(id))
-            Request.Filter.TalentIds.Add(id);
-    }
-
-    private void AddItemFilter()
-    {
-        if (Guid.TryParse(SelectedItemFilterId, out var id) && !Request.Filter.ItemIds.Contains(id))
-            Request.Filter.ItemIds.Add(id);
     }
 
     private void AddValueFilter()
@@ -324,8 +264,20 @@ else
         try
         {
             Message = string.Empty;
+            IsWarning = false;
+
+            var requestedCount = Request.DrawCount;
+
             LastDraw = await CharacterService.ExecuteRandomDrawAsync(SessionId, CurrentUserId, Request);
+
+            if (LastDraw.Results.Count < requestedCount)
+            {
+                Message = L["RandomDraw_TooManyRequestedWarning"];
+                IsWarning = true;
+            }
+
             await LoadEditorAsync();
+
             if (Editor is not null)
             {
                 Request.Name = Editor.SuggestedName;
@@ -334,6 +286,18 @@ else
         catch (Exception ex)
         {
             Message = $"{L["Common_Error"]} : {ex.Message}";
+            IsWarning = false;
         }
+    }
+
+    private async Task LoadCharacterSummariesAsync()
+    {
+        var characters = await CharacterService.GetSessionCharacterSummariesAsync(
+            SessionId,
+            includeOffline: true,
+            includeDead: true,
+            includeNpcs: true);
+
+        CharacterSummariesById = characters.ToDictionary(x => x.CharacterId, x => x);
     }
 }

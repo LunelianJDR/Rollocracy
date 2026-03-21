@@ -281,7 +281,7 @@
   <value>Slug</value>
 </data>
 	<data name="SessionPage_JoinUrl" xml:space="preserve">
-  <value>URL</value>
+  <value>Join session</value>
 </data>
 	<data name="SessionPage_Password" xml:space="preserve">
   <value>Password</value>
@@ -1975,13 +1975,67 @@
 	<data name="GameTest_Difference" xml:space="preserve">
   <value>Difference</value>
 </data>
-	<data name="Poll_CurrentOrLatest" xml:space="preserve">
-  <value>Current or latest poll</value>
-</data>
-	<data name="Poll_ConsequenceOperation" xml:space="preserve">
-  <value>Consequence operation</value>
-</data>
 	<data name="Poll_WeightedPercent" xml:space="preserve">
   <value>Weighted percentage</value>
+</data>
+	<data name="MassDistribution_NoValueFilters" xml:space="preserve">
+  <value>No value filters defined.</value>
+</data>
+	<data name="MassDistribution_NoEffects" xml:space="preserve">
+  <value>No effects defined.</value>
+</data>
+	<data name="MassDistribution_NoPreview" xml:space="preserve">
+  <value>No preview yet.</value>
+</data>
+	<data name="MassDistribution_FilterTarget" xml:space="preserve">
+  <value>Filter target</value>
+</data>
+	<data name="MassDistribution_Comparison" xml:space="preserve">
+  <value>Comparison</value>
+</data>
+	<data name="RandomDraw_NoValueFilters" xml:space="preserve">
+  <value>No value filters defined.</value>
+</data>
+	<data name="RandomDraw_NoResultYet" xml:space="preserve">
+  <value>No draw executed yet.</value>
+</data>
+	<data name="Common_Type" xml:space="preserve">
+  <value>Type</value>
+</data>
+	<data name="RandomDraw_TooManyRequestedWarning" xml:space="preserve">
+  <value>Warning: more characters were requested than eligible. All eligible characters have been selected.</value>
+</data>
+	<data name="Common_AdvancedFilters" xml:space="preserve">
+  <value>Advanced filters</value>
+</data>
+	<data name="Common_Show" xml:space="preserve">
+  <value>Show</value>
+</data>
+	<data name="Common_Hide" xml:space="preserve">
+  <value>Hide</value>
+</data>
+	<data name="MassDistribution_FilterMode" xml:space="preserve">
+  <value>Combination mode</value>
+</data>
+	<data name="MassDistribution_FilterModeAny" xml:space="preserve">
+  <value>Must match at least one condition</value>
+</data>
+	<data name="MassDistribution_FilterModeAll" xml:space="preserve">
+  <value>Must match every condition</value>
+</data>
+	<data name="MassDistribution_FilterTarget" xml:space="preserve">
+  <value>Filter target</value>
+</data>
+	<data name="MassDistribution_Comparison" xml:space="preserve">
+  <value>Comparison</value>
+</data>
+	<data name="AudienceFilter_OnlinePlayers" xml:space="preserve">
+  <value>Online characters</value>
+</data>
+	<data name="AudienceFilter_AlivePlayers" xml:space="preserve">
+  <value>Every alive characters</value>
+</data>
+	<data name="AudienceFilter_IncludeNPCs" xml:space="preserve">
+  <value>Include NPCs</value>
 </data>
 </root>

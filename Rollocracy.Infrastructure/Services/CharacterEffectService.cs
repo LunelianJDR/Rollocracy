@@ -356,21 +356,31 @@ namespace Rollocracy.Infrastructure.Services
                 if (filter.OnlyOnline && !_presenceTracker.IsPlayerOnline(playerSession.Id))
                     continue;
 
-                if (filter.TraitOptionIds.Count > 0)
-                {
-                    var ownedTraitOptionIds = traitValues
-                        .Where(x => x.CharacterId == character.Id)
-                        .Select(x => x.TraitOptionId)
-                        .ToHashSet();
-
-                    if (!filter.TraitOptionIds.All(x => ownedTraitOptionIds.Contains(x)))
-                        continue;
-                }
+                var advancedConditionResults = new List<bool>();
 
                 var characterTraitOptionIds = traitValues
                     .Where(x => x.CharacterId == character.Id)
                     .Select(x => x.TraitOptionId)
                     .ToHashSet();
+
+                if (filter.TraitOptionIds.Count > 0)
+                {
+                    var selectedTraitOptions = await context.TraitOptions
+                        .AsNoTracking()
+                        .Where(x => filter.TraitOptionIds.Contains(x.Id))
+                        .Select(x => new { x.Id, x.TraitDefinitionId })
+                        .ToListAsync();
+
+                    var groupedTraitSelections = selectedTraitOptions
+                        .GroupBy(x => x.TraitDefinitionId)
+                        .ToList();
+
+                    foreach (var traitGroup in groupedTraitSelections)
+                    {
+                        var groupMatches = traitGroup.Any(x => characterTraitOptionIds.Contains(x.Id));
+                        advancedConditionResults.Add(groupMatches);
+                    }
+                }
 
                 var effectiveTalentIds = BuildEffectiveOwnedDefinitionIds(
                     characterTalents
@@ -383,8 +393,8 @@ namespace Rollocracy.Infrastructure.Services
 
                 if (filter.TalentIds.Count > 0)
                 {
-                    if (!filter.TalentIds.All(x => effectiveTalentIds.Contains(x)))
-                        continue;
+                    foreach (var talentId in filter.TalentIds)
+                        advancedConditionResults.Add(effectiveTalentIds.Contains(talentId));
                 }
 
                 var effectiveItemIds = BuildEffectiveOwnedDefinitionIds(
@@ -398,11 +408,9 @@ namespace Rollocracy.Infrastructure.Services
 
                 if (filter.ItemIds.Count > 0)
                 {
-                    if (!filter.ItemIds.All(x => effectiveItemIds.Contains(x)))
-                        continue;
+                    foreach (var itemId in filter.ItemIds)
+                        advancedConditionResults.Add(effectiveItemIds.Contains(itemId));
                 }
-
-                var valueFilterRejected = false;
 
                 foreach (var valueFilter in filter.ValueFilters)
                 {
@@ -427,15 +435,19 @@ namespace Rollocracy.Infrastructure.Services
                         itemModifiers,
                         characterModifiers);
 
-                    if (!CompareValue(currentValue, valueFilter.ComparisonType, valueFilter.Value))
-                    {
-                        valueFilterRejected = true;
-                        break;
-                    }
+                    advancedConditionResults.Add(
+                        CompareValue(currentValue, valueFilter.ComparisonType, valueFilter.Value));
                 }
 
-                if (valueFilterRejected)
-                    continue;
+                if (advancedConditionResults.Count > 0)
+                {
+                    var matches = filter.MatchAllConditions
+                        ? advancedConditionResults.All(x => x)
+                        : advancedConditionResults.Any(x => x);
+
+                    if (!matches)
+                        continue;
+                }
 
                 // Ces deux filtres sont volontairement préparés pour 5B.
                 // On les ignore ici pour éviter de figer un stockage transitoire.
