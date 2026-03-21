@@ -257,7 +257,7 @@ namespace Rollocracy.Domain.Characters
         public string SessionName { get; set; } = string.Empty;
         public string SuggestedName { get; set; } = string.Empty;
 
-        public List<NamedReferenceDto> TraitOptions { get; set; } = new();
+        public List<GroupedNamedReferenceDto> TraitOptions { get; set; } = new();
         public List<NamedReferenceDto> Talents { get; set; } = new();
         public List<NamedReferenceDto> Items { get; set; } = new();
         public List<NamedReferenceDto> BaseAttributes { get; set; } = new();

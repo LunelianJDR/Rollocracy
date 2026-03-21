@@ -5,15 +5,45 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
+    <script>
+            (function () {
+                const storageKey = "rollocracy-theme";
+
+                function normalize(theme) {
+                    return theme === "dark" ? "dark" : "light";
+                }
+
+                function apply(theme) {
+                    document.documentElement.setAttribute("data-theme", normalize(theme));
+                }
+
+                const initialTheme = normalize(localStorage.getItem(storageKey) || "light");
+                apply(initialTheme);
+
+                window.rollocracyTheme = {
+                    getTheme: function () {
+                        return normalize(localStorage.getItem(storageKey) || "light");
+                    },
+                    setTheme: function (theme) {
+                        const normalized = normalize(theme);
+                        localStorage.setItem(storageKey, normalized);
+                        apply(normalized);
+                    },
+                    applyTheme: function (theme) {
+                        apply(theme);
+                    }
+                };
+            })();
+    </script>
     <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="Rollocracy.styles.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
-    <HeadOutlet />
+    <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
 <body>
-    <Routes />
+    <Routes @rendermode="InteractiveServer" />
 
     <script src="_framework/blazor.web.js"></script>
 </body>

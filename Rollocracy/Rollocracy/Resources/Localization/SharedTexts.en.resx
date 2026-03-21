@@ -281,10 +281,10 @@
   <value>Slug</value>
 </data>
 	<data name="SessionPage_JoinUrl" xml:space="preserve">
-  <value>Join URL</value>
+  <value>Join session</value>
 </data>
 	<data name="SessionPage_Password" xml:space="preserve">
-  <value>Session password</value>
+  <value>Password</value>
 </data>
 	<data name="SessionPage_ShowPassword" xml:space="preserve">
   <value>Show session password</value>
@@ -871,7 +871,7 @@
   <value>Difficulty mode</value>
 </data>
 	<data name="GameTest_DifficultyValue" xml:space="preserve">
-  <value>Difficulty value</value>
+  <value>Difficulty modifier</value>
 </data>
 	<data name="GameTest_DifficultySummary" xml:space="preserve">
   <value>Difficulty</value>
@@ -900,11 +900,8 @@
 	<data name="GameTest_Consequences" xml:space="preserve">
   <value>Consequences</value>
 </data>
-	<data name="GameTest_AddSuccessConsequence" xml:space="preserve">
-  <value>Add success consequence</value>
-</data>
-	<data name="GameTest_AddFailureConsequence" xml:space="preserve">
-  <value>Add failure consequence</value>
+	<data name="GameTest_AddConsequence" xml:space="preserve">
+  <value>Add consequence</value>
 </data>
 	<data name="GameTest_NoConsequence" xml:space="preserve">
   <value>No consequence.</value>
@@ -1914,5 +1911,131 @@
 </data>
 	<data name="Backend_SessionGaugeNotFound" xml:space="preserve">
   <value>Session gauge not found.</value>
+</data>
+	<data name="Layout_Welcome" xml:space="preserve">
+  <value>Welcome</value>
+</data>
+	<data name="Layout_Guest" xml:space="preserve">
+  <value>Guest</value>
+</data>
+	<data name="Layout_CycleTheme" xml:space="preserve">
+  <value>Change theme</value>
+</data>
+	<data name="Layout_SupportSoon" xml:space="preserve">
+  <value>Support coming soon</value>
+</data>
+	<data name="Layout_ToggleSidebar" xml:space="preserve">
+  <value>Collapse / expand menu</value>
+</data>
+	<data name="Layout_UserSection" xml:space="preserve">
+  <value>User</value>
+</data>
+	<data name="Layout_AccountSettings" xml:space="preserve">
+  <value>Account settings</value>
+</data>
+	<data name="Layout_OutsideSessionSection" xml:space="preserve">
+  <value>Outside session</value>
+</data>
+	<data name="Layout_GameSystems" xml:space="preserve">
+  <value>Game systems</value>
+</data>
+	<data name="Layout_GameSessions" xml:space="preserve">
+  <value>Game sessions</value>
+</data>
+	<data name="Layout_CurrentSessionSection" xml:space="preserve">
+  <value>Current session</value>
+</data>
+	<data name="Layout_ViewCharacters" xml:space="preserve">
+  <value>Character view</value>
+</data>
+	<data name="Layout_Test" xml:space="preserve">
+  <value>Test</value>
+</data>
+	<data name="Layout_Poll" xml:space="preserve">
+  <value>Poll</value>
+</data>
+	<data name="Layout_SessionSettings" xml:space="preserve">
+  <value>Session settings</value>
+</data>
+	<data name="Layout_NoPassword" xml:space="preserve">
+  <value>No password</value>
+</data>
+	<data name="GameTest_AutoRollDelay" xml:space="preserve">
+  <value>Auto-roll delay</value>
+</data>
+	<data name="GameTest_IncludeNpcs" xml:space="preserve">
+  <value>Include NPCs</value>
+</data>
+	<data name="GameTest_ExcludeNpcs" xml:space="preserve">
+  <value>Exclude NPCs</value>
+</data>
+	<data name="GameTest_AfterModifier" xml:space="preserve">
+  <value>after modifier</value>
+</data>
+	<data name="GameTest_Difference" xml:space="preserve">
+  <value>Difference</value>
+</data>
+	<data name="Poll_WeightedPercent" xml:space="preserve">
+  <value>Weighted percentage</value>
+</data>
+	<data name="MassDistribution_NoValueFilters" xml:space="preserve">
+  <value>No value filters defined.</value>
+</data>
+	<data name="MassDistribution_NoEffects" xml:space="preserve">
+  <value>No effects defined.</value>
+</data>
+	<data name="MassDistribution_NoPreview" xml:space="preserve">
+  <value>No preview yet.</value>
+</data>
+	<data name="MassDistribution_FilterTarget" xml:space="preserve">
+  <value>Filter target</value>
+</data>
+	<data name="MassDistribution_Comparison" xml:space="preserve">
+  <value>Comparison</value>
+</data>
+	<data name="RandomDraw_NoValueFilters" xml:space="preserve">
+  <value>No value filters defined.</value>
+</data>
+	<data name="RandomDraw_NoResultYet" xml:space="preserve">
+  <value>No draw executed yet.</value>
+</data>
+	<data name="Common_Type" xml:space="preserve">
+  <value>Type</value>
+</data>
+	<data name="RandomDraw_TooManyRequestedWarning" xml:space="preserve">
+  <value>Warning: more characters were requested than eligible. All eligible characters have been selected.</value>
+</data>
+	<data name="Common_AdvancedFilters" xml:space="preserve">
+  <value>Advanced filters</value>
+</data>
+	<data name="Common_Show" xml:space="preserve">
+  <value>Show</value>
+</data>
+	<data name="Common_Hide" xml:space="preserve">
+  <value>Hide</value>
+</data>
+	<data name="MassDistribution_FilterMode" xml:space="preserve">
+  <value>Combination mode</value>
+</data>
+	<data name="MassDistribution_FilterModeAny" xml:space="preserve">
+  <value>Must match at least one condition</value>
+</data>
+	<data name="MassDistribution_FilterModeAll" xml:space="preserve">
+  <value>Must match every condition</value>
+</data>
+	<data name="MassDistribution_FilterTarget" xml:space="preserve">
+  <value>Filter target</value>
+</data>
+	<data name="MassDistribution_Comparison" xml:space="preserve">
+  <value>Comparison</value>
+</data>
+	<data name="AudienceFilter_OnlinePlayers" xml:space="preserve">
+  <value>Online characters</value>
+</data>
+	<data name="AudienceFilter_AlivePlayers" xml:space="preserve">
+  <value>Every alive characters</value>
+</data>
+	<data name="AudienceFilter_IncludeNPCs" xml:space="preserve">
+  <value>Include NPCs</value>
 </data>
 </root>

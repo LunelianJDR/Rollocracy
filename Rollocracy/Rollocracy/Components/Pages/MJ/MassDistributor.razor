@@ -8,12 +8,14 @@
 @using Rollocracy.Domain.Interfaces
 @using Rollocracy.Localization
 @using Rollocracy.Domain.GameRules
+@using Rollocracy.Components.Pages.MJ.Shared
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IMassDistributionService MassDistributionService
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 @inject ISessionService SessionService
+@inject ICharacterService CharacterService
 
 <h3>@L["MassDistribution_Title"]</h3>
 
@@ -31,310 +33,271 @@ else if (Editor is null)
 }
 else
 {
-    <p><strong>@L["MassDistribution_Session"] :</strong> @Editor.SessionName</p>
+    <section class="rc-tool-section">
+        <div class="rc-tool-layout">
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h5 class="rc-tool-panel__title">@L["MassDistribution_Title"]</h5>
+                        <p class="rc-tool-panel__subtitle">@Editor.SessionName · @L["MassDistribution_FilterSection"] / @L["MassDistribution_EffectsSection"]</p>
+                    </div>
 
-    @if (LastBatch is not null)
-    {
-        <div style="margin-bottom:16px; padding:8px; border:1px solid #ccc;">
-            <p>
-                <strong>@L["MassDistribution_LastBatch"] :</strong>
-                @LastBatch.Name
-                (@LastBatch.TargetCharacterCount)
-            </p>
-            <button @onclick="UndoLastDistribution">@L["MassDistribution_UndoLast"]</button>
-        </div>
-    }
+                    <div class="rc-tool-inline-actions">
+                        <button @onclick="PreviewTargets">@L["MassDistribution_PreviewTargets"]</button>
+                        <button @onclick="ApplyDistribution">@L["MassDistribution_Apply"]</button>
+                    </div>
+                </div>
 
-    <div class="mb-3">
-        <label>@L["MassDistribution_Name"]</label><br />
-        <input @bind="Request.Name" />
-    </div>
+                @if (!string.IsNullOrWhiteSpace(Message))
+                {
+                    <div class="rc-inline-error">@Message</div>
+                }
 
-    <h4>@L["MassDistribution_FilterSection"]</h4>
+                @if (LastBatch is not null)
+                {
+                    <div class="rc-inline-info">
+                        <div>
+                            <strong>@L["MassDistribution_LastBatch"] :</strong>
+                            @LastBatch.Name
+                            · @LastBatch.TargetCharacterCount
+                        </div>
+                        <button @onclick="UndoLastDistribution">@L["MassDistribution_UndoLast"]</button>
+                    </div>
+                }
 
-    <div>
-        <label><input type="checkbox" @bind="Request.Filter.OnlyAlive" /> @L["MassDistribution_FilterOnlyAlive"]</label>
-    </div>
-    <div>
-        <label><input type="checkbox" @bind="Request.Filter.OnlyDead" /> @L["MassDistribution_FilterOnlyDead"]</label>
-    </div>
-    <div>
-        <label><input type="checkbox" @bind="Request.Filter.OnlyOnline" /> @L["MassDistribution_FilterOnlyOnline"]</label>
-    </div>
-    <div>
-        <label><input type="checkbox" @bind="Request.Filter.IncludeNpcs" /> @L["MassDistribution_IncludeNpcs"]</label>
-    </div>
+                <div class="rc-tool-form-grid">
+                    <div class="rc-form-field rc-form-field--full">
+                        <label>@L["MassDistribution_Name"]</label>
+                        <input @bind="Request.Name" />
+                    </div>
+                </div>
 
-    <div style="margin-top:12px;">
-        <label>@L["MassDistribution_TraitOptionFilters"]</label><br />
-        <select @bind="SelectedTraitOptionId">
-            <option value="">--</option>
-            @foreach (var item in Editor.TraitOptions)
-            {
-                <option value="@item.Id">@item.Name</option>
-            }
-        </select>
-        <button @onclick="AddTraitOptionFilter">@L["MassDistribution_AddFilter"]</button>
+                <div class="rc-tool-subsection">
+                    <div class="rc-tool-subsection__title">@L["MassDistribution_FilterSection"]</div>
 
-        @foreach (var item in Request.Filter.TraitOptionIds.ToList())
-        {
-            var reference = Editor.TraitOptions.FirstOrDefault(x => x.Id == item);
-            <div>
-                @reference?.Name
-                <button @onclick="() => Request.Filter.TraitOptionIds.Remove(item)">@L["EditGameSystem_Delete"]</button>
+                    <div class="rc-filter-groups">
+                        <CharacterAudienceFilters Title="@L["GameTest_TargetScope"]"
+                                                    OnlyOnline="Request.Filter.OnlyOnline"
+                                                    OnlyAlive="Request.Filter.OnlyAlive"
+                                                    IncludeNpcs="Request.Filter.IncludeNpcs"
+                                                    OnlyOnlineChanged="@(value => { Request.Filter.OnlyOnline = value; if (value) Request.Filter.OnlyAlive = false; })"
+                                                    OnlyAliveChanged="@(value => { Request.Filter.OnlyAlive = value; if (value) Request.Filter.OnlyOnline = false; })"
+                                                    IncludeNpcsChanged="@(value => Request.Filter.IncludeNpcs = value)" />
+
+                        <CharacterAdvancedFilters Filter="Request.Filter"
+                                                  TraitOptionGroups="AdvancedTraitOptionGroups"
+                                                  TalentOptions="AdvancedTalentOptions"
+                                                  ItemOptions="AdvancedItemOptions"
+                                                  AttributeTargets="AdvancedAttributeTargets"
+                                                  GaugeTargets="AdvancedGaugeTargets"
+                                                  DerivedStatTargets="AdvancedDerivedTargets"
+                                                  MetricTargets="AdvancedMetricTargets" />
+                    </div>
+                </div>
+
+                <div class="rc-tool-subsection">
+                    <div class="rc-tool-subsection__header">
+                        <div class="rc-tool-subsection__title">@L["MassDistribution_EffectsSection"]</div>
+                        <div class="rc-tool-inline-actions">
+                            <button @onclick="AddEffect">@L["MassDistribution_AddEffect"]</button>
+                        </div>
+                    </div>
+
+                    @if (Request.Effects.Count == 0)
+                    {
+                        <p class="rc-tool-muted">@L["MassDistribution_NoEffects"]</p>
+                    }
+                    else
+                    {
+                        <div class="rc-consequence-list">
+                            @foreach (var effect in Request.Effects)
+                            {
+                                <div class="rc-consequence-card">
+                                    <div class="rc-consequence-card__grid">
+                                        <div class="rc-form-field">
+                                            <label>@L["Poll_ConsequenceOperation"]</label>
+                                            <select @bind="effect.OperationType">
+                                                <option value="@CharacterEffectOperationType.AddValue">@L["MassDistribution_Operation_AddValue"]</option>
+                                                <option value="@CharacterEffectOperationType.GrantTalent">@L["MassDistribution_Operation_GrantTalent"]</option>
+                                                <option value="@CharacterEffectOperationType.RevokeTalent">@L["MassDistribution_Operation_RevokeTalent"]</option>
+                                                <option value="@CharacterEffectOperationType.GrantItem">@L["MassDistribution_Operation_GrantItem"]</option>
+                                                <option value="@CharacterEffectOperationType.RevokeItem">@L["MassDistribution_Operation_RevokeItem"]</option>
+                                            </select>
+                                        </div>
+
+                                        @if (effect.OperationType == CharacterEffectOperationType.AddValue)
+                                        {
+                                            <div class="rc-form-field">
+                                                <label>@L["MassDistribution_FilterTarget"]</label>
+                                                <select @bind="effect.TargetType">
+                                                    <option value="@CharacterEffectTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
+                                                    <option value="@CharacterEffectTargetType.Gauge">@L["MassDistribution_Target_Gauge"]</option>
+                                                    <option value="@CharacterEffectTargetType.SessionGauge">@L["SessionPage_TargetSessionGauge"]</option>
+                                                    <option value="@CharacterEffectTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
+                                                    <option value="@CharacterEffectTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                                                </select>
+                                            </div>
+
+                                            <div class="rc-form-field">
+                                                <label>@L["GameTest_TargetDefinition"]</label>
+
+                                                @if (effect.TargetType == CharacterEffectTargetType.BaseAttribute)
+                                                {
+                                                    <select @bind="effect.TargetId">
+                                                        @foreach (var item in Editor.BaseAttributes)
+                                                        {
+                                                            <option value="@item.Id">@item.Name</option>
+                                                        }
+                                                    </select>
+                                                }
+                                                else if (effect.TargetType == CharacterEffectTargetType.Gauge)
+                                                {
+                                                    <select @bind="effect.TargetId">
+                                                        @foreach (var item in Editor.Gauges)
+                                                        {
+                                                            <option value="@item.Id">@item.Name</option>
+                                                        }
+                                                    </select>
+                                                }
+                                                else if (effect.TargetType == CharacterEffectTargetType.SessionGauge)
+                                                {
+                                                    <select @bind="effect.TargetId">
+                                                        @foreach (var item in SessionGauges)
+                                                        {
+                                                            <option value="@item.SessionGaugeId">@item.Name</option>
+                                                        }
+                                                    </select>
+                                                }
+                                                else if (effect.TargetType == CharacterEffectTargetType.DerivedStat)
+                                                {
+                                                    <select @bind="effect.TargetId">
+                                                        @foreach (var item in Editor.DerivedStats)
+                                                        {
+                                                            <option value="@item.Id">@item.Name</option>
+                                                        }
+                                                    </select>
+                                                }
+                                                else if (effect.TargetType == CharacterEffectTargetType.Metric)
+                                                {
+                                                    <select @bind="effect.TargetId">
+                                                        @foreach (var item in Editor.Metrics)
+                                                        {
+                                                            <option value="@item.Id">@item.Name</option>
+                                                        }
+                                                    </select>
+                                                }
+                                            </div>
+
+                                            <div class="rc-form-field">
+                                                <label>@L["GameTest_ConsequenceValueMode"]</label>
+                                                <select @bind="effect.ValueMode">
+                                                    <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
+                                                    <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                                                </select>
+                                            </div>
+
+                                            @if (effect.ValueMode == ModifierValueMode.Metric)
+                                            {
+                                                <div class="rc-form-field">
+                                                    <label>@L["Common_SourceMetric"]</label>
+                                                    <select @bind="effect.SourceMetricId">
+                                                        @foreach (var item in Editor.Metrics)
+                                                        {
+                                                            <option value="@item.Id">@item.Name</option>
+                                                        }
+                                                    </select>
+                                                </div>
+
+                                                <div class="rc-form-field">
+                                                    <label>@L["GameTest_DifficultyMode"]</label>
+                                                    <select @bind="effect.Value">
+                                                        <option value="1">@L["GameTest_Bonus"]</option>
+                                                        <option value="-1">@L["GameTest_Malus"]</option>
+                                                    </select>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="rc-form-field">
+                                                    <label>@L["GameTest_DifficultyValue"]</label>
+                                                    <input type="number" @bind="effect.Value" />
+                                                </div>
+                                            }
+                                        }
+                                        else if (effect.OperationType == CharacterEffectOperationType.GrantTalent || effect.OperationType == CharacterEffectOperationType.RevokeTalent)
+                                        {
+                                            effect.TargetType = CharacterEffectTargetType.Talent;
+
+                                            <div class="rc-form-field">
+                                                <label>@L["GameTest_TargetDefinition"]</label>
+                                                <select @bind="effect.TargetId">
+                                                    @foreach (var item in Editor.Talents)
+                                                    {
+                                                        <option value="@item.Id">@item.Name</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            effect.TargetType = CharacterEffectTargetType.Item;
+
+                                            <div class="rc-form-field">
+                                                <label>@L["GameTest_TargetDefinition"]</label>
+                                                <select @bind="effect.TargetId">
+                                                    @foreach (var item in Editor.Items)
+                                                    {
+                                                        <option value="@item.Id">@item.Name</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div class="rc-tool-inline-actions">
+                                        <button @onclick="() => Request.Effects.Remove(effect)">@L["Common_Remove"]</button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="rc-tool-actions rc-tool-actions--right">
+                    <button @onclick="PreviewTargets">@L["MassDistribution_PreviewTargets"]</button>
+                    <button @onclick="ApplyDistribution">@L["MassDistribution_Apply"]</button>
+                </div>
             </div>
-        }
-    </div>
 
-    <div style="margin-top:12px;">
-        <label>@L["MassDistribution_TalentFilters"]</label><br />
-        <select @bind="SelectedTalentFilterId">
-            <option value="">--</option>
-            @foreach (var item in Editor.Talents)
-            {
-                <option value="@item.Id">@item.Name</option>
-            }
-        </select>
-        <button @onclick="AddTalentFilter">@L["MassDistribution_AddFilter"]</button>
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header">
+                    <div>
+                        <h5 class="rc-tool-panel__title">@L["MassDistribution_PreviewResult"]</h5>
+                        <p class="rc-tool-panel__subtitle">@L["MassDistribution_TargetCount"] : @PreviewCharacters.Count</p>
+                    </div>
+                </div>
 
-        @foreach (var item in Request.Filter.TalentIds.ToList())
-        {
-            var reference = Editor.Talents.FirstOrDefault(x => x.Id == item);
-            <div>
-                @reference?.Name
-                <button @onclick="() => Request.Filter.TalentIds.Remove(item)">@L["EditGameSystem_Delete"]</button>
-            </div>
-        }
-    </div>
-
-    <div style="margin-top:12px;">
-        <label>@L["MassDistribution_ItemFilters"]</label><br />
-        <select @bind="SelectedItemFilterId">
-            <option value="">--</option>
-            @foreach (var item in Editor.Items)
-            {
-                <option value="@item.Id">@item.Name</option>
-            }
-        </select>
-        <button @onclick="AddItemFilter">@L["MassDistribution_AddFilter"]</button>
-
-        @foreach (var item in Request.Filter.ItemIds.ToList())
-        {
-            var reference = Editor.Items.FirstOrDefault(x => x.Id == item);
-            <div>
-                @reference?.Name
-                <button @onclick="() => Request.Filter.ItemIds.Remove(item)">@L["EditGameSystem_Delete"]</button>
-            </div>
-        }
-    </div>
-
-    <div style="margin-top:12px;">
-        <h5>@L["MassDistribution_ValueFilters"]</h5>
-        <button @onclick="AddValueFilter">@L["MassDistribution_AddValueFilter"]</button>
-
-        @foreach (var valueFilter in Request.Filter.ValueFilters)
-        {
-            <div style="margin-top:8px; margin-left:20px;">
-                <select @bind="valueFilter.TargetType">
-                    <option value="@CharacterEffectTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
-                    <option value="@CharacterEffectTargetType.Gauge">@L["MassDistribution_Target_Gauge"]</option>
-                    <option value="@CharacterEffectTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
-                    <option value="@CharacterEffectTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
-                </select>
-
-                @if (valueFilter.TargetType == CharacterEffectTargetType.BaseAttribute)
+                @if (PreviewCharacters.Count == 0)
                 {
-                    <select @bind="valueFilter.TargetId">
-                        @foreach (var item in Editor.BaseAttributes)
-                        {
-                            <option value="@item.Id">@item.Name</option>
-                        }
-                    </select>
-                }
-                else if (valueFilter.TargetType == CharacterEffectTargetType.Gauge)
-                {
-                    <select @bind="valueFilter.TargetId">
-                        @foreach (var item in Editor.Gauges)
-                        {
-                            <option value="@item.Id">@item.Name</option>
-                        }
-                    </select>
-                }
-                else if (valueFilter.TargetType == CharacterEffectTargetType.DerivedStat)
-                {
-                    <select @bind="valueFilter.TargetId">
-                        @foreach (var item in Editor.DerivedStats)
-                        {
-                            <option value="@item.Id">@item.Name</option>
-                        }
-                    </select>
-                }
-                else if (valueFilter.TargetType == CharacterEffectTargetType.Metric)
-                {
-                    <select @bind="valueFilter.TargetId">
-                        @foreach (var item in Editor.Metrics)
-                        {
-                            <option value="@item.Id">@item.Name</option>
-                        }
-                    </select>
-                }
-
-                <select @bind="valueFilter.ComparisonType">
-                    <option value="@CharacterValueComparisonType.Equal">=</option>
-                    <option value="@CharacterValueComparisonType.NotEqual">!=</option>
-                    <option value="@CharacterValueComparisonType.GreaterThan">&gt;</option>
-                    <option value="@CharacterValueComparisonType.GreaterThanOrEqual">&gt;=</option>
-                    <option value="@CharacterValueComparisonType.LessThan">&lt;</option>
-                    <option value="@CharacterValueComparisonType.LessThanOrEqual">&lt;=</option>
-                </select>
-
-                <input type="number" @bind="valueFilter.Value" />
-                <button @onclick="() => Request.Filter.ValueFilters.Remove(valueFilter)">@L["EditGameSystem_Delete"]</button>
-            </div>
-        }
-    </div>
-
-    <h4 style="margin-top:20px;">@L["MassDistribution_EffectsSection"]</h4>
-    <button @onclick="AddEffect">@L["MassDistribution_AddEffect"]</button>
-
-    @foreach (var effect in Request.Effects)
-    {
-        <div style="margin-top:8px; padding:8px; border:1px solid #ccc;">
-            <select @bind="effect.OperationType">
-                <option value="@CharacterEffectOperationType.AddValue">@L["MassDistribution_Operation_AddValue"]</option>
-                <option value="@CharacterEffectOperationType.GrantTalent">@L["MassDistribution_Operation_GrantTalent"]</option>
-                <option value="@CharacterEffectOperationType.RevokeTalent">@L["MassDistribution_Operation_RevokeTalent"]</option>
-                <option value="@CharacterEffectOperationType.GrantItem">@L["MassDistribution_Operation_GrantItem"]</option>
-                <option value="@CharacterEffectOperationType.RevokeItem">@L["MassDistribution_Operation_RevokeItem"]</option>
-            </select>
-
-            @if (effect.OperationType == CharacterEffectOperationType.AddValue)
-            {
-                <select @bind="effect.TargetType">
-                    <option value="@CharacterEffectTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
-                    <option value="@CharacterEffectTargetType.Gauge">@L["MassDistribution_Target_Gauge"]</option>
-                    <option value="@CharacterEffectTargetType.SessionGauge">@L["SessionPage_TargetSessionGauge"]</option>
-                    <option value="@CharacterEffectTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
-                    <option value="@CharacterEffectTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
-                </select>
-
-                @if (effect.TargetType == CharacterEffectTargetType.BaseAttribute)
-                {
-                    <select @bind="effect.TargetId">
-                        @foreach (var item in Editor.BaseAttributes)
-                        {
-                            <option value="@item.Id">@item.Name</option>
-                        }
-                    </select>
-                }
-                else if (effect.TargetType == CharacterEffectTargetType.Gauge)
-                {
-                    <select @bind="effect.TargetId">
-                        @foreach (var item in Editor.Gauges)
-                        {
-                            <option value="@item.Id">@item.Name</option>
-                        }
-                    </select>
-                }
-                else if (effect.TargetType == CharacterEffectTargetType.SessionGauge)
-                {
-                    <select @bind="effect.TargetId">
-                        @foreach (var item in SessionGauges)
-                        {
-                            <option value="@item.SessionGaugeId">@item.Name</option>
-                        }
-                    </select>
-                }
-                else if (effect.TargetType == CharacterEffectTargetType.DerivedStat)
-                {
-                    <select @bind="effect.TargetId">
-                        @foreach (var item in Editor.DerivedStats)
-                        {
-                            <option value="@item.Id">@item.Name</option>
-                        }
-                    </select>
-                }
-                else if (effect.TargetType == CharacterEffectTargetType.Metric)
-                {
-                    <select @bind="effect.TargetId">
-                        @foreach (var item in Editor.Metrics)
-                        {
-                            <option value="@item.Id">@item.Name</option>
-                        }
-                    </select>
-                }
-
-                <select @bind="effect.ValueMode">
-                    <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
-                    <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
-                </select>
-
-                @if (effect.ValueMode == ModifierValueMode.Metric)
-                {
-                    <select @bind="effect.SourceMetricId">
-                        @foreach (var item in Editor.Metrics)
-                        {
-                            <option value="@item.Id">@item.Name</option>
-                        }
-                    </select>
-
-                    <select @bind="effect.Value">
-                        <option value="1">@L["GameTest_Bonus"]</option>
-                        <option value="-1">@L["GameTest_Malus"]</option>
-                    </select>
+                    <div class="rc-empty-panel">
+                        <p>@L["MassDistribution_NoPreview"]</p>
+                    </div>
                 }
                 else
                 {
-                    <input type="number" @bind="effect.Value" />
+                    <div class="rc-test-result-grid">
+                        @foreach (var item in PreviewCharacters)
+                        {
+                            if (CharacterSummariesById.TryGetValue(item.CharacterId, out var summary))
+                            {
+                                <CharacterResultSummaryCard Character="summary" />
+                            }
+                        }
+                    </div>
                 }
-            }
-            else if (effect.OperationType == CharacterEffectOperationType.GrantTalent || effect.OperationType == CharacterEffectOperationType.RevokeTalent)
-            {
-                effect.TargetType = CharacterEffectTargetType.Talent;
-                <select @bind="effect.TargetId">
-                    @foreach (var item in Editor.Talents)
-                    {
-                        <option value="@item.Id">@item.Name</option>
-                    }
-                </select>
-            }
-            else
-            {
-                effect.TargetType = CharacterEffectTargetType.Item;
-                <select @bind="effect.TargetId">
-                    @foreach (var item in Editor.Items)
-                    {
-                        <option value="@item.Id">@item.Name</option>
-                    }
-                </select>
-            }
-
-            <button @onclick="() => Request.Effects.Remove(effect)">@L["EditGameSystem_Delete"]</button>
+            </div>
         </div>
-    }
-
-    <div style="margin-top:20px;">
-        <button @onclick="PreviewTargets">@L["MassDistribution_PreviewTargets"]</button>
-        <button @onclick="ApplyDistribution">@L["MassDistribution_Apply"]</button>
-    </div>
-
-    @if (!string.IsNullOrWhiteSpace(Message))
-    {
-        <p style="margin-top:12px;">@Message</p>
-    }
-
-    @if (PreviewCharacters.Count > 0)
-    {
-        <h4 style="margin-top:20px;">@L["MassDistribution_PreviewResult"]</h4>
-        <p>@L["MassDistribution_TargetCount"] : @PreviewCharacters.Count</p>
-
-        <ul>
-            @foreach (var item in PreviewCharacters)
-            {
-                <li>@item.CharacterName (@(item.IsAlive? L["MassDistribution_Alive"] : L["MassDistribution_Dead"]))</li>
-            }
-        </ul>
-    }
+    </section>
 }
 
 @code {
@@ -348,14 +311,48 @@ else
     private MassDistributionEditorDto? Editor;
     private List<SessionGaugeDto> SessionGauges = new();
     private MassDistributionRequestDto Request = new();
-
-    private string SelectedTraitOptionId = string.Empty;
-    private string SelectedTalentFilterId = string.Empty;
-    private string SelectedItemFilterId = string.Empty;
+    private Dictionary<Guid, SessionCharacterSummaryDto> CharacterSummariesById = new();
 
     private List<MassDistributionPreviewCharacterDto> PreviewCharacters { get; set; } = new();
 
     private MassDistributionLastBatchDto? LastBatch;
+
+    private List<CharacterFilterGroupItem> AdvancedTraitOptionGroups
+    => Editor?.TraitOptions
+        .GroupBy(x => new { x.GroupId, x.GroupName })
+        .OrderBy(x => x.Key.GroupName)
+        .Select(group => new CharacterFilterGroupItem
+        {
+            GroupName = group.Key.GroupName,
+            Options = group
+                .OrderBy(x => x.Name)
+                .Select(x => new CharacterFilterReferenceItem
+                {
+                    Id = x.Id,
+                    Name = x.Name
+                })
+                .ToList()
+        })
+        .ToList()
+        ?? new List<CharacterFilterGroupItem>();
+
+    private List<CharacterFilterReferenceItem> AdvancedTalentOptions
+        => Editor?.Talents.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
+
+    private List<CharacterFilterReferenceItem> AdvancedItemOptions
+        => Editor?.Items.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
+
+    private List<CharacterFilterReferenceItem> AdvancedAttributeTargets
+        => Editor?.BaseAttributes.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
+
+    private List<CharacterFilterReferenceItem> AdvancedGaugeTargets
+        => Editor?.Gauges.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
+
+    private List<CharacterFilterReferenceItem> AdvancedDerivedTargets
+        => Editor?.DerivedStats.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
+
+    private List<CharacterFilterReferenceItem> AdvancedMetricTargets
+        => Editor?.Metrics.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -373,10 +370,9 @@ else
 
         CurrentUserId = Guid.Parse(userIdValue);
         Editor = await MassDistributionService.GetEditorAsync(SessionId, CurrentUserId);
-
         SessionGauges = await SessionService.GetSessionGaugesAsync(SessionId, CurrentUserId);
-
         LastBatch = await MassDistributionService.GetLastBatchAsync(SessionId, CurrentUserId);
+        await LoadCharacterSummariesAsync();
 
         IsLoaded = true;
     }
@@ -387,24 +383,6 @@ else
             Navigation.NavigateTo("/", forceLoad: true);
 
         return Task.CompletedTask;
-    }
-
-    private void AddTraitOptionFilter()
-    {
-        if (Guid.TryParse(SelectedTraitOptionId, out var id) && !Request.Filter.TraitOptionIds.Contains(id))
-            Request.Filter.TraitOptionIds.Add(id);
-    }
-
-    private void AddTalentFilter()
-    {
-        if (Guid.TryParse(SelectedTalentFilterId, out var id) && !Request.Filter.TalentIds.Contains(id))
-            Request.Filter.TalentIds.Add(id);
-    }
-
-    private void AddItemFilter()
-    {
-        if (Guid.TryParse(SelectedItemFilterId, out var id) && !Request.Filter.ItemIds.Contains(id))
-            Request.Filter.ItemIds.Add(id);
     }
 
     private void AddValueFilter()
@@ -478,5 +456,16 @@ else
         {
             Message = $"{L["Common_Error"]} : {ex.Message}";
         }
+    }
+
+    private async Task LoadCharacterSummariesAsync()
+    {
+        var characters = await CharacterService.GetSessionCharacterSummariesAsync(
+            SessionId,
+            includeOffline: true,
+            includeDead: true,
+            includeNpcs: true);
+
+        CharacterSummariesById = characters.ToDictionary(x => x.CharacterId, x => x);
     }
 }

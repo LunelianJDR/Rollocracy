@@ -281,16 +281,16 @@
   <value>Slug</value>
 </data>
 	<data name="SessionPage_JoinUrl" xml:space="preserve">
-  <value>URL de jointure</value>
+  <value>Rejoindre la session :</value>
 </data>
 	<data name="SessionPage_Password" xml:space="preserve">
-  <value>Mot de passe de la session</value>
+  <value>Mot de passe</value>
 </data>
 	<data name="SessionPage_ShowPassword" xml:space="preserve">
-  <value>Afficher le mot de passe de la session</value>
+  <value>Afficher le mot de passe</value>
 </data>
 	<data name="SessionPage_HidePassword" xml:space="preserve">
-  <value>Masquer le mot de passe de la session</value>
+  <value>Masquer le mot de passe</value>
 </data>
 	<data name="SessionPage_GameSystemSection" xml:space="preserve">
   <value>Système de jeu de la session</value>
@@ -871,7 +871,7 @@
   <value>Mode difficulté</value>
 </data>
 	<data name="GameTest_DifficultyValue" xml:space="preserve">
-  <value>Valeur de difficulté</value>
+  <value>Modificateur de difficulté</value>
 </data>
 	<data name="GameTest_DifficultySummary" xml:space="preserve">
   <value>Difficulté</value>
@@ -900,11 +900,8 @@
 	<data name="GameTest_Consequences" xml:space="preserve">
   <value>Conséquences</value>
 </data>
-	<data name="GameTest_AddSuccessConsequence" xml:space="preserve">
-  <value>Ajouter une conséquence de réussite</value>
-</data>
-	<data name="GameTest_AddFailureConsequence" xml:space="preserve">
-  <value>Ajouter une conséquence d'échec</value>
+	<data name="GameTest_AddConsequence" xml:space="preserve">
+  <value>Ajouter une conséquence</value>
 </data>
 	<data name="GameTest_NoConsequence" xml:space="preserve">
   <value>Aucune conséquence.</value>
@@ -1915,5 +1912,131 @@
 </data>
 	<data name="Backend_SessionGaugeNotFound" xml:space="preserve">
   <value>Jauge de session introuvable.</value>
+</data>
+	<data name="Layout_Welcome" xml:space="preserve">
+  <value>Bienvenue</value>
+</data>
+	<data name="Layout_Guest" xml:space="preserve">
+  <value>Invité</value>
+</data>
+	<data name="Layout_CycleTheme" xml:space="preserve">
+  <value>Changer de thème</value>
+</data>
+	<data name="Layout_SupportSoon" xml:space="preserve">
+  <value>Soutien bientôt disponible</value>
+</data>
+	<data name="Layout_ToggleSidebar" xml:space="preserve">
+  <value>Réduire / agrandir le menu</value>
+</data>
+	<data name="Layout_UserSection" xml:space="preserve">
+  <value>Utilisateur</value>
+</data>
+	<data name="Layout_AccountSettings" xml:space="preserve">
+  <value>Paramètres du compte</value>
+</data>
+	<data name="Layout_OutsideSessionSection" xml:space="preserve">
+  <value>Hors session</value>
+</data>
+	<data name="Layout_GameSystems" xml:space="preserve">
+  <value>Systèmes de jeu</value>
+</data>
+	<data name="Layout_GameSessions" xml:space="preserve">
+  <value>Sessions de jeu</value>
+</data>
+	<data name="Layout_CurrentSessionSection" xml:space="preserve">
+  <value>Session en cours</value>
+</data>
+	<data name="Layout_ViewCharacters" xml:space="preserve">
+  <value>Vue personnages</value>
+</data>
+	<data name="Layout_Test" xml:space="preserve">
+  <value>Test</value>
+</data>
+	<data name="Layout_Poll" xml:space="preserve">
+  <value>Sondage</value>
+</data>
+	<data name="Layout_SessionSettings" xml:space="preserve">
+  <value>Paramètres de la session</value>
+</data>
+	<data name="Layout_NoPassword" xml:space="preserve">
+  <value>Pas de mot de passe</value>
+</data>
+	<data name="GameTest_AutoRollDelay" xml:space="preserve">
+  <value>Délai avant lancer automatique</value>
+</data>
+	<data name="GameTest_IncludeNpcs" xml:space="preserve">
+  <value>Inclure les PNJ</value>
+</data>
+	<data name="GameTest_ExcludeNpcs" xml:space="preserve">
+  <value>Ne pas inclure les PNJ</value>
+</data>
+	<data name="GameTest_AfterModifier" xml:space="preserve">
+  <value>après modificateur</value>
+</data>
+	<data name="GameTest_Difference" xml:space="preserve">
+  <value>Différence</value>
+</data>
+	<data name="Poll_WeightedPercent" xml:space="preserve">
+  <value>Pourcentage pondéré</value>
+</data>
+	<data name="MassDistribution_NoValueFilters" xml:space="preserve">
+  <value>Aucun filtre de valeur défini.</value>
+</data>
+	<data name="MassDistribution_NoEffects" xml:space="preserve">
+  <value>Aucun effet défini.</value>
+</data>
+	<data name="MassDistribution_NoPreview" xml:space="preserve">
+  <value>Aucune prévisualisation pour le moment.</value>
+</data>
+	<data name="MassDistribution_FilterTarget" xml:space="preserve">
+  <value>Cible du filtre</value>
+</data>
+	<data name="MassDistribution_Comparison" xml:space="preserve">
+  <value>Comparaison</value>
+</data>
+	<data name="RandomDraw_NoValueFilters" xml:space="preserve">
+  <value>Aucun filtre de valeur défini.</value>
+</data>
+	<data name="RandomDraw_NoResultYet" xml:space="preserve">
+  <value>Aucun tirage effectué pour le moment.</value>
+</data>
+	<data name="Common_Type" xml:space="preserve">
+  <value>Type</value>
+</data>
+	<data name="RandomDraw_TooManyRequestedWarning" xml:space="preserve">
+  <value>Attention : il y a plus de personnages demandés que de personnages éligibles, tous les personnages éligibles ont donc été tirés au sort.</value>
+</data>
+	<data name="Common_AdvancedFilters" xml:space="preserve">
+  <value>Filtres avancés</value>
+</data>
+	<data name="Common_Show" xml:space="preserve">
+  <value>Afficher</value>
+</data>
+	<data name="Common_Hide" xml:space="preserve">
+  <value>Masquer</value>
+</data>
+	<data name="MassDistribution_FilterMode" xml:space="preserve">
+  <value>Mode de combinaison</value>
+</data>
+	<data name="MassDistribution_FilterModeAny" xml:space="preserve">
+  <value>Doit remplir au moins une condition</value>
+</data>
+	<data name="MassDistribution_FilterModeAll" xml:space="preserve">
+  <value>Doit remplir chaque condition</value>
+</data>
+	<data name="MassDistribution_FilterTarget" xml:space="preserve">
+  <value>Cible du filtre</value>
+</data>
+	<data name="MassDistribution_Comparison" xml:space="preserve">
+  <value>Comparaison</value>
+</data>
+<data name="AudienceFilter_OnlinePlayers" xml:space="preserve">
+  <value>Personnages en ligne</value>
+</data>
+	<data name="AudienceFilter_AlivePlayers" xml:space="preserve">
+  <value>Tous les personnages en vie</value>
+</data>
+	<data name="AudienceFilter_IncludeNPCs" xml:space="preserve">
+  <value>Inclure les PNJ</value>
 </data>
 </root>

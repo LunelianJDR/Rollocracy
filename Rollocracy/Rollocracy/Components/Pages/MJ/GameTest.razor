@@ -1,0 +1,1257 @@
+﻿@page "/mj/session/{SessionId:guid}/test"
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Localization
+@using DomainSession = Rollocracy.Domain.Entities.Session
+@using Rollocracy.Domain.GameRules
+@using Rollocracy.Domain.GameTests
+@using Rollocracy.Localization
+@using Rollocracy.Domain.Characters
+@using Rollocracy.Components.Pages.MJ.Shared
+@using System.Globalization
+@inject NavigationManager Navigation
+@inject Rollocracy.Domain.Interfaces.ISessionService SessionService
+@inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
+@inject Rollocracy.Domain.Interfaces.IGameTestService GameTestService
+@inject Rollocracy.Domain.Interfaces.ICharacterService CharacterService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IStringLocalizer<SharedTexts> L
+
+<h3>@L["GameTest_GameMasterSectionTitle"]</h3>
+
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToHome)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (CurrentSession is null)
+{
+    <p>@L["SessionPage_NotFound"]</p>
+}
+else
+{
+    <section class="rc-tool-section">
+        @if (AssignedGameSystem is null)
+        {
+            <div class="rc-empty-panel">
+                <p>@L["GameTest_NoGameSystemForSession"]</p>
+            </div>
+        }
+        else if (AvailableAttributes.Count == 0 && AvailableDerivedStats.Count == 0)
+        {
+            <div class="rc-empty-panel">
+                <p>@L["GameTest_NoAttributeAvailable"]</p>
+            </div>
+        }
+        else
+        {
+            <div class="rc-tool-layout">
+                <div class="rc-tool-panel">
+                    <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                        <div class="rc-tool-panel__header-main">
+                            <h5 class="rc-tool-panel__title">@L["GameTest_GameMasterSectionTitle"]</h5>
+                            <p class="rc-tool-panel__subtitle">@L["GameTest_Target"] / @L["GameTest_Dice"] / @L["GameTest_Consequences"]</p>
+                        </div>
+
+                        @if (ActiveTest is null || ActiveTest.IsClosed)
+                        {
+                            <div class="rc-tool-inline-actions">
+                                <button @onclick="CreateGameTest">@L["GameTest_Create"]</button>
+                            </div>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(Message))
+                    {
+                        <div class="rc-inline-error">@Message</div>
+                    }
+
+                    <div class="rc-tool-form-grid">
+                        <div class="rc-form-field">
+                            <label>@L["GameTest_TargetKind"]</label>
+                            <select @bind="NewTargetKind" @bind:after="OnTestTargetKindChanged">
+                                <option value="@GameTestTargetKind.BaseAttribute">@L["GameTest_TargetAttribute"]</option>
+                                <option value="@GameTestTargetKind.DerivedStat">@L["TestConsequence_Target_DerivedStat"]</option>
+                            </select>
+                        </div>
+
+                        <div class="rc-form-field">
+                            <label>@L["GameTest_Attribute"]</label>
+                            <select @bind="SelectedAttributeId">
+                                <option value="">@L["GameTest_SelectAttribute"]</option>
+                                @if (NewTargetKind == GameTestTargetKind.BaseAttribute)
+                                {
+                                    @foreach (var attributeDefinition in AvailableAttributes)
+                                    {
+                                        <option value="@attributeDefinition.Id.ToString()">@attributeDefinition.Name</option>
+                                    }
+                                }
+                                else
+                                {
+                                    @foreach (var derivedDefinition in AvailableDerivedStats)
+                                    {
+                                        <option value="@derivedDefinition.DerivedStatDefinitionId?.ToString()">@derivedDefinition.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="rc-form-field">
+                            <label>@L["GameTest_DiceMode"]</label>
+                            <InputSelect @bind-Value="UseSystemDefaultDice" @bind-Value:after="OnDiceModeChanged">
+                                <option value="true">@L["GameTest_UseSystemDefaultDice"]</option>
+                                <option value="false">@L["GameTest_UseCustomDice"]</option>
+                            </InputSelect>
+                        </div>
+
+                        @if (UseSystemDefaultDice)
+                        {
+                            <div class="rc-form-field rc-form-field--readonly">
+                                <label>@L["GameTest_Dice"]</label>
+                                <div class="rc-readonly-value">@($"{AssignedGameSystem.DefaultTestDiceCount}d{AssignedGameSystem.DefaultTestDiceSides}")</div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="rc-form-field">
+                                <label>@L["GameTest_DiceCount"]</label>
+                                <input type="number" @bind="NewDiceCount" @bind:after="OnCustomDiceChanged" />
+                            </div>
+
+                            <div class="rc-form-field">
+                                <label>@L["GameTest_DiceSides"]</label>
+                                <input type="number" @bind="NewDiceSides" @bind:after="OnCustomDiceChanged" />
+                            </div>
+                        }
+
+                        @if (AssignedGameSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold)
+                        {
+                            <div class="rc-form-field">
+                                <label>@L["GameTest_SuccessThreshold"]</label>
+                                <input type="number" @bind="NewSuccessThreshold" />
+                            </div>
+                        }
+                        
+                        <div class="rc-form-field">
+                            <label>@L["GameTest_AutoRollDelay"]</label>
+                            <div class="rc-difficulty-slider">
+                                <input type="range"
+                                       class="rc-difficulty-slider--classic"
+                                       min="0"
+                                       max="4"
+                                       step="1"
+                                       style="@AutoRollSliderStyle"
+                                       @bind="SelectedAutoRollDelayIndex"
+                                       @bind:event="oninput" />
+                                <div class="rc-difficulty-slider__ticks" style="@AutoRollTicksStyle">
+                                    @for (var i = 0; i < AutoRollDelayOptions.Count; i++)
+                                    {
+                                        <span class="@GetAutoRollTickClass(i)">@($"{AutoRollDelayOptions[i]}s")</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rc-form-field rc-form-field--full">
+                            <label>@L["GameTest_DifficultyValue"]</label>
+                            <div class="rc-difficulty-slider">
+                                <input type="range"
+                                       class="rc-difficulty-slider--centered"
+                                       min="0"
+                                       max="@(DifficultyScaleValues.Count - 1)"
+                                       step="1"
+                                       style="@DifficultySliderStyle"
+                                       @bind="SelectedDifficultyIndex"
+                                       @bind:event="oninput" />
+                                <div class="rc-difficulty-slider__ticks" style="@DifficultyTicksStyle">
+                                    @for (var i = 0; i < DifficultyScaleValues.Count; i++)
+                                    {
+                                        <span class="@GetDifficultyTickClass(i)">@FormatDifficultyValue(DifficultyScaleValues[i])</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                        
+                    </div>
+                    <hr />
+                    
+                        <CharacterAudienceFilters Title="@L["GameTest_TargetScope"]"
+                                                    OnlyOnline="@(NewTargetScope == TestTargetScope.OnlineLivingCharacters)"
+                                                    OnlyAlive="@(NewTargetScope == TestTargetScope.AllLivingCharacters)"
+                                                    IncludeNpcs="IncludeNpcsInTest"
+                                                    OnlyOnlineChanged="@(value => NewTargetScope = value ? TestTargetScope.OnlineLivingCharacters : NewTargetScope)"
+                                                    OnlyAliveChanged="@(value => NewTargetScope = value ? TestTargetScope.AllLivingCharacters : NewTargetScope)"
+                                                    IncludeNpcsChanged="@(value => IncludeNpcsInTest = value)" />
+                            
+                        <CharacterAdvancedFilters Filter="AdvancedFilter"
+                                                    TraitOptionGroups="AdvancedTraitOptionGroups"
+                                                    TalentOptions="AdvancedTalentOptions"
+                                                    ItemOptions="AdvancedItemOptions"
+                                                    AttributeTargets="AdvancedAttributeTargets"
+                                                    GaugeTargets="AdvancedGaugeTargets"
+                                                    DerivedStatTargets="AdvancedDerivedTargets"
+                                                    MetricTargets="AdvancedMetricTargets" />
+                    
+                    
+                        <div class="rc-filter-group-card">
+                            <div class="rc-tool-subsection__header">
+                                <div class="rc-filter-group-card__title">@L["GameTest_Consequences"]</div>
+                                    <div class="rc-tool-inline-actions">
+                                        <button @onclick="AddGenericConsequence">@L["GameTest_AddConsequence"]</button>
+                                    </div>
+                            </div>
+
+                            @if (ConsequenceRows.Count == 0)
+                            {
+                                <p class="rc-tool-muted">@L["GameTest_NoConsequence"]</p>
+                            }
+                            else
+                            {
+                                <div class="rc-consequence-list">
+                                    @for (var i = 0; i < ConsequenceRows.Count; i++)
+                                    {
+                                        var row = ConsequenceRows[i];
+
+                                        <div class="rc-consequence-card">
+                                            <div class="rc-consequence-card__grid">
+                                                <div class="rc-form-field">
+                                                    <label>@L["GameTest_When"]</label>
+                                                    <select @bind="row.ApplyOn">
+                                                        <option value="@TestConsequenceApplyOn.OnSuccess">@L["GameTest_OnSuccess"]</option>
+                                                        <option value="@TestConsequenceApplyOn.OnFailure">@L["GameTest_OnFailure"]</option>
+                                                        <option value="@TestConsequenceApplyOn.OnCriticalSuccess">@L["GameTest_OnCriticalSuccess"]</option>
+                                                        <option value="@TestConsequenceApplyOn.OnCriticalFailure">@L["GameTest_OnCriticalFailure"]</option>
+                                                    </select>
+                                                </div>
+
+                                                <div class="rc-form-field">
+                                                    <label>@L["GameTest_ConsequenceOperation"]</label>
+                                                    <select value="@((int)row.OperationType)" @onchange="e => ChangeConsequenceOperation(row, e.Value?.ToString())">
+                                                        <option value="@((int)TestConsequenceOperationType.AddValue)">@L["TestConsequence_Operation_AddValue"]</option>
+                                                        <option value="@((int)TestConsequenceOperationType.GrantTalent)">@L["TestConsequence_Operation_GrantTalent"]</option>
+                                                        <option value="@((int)TestConsequenceOperationType.RevokeTalent)">@L["TestConsequence_Operation_RevokeTalent"]</option>
+                                                        <option value="@((int)TestConsequenceOperationType.GrantItem)">@L["TestConsequence_Operation_GrantItem"]</option>
+                                                        <option value="@((int)TestConsequenceOperationType.RevokeItem)">@L["TestConsequence_Operation_RevokeItem"]</option>
+                                                    </select>
+                                                </div>
+
+                                                @if (row.OperationType == TestConsequenceOperationType.AddValue)
+                                                {
+                                                    <div class="rc-form-field">
+                                                        <label>@L["GameTest_ConsequenceTargetKind"]</label>
+                                                        <select value="@((int)row.TargetKind)" @onchange="e => ChangeConsequenceTargetKind(row, e.Value?.ToString())">
+                                                            <option value="@((int)TestConsequenceTargetKind.Gauge)">@L["GameTest_TargetGauge"]</option>
+                                                            <option value="@((int)TestConsequenceTargetKind.SessionGauge)">@L["SessionPage_TargetSessionGauge"]</option>
+                                                            <option value="@((int)TestConsequenceTargetKind.Attribute)">@L["GameTest_TargetAttribute"]</option>
+                                                            <option value="@((int)TestConsequenceTargetKind.DerivedStat)">@L["TestConsequence_Target_DerivedStat"]</option>
+                                                            <option value="@((int)TestConsequenceTargetKind.Metric)">@L["TestConsequence_Target_Metric"]</option>
+                                                        </select>
+                                                    </div>
+                                                }
+                                                else if (row.OperationType == TestConsequenceOperationType.GrantTalent || row.OperationType == TestConsequenceOperationType.RevokeTalent)
+                                                {
+                                                    row.TargetKind = TestConsequenceTargetKind.Talent;
+                                                    <div class="rc-form-field rc-form-field--readonly">
+                                                        <label>@L["GameTest_ConsequenceTargetKind"]</label>
+                                                        <div class="rc-readonly-value">@L["TestConsequence_Target_Talent"]</div>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    row.TargetKind = TestConsequenceTargetKind.Item;
+                                                    <div class="rc-form-field rc-form-field--readonly">
+                                                        <label>@L["GameTest_ConsequenceTargetKind"]</label>
+                                                        <div class="rc-readonly-value">@L["TestConsequence_Target_Item"]</div>
+                                                    </div>
+                                                }
+
+                                                <div class="rc-form-field">
+                                                    <label>@L["GameTest_TargetDefinition"]</label>
+
+                                                    @if (row.TargetKind == TestConsequenceTargetKind.Gauge)
+                                                    {
+                                                        <select @bind="row.TargetDefinitionId">
+                                                            @foreach (var gaugeDefinition in AvailableGaugeDefinitions)
+                                                            {
+                                                                <option value="@gaugeDefinition.Id">@gaugeDefinition.Name</option>
+                                                            }
+                                                        </select>
+                                                    }
+                                                    else if (row.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                                                    {
+                                                        <select @bind="row.TargetDefinitionId">
+                                                            @foreach (var gauge in SessionGauges)
+                                                            {
+                                                                <option value="@gauge.SessionGaugeId">@gauge.Name</option>
+                                                            }
+                                                        </select>
+                                                    }
+                                                    else if (row.TargetKind == TestConsequenceTargetKind.Attribute)
+                                                    {
+                                                        <select @bind="row.TargetDefinitionId">
+                                                            @foreach (var attributeDefinition in AvailableAttributes)
+                                                            {
+                                                                <option value="@attributeDefinition.Id">@attributeDefinition.Name</option>
+                                                            }
+                                                        </select>
+                                                    }
+                                                    else if (row.TargetKind == TestConsequenceTargetKind.DerivedStat)
+                                                    {
+                                                        <select @bind="row.TargetDefinitionId">
+                                                            @foreach (var derivedDefinition in AvailableDerivedStats)
+                                                            {
+                                                                <option value="@derivedDefinition.DerivedStatDefinitionId">@derivedDefinition.Name</option>
+                                                            }
+                                                        </select>
+                                                    }
+                                                    else if (row.TargetKind == TestConsequenceTargetKind.Metric)
+                                                    {
+                                                        <select @bind="row.TargetDefinitionId">
+                                                            @foreach (var metricDefinition in AvailableMetrics)
+                                                            {
+                                                                <option value="@metricDefinition.Id">@metricDefinition.Name</option>
+                                                            }
+                                                        </select>
+                                                    }
+                                                    else if (row.TargetKind == TestConsequenceTargetKind.Talent)
+                                                    {
+                                                        <select @bind="row.TargetDefinitionId">
+                                                            @foreach (var talentDefinition in AvailableTalents)
+                                                            {
+                                                                <option value="@talentDefinition.TalentDefinitionId">@talentDefinition.Name</option>
+                                                            }
+                                                        </select>
+                                                    }
+                                                    else if (row.TargetKind == TestConsequenceTargetKind.Item)
+                                                    {
+                                                        <select @bind="row.TargetDefinitionId">
+                                                            @foreach (var itemDefinition in AvailableItems)
+                                                            {
+                                                                <option value="@itemDefinition.ItemDefinitionId">@itemDefinition.Name</option>
+                                                            }
+                                                        </select>
+                                                    }
+                                                </div>
+
+                                                @if (row.OperationType == TestConsequenceOperationType.AddValue)
+                                                {
+                                                    <div class="rc-form-field">
+                                                        <label>@L["GameTest_DifficultyMode"]</label>
+                                                        <select @bind="row.ModifierMode">
+                                                            <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
+                                                            <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div class="rc-form-field">
+                                                        <label>@L["GameTest_ConsequenceValueMode"]</label>
+                                                        <select @bind="row.ValueMode">
+                                                            <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
+                                                            <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                                                        </select>
+                                                    </div>
+
+                                                    @if (row.ValueMode == ModifierValueMode.Metric)
+                                                    {
+                                                        <div class="rc-form-field">
+                                                            <label>@L["Common_SourceMetric"]</label>
+                                                            <select @bind="row.SourceMetricId">
+                                                                @foreach (var metricDefinition in AvailableMetrics)
+                                                                {
+                                                                    <option value="@metricDefinition.Id">@metricDefinition.Name</option>
+                                                                }
+                                                            </select>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="rc-form-field">
+                                                            <label>@L["GameTest_DifficultyValue"]</label>
+                                                            <input type="number" @bind="row.Value" />
+                                                        </div>
+                                                    }
+                                                }
+                                            </div>
+
+                                            <div class="rc-tool-inline-actions">
+                                                <button @onclick="() => RemoveConsequenceRow(row.RowId)">@L["Common_Remove"]</button>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    
+                    @if (ActiveTest is null || ActiveTest.IsClosed)
+                    {
+                        <div class="rc-tool-actions rc-tool-actions--right">
+                            <button @onclick="CreateGameTest">@L["GameTest_Create"]</button>
+                        </div>
+                    }
+                </div>
+
+                <div class="rc-tool-panel">
+                    @if (ActiveTest is null)
+                    {
+                        <div class="rc-empty-panel">
+                            <p>@L["GameTest_LastTestPerformed"]</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="rc-tool-panel__header">
+                            <div>
+                                <h5 class="rc-tool-panel__title">@ActiveTest.AttributeName</h5>
+                                <p class="rc-tool-panel__subtitle">@($"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}")</p>
+                            </div>
+
+                            <div class="rc-tool-inline-actions">
+                                @if (!ConfirmRollbackVisible)
+                                {
+                                    <button @onclick="ShowRollbackConfirmation">@L["GameTest_RollbackLastTest"]</button>
+                                }
+                                else
+                                {
+                                    <button @onclick="RollbackLatestTestConfirmed">@L["Common_Yes"]</button>
+                                    <button @onclick="CancelRollback">@L["Common_No"]</button>
+                                }
+                            </div>
+                        </div>
+
+                        @if (ConfirmRollbackVisible)
+                        {
+                            <div class="rc-inline-warning">@L["GameTest_RollbackConfirmQuestion"]</div>
+                        }
+
+                        <div class="rc-test-stats-grid">
+                            <div class="rc-stat-card">
+                                <div class="rc-stat-card__label">@L["GameTest_TargetCount"]</div>
+                                <div class="rc-stat-card__value">@ActiveTest.TargetCount</div>
+                            </div>
+
+                            <div class="rc-stat-card">
+                                <div class="rc-stat-card__label">@L["GameTest_RolledCount"]</div>
+                                <div class="rc-stat-card__value">@ActiveTest.RolledCount</div>
+                            </div>
+
+                            <div class="rc-stat-card">
+                                <div class="rc-stat-card__label">@L["GameTest_SuccessCount"]</div>
+                                <div class="rc-stat-card__value">@ActiveTest.SuccessCount</div>
+                            </div>
+
+                            <div class="rc-stat-card">
+                                <div class="rc-stat-card__label">@L["GameTest_FailureCount"]</div>
+                                <div class="rc-stat-card__value">@ActiveTest.FailureCount</div>
+                            </div>
+
+                            <div class="rc-stat-card">
+                                <div class="rc-stat-card__label">@L["GameTest_CriticalSuccessCount"]</div>
+                                <div class="rc-stat-card__value">@ActiveTest.CriticalSuccessCount</div>
+                            </div>
+
+                            <div class="rc-stat-card">
+                                <div class="rc-stat-card__label">@L["GameTest_CriticalFailureCount"]</div>
+                                <div class="rc-stat-card__value">@ActiveTest.CriticalFailureCount</div>
+                            </div>
+
+                            <div class="rc-stat-card">
+                                <div class="rc-stat-card__label">@L["GameTest_SuccessRate"]</div>
+                                <div class="rc-stat-card__value">@($"{ActiveTest.SuccessRatePercent:F1}%")</div>
+                            </div>
+
+                            <div class="rc-stat-card">
+                                <div class="rc-stat-card__label">@L["GameTest_AverageRoll"]</div>
+                                <div class="rc-stat-card__value">@(ActiveTest.AverageDiceTotal?.ToString("F2") ?? "-")</div>
+                            </div>
+                        </div>
+
+                        <div class="rc-tool-subsection">
+                            <div class="rc-tool-subsection__title">@L["GameTest_IndividualResults"]</div>
+
+                            <div class="rc-test-result-grid">
+                                @foreach (var resultLine in ActiveTest.Results)
+                                {
+                                    if (CharacterSummariesById.TryGetValue(resultLine.CharacterId, out var summary))
+                                    {
+                                        <CharacterResultSummaryCard Character="summary"
+                                                                    AdditionalClass="@GetResultCardClass(resultLine)">
+                                            <HeaderContent>
+                                                <div class="rc-test-result-card__status">
+                                                    @if (!resultLine.HasRolled)
+                                                    {
+                                                        <div class="rc-test-result-card__status">
+                                                            <span class="rc-result-banner pending">@L["GameTest_Pending"]</span>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="rc-test-result-card__status rc-test-result-card__status--stacked">
+                                                            <span class="rc-result-banner @GetOutcomeBannerClass(resultLine)">@GetOutcomeLabel(resultLine.Outcome)</span>
+                                                            <div class="rc-test-result-card__highlight">
+                                                                <div class="rc-final-value @GetFinalValueClass(resultLine)">
+                                                                    @resultLine.FinalValue
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </HeaderContent>
+                                        </CharacterResultSummaryCard>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [Parameter] public Guid SessionId { get; set; }
+
+    private HubConnection? hubConnection;
+
+    private DomainSession? CurrentSession;
+    private GameSystem? AssignedGameSystem;
+    private List<AttributeDefinition> AvailableAttributes = new();
+    private List<TraitDefinition> AvailableTraitDefinitions = new();
+    private Dictionary<Guid, List<TraitOption>> TraitOptionsByDefinition = new();
+    private List<GaugeDefinition> AvailableGaugeDefinitions = new();
+    private List<MetricDefinition> AvailableMetrics = new();
+    private List<EditableDerivedStatDefinitionDto> AvailableDerivedStats = new();
+    private List<EditableTalentDefinitionDto> AvailableTalents = new();
+    private List<EditableItemDefinitionDto> AvailableItems = new();
+    private List<SessionGaugeDto> SessionGauges = new();
+    private Dictionary<Guid, SessionCharacterSummaryDto> CharacterSummariesById = new();
+
+    private GameMasterActiveGameTestDto? ActiveTest;
+    private Guid CurrentUserId;
+
+    private bool IsLoaded;
+    private bool RedirectToHome;
+    private string Message = string.Empty;
+
+    private string SelectedAttributeId = string.Empty;
+    private GameTestTargetKind NewTargetKind = GameTestTargetKind.BaseAttribute;
+    private bool UseSystemDefaultDice = true;
+    private int NewDiceCount = 1;
+    private int NewDiceSides = 100;
+    private int? NewSuccessThreshold;
+
+    private bool IncludeNpcsInTest;
+    private string IncludeNpcsMode
+    {
+        get => IncludeNpcsInTest ? "include" : "exclude";
+        set => IncludeNpcsInTest = value == "include";
+    }
+
+    private TestTargetScope NewTargetScope = TestTargetScope.OnlineLivingCharacters;
+    private TestTraitFilterMode NewTraitFilterMode = TestTraitFilterMode.AndBetweenGroups;
+    private HashSet<Guid> SelectedTraitOptionIds = new();
+    private List<ConsequenceRowModel> ConsequenceRows = new();
+    
+    private CharacterTargetFilterDto AdvancedFilter = new()
+    {
+        MatchAllConditions = true
+    };
+
+    private readonly List<int> AutoRollDelayOptions = new() { 0, 10, 20, 30, 40 };
+    private int SelectedAutoRollDelayIndex = 2;
+
+    private List<int> DifficultyScaleValues = new();
+    private int SelectedDifficultyIndex;
+
+    private int SelectedAutoRollDelaySeconds => AutoRollDelayOptions[Math.Clamp(SelectedAutoRollDelayIndex, 0, AutoRollDelayOptions.Count - 1)];
+
+    private int SelectedDifficultyRawValue
+        => DifficultyScaleValues.Count == 0
+            ? 0
+            : DifficultyScaleValues[Math.Clamp(SelectedDifficultyIndex, 0, DifficultyScaleValues.Count - 1)];
+
+    private string DifficultyDisplayLabel
+        => SelectedDifficultyRawValue == 0
+            ? "0"
+            : SelectedDifficultyRawValue > 0
+                ? $"+{SelectedDifficultyRawValue}"
+                : SelectedDifficultyRawValue.ToString();
+
+    private string DifficultySliderStyle
+    {
+        get
+        {
+            if (DifficultyScaleValues.Count <= 1)
+            {
+                return "--difficulty-progress-start: 50%; --difficulty-progress-end: 50%; --difficulty-progress-color: transparent;";
+            }
+
+            var centerIndex = DifficultyScaleValues.IndexOf(0);
+            if (centerIndex < 0)
+                centerIndex = DifficultyScaleValues.Count / 2;
+
+            var maxIndex = DifficultyScaleValues.Count - 1;
+
+            var centerPercent = maxIndex == 0 ? 50d : centerIndex * 100d / maxIndex;
+            var currentPercent = maxIndex == 0 ? 50d : SelectedDifficultyIndex * 100d / maxIndex;
+
+            var start = Math.Min(centerPercent, currentPercent);
+            var end = Math.Max(centerPercent, currentPercent);
+
+            var color = SelectedDifficultyIndex < centerIndex
+                ? "#1d6b3c"
+                : SelectedDifficultyIndex > centerIndex
+                    ? "#a13f3f"
+                    : "transparent";
+
+            return string.Create(
+                CultureInfo.InvariantCulture,
+                $"--difficulty-progress-start: {start:F2}%; --difficulty-progress-end: {end:F2}%; --difficulty-progress-color: {color};");
+        }
+    }
+
+    private string AutoRollSliderStyle
+    {
+        get
+        {
+            var maxIndex = AutoRollDelayOptions.Count - 1;
+            var progress = maxIndex <= 0 ? 0d : SelectedAutoRollDelayIndex * 100d / maxIndex;
+
+            return string.Create(
+                CultureInfo.InvariantCulture,
+                $"--slider-progress: {progress:F2}%;");
+        }
+    }
+    
+    private string DifficultyTicksStyle
+    => $"grid-template-columns: repeat({Math.Max(DifficultyScaleValues.Count, 1)}, minmax(0, 1fr));";
+
+    private string AutoRollTicksStyle
+    => $"grid-template-columns: repeat({Math.Max(AutoRollDelayOptions.Count, 1)}, minmax(0, 1fr));";
+
+    private List<CharacterFilterGroupItem> AdvancedTraitOptionGroups
+    => AvailableTraitDefinitions
+        .Select(definition => new CharacterFilterGroupItem
+        {
+            GroupName = definition.Name,
+            Options = TraitOptionsByDefinition.TryGetValue(definition.Id, out var options)
+                ? options
+                    .OrderBy(x => x.Name)
+                    .Select(x => new CharacterFilterReferenceItem
+                    {
+                        Id = x.Id,
+                        Name = x.Name
+                    })
+                    .ToList()
+                : new List<CharacterFilterReferenceItem>()
+        })
+        .Where(x => x.Options.Count > 0)
+        .ToList();
+
+private List<CharacterFilterReferenceItem> AdvancedTalentOptions
+    => AvailableTalents
+        .Select(x => new CharacterFilterReferenceItem { Id = x.TalentDefinitionId ?? Guid.Empty, Name = x.Name })
+        .Where(x => x.Id != Guid.Empty)
+        .ToList();
+
+private List<CharacterFilterReferenceItem> AdvancedItemOptions
+    => AvailableItems
+        .Select(x => new CharacterFilterReferenceItem { Id = x.ItemDefinitionId ?? Guid.Empty, Name = x.Name })
+        .Where(x => x.Id != Guid.Empty)
+        .ToList();
+
+private List<CharacterFilterReferenceItem> AdvancedAttributeTargets
+    => AvailableAttributes
+        .Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name })
+        .ToList();
+
+private List<CharacterFilterReferenceItem> AdvancedGaugeTargets
+    => AvailableGaugeDefinitions
+        .Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name })
+        .ToList();
+
+private List<CharacterFilterReferenceItem> AdvancedDerivedTargets
+    => AvailableDerivedStats
+        .Select(x => new CharacterFilterReferenceItem { Id = x.DerivedStatDefinitionId ?? Guid.Empty, Name = x.Name })
+        .Where(x => x.Id != Guid.Empty)
+        .ToList();
+
+private List<CharacterFilterReferenceItem> AdvancedMetricTargets
+    => AvailableMetrics
+        .Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name })
+        .ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!isAuthenticated || string.IsNullOrWhiteSpace(userIdValue))
+        {
+            RedirectToHome = true;
+            IsLoaded = true;
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+
+        await LoadPageData();
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/sessionhub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On("TestChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadActiveTest();
+                StateHasChanged();
+            });
+        });
+
+        await hubConnection.StartAsync();
+        await hubConnection.SendAsync("JoinSessionGroup", SessionId.ToString());
+
+        IsLoaded = true;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToHome)
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadPageData()
+    {
+        CurrentSession = await SessionService.GetSessionByIdAsync(SessionId);
+
+        if (CurrentSession?.GameSystemId is not Guid gameSystemId)
+        {
+            await LoadCharacterSummariesAsync();
+            await LoadActiveTest();
+            return;
+        }
+
+        AssignedGameSystem = await GameSystemService.GetGameSystemByIdAsync(gameSystemId, CurrentUserId);
+
+        if (AssignedGameSystem is null)
+        {
+            await LoadCharacterSummariesAsync();
+            await LoadActiveTest();
+            return;
+        }
+
+        AvailableAttributes = await GameSystemService.GetAttributeDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+        AvailableTraitDefinitions = await GameSystemService.GetTraitDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+        AvailableGaugeDefinitions = await GameSystemService.GetGaugeDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+        AvailableMetrics = await GameSystemService.GetMetricDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+        SessionGauges = await SessionService.GetSessionGaugesAsync(SessionId, CurrentUserId);
+
+        var editor = await GameSystemService.GetGameSystemEditorAsync(AssignedGameSystem.Id, CurrentUserId);
+        if (editor is not null)
+        {
+            AvailableDerivedStats = editor.DerivedStats;
+            AvailableTalents = editor.Talents;
+            AvailableItems = editor.Items;
+        }
+
+        foreach (var traitDefinition in AvailableTraitDefinitions)
+        {
+            TraitOptionsByDefinition[traitDefinition.Id] = await GameSystemService.GetTraitOptionsAsync(traitDefinition.Id, CurrentUserId);
+        }
+
+        NewDiceCount = AssignedGameSystem.DefaultTestDiceCount;
+        NewDiceSides = AssignedGameSystem.DefaultTestDiceSides;
+        UseSystemDefaultDice = true;
+
+        RebuildDifficultyScale();
+        EnsureSuccessThresholdDefault();
+        OnTestTargetKindChanged();
+
+        await LoadCharacterSummariesAsync();
+        await LoadActiveTest();
+    }
+
+    private async Task LoadActiveTest()
+    {
+        ActiveTest = await GameTestService.GetActiveGameTestForSessionAsync(SessionId);
+    }
+
+    private async Task LoadCharacterSummariesAsync()
+    {
+        var characters = await CharacterService.GetSessionCharacterSummariesAsync(
+            SessionId,
+            includeOffline: true,
+            includeDead: true,
+            includeNpcs: true);
+
+        CharacterSummariesById = characters.ToDictionary(x => x.CharacterId, x => x);
+    }
+
+    private void OnTestTargetKindChanged()
+    {
+        SelectedAttributeId = NewTargetKind switch
+        {
+            GameTestTargetKind.BaseAttribute => AvailableAttributes.FirstOrDefault()?.Id.ToString() ?? string.Empty,
+            GameTestTargetKind.DerivedStat => AvailableDerivedStats.FirstOrDefault()?.DerivedStatDefinitionId?.ToString() ?? string.Empty,
+            _ => string.Empty
+        };
+    }
+
+    private Task OnDiceModeChanged()
+    {
+        EnsureSuccessThresholdDefault();
+        return Task.CompletedTask;
+    }
+
+    private Task OnCustomDiceChanged()
+    {
+        if (!UseSystemDefaultDice)
+        {
+            EnsureSuccessThresholdDefault();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private void EnsureSuccessThresholdDefault()
+    {
+        if (AssignedGameSystem is null || AssignedGameSystem.TestResolutionMode != TestResolutionMode.SuccessThreshold)
+            return;
+
+        var diceCount = UseSystemDefaultDice ? AssignedGameSystem.DefaultTestDiceCount : NewDiceCount;
+        var diceSides = UseSystemDefaultDice ? AssignedGameSystem.DefaultTestDiceSides : NewDiceSides;
+
+        if (diceCount < 1 || diceSides < 2)
+            return;
+
+        var average = diceCount * (diceSides + 1) / 2.0;
+        NewSuccessThreshold = (int)Math.Ceiling(average);
+    }
+
+    private void RebuildDifficultyScale()
+    {
+        if (AssignedGameSystem is null)
+        {
+            DifficultyScaleValues = new List<int> { 0 };
+            SelectedDifficultyIndex = 0;
+            return;
+        }
+
+        var maxSum = AssignedGameSystem.DefaultTestDiceCount * AssignedGameSystem.DefaultTestDiceSides;
+        var halfTarget = (int)Math.Ceiling(maxSum / 2.0);
+
+        var baseStep = maxSum < 20 ? 1 : maxSum < 50 ? 2 : 5;
+
+        var sideCount = 0;
+        var step = baseStep;
+
+        for (var candidateSideCount = 7; candidateSideCount >= 5; candidateSideCount--)
+        {
+            var candidateStep = Math.Max(baseStep, (halfTarget / candidateSideCount / baseStep) * baseStep);
+            if (candidateStep > 0 && candidateStep * candidateSideCount <= halfTarget)
+            {
+                sideCount = candidateSideCount;
+                step = candidateStep;
+                break;
+            }
+        }
+
+        if (sideCount == 0)
+        {
+            for (var candidateSideCount = 4; candidateSideCount >= 1; candidateSideCount--)
+            {
+                var candidateStep = Math.Max(baseStep, (halfTarget / candidateSideCount / baseStep) * baseStep);
+                if (candidateStep > 0)
+                {
+                    sideCount = candidateSideCount;
+                    step = candidateStep;
+                    break;
+                }
+            }
+        }
+
+        if (sideCount == 0)
+        {
+            DifficultyScaleValues = new List<int> { 0 };
+            SelectedDifficultyIndex = 0;
+            return;
+        }
+
+        DifficultyScaleValues = new List<int>();
+        for (var i = sideCount; i >= 1; i--)
+            DifficultyScaleValues.Add(i * step);
+
+        DifficultyScaleValues.Add(0);
+
+        for (var i = 1; i <= sideCount; i++)
+            DifficultyScaleValues.Add(-i * step);
+
+        SelectedDifficultyIndex = sideCount;
+    }
+
+    private string FormatDifficultyValue(int value)
+    {
+        if (value == 0)
+            return "0";
+
+        return value > 0 ? $"+{value}" : value.ToString();
+    }
+
+    private string GetDifficultyTickClass(int index)
+    {
+        if (index != SelectedDifficultyIndex)
+            return string.Empty;
+
+        var value = DifficultyScaleValues[index];
+
+        if (value > 0)
+            return "active active-positive";
+
+        if (value < 0)
+            return "active active-negative";
+
+        return "active active-neutral";
+    }
+
+    private string GetAutoRollTickClass(int index)
+    {
+        return index == SelectedAutoRollDelayIndex ? "active active-neutral" : string.Empty;
+    }
+
+    private async Task CreateGameTest()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            if (AssignedGameSystem is null)
+            {
+                Message = L["GameTest_NoGameSystemForSession"];
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(SelectedAttributeId))
+            {
+                Message = L["GameTest_AttributeRequired"];
+                return;
+            }
+
+            
+            var difficultyRaw = SelectedDifficultyRawValue;
+            var modifierMode = difficultyRaw >= 0 ? TestModifierMode.Bonus : TestModifierMode.Malus;
+            var difficultyValue = Math.Abs(difficultyRaw);
+
+            var request = new GameTestCreateRequestDto
+            {
+                TargetKind = NewTargetKind,
+                TargetDefinitionId = Guid.Parse(SelectedAttributeId),
+                UseSystemDefaultDice = UseSystemDefaultDice,
+                DiceCount = UseSystemDefaultDice ? AssignedGameSystem.DefaultTestDiceCount : NewDiceCount,
+                DiceSides = UseSystemDefaultDice ? AssignedGameSystem.DefaultTestDiceSides : NewDiceSides,
+                CriticalSuccessValue = UseSystemDefaultDice ? AssignedGameSystem.CriticalSuccessValue : null,
+                CriticalFailureValue = UseSystemDefaultDice ? AssignedGameSystem.CriticalFailureValue : null,
+                SuccessThreshold = NewSuccessThreshold,
+                ModifierMode = modifierMode,
+                DifficultyValue = difficultyValue,
+                TargetScope = NewTargetScope,
+                TraitFilterMode = NewTraitFilterMode,
+                AdvancedFilter = new CharacterTargetFilterDto
+                {
+                    OnlyAlive = true,
+                    OnlyDead = false,
+                    OnlyOnline = NewTargetScope == TestTargetScope.OnlineLivingCharacters,
+                    IncludeNpcs = IncludeNpcsInTest,
+                    MatchAllConditions = AdvancedFilter.MatchAllConditions,
+                    TraitOptionIds = AdvancedFilter.TraitOptionIds.ToList(),
+                    TalentIds = AdvancedFilter.TalentIds.ToList(),
+                    ItemIds = AdvancedFilter.ItemIds.ToList(),
+                    ValueFilters = AdvancedFilter.ValueFilters
+                        .Select(x => new CharacterValueFilterDto
+                        {
+                            TargetType = x.TargetType,
+                            TargetId = x.TargetId,
+                            TargetName = x.TargetName,
+                            ComparisonType = x.ComparisonType,
+                            Value = x.Value
+                        })
+                        .ToList()
+                },
+            };
+
+            ActiveTest = await GameTestService.CreateGameTestAsync(SessionId, CurrentUserId, request);
+            Message = L["GameTest_Created"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private string GetResultCardClass(GameMasterGameTestResultLineDto line)
+{
+    if (!line.HasRolled)
+        return string.Empty;
+
+    return line.Outcome switch
+    {
+            GameTestOutcome.Success => "rc-character-result-card--success",
+            GameTestOutcome.CriticalSuccess => "rc-character-result-card--criticalsuccess",
+            GameTestOutcome.Failure => "rc-character-result-card--failure",
+            GameTestOutcome.CriticalFailure => "rc-character-result-card--criticalfailure",
+        _ => string.Empty
+    };
+}
+
+    private void ToggleTraitFilter(Guid optionId, object? isCheckedValue)
+    {
+        var isChecked = false;
+
+        if (isCheckedValue is bool boolValue)
+            isChecked = boolValue;
+        else if (isCheckedValue is string stringValue && bool.TryParse(stringValue, out var parsed))
+            isChecked = parsed;
+
+        if (isChecked)
+            SelectedTraitOptionIds.Add(optionId);
+        else
+            SelectedTraitOptionIds.Remove(optionId);
+    }
+
+    private string GetOutcomeLabel(GameTestOutcome outcome)
+    {
+        return outcome switch
+        {
+            GameTestOutcome.CriticalSuccess => L["GameTest_CriticalSuccess"],
+            GameTestOutcome.CriticalFailure => L["GameTest_CriticalFailure"],
+            GameTestOutcome.Success => L["GameTest_Success"],
+            _ => L["GameTest_Failure"]
+        };
+    }
+
+    private string GetOutcomeCssClass(GameMasterGameTestResultLineDto resultLine)
+    {
+        if (!resultLine.HasRolled)
+            return "pending";
+
+        return resultLine.Outcome switch
+        {
+            GameTestOutcome.CriticalSuccess => "critical-success",
+            GameTestOutcome.CriticalFailure => "critical-failure",
+            GameTestOutcome.Success => "success",
+            _ => "failure"
+        };
+    }
+
+    private string GetOutcomeBannerClass(GameMasterGameTestResultLineDto resultLine)
+    {
+        if (!resultLine.HasRolled)
+            return "pending";
+
+        return resultLine.Outcome switch
+        {
+            GameTestOutcome.CriticalSuccess => "success critical",
+            GameTestOutcome.CriticalFailure => "failure critical",
+            GameTestOutcome.Success => "success",
+            _ => "failure"
+        };
+    }
+
+    private string GetFinalValueClass(GameMasterGameTestResultLineDto resultLine)
+    {
+        if (!resultLine.HasRolled)
+            return string.Empty;
+
+        return resultLine.Outcome switch
+        {
+            GameTestOutcome.CriticalSuccess => "success critical",
+            GameTestOutcome.CriticalFailure => "failure critical",
+            GameTestOutcome.Success => "success",
+            _ => "failure"
+        };
+    }
+
+    private string GetTargetDisplayName()
+    {
+        return NewTargetKind == GameTestTargetKind.DerivedStat
+            ? AvailableDerivedStats.FirstOrDefault(x => x.DerivedStatDefinitionId?.ToString() == SelectedAttributeId)?.Name ?? L["GameTest_Target"]
+            : AvailableAttributes.FirstOrDefault(x => x.Id.ToString() == SelectedAttributeId)?.Name ?? L["GameTest_Target"];
+    }
+
+    private int GetSuccessDifference(GameMasterGameTestResultLineDto resultLine)
+    {
+        if (!resultLine.HasRolled)
+            return 0;
+
+        if (ActiveTest is null)
+            return 0;
+
+        if (ActiveTest.ResolutionMode == TestResolutionMode.SuccessThreshold)
+        {
+            return resultLine.FinalValue - (ActiveTest.SuccessThreshold ?? 0);
+        }
+
+        return resultLine.FinalValue;
+    }
+
+    private string FormatSignedValue(int value)
+    {
+        return value > 0 ? $"+{value}" : value.ToString();
+    }
+
+    private void AddGenericConsequence()
+    {
+        var targetKind = AvailableGaugeDefinitions.Count > 0
+            ? TestConsequenceTargetKind.Gauge
+            : TestConsequenceTargetKind.Attribute;
+
+        ConsequenceRows.Add(new ConsequenceRowModel
+        {
+            RowId = Guid.NewGuid(),
+            ApplyOn = TestConsequenceApplyOn.OnSuccess,
+            OperationType = TestConsequenceOperationType.AddValue,
+            TargetKind = targetKind,
+            TargetDefinitionId = GetFirstConsequenceTargetId(targetKind),
+            ModifierMode = TestModifierMode.Malus,
+            Value = 1,
+            ValueMode = ModifierValueMode.Fixed,
+            SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id
+        });
+    }
+
+    private void RemoveConsequenceRow(Guid rowId)
+    {
+        var row = ConsequenceRows.FirstOrDefault(x => x.RowId == rowId);
+        if (row is not null)
+            ConsequenceRows.Remove(row);
+    }
+
+    private void ChangeConsequenceOperation(ConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.OperationType = (TestConsequenceOperationType)parsed;
+
+        switch (row.OperationType)
+        {
+            case TestConsequenceOperationType.AddValue:
+                row.TargetKind = AvailableGaugeDefinitions.Count > 0
+                    ? TestConsequenceTargetKind.Gauge
+                    : TestConsequenceTargetKind.Attribute;
+                row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
+                if (row.Value == 0)
+                    row.Value = 1;
+                break;
+
+            case TestConsequenceOperationType.GrantTalent:
+            case TestConsequenceOperationType.RevokeTalent:
+                row.TargetKind = TestConsequenceTargetKind.Talent;
+                row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
+                row.Value = 0;
+                row.ValueMode = ModifierValueMode.Fixed;
+                row.SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id;
+                break;
+
+            case TestConsequenceOperationType.GrantItem:
+            case TestConsequenceOperationType.RevokeItem:
+                row.TargetKind = TestConsequenceTargetKind.Item;
+                row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
+                row.Value = 0;
+                row.ValueMode = ModifierValueMode.Fixed;
+                row.SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id;
+                break;
+        }
+    }
+
+    private void ChangeConsequenceTargetKind(ConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.TargetKind = (TestConsequenceTargetKind)parsed;
+        row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
+    }
+
+    private Guid GetFirstConsequenceTargetId(TestConsequenceTargetKind targetKind)
+    {
+        return targetKind switch
+        {
+            TestConsequenceTargetKind.Gauge => AvailableGaugeDefinitions.FirstOrDefault()?.Id ?? Guid.Empty,
+            TestConsequenceTargetKind.SessionGauge => SessionGauges.FirstOrDefault()?.SessionGaugeId ?? Guid.Empty,
+            TestConsequenceTargetKind.Attribute => AvailableAttributes.FirstOrDefault()?.Id ?? Guid.Empty,
+            TestConsequenceTargetKind.DerivedStat => AvailableDerivedStats.FirstOrDefault()?.DerivedStatDefinitionId ?? Guid.Empty,
+            TestConsequenceTargetKind.Metric => AvailableMetrics.FirstOrDefault()?.Id ?? Guid.Empty,
+            TestConsequenceTargetKind.Talent => AvailableTalents.FirstOrDefault()?.TalentDefinitionId ?? Guid.Empty,
+            TestConsequenceTargetKind.Item => AvailableItems.FirstOrDefault()?.ItemDefinitionId ?? Guid.Empty,
+            _ => Guid.Empty
+        };
+    }
+
+    private Task ShowRollbackConfirmation()
+    {
+        ConfirmRollbackVisible = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelRollback()
+    {
+        ConfirmRollbackVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task RollbackLatestTestConfirmed()
+    {
+        try
+        {
+            Message = string.Empty;
+            ConfirmRollbackVisible = false;
+
+            await GameTestService.RollbackLatestTestAsync(SessionId, CurrentUserId);
+            await LoadPageData();
+
+            Message = L["GameTest_RollbackSuccess"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private bool ConfirmRollbackVisible;
+
+    private class ConsequenceRowModel
+    {
+        public Guid RowId { get; set; }
+        public TestConsequenceApplyOn ApplyOn { get; set; }
+        public TestConsequenceOperationType OperationType { get; set; } = TestConsequenceOperationType.AddValue;
+        public TestConsequenceTargetKind TargetKind { get; set; }
+        public Guid TargetDefinitionId { get; set; }
+        public TestModifierMode ModifierMode { get; set; }
+        public int Value { get; set; }
+        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
+        public Guid? SourceMetricId { get; set; }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+            await hubConnection.DisposeAsync();
+    }
+
+}

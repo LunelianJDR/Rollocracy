@@ -1,0 +1,55 @@
+﻿@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Characters
+@using Rollocracy.Domain.GameRules
+@using Rollocracy.Localization
+
+@inject IStringLocalizer<SharedTexts> L
+
+<div class="rc-filter-group-card">
+    <div class="rc-filter-group-card__title">@Title</div>
+
+    <div class="rc-filter-group-card__options">
+        <label class="rc-filter-toggle">
+            <input type="radio" name="targetMode" checked="@OnlyOnline" @onchange="() => SetOnline()" />
+            <span>@L["AudienceFilter_OnlinePlayers"]</span>
+        </label>
+
+        <label class="rc-filter-toggle">
+            <input type="radio" name="targetMode" checked="@OnlyAlive" @onchange="() => SetAlive()" />
+            <span>@L["AudienceFilter_AlivePlayers"]</span>
+        </label>
+
+        <label class="rc-filter-toggle">
+            <input type="checkbox" checked="@IncludeNpcs" @onchange="OnNpcChanged" />
+            <span>@L["AudienceFilter_IncludeNPCs"]</span>
+        </label>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Cible";
+    [Parameter] public bool OnlyOnline { get; set; }
+    [Parameter] public bool OnlyAlive { get; set; }
+    [Parameter] public bool IncludeNpcs { get; set; }
+
+    [Parameter] public EventCallback<bool> OnlyOnlineChanged { get; set; }
+    [Parameter] public EventCallback<bool> OnlyAliveChanged { get; set; }
+    [Parameter] public EventCallback<bool> IncludeNpcsChanged { get; set; }
+
+    private async Task SetOnline()
+    {
+        await OnlyOnlineChanged.InvokeAsync(true);
+        await OnlyAliveChanged.InvokeAsync(false);
+    }
+
+    private async Task SetAlive()
+    {
+        await OnlyOnlineChanged.InvokeAsync(false);
+        await OnlyAliveChanged.InvokeAsync(true);
+    }
+
+    private async Task OnNpcChanged(ChangeEventArgs e)
+    {
+        await IncludeNpcsChanged.InvokeAsync((bool)e.Value!);
+    }
+}

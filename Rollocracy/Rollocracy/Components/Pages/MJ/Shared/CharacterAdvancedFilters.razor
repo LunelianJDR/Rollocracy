@@ -1,0 +1,315 @@
+﻿@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Characters
+@using Rollocracy.Domain.GameRules
+@using Rollocracy.Localization
+
+@inject IStringLocalizer<SharedTexts> L
+
+<div class="rc-filter-group-card">
+    <div class="rc-tool-subsection__header">
+        <div class="rc-filter-group-card__title">@L["Common_AdvancedFilters"]</div>
+        <button type="button" @onclick="Toggle">
+            @(IsOpen? L["Common_Hide"] : L["Common_Show"])
+        </button>
+    </div>
+
+    @if (IsOpen)
+    {
+        <div class="rc-filter-groups">
+            
+            <div class="rc-filter-group-card">
+                <div class="rc-tool-subsection__header">
+                    <div class="rc-filter-group-card__title">@L["MassDistribution_ValueFilters"]</div>
+                    <div class="rc-tool-inline-actions">
+                        <button type="button" @onclick="@(() => AddValueFilter())">@L["MassDistribution_AddValueFilter"]</button>
+                    </div>
+                </div>
+
+                @if (Filter.ValueFilters.Count == 0)
+                {
+                    <p class="rc-tool-muted">@L["RandomDraw_NoValueFilters"]</p>
+                }
+                else
+                {
+                    <div class="rc-consequence-list">
+                        @foreach (var valueFilter in Filter.ValueFilters)
+                        {
+                            <div class="rc-consequence-card">
+                                <div class="rc-consequence-card__grid">
+                                    <div class="rc-form-field">
+                                        <label>@L["MassDistribution_FilterTarget"]</label>
+                                        <select @bind="valueFilter.TargetType" @bind:after="() => ResetValueFilterTarget(valueFilter)">
+                                            <option value="@CharacterEffectTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
+                                            <option value="@CharacterEffectTargetType.Gauge">@L["MassDistribution_Target_Gauge"]</option>
+                                            <option value="@CharacterEffectTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
+                                            <option value="@CharacterEffectTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="rc-form-field">
+                                        <label>@L["GameTest_TargetDefinition"]</label>
+                                        <select @bind="valueFilter.TargetId">
+                                            @foreach (var item in GetTargetOptions(valueFilter.TargetType))
+                                            {
+                                                <option value="@item.Id">@item.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+
+                                    <div class="rc-form-field">
+                                        <label>@L["MassDistribution_Comparison"]</label>
+                                        <select @bind="valueFilter.ComparisonType">
+                                            <option value="@CharacterValueComparisonType.Equal">=</option>
+                                            <option value="@CharacterValueComparisonType.NotEqual">!=</option>
+                                            <option value="@CharacterValueComparisonType.GreaterThan">&gt;</option>
+                                            <option value="@CharacterValueComparisonType.GreaterThanOrEqual">&gt;=</option>
+                                            <option value="@CharacterValueComparisonType.LessThan">&lt;</option>
+                                            <option value="@CharacterValueComparisonType.LessThanOrEqual">&lt;=</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="rc-form-field">
+                                        <label>@L["GameTest_DifficultyValue"]</label>
+                                        <input type="number" @bind="valueFilter.Value" />
+                                    </div>
+                                </div>
+
+                                <div class="rc-tool-inline-actions">
+                                    <button type="button" @onclick="@(() => RemoveValueFilter(valueFilter))">@L["Common_Remove"]</button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="rc-filter-group-card">
+                <div class="rc-filter-group-card__title">@L["MassDistribution_TraitOptionFilters"]</div>
+
+                @foreach (var group in TraitOptionGroups)
+                {
+                    <div class="rc-advanced-filter-group">
+                        <div class="rc-advanced-filter-group__title">@group.GroupName</div>
+
+                        <div class="rc-inline-picker">
+                            <select value="@GetSelectedTraitOptionId(group.GroupName)"
+                                    @onchange="@(e => OnTraitGroupSelectionChanged(group.GroupName, e.Value?.ToString()))">
+                                <option value="">--</option>
+                                @foreach (var item in group.Options)
+                                {
+                                    <option value="@item.Id">@item.Name</option>
+                                }
+                            </select>
+
+                            <button type="button" @onclick="@(() => AddTraitOption(group.GroupName))">
+                                @L["MassDistribution_AddFilter"]
+                            </button>
+                        </div>
+
+                        <div class="rc-inline-pill-list">
+                            @foreach (var id in Filter.TraitOptionIds.ToList())
+                            {
+                                var refItem = group.Options.FirstOrDefault(x => x.Id == id);
+                                if (refItem is not null)
+                                {
+                                    <span class="rc-inline-pill rc-inline-pill--removable">
+                                        @refItem.Name
+                                        <button type="button" @onclick="@(() => RemoveTraitOption(id))">×</button>
+                                    </span>
+                                }
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="rc-filter-group-card">
+                <div class="rc-filter-group-card__title">@L["MassDistribution_TalentFilters"]</div>
+
+                <div class="rc-inline-picker">
+                    <select @bind="SelectedTalentId">
+                        <option value="">--</option>
+                        @foreach (var item in TalentOptions)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+
+                    <button type="button" @onclick="@(() => AddTalent())">@L["MassDistribution_AddFilter"]</button>
+                </div>
+
+                <div class="rc-inline-pill-list">
+                    @foreach (var id in Filter.TalentIds.ToList())
+                    {
+                        var refItem = TalentOptions.FirstOrDefault(x => x.Id == id);
+                        <span class="rc-inline-pill rc-inline-pill--removable">
+                            @refItem?.Name
+                            <button type="button" @onclick="@(() => RemoveTalent(id))">×</button>
+                        </span>
+                    }
+                </div>
+            </div>
+
+            <div class="rc-filter-group-card">
+                <div class="rc-filter-group-card__title">@L["MassDistribution_ItemFilters"]</div>
+
+                <div class="rc-inline-picker">
+                    <select @bind="SelectedItemId">
+                        <option value="">--</option>
+                        @foreach (var item in ItemOptions)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+
+                    <button type="button" @onclick="@(() => AddItem())">@L["MassDistribution_AddFilter"]</button>
+                </div>
+
+                <div class="rc-inline-pill-list">
+                    @foreach (var id in Filter.ItemIds.ToList())
+                    {
+                        var refItem = ItemOptions.FirstOrDefault(x => x.Id == id);
+                        <span class="rc-inline-pill rc-inline-pill--removable">
+                            @refItem?.Name
+                            <button type="button" @onclick="@(() => RemoveItem(id))">×</button>
+                        </span>
+                    }
+                </div>
+            </div>
+
+            <div class="rc-filter-group-card">
+                <div class="rc-filter-group-card__title">@L["MassDistribution_FilterMode"]</div>
+                <div class="rc-filter-group-card__options">
+                <label class="rc-filter-toggle">
+                    <input type="radio" checked="@(!Filter.MatchAllConditions)" @onchange="@(() => SetMatchMode(false))" />
+                    <span>@L["MassDistribution_FilterModeAny"]</span>
+                </label>
+
+                <label class="rc-filter-toggle">
+                    <input type="radio" checked="@(Filter.MatchAllConditions)" @onchange="@(() => SetMatchMode(true))" />
+                    <span>@L["MassDistribution_FilterModeAll"]</span>
+                </label>
+                </div>
+            </div>
+        </div>
+
+    }
+</div>
+
+@code {
+    [Parameter] public CharacterTargetFilterDto Filter { get; set; } = new();
+
+    [Parameter] public List<CharacterFilterGroupItem> TraitOptionGroups { get; set; } = new();
+    [Parameter] public List<CharacterFilterReferenceItem> TalentOptions { get; set; } = new();
+    [Parameter] public List<CharacterFilterReferenceItem> ItemOptions { get; set; } = new();
+    [Parameter] public List<CharacterFilterReferenceItem> AttributeTargets { get; set; } = new();
+    [Parameter] public List<CharacterFilterReferenceItem> GaugeTargets { get; set; } = new();
+    [Parameter] public List<CharacterFilterReferenceItem> DerivedStatTargets { get; set; } = new();
+    [Parameter] public List<CharacterFilterReferenceItem> MetricTargets { get; set; } = new();
+
+    private Dictionary<string, string> SelectedTraitOptionIdByGroup { get; set; } = new();
+
+    private bool IsOpen;
+    private string SelectedTalentId = string.Empty;
+    private string SelectedItemId = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        foreach (var group in TraitOptionGroups)
+        {
+            if (!SelectedTraitOptionIdByGroup.ContainsKey(group.GroupName))
+            {
+                SelectedTraitOptionIdByGroup[group.GroupName] = string.Empty;
+            }
+        }
+    }
+
+    private void Toggle() => IsOpen = !IsOpen;
+
+    private void SetMatchMode(bool matchAll)
+    {
+        Filter.MatchAllConditions = matchAll;
+    }
+
+    private string GetSelectedTraitOptionId(string groupName)
+    {
+        return SelectedTraitOptionIdByGroup.TryGetValue(groupName, out var value)
+            ? value
+            : string.Empty;
+    }
+
+    private void OnTraitGroupSelectionChanged(string groupName, string? selectedValue)
+    {
+        SelectedTraitOptionIdByGroup[groupName] = selectedValue ?? string.Empty;
+    }
+
+    private void AddTraitOption(string groupName)
+    {
+        if (!SelectedTraitOptionIdByGroup.TryGetValue(groupName, out var rawValue))
+            return;
+
+        if (Guid.TryParse(rawValue, out var id) && !Filter.TraitOptionIds.Contains(id))
+            Filter.TraitOptionIds.Add(id);
+    }
+
+    private void RemoveTraitOption(Guid id)
+    {
+        Filter.TraitOptionIds.Remove(id);
+    }
+
+    private void AddTalent()
+    {
+        if (Guid.TryParse(SelectedTalentId, out var id) && !Filter.TalentIds.Contains(id))
+            Filter.TalentIds.Add(id);
+    }
+
+    private void RemoveTalent(Guid id)
+    {
+        Filter.TalentIds.Remove(id);
+    }
+
+    private void AddItem()
+    {
+        if (Guid.TryParse(SelectedItemId, out var id) && !Filter.ItemIds.Contains(id))
+            Filter.ItemIds.Add(id);
+    }
+
+    private void RemoveItem(Guid id)
+    {
+        Filter.ItemIds.Remove(id);
+    }
+
+    private void AddValueFilter()
+    {
+        var firstAttribute = AttributeTargets.FirstOrDefault();
+
+        Filter.ValueFilters.Add(new CharacterValueFilterDto
+        {
+            TargetType = CharacterEffectTargetType.BaseAttribute,
+            TargetId = firstAttribute?.Id ?? Guid.Empty,
+            ComparisonType = CharacterValueComparisonType.GreaterThanOrEqual,
+            Value = 0
+        });
+    }
+
+    private void RemoveValueFilter(CharacterValueFilterDto filter)
+    {
+        Filter.ValueFilters.Remove(filter);
+    }
+
+    private void ResetValueFilterTarget(CharacterValueFilterDto filter)
+    {
+        filter.TargetId = GetTargetOptions(filter.TargetType).FirstOrDefault()?.Id ?? Guid.Empty;
+    }
+
+    private List<CharacterFilterReferenceItem> GetTargetOptions(CharacterEffectTargetType targetType)
+    {
+        return targetType switch
+        {
+            CharacterEffectTargetType.BaseAttribute => AttributeTargets,
+            CharacterEffectTargetType.Gauge => GaugeTargets,
+            CharacterEffectTargetType.DerivedStat => DerivedStatTargets,
+            CharacterEffectTargetType.Metric => MetricTargets,
+            _ => new List<CharacterFilterReferenceItem>()
+        };
+    }
+}

@@ -1,0 +1,948 @@
+﻿@page "/mj/session/{SessionId:guid}/poll"
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Entities
+@using Rollocracy.Domain.Characters
+@using Rollocracy.Domain.GameRules
+@using Rollocracy.Domain.GameTests
+@using Rollocracy.Domain.Polls
+@using Rollocracy.Localization
+@using Rollocracy.Components.Pages.MJ.Shared
+@using DomainSession = Rollocracy.Domain.Entities.Session
+@using System.Globalization
+
+@inject NavigationManager Navigation
+@inject Rollocracy.Domain.Interfaces.ISessionService SessionService
+@inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
+@inject Rollocracy.Domain.Interfaces.IPollService PollService
+@inject Rollocracy.Domain.Interfaces.ICharacterService CharacterService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IStringLocalizer<SharedTexts> L
+
+<h3>@L["Poll_GameMasterSectionTitle"]</h3>
+
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToHome)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (CurrentSession is null)
+{
+    <p>@L["SessionPage_NotFound"]</p>
+}
+else
+{
+    <section class="rc-tool-section">
+        <div class="rc-tool-layout">
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h5 class="rc-tool-panel__title">@L["Poll_GameMasterSectionTitle"]</h5>
+                        <p class="rc-tool-panel__subtitle">@L["Poll_Question"] / @L["Poll_Options"] / @L["Poll_OptionConsequences"]</p>
+                    </div>
+
+                    @if (LatestPoll is null || LatestPoll.IsClosed)
+                    {
+                        <div class="rc-tool-inline-actions">
+                            <button @onclick="CreatePoll">@L["Poll_Create"]</button>
+                        </div>
+                    }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Message))
+                {
+                    <div class="rc-inline-error">@Message</div>
+                }
+
+                @if (RecentPolls.Count > 0)
+                {
+                    <div class="rc-form-field">
+                        <label>@L["Poll_History"]</label>
+                        <select @bind="SelectedPollHistoryId" @bind:after="LoadPollHistory">
+                            <option value="">@L["Poll_CurrentOrLatest"]</option>
+                            @foreach (var poll in RecentPolls)
+                            {
+                                <option value="@poll.PollId">@poll.Question</option>
+                            }
+                        </select>
+                    </div>
+                }
+
+                @if (LatestPoll is null || LatestPoll.IsClosed)
+                {
+                    <div class="rc-tool-form-grid">
+                        <div class="rc-form-field rc-form-field--full">
+                            <label>@L["Poll_Question"]</label>
+                            <input @bind="NewPollQuestion" />
+                        </div>
+
+                        <div class="rc-form-field">
+                            <label>@L["Poll_VoteWeightMode"]</label>
+                            <select @bind="SelectedPollVoteWeightMode">
+                                <option value="@PollVoteWeightMode.FixedOne">@L["Poll_VoteWeightModeFixedOne"]</option>
+                                <option value="@PollVoteWeightMode.Metric">@L["Poll_VoteWeightModeMetric"]</option>
+                            </select>
+                        </div>
+
+                        @if (SelectedPollVoteWeightMode == PollVoteWeightMode.Metric)
+                        {
+                            <div class="rc-form-field">
+                                <label>@L["Poll_VoteWeightMetric"]</label>
+                                <select @bind="SelectedPollMetricId">
+                                    <option value="">@L["Poll_SelectMetric"]</option>
+                                    @foreach (var metric in AvailableMetrics)
+                                    {
+                                        <option value="@metric.Id">@metric.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                    </div>
+
+                    @if (SelectedPollVoteWeightMode == PollVoteWeightMode.Metric)
+                    {
+                        <p class="rc-tool-muted">@L["Poll_VoteWeightMetricHelp"]</p>
+                    }
+
+                    <div class="rc-tool-subsection">
+                        <div class="rc-tool-subsection__header">
+                            <div class="rc-tool-subsection__title">@L["Poll_Options"]</div>
+                            <div class="rc-tool-inline-actions">
+                                <button @onclick="AddPollOption">@L["Poll_AddOption"]</button>
+                            </div>
+                        </div>
+
+                        @for (var i = 0; i < NewPollOptions.Count; i++)
+                        {
+                            var optionIndex = i;
+                            var optionRow = NewPollOptions[optionIndex];
+
+                            <div class="rc-consequence-card">
+                                <div class="rc-tool-subsection__header">
+                                    <div class="rc-tool-subsection__title">@($"{L["Poll_OptionLabel"]} {optionIndex + 1}")</div>
+
+                                    <div class="rc-tool-inline-actions">
+                                        <button @onclick="() => AddPollOptionConsequence(optionIndex)">
+                                            @L["Poll_AddOptionConsequence"]
+                                        </button>
+
+                                        @if (NewPollOptions.Count > 2)
+                                        {
+                                            <button @onclick="() => RemovePollOption(optionIndex)">
+                                                @L["Common_Remove"]
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="rc-form-field">
+                                    <label>@L["Poll_OptionLabel"]</label>
+                                    <input @bind="NewPollOptions[optionIndex].Label" placeholder="@L["Poll_OptionLabel"]" />
+                                </div>
+
+                                @if (optionRow.Consequences.Count > 0)
+                                {
+                                    <div class="rc-consequence-list">
+                                        @foreach (var consequence in optionRow.Consequences)
+                                        {
+                                            <div class="rc-consequence-card rc-consequence-card--nested">
+                                                <div class="rc-consequence-card__grid">
+                                                    <div class="rc-form-field">
+                                                        <label>@L["Poll_ConsequenceOperation"]</label>
+                                                        <select @bind="consequence.OperationType" @bind:after="() => OnPollConsequenceOperationChanged(consequence)">
+                                                            <option value="@TestConsequenceOperationType.AddValue">@L["TestConsequence_Operation_AddValue"]</option>
+                                                            <option value="@TestConsequenceOperationType.GrantTalent">@L["TestConsequence_Operation_GrantTalent"]</option>
+                                                            <option value="@TestConsequenceOperationType.RevokeTalent">@L["TestConsequence_Operation_RevokeTalent"]</option>
+                                                            <option value="@TestConsequenceOperationType.GrantItem">@L["TestConsequence_Operation_GrantItem"]</option>
+                                                            <option value="@TestConsequenceOperationType.RevokeItem">@L["TestConsequence_Operation_RevokeItem"]</option>
+                                                        </select>
+                                                    </div>
+
+                                                    @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
+                                                    {
+                                                        <div class="rc-form-field">
+                                                            <label>@L["GameTest_ConsequenceTargetKind"]</label>
+                                                            <select @bind="consequence.TargetKind" @bind:after="() => OnPollConsequenceTargetKindChanged(consequence)">
+                                                                <option value="@TestConsequenceTargetKind.Gauge">@L["GameTest_TargetGauge"]</option>
+                                                                <option value="@TestConsequenceTargetKind.SessionGauge">@L["SessionPage_TargetSessionGauge"]</option>
+                                                                <option value="@TestConsequenceTargetKind.Attribute">@L["GameTest_TargetAttribute"]</option>
+                                                                <option value="@TestConsequenceTargetKind.DerivedStat">@L["TestConsequence_Target_DerivedStat"]</option>
+                                                                <option value="@TestConsequenceTargetKind.Metric">@L["TestConsequence_Target_Metric"]</option>
+                                                            </select>
+                                                        </div>
+                                                    }
+                                                    else if (consequence.OperationType == TestConsequenceOperationType.GrantTalent || consequence.OperationType == TestConsequenceOperationType.RevokeTalent)
+                                                    {
+                                                        <div class="rc-form-field rc-form-field--readonly">
+                                                            <label>@L["GameTest_ConsequenceTargetKind"]</label>
+                                                            <div class="rc-readonly-value">@L["TestConsequence_Target_Talent"]</div>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="rc-form-field rc-form-field--readonly">
+                                                            <label>@L["GameTest_ConsequenceTargetKind"]</label>
+                                                            <div class="rc-readonly-value">@L["TestConsequence_Target_Item"]</div>
+                                                        </div>
+                                                    }
+
+                                                    <div class="rc-form-field">
+                                                        <label>@L["GameTest_TargetDefinition"]</label>
+
+                                                        @if (consequence.TargetKind == TestConsequenceTargetKind.Gauge)
+                                                        {
+                                                            <select @bind="consequence.TargetDefinitionId">
+                                                                @foreach (var gaugeDefinition in AvailableGaugeDefinitions)
+                                                                {
+                                                                    <option value="@gaugeDefinition.Id">@gaugeDefinition.Name</option>
+                                                                }
+                                                            </select>
+                                                        }
+                                                        else if (consequence.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                                                        {
+                                                            <select @bind="consequence.TargetDefinitionId">
+                                                                @foreach (var gauge in SessionGauges)
+                                                                {
+                                                                    <option value="@gauge.SessionGaugeId">@gauge.Name</option>
+                                                                }
+                                                            </select>
+                                                        }
+                                                        else if (consequence.TargetKind == TestConsequenceTargetKind.Attribute)
+                                                        {
+                                                            <select @bind="consequence.TargetDefinitionId">
+                                                                @foreach (var attributeDefinition in AvailableAttributes)
+                                                                {
+                                                                    <option value="@attributeDefinition.Id">@attributeDefinition.Name</option>
+                                                                }
+                                                            </select>
+                                                        }
+                                                        else if (consequence.TargetKind == TestConsequenceTargetKind.DerivedStat)
+                                                        {
+                                                            <select @bind="consequence.TargetDefinitionId">
+                                                                @foreach (var derivedDefinition in AvailableDerivedStats)
+                                                                {
+                                                                    <option value="@derivedDefinition.DerivedStatDefinitionId">@derivedDefinition.Name</option>
+                                                                }
+                                                            </select>
+                                                        }
+                                                        else if (consequence.TargetKind == TestConsequenceTargetKind.Metric)
+                                                        {
+                                                            <select @bind="consequence.TargetDefinitionId">
+                                                                @foreach (var metricDefinition in AvailableMetrics)
+                                                                {
+                                                                    <option value="@metricDefinition.Id">@metricDefinition.Name</option>
+                                                                }
+                                                            </select>
+                                                        }
+                                                        else if (consequence.TargetKind == TestConsequenceTargetKind.Talent)
+                                                        {
+                                                            <select @bind="consequence.TargetDefinitionId">
+                                                                @foreach (var talentDefinition in AvailableTalents)
+                                                                {
+                                                                    <option value="@talentDefinition.TalentDefinitionId">@talentDefinition.Name</option>
+                                                                }
+                                                            </select>
+                                                        }
+                                                        else if (consequence.TargetKind == TestConsequenceTargetKind.Item)
+                                                        {
+                                                            <select @bind="consequence.TargetDefinitionId">
+                                                                @foreach (var itemDefinition in AvailableItems)
+                                                                {
+                                                                    <option value="@itemDefinition.ItemDefinitionId">@itemDefinition.Name</option>
+                                                                }
+                                                            </select>
+                                                        }
+                                                    </div>
+
+                                                    @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
+                                                    {
+                                                        <div class="rc-form-field">
+                                                            <label>@L["GameTest_DifficultyMode"]</label>
+                                                            <select @bind="consequence.ModifierMode">
+                                                                <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
+                                                                <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
+                                                            </select>
+                                                        </div>
+
+                                                        <div class="rc-form-field">
+                                                            <label>@L["GameTest_ConsequenceValueMode"]</label>
+                                                            <select @bind="consequence.ValueMode">
+                                                                <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
+                                                                <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                                                            </select>
+                                                        </div>
+
+                                                        @if (consequence.ValueMode == ModifierValueMode.Metric)
+                                                        {
+                                                            <div class="rc-form-field">
+                                                                <label>@L["Common_SourceMetric"]</label>
+                                                                <select @bind="consequence.SourceMetricId">
+                                                                    @foreach (var metricDefinition in AvailableMetrics)
+                                                                    {
+                                                                        <option value="@metricDefinition.Id">@metricDefinition.Name</option>
+                                                                    }
+                                                                </select>
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="rc-form-field">
+                                                                <label>@L["GameTest_DifficultyValue"]</label>
+                                                                <input type="number" @bind="consequence.Value" />
+                                                            </div>
+                                                        }
+                                                    }
+                                                </div>
+
+                                                <div class="rc-tool-inline-actions">
+                                                    <button @onclick="() => optionRow.Consequences.Remove(consequence)">@L["Common_Remove"]</button>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <div class="rc-tool-actions rc-tool-actions--right">
+                        <button @onclick="CreatePoll">@L["Poll_Create"]</button>
+                    </div>
+                }
+                else
+                {
+                    <div class="rc-empty-panel">
+                        <p>@L["Poll_CurrentOrLatest"]</p>
+                    </div>
+                }
+            </div>
+
+            <div class="rc-tool-panel">
+                @if (LatestPoll is null)
+                {
+                    <div class="rc-empty-panel">
+                        <p>@L["Poll_CurrentOrLatest"]</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="rc-tool-panel__header">
+                        <div>
+                            <h5 class="rc-tool-panel__title">@LatestPoll.Question</h5>
+                            <p class="rc-tool-panel__subtitle">
+                                @L["Poll_TotalVotes"] : @LatestPoll.TotalVotes
+                                ·
+                                @L["Poll_TotalWeightedVotes"] : @LatestPoll.TotalWeightedVotes.ToString("F2")
+                            </p>
+                        </div>
+
+                        <div class="rc-tool-inline-actions">
+                            @if (LatestPoll.IsClosed)
+                            {
+                                @if (CanUndoLatestPollConsequences)
+                                {
+                                    @if (!ConfirmUndoPollConsequencesVisible)
+                                    {
+                                        <button @onclick="ShowUndoPollConsequencesConfirmation">@L["Poll_UndoConsequences"]</button>
+                                    }
+                                    else
+                                    {
+                                        <button @onclick="UndoLatestPollConsequencesConfirmed">@L["Common_Yes"]</button>
+                                        <button @onclick="CancelUndoPollConsequences">@L["Common_No"]</button>
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                <button @onclick="ClosePoll">@L["Poll_Close"]</button>
+                                <button @onclick="ToggleLivePollResults">
+                                    @(ShowLivePollResults? L["Poll_HideLiveResults"] : L["Poll_ShowLiveResults"])
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    @if (ConfirmUndoPollConsequencesVisible)
+                    {
+                        <div class="rc-inline-warning">@L["Poll_UndoConsequencesConfirmQuestion"]</div>
+                    }
+
+                    <div class="rc-test-stats-grid">
+                        <div class="rc-stat-card">
+                            <div class="rc-stat-card__label">@L["Poll_TotalVotes"]</div>
+                            <div class="rc-stat-card__value">@LatestPoll.TotalVotes</div>
+                        </div>
+
+                        <div class="rc-stat-card">
+                            <div class="rc-stat-card__label">@L["Poll_TotalWeightedVotes"]</div>
+                            <div class="rc-stat-card__value">@LatestPoll.TotalWeightedVotes.ToString("F1")</div>
+                        </div>
+
+                        <div class="rc-stat-card">
+                            <div class="rc-stat-card__label">@L["Poll_Participation"]</div>
+                            <div class="rc-stat-card__value">@($"{LatestPoll.ParticipationPercent:F1}%")</div>
+                        </div>
+
+                        <div class="rc-stat-card">
+                            <div class="rc-stat-card__label">@L["Poll_VoteWeightMode"]</div>
+                            <div class="rc-stat-card__value rc-stat-card__value--small">
+                                @(LatestPoll.VoteWeightMode == PollVoteWeightMode.Metric
+                                    ? $"{L["Poll_VoteWeightModeMetric"]} - {LatestPoll.MetricName}"
+                                    : L["Poll_VoteWeightModeFixedOne"])
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (LatestPoll.IsClosed || ShowLivePollResults)
+                    {
+                        <div class="rc-tool-subsection">
+                            <div class="rc-tool-subsection__title">@L["Poll_Options"]</div>
+
+                            <div class="rc-test-result-grid">
+                                @foreach (var option in LatestPoll.Options)
+                                {
+                                    var isLeadingOption = Math.Abs(option.WeightedVotePercent - HighestWeightedVotePercent) < 0.0001d;
+
+                                    <div class="rc-test-result-card @(isLeadingOption ? "rc-poll-option-card--winner" : string.Empty)">
+                                        <div class="rc-test-result-card__header">
+                                            <div class="rc-test-result-card__title">@option.Label</div>
+                                        </div>
+
+                                        <div class="rc-test-result-card__body">
+                                            <div class="rc-test-result-line">
+                                                <span>@L["Poll_TotalVotes"]</span>
+                                                <strong>@option.VoteCount</strong>
+                                            </div>
+
+                                            <div class="rc-poll-option-progress">
+                                                <div class="rc-poll-option-progress__label">
+                                                    <span>@L["Poll_WeightedPercent"]</span>
+                                                    <strong>@($"{option.WeightedVotePercent:F1}%")</strong>
+                                                </div>
+
+                                                <div class="rc-poll-option-progress__track">
+                                                    <div class="rc-poll-option-progress__fill @(isLeadingOption ? "winner" : string.Empty)"
+                                                         style="@($"width:{GetWeightedPercentWidth(option.WeightedVotePercent)};")">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @if (LatestPoll.Votes.Count > 0)
+                    {
+                        <div class="rc-tool-subsection">
+                            <div class="rc-tool-subsection__header">
+                                <div class="rc-tool-subsection__title">@L["Poll_VoteDetails"]</div>
+                                <div class="rc-tool-inline-actions">
+                                    <button @onclick="TogglePollVoteDetails">
+                                        @(ShowPollVoteDetails? L["Poll_HideVoteDetails"] : L["Poll_ShowVoteDetails"])
+                                    </button>
+                                </div>
+                            </div>
+
+                            @if (ShowPollVoteDetails)
+                            {
+                                @foreach (var option in LatestPoll.Options)
+                                {
+                                    var votesForOption = LatestPoll.Votes
+                                        .Where(v => v.OptionId == option.OptionId)
+                                        .ToList();
+
+                                    <div class="rc-poll-vote-group">
+                                        <div class="rc-poll-vote-group__title">@option.Label</div>
+
+                                        @if (votesForOption.Count == 0)
+                                        {
+                                            <p class="rc-tool-muted">@L["SessionPage_NoCharactersToDisplay"]</p>
+                                        }
+                                        else
+                                        {
+                                            <div class="rc-test-result-grid">
+                                                @foreach (var voteLine in votesForOption)
+                                                {
+                                                    if (CharacterSummariesById.TryGetValue(voteLine.CharacterId, out var summary))
+                                                    {
+                                                        <CharacterResultSummaryCard Character="summary">
+                                                            <HeaderContent>
+                                                                <div class="rc-poll-vote-card__weight">@voteLine.VoteWeight.ToString("F2")</div>
+                                                            </HeaderContent>
+                                                        </CharacterResultSummaryCard>
+                                                    }
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+
+                    @if (LatestPoll.Consequences.Count > 0)
+                    {
+                        <div class="rc-tool-subsection">
+                            <div class="rc-tool-subsection__title">@L["Poll_OptionConsequences"]</div>
+
+                            <div class="rc-consequence-list">
+                                @foreach (var consequence in LatestPoll.Consequences)
+                                {
+                                    <div class="rc-consequence-card">
+                                        <div class="rc-test-result-line">
+                                            <span>@consequence.OptionLabel</span>
+                                            <strong>@consequence.TargetName</strong>
+                                        </div>
+
+                                        <div class="rc-test-result-line">
+                                            <span>@L["Poll_ConsequenceOperation"]</span>
+                                            <strong>@GetPollConsequenceOperationLabel(consequence.OperationType)</strong>
+                                        </div>
+
+                                        @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
+                                        {
+                                            <div class="rc-test-result-line">
+                                                <span>@L["GameTest_DifficultyMode"]</span>
+                                                <strong>
+                                                    @if (consequence.ValueMode == ModifierValueMode.Metric)
+                                                    {
+                                                        @(consequence.ModifierMode == TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])
+                                                        @($" · {L["Common_SourceMetric"]} : {consequence.SourceMetricName}")
+                                                    }
+                                                    else
+                                                    {
+                                                        @(consequence.ModifierMode == TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])
+                                                        @($" {consequence.Value}")
+                                                    }
+                                                </strong>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter] public Guid SessionId { get; set; }
+
+    private HubConnection? hubConnection;
+
+    private DomainSession? CurrentSession;
+    private GameSystem? AssignedGameSystem;
+
+    private List<AttributeDefinition> AvailableAttributes = new();
+    private List<TraitDefinition> AvailableTraitDefinitions = new();
+    private List<GaugeDefinition> AvailableGaugeDefinitions = new();
+    private List<MetricDefinition> AvailableMetrics = new();
+    private List<EditableDerivedStatDefinitionDto> AvailableDerivedStats = new();
+    private List<EditableTalentDefinitionDto> AvailableTalents = new();
+    private List<EditableItemDefinitionDto> AvailableItems = new();
+    private List<SessionGaugeDto> SessionGauges = new();
+    private Dictionary<Guid, SessionCharacterSummaryDto> CharacterSummariesById = new();
+
+    private PollForGameMasterDto? LatestPoll;
+    private List<PollForGameMasterDto> RecentPolls = new();
+
+    private Guid CurrentUserId;
+    private bool IsLoaded;
+    private bool RedirectToHome;
+    private string Message = string.Empty;
+
+    private string NewPollQuestion = string.Empty;
+    private PollVoteWeightMode SelectedPollVoteWeightMode = PollVoteWeightMode.FixedOne;
+    private string SelectedPollMetricId = string.Empty;
+    private Guid? SelectedPollHistoryId;
+
+    private bool ShowLivePollResults;
+    private bool ShowPollVoteDetails;
+    private bool ConfirmUndoPollConsequencesVisible;
+
+    private List<PollOptionRowModel> NewPollOptions = new()
+    {
+        new(),
+        new()
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!isAuthenticated || string.IsNullOrWhiteSpace(userIdValue))
+        {
+            RedirectToHome = true;
+            IsLoaded = true;
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+
+        await LoadPageData();
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/sessionhub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On("PollChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadLatestPoll();
+                StateHasChanged();
+            });
+        });
+
+        await hubConnection.StartAsync();
+        await hubConnection.SendAsync("JoinSessionGroup", SessionId.ToString());
+
+        IsLoaded = true;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToHome)
+        {
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadPageData()
+    {
+        CurrentSession = await SessionService.GetSessionByIdAsync(SessionId);
+
+        if (CurrentSession?.GameSystemId is Guid gameSystemId)
+        {
+            AssignedGameSystem = await GameSystemService.GetGameSystemByIdAsync(gameSystemId, CurrentUserId);
+
+            if (AssignedGameSystem is not null)
+            {
+                AvailableAttributes = await GameSystemService.GetAttributeDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+                AvailableTraitDefinitions = await GameSystemService.GetTraitDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+                AvailableGaugeDefinitions = await GameSystemService.GetGaugeDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+                AvailableMetrics = await GameSystemService.GetMetricDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+
+                var editor = await GameSystemService.GetGameSystemEditorAsync(AssignedGameSystem.Id, CurrentUserId);
+                if (editor is not null)
+                {
+                    AvailableDerivedStats = editor.DerivedStats;
+                    AvailableTalents = editor.Talents;
+                    AvailableItems = editor.Items;
+                }
+            }
+        }
+
+        SessionGauges = await SessionService.GetSessionGaugesAsync(SessionId, CurrentUserId);
+        await LoadCharacterSummariesAsync();
+        await LoadLatestPoll();
+    }
+
+    private async Task LoadLatestPoll()
+    {
+        LatestPoll = await PollService.GetLatestPollForGameMasterAsync(SessionId);
+        RecentPolls = await PollService.GetRecentPollsForGameMasterAsync(SessionId, 5);
+        ConfirmUndoPollConsequencesVisible = false;
+    }
+
+    private Task AddPollOption()
+    {
+        NewPollOptions.Add(new PollOptionRowModel());
+        return Task.CompletedTask;
+    }
+
+    private Task RemovePollOption(int index)
+    {
+        if (index >= 0 && index < NewPollOptions.Count && NewPollOptions.Count > 2)
+        {
+            NewPollOptions.RemoveAt(index);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task AddPollOptionConsequence(int optionIndex)
+    {
+        if (optionIndex < 0 || optionIndex >= NewPollOptions.Count)
+            return Task.CompletedTask;
+
+        var targetKind = AvailableGaugeDefinitions.Count > 0
+            ? TestConsequenceTargetKind.Gauge
+            : TestConsequenceTargetKind.Attribute;
+
+        NewPollOptions[optionIndex].Consequences.Add(new PollOptionConsequenceRowModel
+        {
+            RowId = Guid.NewGuid(),
+            OperationType = TestConsequenceOperationType.AddValue,
+            TargetKind = targetKind,
+            TargetDefinitionId = GetFirstConsequenceTargetId(targetKind),
+            ModifierMode = TestModifierMode.Malus,
+            Value = 1,
+            ValueMode = ModifierValueMode.Fixed,
+            SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id
+        });
+
+        return Task.CompletedTask;
+    }
+
+    private void OnPollConsequenceOperationChanged(PollOptionConsequenceRowModel consequence)
+    {
+        switch (consequence.OperationType)
+        {
+            case TestConsequenceOperationType.AddValue:
+                consequence.TargetKind = AvailableGaugeDefinitions.Count > 0
+                    ? TestConsequenceTargetKind.Gauge
+                    : TestConsequenceTargetKind.Attribute;
+                consequence.TargetDefinitionId = GetFirstConsequenceTargetId(consequence.TargetKind);
+                if (consequence.Value == 0)
+                    consequence.Value = 1;
+                break;
+
+            case TestConsequenceOperationType.GrantTalent:
+            case TestConsequenceOperationType.RevokeTalent:
+                consequence.TargetKind = TestConsequenceTargetKind.Talent;
+                consequence.TargetDefinitionId = GetFirstConsequenceTargetId(consequence.TargetKind);
+                consequence.Value = 0;
+                consequence.ValueMode = ModifierValueMode.Fixed;
+                consequence.SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id;
+                break;
+
+            case TestConsequenceOperationType.GrantItem:
+            case TestConsequenceOperationType.RevokeItem:
+                consequence.TargetKind = TestConsequenceTargetKind.Item;
+                consequence.TargetDefinitionId = GetFirstConsequenceTargetId(consequence.TargetKind);
+                consequence.Value = 0;
+                consequence.ValueMode = ModifierValueMode.Fixed;
+                consequence.SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id;
+                break;
+        }
+    }
+
+    private void OnPollConsequenceTargetKindChanged(PollOptionConsequenceRowModel consequence)
+    {
+        consequence.TargetDefinitionId = GetFirstConsequenceTargetId(consequence.TargetKind);
+    }
+
+    private Guid GetFirstConsequenceTargetId(TestConsequenceTargetKind targetKind)
+    {
+        return targetKind switch
+        {
+            TestConsequenceTargetKind.Gauge => AvailableGaugeDefinitions.FirstOrDefault()?.Id ?? Guid.Empty,
+            TestConsequenceTargetKind.SessionGauge => SessionGauges.FirstOrDefault()?.SessionGaugeId ?? Guid.Empty,
+            TestConsequenceTargetKind.Attribute => AvailableAttributes.FirstOrDefault()?.Id ?? Guid.Empty,
+            TestConsequenceTargetKind.DerivedStat => AvailableDerivedStats.FirstOrDefault()?.DerivedStatDefinitionId ?? Guid.Empty,
+            TestConsequenceTargetKind.Metric => AvailableMetrics.FirstOrDefault()?.Id ?? Guid.Empty,
+            TestConsequenceTargetKind.Talent => AvailableTalents.FirstOrDefault()?.TalentDefinitionId ?? Guid.Empty,
+            TestConsequenceTargetKind.Item => AvailableItems.FirstOrDefault()?.ItemDefinitionId ?? Guid.Empty,
+            _ => Guid.Empty
+        };
+    }
+
+    private async Task CreatePoll()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            var request = new PollCreateRequestDto
+            {
+                Question = NewPollQuestion,
+                Options = NewPollOptions.Select(o => new PollOptionDraftDto
+                {
+                    Label = o.Label,
+                    Consequences = o.Consequences.Select(c => new PollOptionConsequenceInlineDraftDto
+                    {
+                        OperationType = c.OperationType,
+                        TargetKind = c.TargetKind,
+                        TargetDefinitionId = c.TargetDefinitionId,
+                        ModifierMode = c.ModifierMode,
+                        Value = c.ValueMode == ModifierValueMode.Metric ? 0 : c.Value,
+                        ValueMode = c.ValueMode,
+                        SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null
+                    }).ToList()
+                }).ToList(),
+                VoteWeightMode = SelectedPollVoteWeightMode,
+                MetricDefinitionId = SelectedPollVoteWeightMode == PollVoteWeightMode.Metric && !string.IsNullOrWhiteSpace(SelectedPollMetricId)
+                    ? Guid.Parse(SelectedPollMetricId)
+                    : null
+            };
+
+            LatestPoll = await PollService.CreatePollAsync(SessionId, CurrentUserId, request);
+
+            NewPollQuestion = string.Empty;
+            NewPollOptions = new List<PollOptionRowModel> { new(), new() };
+            SelectedPollVoteWeightMode = PollVoteWeightMode.FixedOne;
+            SelectedPollMetricId = string.Empty;
+            SelectedPollHistoryId = null;
+            ShowLivePollResults = false;
+            ShowPollVoteDetails = false;
+
+            RecentPolls = await PollService.GetRecentPollsForGameMasterAsync(SessionId, 5);
+
+            Message = L["Poll_Created"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ClosePoll()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            await PollService.ClosePollAsync(SessionId, CurrentUserId);
+            await LoadLatestPoll();
+
+            Message = L["Poll_Closed"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private bool CanUndoLatestPollConsequences =>
+        LatestPoll is not null &&
+        LatestPoll.IsClosed &&
+        LatestPoll.ConsequencesApplied &&
+        RecentPolls.FirstOrDefault()?.PollId == LatestPoll.PollId;
+
+    private Task ShowUndoPollConsequencesConfirmation()
+    {
+        ConfirmUndoPollConsequencesVisible = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelUndoPollConsequences()
+    {
+        ConfirmUndoPollConsequencesVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task UndoLatestPollConsequencesConfirmed()
+    {
+        try
+        {
+            Message = string.Empty;
+            ConfirmUndoPollConsequencesVisible = false;
+
+            await PollService.UndoLatestPollConsequencesAsync(SessionId, CurrentUserId);
+            await LoadLatestPoll();
+
+            Message = L["Poll_UndoConsequencesSuccess"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private Task ToggleLivePollResults()
+    {
+        ShowLivePollResults = !ShowLivePollResults;
+        return Task.CompletedTask;
+    }
+
+    private Task TogglePollVoteDetails()
+    {
+        ShowPollVoteDetails = !ShowPollVoteDetails;
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadPollHistory()
+    {
+        if (SelectedPollHistoryId is null || SelectedPollHistoryId == Guid.Empty)
+        {
+            await LoadLatestPoll();
+            return;
+        }
+
+        var selectedPoll = await PollService.GetPollByIdForGameMasterAsync(SessionId, SelectedPollHistoryId.Value);
+
+        if (selectedPoll is not null)
+        {
+            LatestPoll = selectedPoll;
+        }
+    }
+
+    private double HighestWeightedVotePercent =>
+    LatestPoll?.Options.Count > 0
+        ? LatestPoll.Options.Max(o => o.WeightedVotePercent)
+        : 0d;
+
+    private string GetWeightedPercentWidth(double value)
+    {
+        var clamped = Math.Clamp(value, 0d, 100d);
+        return string.Create(CultureInfo.InvariantCulture, $"{clamped:F2}%");
+    }
+
+    private string GetPollConsequenceOperationLabel(TestConsequenceOperationType operationType)
+    {
+        return operationType switch
+        {
+            TestConsequenceOperationType.AddValue => L["TestConsequence_Operation_AddValue"],
+            TestConsequenceOperationType.GrantTalent => L["TestConsequence_Operation_GrantTalent"],
+            TestConsequenceOperationType.RevokeTalent => L["TestConsequence_Operation_RevokeTalent"],
+            TestConsequenceOperationType.GrantItem => L["TestConsequence_Operation_GrantItem"],
+            TestConsequenceOperationType.RevokeItem => L["TestConsequence_Operation_RevokeItem"],
+            _ => operationType.ToString()
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+            await hubConnection.DisposeAsync();
+    }
+
+    private class PollOptionRowModel
+    {
+        public string Label { get; set; } = string.Empty;
+        public List<PollOptionConsequenceRowModel> Consequences { get; set; } = new();
+    }
+
+    private class PollOptionConsequenceRowModel
+    {
+        public Guid RowId { get; set; }
+        public TestConsequenceOperationType OperationType { get; set; } = TestConsequenceOperationType.AddValue;
+        public TestConsequenceTargetKind TargetKind { get; set; }
+        public Guid TargetDefinitionId { get; set; }
+        public TestModifierMode ModifierMode { get; set; }
+        public int Value { get; set; }
+        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
+        public Guid? SourceMetricId { get; set; }
+    }
+
+    private async Task LoadCharacterSummariesAsync()
+    {
+        var characters = await CharacterService.GetSessionCharacterSummariesAsync(
+            SessionId,
+            includeOffline: true,
+            includeDead: true,
+            includeNpcs: true);
+
+        CharacterSummariesById = characters.ToDictionary(x => x.CharacterId, x => x);
+    }
+}

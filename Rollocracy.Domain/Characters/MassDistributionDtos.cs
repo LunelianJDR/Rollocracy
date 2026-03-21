@@ -10,6 +10,17 @@ namespace Rollocracy.Domain.Characters
         public string Name { get; set; } = string.Empty;
     }
 
+    public class GroupedNamedReferenceDto
+    {
+        public Guid Id { get; set; }
+
+        public string Name { get; set; } = string.Empty;
+
+        public Guid GroupId { get; set; }
+
+        public string GroupName { get; set; } = string.Empty;
+    }
+
     public class MassDistributionPreviewCharacterDto
     {
         public Guid CharacterId { get; set; }
@@ -36,7 +47,7 @@ namespace Rollocracy.Domain.Characters
 
         public string SessionName { get; set; } = string.Empty;
 
-        public List<NamedReferenceDto> TraitOptions { get; set; } = new();
+        public List<GroupedNamedReferenceDto> TraitOptions { get; set; } = new();
 
         public List<NamedReferenceDto> Talents { get; set; } = new();
 

@@ -153,820 +153,6 @@ else
 
     <hr />
 
-    <h4>@L["GameTest_GameMasterSectionTitle"]</h4>
-
-    @if (AssignedGameSystem is null)
-    {
-        <p>@L["GameTest_NoGameSystemForSession"]</p>
-    }
-    else if (AvailableAttributes.Count == 0 && AvailableDerivedStats.Count == 0)
-    {
-        <p>@L["GameTest_NoAttributeAvailable"]</p>
-    }
-    else
-    {
-        <div>
-            <label>@L["GameTest_TargetKind"]</label><br />
-            <select @bind="NewTargetKind" @bind:after="OnTestTargetKindChanged">
-                <option value="@GameTestTargetKind.BaseAttribute">@L["GameTest_TargetAttribute"]</option>
-                <option value="@GameTestTargetKind.DerivedStat">@L["TestConsequence_Target_DerivedStat"]</option>
-            </select>
-        </div>
-
-        <div>
-            <label>@L["GameTest_Attribute"]</label><br />
-            <select @bind="SelectedAttributeId">
-                <option value="">@L["GameTest_SelectAttribute"]</option>
-                @if (NewTargetKind == GameTestTargetKind.BaseAttribute)
-                {
-                    @foreach (var attributeDefinition in AvailableAttributes)
-                    {
-                        <option value="@attributeDefinition.Id.ToString()">@attributeDefinition.Name</option>
-                    }
-                }
-                else
-                {
-                    @foreach (var derivedDefinition in AvailableDerivedStats)
-                    {
-                        <option value="@derivedDefinition.DerivedStatDefinitionId?.ToString()">@derivedDefinition.Name</option>
-                    }
-                }
-            </select>
-        </div>
-
-        <div>
-            <label>@L["GameTest_DiceMode"]</label><br />
-            <InputSelect @bind-Value="UseSystemDefaultDice">
-                <option value="true">@L["GameTest_UseSystemDefaultDice"]</option>
-                <option value="false">@L["GameTest_UseCustomDice"]</option>
-            </InputSelect>
-        </div>
-
-        @if (UseSystemDefaultDice)
-        {
-            <div>
-                <strong>@L["GameTest_Dice"] :</strong>
-                @($"{AssignedGameSystem.DefaultTestDiceCount}d{AssignedGameSystem.DefaultTestDiceSides}")
-            </div>
-
-            @if (AssignedGameSystem.CriticalSuccessValue.HasValue)
-            {
-                <div>
-                    <strong>@L["GameTest_CriticalSuccessValue"] :</strong>
-                    @AssignedGameSystem.CriticalSuccessValue
-                </div>
-            }
-
-            @if (AssignedGameSystem.CriticalFailureValue.HasValue)
-            {
-                <div>
-                    <strong>@L["GameTest_CriticalFailureValue"] :</strong>
-                    @AssignedGameSystem.CriticalFailureValue
-                </div>
-            }
-        }
-        else
-        {
-            <div>
-                <label>@L["GameTest_DiceCount"]</label><br />
-                <input type="number" @bind="NewDiceCount" />
-            </div>
-
-            <div>
-                <label>@L["GameTest_DiceSides"]</label><br />
-                <input type="number" @bind="NewDiceSides" />
-            </div>
-        }
-
-        @if (AssignedGameSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold)
-        {
-            <div>
-                <label>@L["GameTest_SuccessThreshold"]</label><br />
-                <input type="number" @bind="NewSuccessThreshold" />
-            </div>
-        }
-
-        <div>
-            <label>@L["GameTest_DifficultyMode"]</label><br />
-            <select @bind="NewModifierMode">
-                <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
-                <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
-            </select>
-        </div>
-
-        <div>
-            <label>@L["GameTest_DifficultyValue"]</label><br />
-            <input type="number" @bind="NewDifficultyValue" />
-        </div>
-
-        <div>
-            <label>@L["GameTest_TargetScope"]</label><br />
-            <select @bind="NewTargetScope">
-                <option value="@TestTargetScope.OnlineLivingCharacters">@L["GameTest_TargetOnlineLiving"]</option>
-                <option value="@TestTargetScope.AllLivingCharacters">@L["GameTest_TargetAllLiving"]</option>
-            </select>
-        </div>
-
-        <div>
-            <label>@L["GameTest_TraitFilterMode"]</label><br />
-            <select @bind="NewTraitFilterMode">
-                <option value="@TestTraitFilterMode.AndBetweenGroups">@L["GameTest_FilterModeAnd"]</option>
-                <option value="@TestTraitFilterMode.OrBetweenGroups">@L["GameTest_FilterModeOr"]</option>
-            </select>
-        </div>
-
-        <h5>@L["GameTest_TraitFilters"]</h5>
-
-        @if (AvailableTraitDefinitions.Count == 0)
-        {
-            <p>@L["GameTest_NoTraitFilterAvailable"]</p>
-        }
-        else
-        {
-            @foreach (var traitDefinition in AvailableTraitDefinitions)
-            {
-                <div style="margin-bottom: 1rem;">
-                    <strong>@traitDefinition.Name</strong>
-
-                    @if (TraitOptionsByDefinition.TryGetValue(traitDefinition.Id, out var traitOptions))
-                    {
-                        @foreach (var option in traitOptions)
-                        {
-                            <div>
-                                <label>
-                                    <input type="checkbox"
-                                           checked="@SelectedTraitOptionIds.Contains(option.Id)"
-                                           @onchange="args => ToggleTraitFilter(option.Id, args.Value)" />
-                                    @option.Name
-                                </label>
-                            </div>
-                        }
-                    }
-                </div>
-            }
-        }
-
-        <h5>@L["GameTest_Consequences"]</h5>
-
-        <button @onclick="AddSuccessConsequence">@L["GameTest_AddSuccessConsequence"]</button>
-        <button @onclick="AddFailureConsequence">@L["GameTest_AddFailureConsequence"]</button>
-
-        @if (ConsequenceRows.Count == 0)
-        {
-            @L["GameTest_NoConsequence"]
-        }
-        else
-        {
-            @for (var i = 0; i < ConsequenceRows.Count; i++)
-            {
-                var row = ConsequenceRows[i];
-
-                <div style="margin-top:8px; padding:8px; border:1px solid #ccc;">
-                    <div>
-                        @L["GameTest_When"]
-                        <select @bind="row.ApplyOn">
-                            <option value="@TestConsequenceApplyOn.OnSuccess">@L["GameTest_OnSuccess"]</option>
-                            <option value="@TestConsequenceApplyOn.OnFailure">@L["GameTest_OnFailure"]</option>
-                            <option value="@TestConsequenceApplyOn.OnCriticalSuccess">@L["GameTest_OnCriticalSuccess"]</option>
-                            <option value="@TestConsequenceApplyOn.OnCriticalFailure">@L["GameTest_OnCriticalFailure"]</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        @L["GameTest_ConsequenceOperation"]
-                        <select value="@((int)row.OperationType)" @onchange="e => ChangeConsequenceOperation(row, e.Value?.ToString())">
-                            <option value="@((int)TestConsequenceOperationType.AddValue)">@L["TestConsequence_Operation_AddValue"]</option>
-                            <option value="@((int)TestConsequenceOperationType.GrantTalent)">@L["TestConsequence_Operation_GrantTalent"]</option>
-                            <option value="@((int)TestConsequenceOperationType.RevokeTalent)">@L["TestConsequence_Operation_RevokeTalent"]</option>
-                            <option value="@((int)TestConsequenceOperationType.GrantItem)">@L["TestConsequence_Operation_GrantItem"]</option>
-                            <option value="@((int)TestConsequenceOperationType.RevokeItem)">@L["TestConsequence_Operation_RevokeItem"]</option>
-                        </select>
-                    </div>
-
-                    @if (row.OperationType == TestConsequenceOperationType.AddValue)
-                    {
-                        <div>
-                            @L["GameTest_ConsequenceTargetKind"]
-                            <select value="@((int)row.TargetKind)" @onchange="e => ChangeConsequenceTargetKind(row, e.Value?.ToString())">
-                                <option value="@((int)TestConsequenceTargetKind.Gauge)">@L["GameTest_TargetGauge"]</option>
-                                <option value="@((int)TestConsequenceTargetKind.SessionGauge)">@L["SessionPage_TargetSessionGauge"]</option>
-                                <option value="@((int)TestConsequenceTargetKind.Attribute)">@L["GameTest_TargetAttribute"]</option>
-                                <option value="@((int)TestConsequenceTargetKind.DerivedStat)">@L["TestConsequence_Target_DerivedStat"]</option>
-                                <option value="@((int)TestConsequenceTargetKind.Metric)">@L["TestConsequence_Target_Metric"]</option>
-                            </select>
-                        </div>
-                    }
-                    else if (row.OperationType == TestConsequenceOperationType.GrantTalent || row.OperationType == TestConsequenceOperationType.RevokeTalent)
-                    {
-                        row.TargetKind = TestConsequenceTargetKind.Talent;
-                        <div>
-                            @L["GameTest_ConsequenceTargetKind"]
-                            <span>@L["TestConsequence_Target_Talent"]</span>
-                        </div>
-                    }
-                    else
-                    {
-                        row.TargetKind = TestConsequenceTargetKind.Item;
-                        <div>
-                            @L["GameTest_ConsequenceTargetKind"]
-                            <span>@L["TestConsequence_Target_Item"]</span>
-                        </div>
-                    }
-
-                    <div>
-                        @L["GameTest_TargetDefinition"]
-
-                        @if (row.TargetKind == TestConsequenceTargetKind.Gauge)
-                        {
-                            <select @bind="row.TargetDefinitionId">
-                                @foreach (var gaugeDefinition in AvailableGaugeDefinitions)
-                                {
-                                    <option value="@gaugeDefinition.Id">@gaugeDefinition.Name</option>
-                                }
-                            </select>
-                        }
-                        else if (row.TargetKind == TestConsequenceTargetKind.SessionGauge)
-                        {
-                            <select @bind="row.TargetDefinitionId">
-                                @foreach (var gauge in SessionGauges)
-                                {
-                                    <option value="@gauge.SessionGaugeId">@gauge.Name</option>
-                                }
-                            </select>
-                        }
-                        else if (row.TargetKind == TestConsequenceTargetKind.Attribute)
-                        {
-                            <select @bind="row.TargetDefinitionId">
-                                @foreach (var attributeDefinition in AvailableAttributes)
-                                {
-                                    <option value="@attributeDefinition.Id">@attributeDefinition.Name</option>
-                                }
-                            </select>
-                        }
-                        else if (row.TargetKind == TestConsequenceTargetKind.DerivedStat)
-                        {
-                            <select @bind="row.TargetDefinitionId">
-                                @foreach (var derivedDefinition in AvailableDerivedStats)
-                                {
-                                    <option value="@derivedDefinition.DerivedStatDefinitionId">@derivedDefinition.Name</option>
-                                }
-                            </select>
-                        }
-                        else if (row.TargetKind == TestConsequenceTargetKind.Metric)
-                        {
-                            <select @bind="row.TargetDefinitionId">
-                                @foreach (var metricDefinition in AvailableMetrics)
-                                {
-                                    <option value="@metricDefinition.Id">@metricDefinition.Name</option>
-                                }
-                            </select>
-                        }
-                        else if (row.TargetKind == TestConsequenceTargetKind.Talent)
-                        {
-                            <select @bind="row.TargetDefinitionId">
-                                @foreach (var talentDefinition in AvailableTalents)
-                                {
-                                    <option value="@talentDefinition.TalentDefinitionId">@talentDefinition.Name</option>
-                                }
-                            </select>
-                        }
-                        else if (row.TargetKind == TestConsequenceTargetKind.Item)
-                        {
-                            <select @bind="row.TargetDefinitionId">
-                                @foreach (var itemDefinition in AvailableItems)
-                                {
-                                    <option value="@itemDefinition.ItemDefinitionId">@itemDefinition.Name</option>
-                                }
-                            </select>
-                        }
-                    </div>
-
-                    @if (row.OperationType == TestConsequenceOperationType.AddValue)
-                    {
-                        <div>
-                            @L["GameTest_DifficultyMode"]
-                            <select @bind="row.ModifierMode">
-                                <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
-                                <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            @L["GameTest_ConsequenceValueMode"]
-                            <select @bind="row.ValueMode">
-                                <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
-                                <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
-                            </select>
-                        </div>
-
-                        @if (row.ValueMode == ModifierValueMode.Metric)
-                        {
-                            <div>
-                                @L["Common_SourceMetric"]
-                                <select @bind="row.SourceMetricId">
-                                    @foreach (var metricDefinition in AvailableMetrics)
-                                    {
-                                        <option value="@metricDefinition.Id">@metricDefinition.Name</option>
-                                    }
-                                </select>
-                            </div>
-                        }
-                        else
-                        {
-                            <div>
-                                @L["GameTest_DifficultyValue"]
-                                <input type="number" @bind="row.Value" />
-                            </div>
-                        }
-                    }
-
-                    <div>
-                        <button @onclick="() => RemoveConsequenceRow(row.RowId)">@L["Common_Remove"]</button>
-                    </div>
-                </div>
-            }
-        }
-
-        @if (ActiveTest is null || ActiveTest.IsClosed)
-        {
-            <button @onclick="CreateGameTest">@L["GameTest_Create"]</button>
-        }
-
-        @if (ActiveTest is not null)
-        {
-            <hr />
-            <p><strong>@L["GameTest_Target"] :</strong> @ActiveTest.AttributeName</p>
-            <p><strong>@L["GameTest_Dice"] :</strong> @($"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}")</p>
-            <p><strong>@L["GameTest_DiceMode"] :</strong> @(ActiveTest.UseSystemDefaultDice? L["GameTest_UseSystemDefaultDice"] : L["GameTest_UseCustomDice"])</p>
-            @if (ActiveTest.UseSystemDefaultDice && ActiveTest.CriticalSuccessValue.HasValue)
-            {
-                <p><strong>@L["GameTest_CriticalSuccessValue"] :</strong> @ActiveTest.CriticalSuccessValue</p>
-            }
-            @if (ActiveTest.UseSystemDefaultDice && ActiveTest.CriticalFailureValue.HasValue)
-            {
-                <p><strong>@L["GameTest_CriticalFailureValue"] :</strong> @ActiveTest.CriticalFailureValue</p>
-            }
-
-            @if (ActiveTest.ResolutionMode == TestResolutionMode.SuccessThreshold)
-            {
-                <p><strong>@L["GameTest_SuccessThreshold"] :</strong> @ActiveTest.SuccessThreshold</p>
-            }
-
-            <p>
-                <strong>@L["GameTest_DifficultySummary"] :</strong>
-                @(ActiveTest.ModifierMode == TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])
-                @(" ")
-                @ActiveTest.DifficultyValue
-            </p>
-
-            <p>
-                <strong>@L["GameTest_TargetScope"] :</strong>
-                @(ActiveTest.TargetScope == TestTargetScope.OnlineLivingCharacters
-                    ? L["GameTest_TargetOnlineLiving"]
-                    : L["GameTest_TargetAllLiving"])
-            </p>
-
-            <p>
-                <strong>@L["GameTest_TraitFilterMode"] :</strong>
-                @(ActiveTest.TraitFilterMode == TestTraitFilterMode.AndBetweenGroups
-                    ? L["GameTest_FilterModeAnd"]
-                    : L["GameTest_FilterModeOr"])
-            </p>
-
-            @if (ActiveTest.IsClosed)
-            {
-                <p><em>@L["GameTest_LastTestPerformed"]</em></p>
-            }
-
-            <p><strong>@L["GameTest_TargetCount"] :</strong> @ActiveTest.TargetCount</p>
-            <p><strong>@L["GameTest_RolledCount"] :</strong> @ActiveTest.RolledCount</p>
-            <p><strong>@L["GameTest_SuccessCount"] :</strong> @ActiveTest.SuccessCount</p>
-            <p><strong>@L["GameTest_FailureCount"] :</strong> @ActiveTest.FailureCount</p>
-            <p><strong>@L["GameTest_CriticalSuccessCount"] :</strong> @ActiveTest.CriticalSuccessCount</p>
-            <p><strong>@L["GameTest_CriticalFailureCount"] :</strong> @ActiveTest.CriticalFailureCount</p>
-            <p><strong>@L["GameTest_SuccessRate"] :</strong> @($"{ActiveTest.SuccessRatePercent:F1}%")</p>
-            <p><strong>@L["GameTest_BestRoll"] :</strong> @(ActiveTest.BestDiceTotal?.ToString() ?? "-")</p>
-            <p><strong>@L["GameTest_WorstRoll"] :</strong> @(ActiveTest.WorstDiceTotal?.ToString() ?? "-")</p>
-            <p><strong>@L["GameTest_AverageRoll"] :</strong> @(ActiveTest.AverageDiceTotal?.ToString("F2") ?? "-")</p>
-
-            @if (ActiveTest is not null)
-            {
-                @if (!ConfirmRollbackVisible)
-                {
-                    <button @onclick="ShowRollbackConfirmation">@L["GameTest_RollbackLastTest"]</button>
-                }
-                else
-                {
-                    <p>@L["GameTest_RollbackConfirmQuestion"]</p>
-                    <button @onclick="RollbackLatestTestConfirmed">@L["Common_Yes"]</button>
-                    <button @onclick="CancelRollback">@L["Common_No"]</button>
-                }
-            }
-
-            <h5>@L["GameTest_IndividualResults"]</h5>
-
-            <ul>
-                @foreach (var resultLine in ActiveTest?.Results ?? Enumerable.Empty<GameMasterGameTestResultLineDto>())
-                {
-                    <li style="margin-bottom: 1rem;">
-                        <strong>@resultLine.CharacterName</strong> (@resultLine.PlayerName)
-                        -
-                        @if (!resultLine.HasRolled)
-                        {
-                            <span>@L["GameTest_Pending"]</span>
-                        }
-                        else
-                        {
-                            <span>@GetOutcomeLabel(resultLine.Outcome)</span>
-
-                            <div>@L["GameTest_DiceResults"] : @string.Join(" - ", resultLine.DiceResults)</div>
-                            <div>@L["GameTest_DiceTotal"] : @resultLine.DiceTotal</div>
-                            <div>@L["GameTest_AttributeValue"] : @resultLine.AttributeValue</div>
-                            <div>@L["GameTest_EffectiveAttributeValue"] : @resultLine.EffectiveAttributeValue</div>
-                            <div>@L["GameTest_FinalValue"] : @resultLine.FinalValue</div>
-
-                            @if (resultLine.IsAutoRolled)
-                            {
-                                <div>@L["GameTest_AutoRolled"]</div>
-                            }
-                        }
-                    </li>
-                }
-            </ul>
-        }
-    }
-
-    <hr />
-
-    <h4>@L["Poll_GameMasterSectionTitle"]</h4>
-
-    @if (LatestPoll is null || LatestPoll.IsClosed)
-    {
-        <div>
-            <label>@L["Poll_Question"]</label><br />
-            <input @bind="NewPollQuestion" />
-        </div>
-
-        <h5>@L["Poll_Options"]</h5>
-
-        @for (var i = 0; i < NewPollOptions.Count; i++)
-        {
-            var optionIndex = i;
-            var optionRow = NewPollOptions[optionIndex];
-
-            <div style="margin-bottom: 1rem; border:1px solid #ccc; padding:0.5rem;">
-                <input @bind="NewPollOptions[optionIndex].Label" placeholder="@L["Poll_OptionLabel"]" />
-
-                @if (NewPollOptions.Count > 2)
-                {
-                    <button @onclick="() => RemovePollOption(optionIndex)">
-                        @L["Common_Remove"]
-                    </button>
-                }
-
-                <div style="margin-top: 0.5rem;">
-                    <strong>@L["Poll_OptionConsequences"]</strong>
-                </div>
-
-                <button @onclick="() => AddPollOptionConsequence(optionIndex)">
-                    @L["Poll_AddOptionConsequence"]
-                </button>
-
-                @foreach (var consequence in optionRow.Consequences)
-                {
-                    <div style="margin-top:8px; margin-left:20px; padding:8px; border:1px solid #ccc;">
-                        <div>
-                            @L["Poll_ConsequenceOperation"]
-                            <select @bind="consequence.OperationType">
-                                <option value="@TestConsequenceOperationType.AddValue">@L["TestConsequence_Operation_AddValue"]</option>
-                                <option value="@TestConsequenceOperationType.GrantTalent">@L["TestConsequence_Operation_GrantTalent"]</option>
-                                <option value="@TestConsequenceOperationType.RevokeTalent">@L["TestConsequence_Operation_RevokeTalent"]</option>
-                                <option value="@TestConsequenceOperationType.GrantItem">@L["TestConsequence_Operation_GrantItem"]</option>
-                                <option value="@TestConsequenceOperationType.RevokeItem">@L["TestConsequence_Operation_RevokeItem"]</option>
-                            </select>
-                        </div>
-
-                        @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
-                        {
-                            <div>
-                                @L["GameTest_ConsequenceTargetKind"]
-                                <select @bind="consequence.TargetKind">
-                                    <option value="@TestConsequenceTargetKind.Gauge">@L["GameTest_TargetGauge"]</option>
-                                    <option value="@TestConsequenceTargetKind.SessionGauge">@L["SessionPage_TargetSessionGauge"]</option>
-                                    <option value="@TestConsequenceTargetKind.Attribute">@L["GameTest_TargetAttribute"]</option>
-                                    <option value="@TestConsequenceTargetKind.DerivedStat">@L["TestConsequence_Target_DerivedStat"]</option>
-                                    <option value="@TestConsequenceTargetKind.Metric">@L["TestConsequence_Target_Metric"]</option>
-                                </select>
-                            </div>
-                        }
-                        else if (consequence.OperationType == TestConsequenceOperationType.GrantTalent || consequence.OperationType == TestConsequenceOperationType.RevokeTalent)
-                        {
-                            consequence.TargetKind = TestConsequenceTargetKind.Talent;
-                            <div>
-                                @L["GameTest_ConsequenceTargetKind"]
-                                <span>@L["TestConsequence_Target_Talent"]</span>
-                            </div>
-                        }
-                        else
-                        {
-                            consequence.TargetKind = TestConsequenceTargetKind.Item;
-                            <div>
-                                @L["GameTest_ConsequenceTargetKind"]
-                                <span>@L["TestConsequence_Target_Item"]</span>
-                            </div>
-                        }
-
-                        <div>
-                            @L["GameTest_TargetDefinition"]
-
-                            @if (consequence.TargetKind == TestConsequenceTargetKind.Gauge)
-                            {
-                                <select @bind="consequence.TargetDefinitionId">
-                                    @foreach (var gaugeDefinition in AvailableGaugeDefinitions)
-                                    {
-                                        <option value="@gaugeDefinition.Id">@gaugeDefinition.Name</option>
-                                    }
-                                </select>
-                            }
-                            else if (consequence.TargetKind == TestConsequenceTargetKind.SessionGauge)
-                            {
-                                <select @bind="consequence.TargetDefinitionId">
-                                    @foreach (var gauge in SessionGauges)
-                                    {
-                                        <option value="@gauge.SessionGaugeId">@gauge.Name</option>
-                                    }
-                                </select>
-                            }
-                            else if (consequence.TargetKind == TestConsequenceTargetKind.Attribute)
-                            {
-                                <select @bind="consequence.TargetDefinitionId">
-                                    @foreach (var attributeDefinition in AvailableAttributes)
-                                    {
-                                        <option value="@attributeDefinition.Id">@attributeDefinition.Name</option>
-                                    }
-                                </select>
-                            }
-                            else if (consequence.TargetKind == TestConsequenceTargetKind.DerivedStat)
-                            {
-                                <select @bind="consequence.TargetDefinitionId">
-                                    @foreach (var derivedDefinition in AvailableDerivedStats)
-                                    {
-                                        <option value="@derivedDefinition.DerivedStatDefinitionId">@derivedDefinition.Name</option>
-                                    }
-                                </select>
-                            }
-                            else if (consequence.TargetKind == TestConsequenceTargetKind.Metric)
-                            {
-                                <select @bind="consequence.TargetDefinitionId">
-                                    @foreach (var metricDefinition in AvailableMetrics)
-                                    {
-                                        <option value="@metricDefinition.Id">@metricDefinition.Name</option>
-                                    }
-                                </select>
-                            }
-                            else if (consequence.TargetKind == TestConsequenceTargetKind.Talent)
-                            {
-                                <select @bind="consequence.TargetDefinitionId">
-                                    @foreach (var talentDefinition in AvailableTalents)
-                                    {
-                                        <option value="@talentDefinition.TalentDefinitionId">@talentDefinition.Name</option>
-                                    }
-                                </select>
-                            }
-                            else if (consequence.TargetKind == TestConsequenceTargetKind.Item)
-                            {
-                                <select @bind="consequence.TargetDefinitionId">
-                                    @foreach (var itemDefinition in AvailableItems)
-                                    {
-                                        <option value="@itemDefinition.ItemDefinitionId">@itemDefinition.Name</option>
-                                    }
-                                </select>
-                            }
-                        </div>
-
-                        @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
-                        {
-                            <div>
-                                @L["GameTest_DifficultyMode"]
-                                <select @bind="consequence.ModifierMode">
-                                    <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
-                                    <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                @L["GameTest_ConsequenceValueMode"]
-                                <select @bind="consequence.ValueMode">
-                                    <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
-                                    <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
-                                </select>
-                            </div>
-
-                            @if (consequence.ValueMode == ModifierValueMode.Metric)
-                            {
-                                <div>
-                                    @L["Common_SourceMetric"]
-                                    <select @bind="consequence.SourceMetricId">
-                                        @foreach (var metricDefinition in AvailableMetrics)
-                                        {
-                                            <option value="@metricDefinition.Id">@metricDefinition.Name</option>
-                                        }
-                                    </select>
-                                </div>
-                            }
-                            else
-                            {
-                                <div>
-                                    @L["GameTest_DifficultyValue"]
-                                    <input type="number" @bind="consequence.Value" />
-                                </div>
-                            }
-                        }
-
-                        <div>
-                            <button @onclick="() => optionRow.Consequences.Remove(consequence)">@L["Common_Remove"]</button>
-                        </div>
-                    </div>
-                }
-            </div>
-        }
-
-        <button @onclick="AddPollOption">@L["Poll_AddOption"]</button>
-
-        <h5>@L["Poll_VoteWeightMode"]</h5>
-
-        <div>
-            <label>@L["Poll_VoteWeightMode"]</label><br />
-            <select @bind="SelectedPollVoteWeightMode">
-                <option value="@PollVoteWeightMode.FixedOne">@L["Poll_VoteWeightModeFixedOne"]</option>
-                <option value="@PollVoteWeightMode.Metric">@L["Poll_VoteWeightModeMetric"]</option>
-            </select>
-        </div>
-
-        @if (SelectedPollVoteWeightMode == PollVoteWeightMode.Metric)
-        {
-            <div style="margin-top:0.5rem;">
-                <label>@L["Poll_VoteWeightMetric"]</label><br />
-                <select @bind="SelectedPollMetricId">
-                    <option value="">@L["Poll_SelectMetric"]</option>
-                    @foreach (var metric in AvailableMetrics)
-                    {
-                        <option value="@metric.Id">@metric.Name</option>
-                    }
-                </select>
-            </div>
-
-            <p>@L["Poll_VoteWeightMetricHelp"]</p>
-        }
-
-        <button @onclick="CreatePoll">@L["Poll_Create"]</button>
-    }
-
-    @if (RecentPolls.Count > 0)
-    {
-        <div>
-            <label>@L["Poll_History"]</label><br />
-            <select @bind="SelectedPollHistoryId" @bind:after="LoadPollHistory">
-                <option value="">@L["Poll_CurrentOrLatest"]</option>
-                @foreach (var poll in RecentPolls)
-                {
-                    <option value="@poll.PollId">@poll.Question</option>
-                }
-            </select>
-        </div>
-    }
-
-    @if (LatestPoll is not null)
-    {
-        <hr />
-
-        <p><strong>@L["Poll_Question"] :</strong> @LatestPoll.Question</p>
-        <p><strong>@L["Poll_TotalVotes"] :</strong> @LatestPoll.TotalVotes</p>
-        <p><strong>@L["Poll_TotalWeightedVotes"] :</strong> @LatestPoll.TotalWeightedVotes.ToString("F2")</p>
-        <p>
-            <strong>@L["Poll_Participation"] :</strong>
-            @LatestPoll.TotalVotes / @LatestPoll.OnlinePlayersCount
-            (@($"{LatestPoll.ParticipationPercent:F1}%"))
-        </p>
-
-        @if (LatestPoll.IsClosed)
-        {
-            <p><em>@L["Poll_LastPoll"]</em></p>
-
-            @if (CanUndoLatestPollConsequences)
-            {
-                @if (!ConfirmUndoPollConsequencesVisible)
-                {
-                    <button @onclick="ShowUndoPollConsequencesConfirmation">@L["Poll_UndoConsequences"]</button>
-                }
-                else
-                {
-                    <p>@L["Poll_UndoConsequencesConfirmQuestion"]</p>
-                    <button @onclick="UndoLatestPollConsequencesConfirmed">@L["Common_Yes"]</button>
-                    <button @onclick="CancelUndoPollConsequences">@L["Common_No"]</button>
-                }
-            }
-        }
-        else
-        {
-            <button @onclick="ClosePoll">@L["Poll_Close"]</button>
-            <button @onclick="ToggleLivePollResults">
-                @(ShowLivePollResults? L["Poll_HideLiveResults"] : L["Poll_ShowLiveResults"])
-            </button>
-        }
-
-        @if (LatestPoll.IsClosed || ShowLivePollResults)
-        {
-            <ul>
-                @foreach (var option in LatestPoll.Options)
-                {
-                    //            <li>
-                    //               @option.Label : @option.VoteCount (@($"{option.VotePercent:F1}%"))
-                    //           </li>
-                    <li>
-                        @option.Label :
-                        @option.VoteCount (@($"{option.VotePercent:F1}%"))
-                        -
-                        @option.WeightedVoteTotal.ToString("F2") (@($"{option.WeightedVotePercent:F1}%"))
-                    </li>
-                }
-            </ul>
-        }
-
-        @if (LatestPoll.Votes.Count > 0)
-        {
-            <button @onclick="TogglePollVoteDetails">
-                @(ShowPollVoteDetails? L["Poll_HideVoteDetails"] : L["Poll_ShowVoteDetails"])
-            </button>
-
-            @if (ShowPollVoteDetails)
-            {
-                <h5>@L["Poll_VoteDetails"]</h5>
-                <ul>
-                    @foreach (var voteLine in LatestPoll.Votes)
-                    {
-                        //       <li>@voteLine.PlayerName - @voteLine.CharacterName : @voteLine.OptionLabel</li>
-                        <li>@voteLine.PlayerName - @voteLine.CharacterName : @voteLine.OptionLabel (@voteLine.VoteWeight.ToString("F2"))</li>
-                    }
-                </ul>
-            }
-        }
-
-        <p>
-            <strong>@L["Poll_VoteWeightMode"] :</strong>
-            @(LatestPoll.VoteWeightMode == PollVoteWeightMode.Metric
-                ? $"{L["Poll_VoteWeightModeMetric"]} - {LatestPoll.MetricName}"
-                : L["Poll_VoteWeightModeFixedOne"])
-        </p>
-
-        @if (LatestPoll.WeightRules.Count > 0)
-        {
-            <h5>@L["Poll_WeightRules"]</h5>
-            <ul>
-                @foreach (var rule in LatestPoll.WeightRules)
-                {
-                    <li>@rule.TraitDefinitionName : @rule.TraitOptionName => +@rule.WeightBonus.ToString("F2")</li>
-                }
-            </ul>
-        }
-
-        @if (LatestPoll.Consequences.Count > 0)
-        {
-            <h5>@L["Poll_OptionConsequences"]</h5>
-            <ul>
-                @foreach (var consequence in LatestPoll.Consequences)
-                {
-                    <li>
-                        @consequence.OptionLabel :
-                        @consequence.TargetName
-                        @(" - ")
-                        @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
-                        {
-                            @if (consequence.ValueMode == ModifierValueMode.Metric)
-                            {
-                                <span>@(consequence.ModifierMode == TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])</span>
-                                @(" ")
-                                <span>@L["Common_SourceMetric"] : @consequence.SourceMetricName</span>
-                            }
-                            else
-                            {
-                                <span>@(consequence.ModifierMode == TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])</span>
-                                @(" ")
-                                <span>@consequence.Value</span>
-                            }
-                        }
-                        else
-                        {
-                            <span>@consequence.OperationType</span>
-                        }
-                    </li>
-                }
-            </ul>
-        }
-    }
-
-    <hr />
-
     <h4>@L["SessionPage_SessionGaugesSection"]</h4>
 
     @if (SessionGauges.Count == 0)
@@ -1024,192 +210,304 @@ else
 
     <hr />
 
-    <h4>@L["SessionPage_CharactersSection"]</h4>
+    <hr />
 
-    <div style="margin-bottom:12px;">
-        <button @onclick="CreateNpc">@L["SessionPage_CreateNpc"]</button>
+<section class="rc-character-view">
+    <div class="rc-character-view__top">
+        <div class="rc-character-view__heading">
+            <h4>@L["SessionPage_CharactersSection"]</h4>
+            <p class="rc-character-view__subtitle">@L["SessionPage_NoCharactersToDisplay"]</p>
+        </div>
+
+        <div class="rc-character-view__actions">
+            <button @onclick="CreateNpc">@L["SessionPage_CreateNpc"]</button>
+        </div>
     </div>
 
-    <div>
-        <label>
-            <input type="checkbox" @bind="ShowPlayerName" />
-            @L["SessionPage_ShowPlayerName"]
-        </label>
-    </div>
-
-    <div>
-        <label>
+    <div class="rc-character-view__filters">
+        <label class="rc-filter-toggle">
             <input type="checkbox" @bind="ShowAttributes" />
-            @L["SessionPage_ShowAttributes"]
+            <span>@L["SessionPage_ShowAttributes"]</span>
         </label>
-    </div>
 
-    <div>
-        <label>
+        <label class="rc-filter-toggle">
             <input type="checkbox" @bind="ShowTraits" />
-            @L["SessionPage_ShowTraits"]
+            <span>@L["SessionPage_ShowTraits"]</span>
         </label>
-    </div>
 
-    <div>
-        <label>
+        <label class="rc-filter-toggle">
             <input type="checkbox" @bind="ShowGauges" />
-            @L["SessionPage_ShowGauges"]
+            <span>@L["SessionPage_ShowGauges"]</span>
         </label>
-    </div>
 
-    <div>
-        <label>
+        <label class="rc-filter-toggle">
             <input type="checkbox" @bind="IncludeOffline" @bind:after="RefreshCharacterSection" />
-            @L["SessionPage_ShowOfflineCharacters"]
+            <span>@L["SessionPage_ShowOfflineCharacters"]</span>
         </label>
-    </div>
 
-    <div>
-        <label>
+        <label class="rc-filter-toggle">
             <input type="checkbox" @bind="IncludeDead" @bind:after="RefreshCharacterSection" />
-            @L["SessionPage_ShowDeadCharacters"]
+            <span>@L["SessionPage_ShowDeadCharacters"]</span>
         </label>
-    </div>
 
-    <div>
-        <label>
+        <label class="rc-filter-toggle">
             <input type="checkbox" @bind="IncludeNpcs" @bind:after="RefreshCharacterSection" />
-            @L["SessionPage_ShowNpcs"]
+            <span>@L["SessionPage_ShowNpcs"]</span>
         </label>
     </div>
 
-    @if (Characters.Count == 0)
-    {
-        <p>@L["SessionPage_NoCharactersToDisplay"]</p>
-    }
-    else
-    {
-        <ul>
-            @foreach (var character in Characters)
-            {
-                <li style="margin-bottom: 1rem;">
-                    <button @onclick="() => LoadCharacterDetails(character.CharacterId)">
-                        @character.CharacterName
-                    </button>
-
-                    <span>
-                        - @(character.IsAlive? L["Common_Alive"] : L["Common_Dead"])
-                        - @(character.IsOnline? L["Common_Online"] : L["Common_Offline"])
-                        @if (character.IsNpc)
-                        {
-                            <text> - @L["Common_Npc"]</text>
-                        }
-                    </span>
-
-                    @if (ShowPlayerName)
+        <div class="rc-character-view__layout @(SelectedCharacterSheet is not null ? "has-selection" : string.Empty)">
+            <div class="rc-character-view__grid">
+                @if (Characters.Count == 0)
+                {
+                    <div class="rc-empty-panel">
+                        <p>@L["SessionPage_NoCharactersToDisplay"]</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var character in Characters)
                     {
-                        <div><strong>@L["SessionPage_PlayerName"] :</strong> @character.PlayerName</div>
+                        var healthGauges = character.Gauges.Where(g => g.IsHealthGauge).ToList();
+                        var regularGauges = character.Gauges.Where(g => !g.IsHealthGauge).ToList();
+                        var isSelected = SelectedCharacterSheet?.CharacterId == character.CharacterId;
+
+                        <button type="button"
+                                class="rc-character-card @(isSelected ? "selected" : string.Empty)"
+                                @onclick="() => ToggleCharacterDetails(character.CharacterId)">
+
+                            <div class="rc-character-card__header">
+                                <div class="rc-character-card__title-wrap">
+                                    <div class="rc-character-card__title">@character.CharacterName</div>
+
+                                    <div class="rc-character-card__player">
+                                        <span class="rc-character-card__player-name">@character.PlayerName</span>
+                                    </div>
+
+                                    <div class="rc-character-card__meta-row">
+                                        <span class="rc-character-chip @(character.IsAlive ? "alive" : "dead")">
+                                            @(character.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                        </span>
+
+                                        <span class="rc-character-chip @(character.IsOnline ? "online" : "offline")">
+                                            @(character.IsOnline? L["Common_Online"] : L["Common_Offline"])
+                                        </span>
+
+                                        @if (character.IsNpc)
+                                        {
+                                            <span class="rc-character-chip npc">@L["Common_Npc"]</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if (ShowAttributes && character.Attributes.Count > 0)
+                            {
+                                <div class="rc-character-card__section">
+                                    <div class="rc-character-card__section-title">@L["PlayerRoom_Attributes"]</div>
+                                    <div class="rc-character-inline-list">
+                                        @foreach (var attributeItem in character.Attributes)
+                                        {
+                                            <span class="rc-inline-pill">@attributeItem.Name: @attributeItem.Value</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (ShowTraits && character.DerivedStats.Count > 0)
+                            {
+                                <div class="rc-character-card__section">
+                                    <div class="rc-character-card__section-title">@L["PlayerRoom_DerivedStats"]</div>
+                                    <div class="rc-character-inline-list">
+                                        @foreach (var derived in character.DerivedStats)
+                                        {
+                                            <span class="rc-inline-pill">@derived.Name: @derived.Value</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (ShowTraits && character.Traits.Count > 0)
+                            {
+                                <div class="rc-character-card__section">
+                                    <div class="rc-character-card__section-title">@L["PlayerRoom_Traits"]</div>
+                                    <div class="rc-character-inline-list">
+                                        @foreach (var trait in character.Traits)
+                                        {
+                                            <span class="rc-inline-pill">@trait.TraitName: @trait.OptionName</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (ShowGauges && regularGauges.Count > 0)
+                            {
+                                <div class="rc-character-card__section">
+                                    <div class="rc-character-card__section-title">@L["PlayerRoom_Gauges"]</div>
+                                    <div class="rc-character-gauges">
+                                        @foreach (var gauge in regularGauges)
+                                        {
+                                            <div class="rc-character-gauge-line">
+                                                <span class="rc-character-gauge-line__name">@gauge.Name</span>
+                                                <span class="rc-character-gauge-line__value">@gauge.Value / @gauge.MaxValue</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (healthGauges.Count > 0)
+                            {
+                                <div class="rc-character-card__footer">
+                                    @foreach (var gauge in healthGauges)
+                                    {
+                                        var percent = gauge.MaxValue <= 0
+                                            ? 0
+                                            : Math.Clamp((int)Math.Round((double)gauge.Value * 100 / gauge.MaxValue), 0, 100);
+
+                                        <div class="rc-health-gauge">
+                                            <div class="rc-health-gauge__header">
+                                                <span>@gauge.Name</span>
+                                                <span>@gauge.Value / @gauge.MaxValue</span>
+                                            </div>
+                                            <div class="rc-health-gauge__track">
+                                                <div class="rc-health-gauge__fill" style="@($"width:{percent}%")"></div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </button>
                     }
+                }
+            </div>
 
-                    @if (ShowAttributes && character.Attributes.Count > 0)
-                    {
+            @if (SelectedCharacterSheet is not null)
+            {
+                <aside class="rc-character-detail-panel">
+                    <div class="rc-character-detail-panel__header">
                         <div>
-                            <strong>@L["PlayerRoom_Attributes"] :</strong>
-                            @string.Join(" | ", character.Attributes.Select(a => $"{a.Name}: {a.Value}"))
+                            <h5 class="rc-character-detail-panel__title">@SelectedCharacterSheet.Name</h5>
+                            <div class="rc-character-detail-panel__meta">
+                                <span class="rc-character-chip @(SelectedCharacterSheet.IsAlive ? "alive" : "dead")">
+                                    @(SelectedCharacterSheet.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                </span>
+                                @if (SelectedCharacterSummary?.IsNpc == true)
+                                {
+                                    <span class="rc-character-chip npc">@L["Common_Npc"]</span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="rc-character-detail-panel__actions">
+                            @if (!ShowCharacterBioPanel)
+                            {
+                                <button @onclick="EditSelectedCharacter">@L["SessionPage_EditCharacter"]</button>
+                                <button @onclick="ShowCharacterBio">@L["PlayerRoom_CharacterBiography"]</button>
+                            }
+                            else
+                            {
+                                <button @onclick="EditSelectedCharacter">@L["SessionPage_EditCharacter"]</button>
+                                <button @onclick="HideCharacterBio">@L["Common_Cancel"]</button>
+                            }
+                        </div>
+                    </div>
+
+                    @if (ShowCharacterBioPanel)
+                    {
+                        <div class="rc-character-detail-panel__body">
+                            @if (string.IsNullOrWhiteSpace(SelectedCharacterSheet.Biography))
+                            {
+                                <p>@L["EditCharacter_NotFound"]</p>
+                            }
+                            else
+                            {
+                                <p class="rc-character-bio">@SelectedCharacterSheet.Biography</p>
+                            }
                         </div>
                     }
-
-                    @if (ShowTraits && character.Traits.Count > 0)
+                    else
                     {
-                        <div>
-                            <strong>@L["PlayerRoom_Traits"] :</strong>
-                            @string.Join(" | ", character.Traits.Select(t => $"{t.TraitName}: {t.OptionName}"))
+                        <div class="rc-character-detail-panel__body">
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["SessionPage_PlayerName"]</div>
+                                <div>@(SelectedCharacterSummary?.PlayerName ?? "-")</div>
+                            </div>
+
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["PlayerRoom_Attributes"]</div>
+                                <ul class="rc-detail-list">
+                                    @foreach (var attributeLine in SelectedCharacterSheet.Attributes)
+                                    {
+                                        <li>@attributeLine.Name : @attributeLine.Value</li>
+                                    }
+                                </ul>
+                            </div>
+
+                            @if (SelectedCharacterSheet.DerivedStats.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["PlayerRoom_DerivedStats"]</div>
+                                    <ul class="rc-detail-list">
+                                        @foreach (var derivedLine in SelectedCharacterSheet.DerivedStats)
+                                        {
+                                            <li>@derivedLine.Name : @derivedLine.Value</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["PlayerRoom_Traits"]</div>
+                                <ul class="rc-detail-list">
+                                    @foreach (var traitLine in SelectedCharacterSheet.Traits)
+                                    {
+                                        <li>@traitLine.TraitName : @traitLine.OptionName</li>
+                                    }
+                                </ul>
+                            </div>
+
+                            @if (SelectedCharacterSheet.Talents?.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["EditCharacter_Talents"]</div>
+                                    <ul class="rc-detail-list">
+                                        @foreach (var talentLine in SelectedCharacterSheet.Talents)
+                                        {
+                                            <li>@talentLine.Name</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            @if (SelectedCharacterSheet.Items?.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["EditCharacter_Items"]</div>
+                                    <ul class="rc-detail-list">
+                                        @foreach (var itemLine in SelectedCharacterSheet.Items)
+                                        {
+                                            <li>@itemLine.Name</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["PlayerRoom_Gauges"]</div>
+                                <ul class="rc-detail-list">
+                                    @foreach (var gaugeLine in SelectedCharacterSheet.Gauges)
+                                    {
+                                        <li>@gaugeLine.Name : @gaugeLine.Value / @gaugeLine.MaxValue</li>
+                                    }
+                                </ul>
+                            </div>
                         </div>
                     }
-
-                    @if (ShowGauges && character.Gauges.Count > 0)
-                    {
-                        <div>
-                            <strong>@L["PlayerRoom_Gauges"] :</strong>
-                            @string.Join(" | ", character.Gauges.Select(g => $"{g.Name}: {g.Value}/{g.MaxValue}"))
-                        </div>
-                    }
-                </li>
+                </aside>
             }
-        </ul>
-    }
-
-    @if (SelectedCharacterSheet is not null)
-    {
-        <hr />
-        <h4>@L["SessionPage_SelectedCharacterSheet"]</h4>
-        <button @onclick="EditSelectedCharacter">@L["SessionPage_EditCharacter"]</button>
-        <p><strong>@L["PlayerRoom_CharacterName"] :</strong> @SelectedCharacterSheet.Name</p>
-        <p><strong>@L["PlayerRoom_CharacterStatus"] :</strong> @(SelectedCharacterSheet.IsAlive? L["Common_Alive"] : L["Common_Dead"])</p>
-
-        @if (!string.IsNullOrWhiteSpace(SelectedCharacterSheet.Biography))
-        {
-            <p><strong>@L["PlayerRoom_CharacterBiography"] :</strong> @SelectedCharacterSheet.Biography</p>
-        }
-
-        <h5>@L["PlayerRoom_Attributes"]</h5>
-        <ul>
-            @foreach (var attributeLine in SelectedCharacterSheet.Attributes)
-            {
-                <li>@attributeLine.Name : @attributeLine.Value</li>
-            }
-        </ul>
-
-        @if (SelectedCharacterSheet.DerivedStats != null && SelectedCharacterSheet.DerivedStats.Count > 0)
-        {
-            <h5>@L["PlayerRoom_DerivedStats"]</h5>
-            <ul>
-                @foreach (var derivedLine in SelectedCharacterSheet.DerivedStats)
-                {
-                    <li>@derivedLine.Name : @derivedLine.Value</li>
-                }
-            </ul>
-        }
-
-        <h5>@L["PlayerRoom_Traits"]</h5>
-        <ul>
-            @foreach (var traitLine in SelectedCharacterSheet.Traits)
-            {
-                <li>@traitLine.TraitName : @traitLine.OptionName</li>
-            }
-        </ul>
-
-        @if (SelectedCharacterSheet.Talents != null && SelectedCharacterSheet.Talents.Count > 0)
-        {
-            <h5>@L["EditCharacter_Talents"]</h5>
-            <ul>
-                @foreach (var talentLine in SelectedCharacterSheet.Talents)
-                {
-                    <li>@talentLine.Name</li>
-                }
-            </ul>
-        }
-
-        @if (SelectedCharacterSheet.Items != null && SelectedCharacterSheet.Items.Count > 0)
-        {
-            <h5>@L["EditCharacter_Items"]</h5>
-            <ul>
-                @foreach (var itemLine in SelectedCharacterSheet.Items)
-                {
-                    <li>@itemLine.Name</li>
-                }
-            </ul>
-        }
-
-        <h5>@L["PlayerRoom_Gauges"]</h5>
-        <ul>
-            @foreach (var gaugeLine in SelectedCharacterSheet.Gauges)
-            {
-                <li>@gaugeLine.Name : @gaugeLine.Value / @gaugeLine.MaxValue</li>
-            }
-        </ul>
-    }
-
-    @if (!string.IsNullOrWhiteSpace(Message))
-    {
-        <p>@Message</p>
-    }
+        </div>
+    </section>
 
     <hr />
 
@@ -1259,13 +557,18 @@ else
     private bool IsLoaded;
     private bool ShowSessionPassword;
 
-    private bool ShowPlayerName;
     private bool ShowAttributes;
     private bool ShowTraits;
     private bool ShowGauges;
     private bool IncludeOffline;
     private bool IncludeDead;
     private bool IncludeNpcs;
+    private bool ShowCharacterBioPanel;
+
+    private SessionCharacterSummaryDto? SelectedCharacterSummary
+    => SelectedCharacterSheet is null
+        ? null
+        : Characters.FirstOrDefault(x => x.CharacterId == SelectedCharacterSheet.CharacterId);
 
     private Guid CurrentUserId;
     private string CurrentUsername = string.Empty;
@@ -1490,9 +793,17 @@ else
         await InvokeAsync(StateHasChanged);
     }
 
-    private async Task LoadCharacterDetails(Guid characterId)
+    private async Task ToggleCharacterDetails(Guid characterId)
     {
+        if (SelectedCharacterSheet?.CharacterId == characterId)
+        {
+            SelectedCharacterSheet = null;
+            ShowCharacterBioPanel = false;
+            return;
+        }
+
         SelectedCharacterSheet = await CharacterService.GetCharacterSheetForSessionAsync(SessionId, characterId);
+        ShowCharacterBioPanel = false;
     }
 
     private void ToggleSessionPasswordVisibility()
@@ -1741,6 +1052,20 @@ else
             GameTestOutcome.CriticalFailure => L["GameTest_CriticalFailure"],
             GameTestOutcome.Success => L["GameTest_Success"],
             _ => L["GameTest_Failure"]
+        };
+    }
+
+    private string GetOutcomeCssClass(GameMasterGameTestResultLineDto resultLine)
+    {
+        if (!resultLine.HasRolled)
+            return "pending";
+
+        return resultLine.Outcome switch
+        {
+            GameTestOutcome.CriticalSuccess => "critical-success",
+            GameTestOutcome.CriticalFailure => "critical-failure",
+            GameTestOutcome.Success => "success",
+            _ => "failure"
         };
     }
 
@@ -2137,6 +1462,18 @@ else
         return Task.CompletedTask;
     }
 
+    private Task ShowCharacterBio()
+    {
+        ShowCharacterBioPanel = true;
+        return Task.CompletedTask;
+    }
+
+    private Task HideCharacterBio()
+    {
+        ShowCharacterBioPanel = false;
+        return Task.CompletedTask;
+    }
+
     private void EditSelectedCharacter()
     {
         if (SelectedCharacterSheet is null)
@@ -2151,4 +1488,8 @@ else
         Navigation.NavigateTo($"/player/create-character/{playerSessionId}?npc=true");
     }
 
+    private void GoToGameTestPage()
+    {
+        Navigation.NavigateTo($"/mj/session/{SessionId}/test");
+    }
 }

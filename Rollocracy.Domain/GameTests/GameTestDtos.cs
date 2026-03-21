@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Rollocracy.Domain.GameRules;
+using Rollocracy.Domain.Characters;
 
 namespace Rollocracy.Domain.GameTests
 {
@@ -63,6 +64,12 @@ namespace Rollocracy.Domain.GameTests
         public TestTargetScope TargetScope { get; set; }
 
         public TestTraitFilterMode TraitFilterMode { get; set; }
+
+        public bool IncludeNpcs { get; set; }
+
+        public int AutoRollDelaySeconds { get; set; } = 20;
+
+        public CharacterTargetFilterDto AdvancedFilter { get; set; } = new();
 
         public List<GameTestTraitFilterGroupDto> TraitFilters { get; set; } = new();
 
