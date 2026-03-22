@@ -26,50 +26,174 @@ else if (RedirectToHome)
 }
 else
 {
-    <div>
-        <label>@L["GameSystems_NewName"]</label><br />
-        <input @bind="NewSystemName" />
-    </div>
+    <section class="rc-tool-section">
+        <div class="rc-tool-layout">
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["GameSystems_Title"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["GameSystems_Subtitle"]</p>
+                    </div>
+                </div>
 
-    <div>
-        <label>@L["GameSystems_NewDescription"]</label><br />
-        <textarea @bind="NewSystemDescription"></textarea>
-    </div>
+                @if (!string.IsNullOrWhiteSpace(Message))
+                {
+                    <p>@Message</p>
+                }
 
-    <div>
-        <label>@L["GameSystems_ResolutionMode"]</label><br />
-        <select @bind="NewSystemResolutionMode">
-            <option value="@TestResolutionMode.SuccessThreshold">@L["Resolution_SuccessThreshold"]</option>
-            <option value="@TestResolutionMode.RollUnderAttribute">@L["Resolution_RollUnderAttribute"]</option>
-        </select>
-    </div>
+                <div class="rc-test-stats-grid">
+                    <div class="rc-stat-card">
+                        <span class="rc-stat-card__label">@L["GameSystems_TotalSystems"]</span>
+                        <span class="rc-stat-card__value">@GameSystemSummaries.Count</span>
+                    </div>
 
-    <button @onclick="CreateGameSystem">@L["GameSystems_Create"]</button>
+                    <div class="rc-stat-card">
+                        <span class="rc-stat-card__label">@L["GameSystems_UsedSystems"]</span>
+                        <span class="rc-stat-card__value">@GameSystemSummaries.Count(x => x.ImpactedSessionsCount > 0)</span>
+                    </div>
 
-    @if (!string.IsNullOrWhiteSpace(Message))
-    {
-        <p>@Message</p>
-    }
-
-    <hr />
-
-    @if (OwnedGameSystems.Count == 0)
-    {
-        <p>@L["GameSystems_None"]</p>
-    }
-    else
-    {
-        @foreach (var system in OwnedGameSystems)
-        {
-            <div>
-                <p><strong>@L["GameSystems_Name"] :</strong> @system.Name</p>
-                <p><strong>@L["GameSystems_Description"] :</strong> @system.Description</p>
-                <p><strong>@L["GameSystems_Mode"] :</strong> @GetResolutionLabel(system.TestResolutionMode)</p>
-                <button @onclick="() => EditSystem(system.Id)">@L["GameSystems_Edit"]</button>
+                    <div class="rc-stat-card">
+                        <span class="rc-stat-card__label">@L["GameSystems_FreeSystems"]</span>
+                        <span class="rc-stat-card__value">@GameSystemSummaries.Count(x => x.ImpactedSessionsCount == 0)</span>
+                    </div>
+                </div>
             </div>
-            <hr />
-        }
-    }
+
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["GameSystems_CreatePanelTitle"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["GameSystems_CreatePanelSubtitle"]</p>
+                    </div>
+                </div>
+
+                <div class="rc-tool-form-grid">
+                    <div class="rc-form-field">
+                        <label for="new-system-name">@L["GameSystems_NewName"]</label>
+                        <input id="new-system-name" @bind="NewSystemName" />
+                    </div>
+
+                    <div class="rc-form-field">
+                        <label for="new-system-resolution">@L["GameSystems_ResolutionMode"]</label>
+                        <select id="new-system-resolution" @bind="NewSystemResolutionMode">
+                            <option value="@TestResolutionMode.SuccessThreshold">@L["Resolution_SuccessThreshold"]</option>
+                            <option value="@TestResolutionMode.RollUnderAttribute">@L["Resolution_RollUnderAttribute"]</option>
+                        </select>
+                    </div>
+
+                    <div class="rc-form-field" style="grid-column: 1 / -1;">
+                        <label for="new-system-description">@L["GameSystems_NewDescription"]</label>
+                        <textarea id="new-system-description" rows="4" @bind="NewSystemDescription"></textarea>
+                    </div>
+                </div>
+
+                <div class="rc-tool-actions">
+                    <button type="button" @onclick="CreateGameSystem">@L["GameSystems_Create"]</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="rc-tool-panel">
+            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                <div class="rc-tool-panel__header-main">
+                    <h4 class="rc-tool-panel__title">@L["GameSystems_ListTitle"]</h4>
+                    <p class="rc-tool-panel__subtitle">@L["GameSystems_ListSubtitle"]</p>
+                </div>
+            </div>
+
+            @if (GameSystemSummaries.Count == 0)
+            {
+                <div class="rc-empty-panel">
+                    <p>@L["GameSystems_None"]</p>
+                </div>
+            }
+            else
+            {
+                <div class="rc-session-list-grid">
+                    @foreach (var item in GameSystemSummaries)
+                    {
+                        var isDeleteConfirmationOpen = PendingDeleteGameSystemId == item.System.Id;
+
+                        <article class="rc-filter-group-card">
+                            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                                <div class="rc-tool-panel__header-main">
+                                    <h5 class="rc-tool-panel__title">@item.System.Name</h5>
+                                    <p class="rc-tool-panel__subtitle">@GetResolutionLabel(item.System.TestResolutionMode)</p>
+                                </div>
+                            </div>
+
+                            <div class="rc-tool-form-grid">
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["GameSystems_Name"]</label>
+                                    <div class="rc-readonly-value">@item.System.Name</div>
+                                </div>
+
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["GameSystems_Mode"]</label>
+                                    <div class="rc-readonly-value">@GetResolutionLabel(item.System.TestResolutionMode)</div>
+                                </div>
+
+                                <div class="rc-form-field rc-form-field--readonly" style="grid-column: 1 / -1;">
+                                    <label>@L["GameSystems_Description"]</label>
+                                    <div class="rc-readonly-value">
+                                        @if (string.IsNullOrWhiteSpace(item.System.Description))
+                                        {
+                                            <span>@L["Common_None"]</span>
+                                        }
+                                        else
+                                        {
+                                            @item.System.Description
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["GameSystems_UsedBySessions"]</label>
+                                    <div class="rc-readonly-value">@item.ImpactedSessionsCount</div>
+                                </div>
+                            </div>
+
+                            <div class="rc-tool-actions">
+                                <button type="button" @onclick="() => EditSystem(item.System.Id)">
+                                    @L["GameSystems_Edit"]
+                                </button>
+
+                                <button type="button" @onclick="() => AskDeleteSystem(item.System.Id)">
+                                    @L["EditGameSystem_Delete"]
+                                </button>
+                            </div>
+
+                            @if (item.ImpactedSessionsCount > 0)
+                            {
+                                <p class="rc-tool-muted">
+                                    @string.Format(L["GameSystems_DeleteUsedWarning"], item.ImpactedSessionsCount)
+                                </p>
+                            }
+
+                            @if (isDeleteConfirmationOpen)
+                            {
+                                <div class="rc-filter-group-card">
+                                    @if (item.ImpactedSessionsCount > 0)
+                                    {
+                                        <p>@string.Format(L["GameSystems_DeleteConfirmationWithSessions"], item.ImpactedSessionsCount)</p>
+                                    }
+                                    else
+                                    {
+                                        <p>@L["GameSystems_DeleteConfirmation"]</p>
+                                    }
+
+                                    <div class="rc-tool-actions">
+                                        <button type="button" @onclick="ConfirmDeleteSystem">@L["Common_Confirm"]</button>
+                                        <button type="button" @onclick="CancelDeleteSystem">@L["Common_Cancel"]</button>
+                                    </div>
+                                </div>
+                            }
+                        </article>
+                    }
+                </div>
+            }
+        </div>
+    </section>
 }
 
 @code {
@@ -77,10 +201,13 @@ else
     private bool RedirectToHome;
     private Guid CurrentUserId;
     private string Message = string.Empty;
+
     private string NewSystemName = string.Empty;
     private string NewSystemDescription = string.Empty;
     private TestResolutionMode NewSystemResolutionMode = TestResolutionMode.SuccessThreshold;
-    private List<GameSystem> OwnedGameSystems = new();
+
+    private Guid? PendingDeleteGameSystemId;
+    private List<GameSystemSummary> GameSystemSummaries = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -124,7 +251,22 @@ else
 
     private async Task LoadGameSystems()
     {
-        OwnedGameSystems = await GameSystemService.GetGameSystemsByOwnerAsync(CurrentUserId);
+        Message = string.Empty;
+        PendingDeleteGameSystemId = null;
+        GameSystemSummaries.Clear();
+
+        var ownedSystems = await GameSystemService.GetGameSystemsByOwnerAsync(CurrentUserId);
+
+        foreach (var system in ownedSystems)
+        {
+            var editor = await GameSystemService.GetGameSystemEditorAsync(system.Id, CurrentUserId);
+
+            GameSystemSummaries.Add(new GameSystemSummary
+            {
+                System = system,
+                ImpactedSessionsCount = editor?.ImpactedSessions.Count ?? 0
+            });
+        }
     }
 
     private async Task CreateGameSystem()
@@ -139,7 +281,7 @@ else
                 return;
             }
 
-            var system = await GameSystemService.CreateGameSystemAsync(
+            await GameSystemService.CreateGameSystemAsync(
                 CurrentUserId,
                 NewSystemName,
                 NewSystemDescription,
@@ -150,7 +292,7 @@ else
             NewSystemResolutionMode = TestResolutionMode.SuccessThreshold;
 
             await LoadGameSystems();
-            Navigation.NavigateTo($"/mj/gamesystems/{system.Id}");
+            Message = L["GameSystems_Created"];
         }
         catch (Exception ex)
         {
@@ -158,9 +300,42 @@ else
         }
     }
 
-    private void EditSystem(Guid systemId)
+    private void EditSystem(Guid gameSystemId)
     {
-        Navigation.NavigateTo($"/mj/gamesystems/{systemId}");
+        Navigation.NavigateTo($"/mj/gamesystems/{gameSystemId}");
+    }
+
+    private void AskDeleteSystem(Guid gameSystemId)
+    {
+        Message = string.Empty;
+        PendingDeleteGameSystemId = gameSystemId;
+    }
+
+    private Task CancelDeleteSystem()
+    {
+        PendingDeleteGameSystemId = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task ConfirmDeleteSystem()
+    {
+        if (!PendingDeleteGameSystemId.HasValue)
+            return;
+
+        try
+        {
+            Message = string.Empty;
+
+            await GameSystemService.DeleteGameSystemAsync(PendingDeleteGameSystemId.Value, CurrentUserId);
+
+            PendingDeleteGameSystemId = null;
+            await LoadGameSystems();
+            Message = L["GameSystems_Deleted"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
     }
 
     private string GetResolutionLabel(TestResolutionMode mode)
@@ -171,5 +346,11 @@ else
             TestResolutionMode.RollUnderAttribute => L["Resolution_RollUnderAttribute"],
             _ => mode.ToString()
         };
+    }
+
+    private class GameSystemSummary
+    {
+        public GameSystem System { get; set; } = new();
+        public int ImpactedSessionsCount { get; set; }
     }
 }

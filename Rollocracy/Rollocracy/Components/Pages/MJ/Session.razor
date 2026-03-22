@@ -68,91 +68,6 @@ else
 
     <hr />
 
-    <h4>@L["SessionPage_GameSystemSection"]</h4>
-
-    @if (OwnedGameSystems.Count == 0)
-    {
-        <p>@L["SessionPage_NoGameSystems"]</p>
-        <button @onclick="GoToCreateGameSystem">@L["SessionPage_CreateGameSystem"]</button>
-    }
-    else
-    {
-        <div>
-            <label>@L["SessionPage_SelectGameSystem"]</label><br />
-            <select @bind="SelectedGameSystemId">
-                <option value="">@L["SessionPage_NoGameSystemSelected"]</option>
-                @foreach (var gameSystem in OwnedGameSystems)
-                {
-                    <option value="@gameSystem.Id.ToString()">@gameSystem.Name</option>
-                }
-            </select>
-        </div>
-
-        <button @onclick="AssignSelectedGameSystem">@L["SessionPage_AssignGameSystem"]</button>
-        <button @onclick="GoToCreateGameSystem">@L["SessionPage_CreateGameSystem"]</button>
-
-        @if (AssignedGameSystem is not null)
-        {
-            <p><strong>@L["SessionPage_CurrentGameSystem"] :</strong> @AssignedGameSystem.Name</p>
-
-            @if (AssignedGameSystem.LockedToSessionId == SessionId)
-            {
-                <button @onclick="EditAssignedGameSystem">@L["SessionPage_EditSessionGameSystem"]</button>
-            }
-            else
-            {
-                <button @onclick="CloneAndEditAssignedGameSystem">@L["SessionPage_CloneAndEditForSession"]</button>
-            }
-        }
-    }
-
-    <hr />
-
-    <h4>@L["SessionPage_SpecialRolesSection"]</h4>
-
-    <div>
-        <button @onclick="AddSpecialRole">@L["SessionPage_AddSpecialRole"]</button>
-    </div>
-
-    @if (ShowSpecialRoleEditor)
-    {
-        <div style="margin-top:8px;">
-            <select @bind="SelectedSpecialRolePlayerSessionId">
-                <option value="">@L["SessionPage_SelectPlayer"]</option>
-                @foreach (var player in SpecialRoleEligiblePlayers)
-                {
-                    <option value="@player.Id">@player.PlayerName</option>
-                }
-            </select>
-
-            <select @bind="SelectedSpecialRole">
-                <option value="@SessionSpecialRole.Observer">@L["SessionSpecialRole_Observer"]</option>
-                <option value="@SessionSpecialRole.Assistant">@L["SessionSpecialRole_Assistant"]</option>
-            </select>
-
-            <button @onclick="ValidateSpecialRole">@L["Common_Save"]</button>
-        </div>
-    }
-
-    @if (SpecialRoleAssignments.Count == 0)
-    {
-        <p>@L["SessionPage_NoSpecialRoles"]</p>
-    }
-    else
-    {
-        <ul>
-            @foreach (var player in SpecialRoleAssignments)
-            {
-                <li>
-                    @player.PlayerName - @(player.SpecialRole == SessionSpecialRole.Assistant ? L["SessionSpecialRole_Assistant"] : L["SessionSpecialRole_Observer"])
-                    <button @onclick="() => RemoveSpecialRole(player.Id)">@L["EditGameSystem_Delete"]</button>
-                </li>
-            }
-        </ul>
-    }
-
-    <hr />
-
     <h4>@L["SessionPage_SessionGaugesSection"]</h4>
 
     @if (SessionGauges.Count == 0)
@@ -175,29 +90,6 @@ else
         </ul>
     }
 
-    <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
-        <div>
-            <label>@L["SessionPage_SessionGaugeName"]</label><br />
-            <input @bind="NewSessionGaugeName" />
-        </div>
-
-        <div>
-            <label>@L["SessionPage_SessionGaugeMinValue"]</label><br />
-            <input type="number" @bind="NewSessionGaugeMinValue" />
-        </div>
-
-        <div>
-            <label>@L["SessionPage_SessionGaugeMaxValue"]</label><br />
-            <input type="number" @bind="NewSessionGaugeMaxValue" />
-        </div>
-
-        <div>
-            <label>@L["SessionPage_SessionGaugeCurrentValue"]</label><br />
-            <input type="number" @bind="NewSessionGaugeCurrentValue" />
-        </div>
-
-        <button @onclick="CreateSessionGauge">@L["SessionPage_AddSessionGauge"]</button>
-    </div>
 
     @if (PendingSessionGaugeDeleteId.HasValue)
     {
@@ -207,8 +99,6 @@ else
             <button @onclick="CancelDeleteSessionGauge">@L["Common_Cancel"]</button>
         </div>
     }
-
-    <hr />
 
     <hr />
 

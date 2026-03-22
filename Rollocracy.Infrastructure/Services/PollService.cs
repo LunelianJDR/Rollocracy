@@ -16,6 +16,7 @@ namespace Rollocracy.Infrastructure.Services
         private readonly ISessionNotifier _sessionNotifier;
         private readonly IPresenceTracker _presenceTracker;
         private readonly ICharacterEffectService _characterEffectService;
+        private string VoteWeightMetricName => _localizer["SystemMetric_VoteWeight"];
 
         public PollService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
@@ -56,26 +57,17 @@ namespace Rollocracy.Infrastructure.Services
             if (!gameSystemId.HasValue)
                 throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
 
-            Guid? metricDefinitionId = null;
-            var metricNameSnapshot = string.Empty;
+            var metricDefinition = await context.MetricDefinitions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m =>
+                    m.GameSystemId == gameSystemId.Value &&
+                    m.Name == VoteWeightMetricName);
 
-            if (request.VoteWeightMode == PollVoteWeightMode.Metric)
-            {
-                if (!request.MetricDefinitionId.HasValue)
-                    throw new Exception(_localizer["Backend_PollMetricRequired"]);
+            if (metricDefinition == null)
+                throw new Exception(_localizer["Backend_VoteWeightMetricNotFound"]);
 
-                var metricDefinition = await context.MetricDefinitions
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(m =>
-                        m.Id == request.MetricDefinitionId.Value &&
-                        m.GameSystemId == gameSystemId.Value);
-
-                if (metricDefinition == null)
-                    throw new Exception(_localizer["Backend_InvalidPollMetric"]);
-
-                metricDefinitionId = metricDefinition.Id;
-                metricNameSnapshot = metricDefinition.Name;
-            }
+            var metricDefinitionId = metricDefinition.Id;
+            var metricNameSnapshot = metricDefinition.Name;
 
             var poll = new SessionPoll
             {
@@ -84,7 +76,7 @@ namespace Rollocracy.Infrastructure.Services
                 Question = request.Question.Trim(),
                 IsClosed = false,
                 ConsequencesApplied = false,
-                VoteWeightMode = request.VoteWeightMode,
+                VoteWeightMode = PollVoteWeightMode.Metric,
                 MetricDefinitionId = metricDefinitionId,
                 MetricNameSnapshot = metricNameSnapshot,
                 CreatedAtUtc = DateTime.UtcNow

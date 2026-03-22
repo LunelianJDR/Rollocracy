@@ -1057,6 +1057,14 @@ html[data-theme="dark"] .rc-character-card.selected {
             margin: 0;
         }
 
+.rc-filter-group-card.active {
+    border-color: rgba(40, 75, 151, 0.35);
+}
+
+.rc-filter-group-card.inactive {
+    border-color: rgba(198, 125, 25, 0.35);
+}
+
 .rc-consequence-card__grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1892,4 +1900,149 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
     font-size: 0.92rem;
     margin-bottom: 0.35rem;
     color: var(--rc-text);
+}
+
+.rc-session-list-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(700px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+/* =========================================================
+   I-2.E - GAME SYSTEM EDITOR COLLAPSIBLE SECTIONS
+   ========================================================= */
+
+.rc-collapse-section {
+    border: 1px solid var(--rc-border);
+    border-radius: 22px;
+    background: var(--rc-surface);
+    box-shadow: var(--rc-shadow);
+    overflow: hidden;
+}
+
+    .rc-collapse-section + .rc-collapse-section {
+        margin-top: 0;
+    }
+
+.rc-collapse-section__summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 1rem 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background: var(--rc-surface);
+    border-bottom: 1px solid transparent;
+}
+
+    .rc-collapse-section__summary::-webkit-details-marker {
+        display: none;
+    }
+
+.rc-collapse-section[open] .rc-collapse-section__summary {
+    border-bottom-color: var(--rc-border);
+}
+
+.rc-collapse-section__summary::after {
+    content: "▸";
+    color: var(--rc-text-soft);
+    font-size: 1rem;
+    transition: transform var(--rc-transition);
+    flex-shrink: 0;
+}
+
+.rc-collapse-section[open] .rc-collapse-section__summary::after {
+    transform: rotate(90deg);
+}
+
+.rc-collapse-section__title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--rc-text);
+}
+
+.rc-collapse-section__subtitle {
+    margin-top: 0.2rem;
+    font-size: 0.88rem;
+    color: var(--rc-text-soft);
+}
+
+.rc-collapse-section__body {
+    padding: 1rem;
+    background: var(--rc-bg-alt);
+}
+
+    .rc-collapse-section__body > .rc-tool-panel {
+        box-shadow: none;
+        border-radius: 18px;
+    }
+
+@media (max-width: 960px) {
+    .rc-collapse-section__summary,
+    .rc-collapse-section__body {
+        padding: 0.9rem;
+    }
+}
+
+/* =========================================================
+   I-2.E - UI POLISH
+   ========================================================= */
+
+.rc-tool-form-grid--dense {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    align-items: start;
+}
+
+.rc-tool-form-grid--very-dense {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+    align-items: start;
+}
+
+.rc-tool-layout--top {
+    align-items: start;
+}
+
+.rc-collapse-section__summary-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+}
+
+.rc-collapse-section__summary-text {
+    min-width: 0;
+}
+
+.rc-collapse-section__summary-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-right: 0.5rem;
+}
+
+    .rc-collapse-section__summary-actions button {
+        margin: 0;
+    }
+
+@media (max-width: 960px) {
+    .rc-tool-form-grid--dense,
+    .rc-tool-form-grid--very-dense {
+        grid-template-columns: 1fr;
+    }
+
+    .rc-collapse-section__summary-main {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .rc-collapse-section__summary-actions {
+        margin-right: 0;
+    }
 }

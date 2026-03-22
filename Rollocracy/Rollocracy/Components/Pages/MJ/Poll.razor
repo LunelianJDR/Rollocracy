@@ -82,34 +82,7 @@ else
                             <label>@L["Poll_Question"]</label>
                             <input @bind="NewPollQuestion" />
                         </div>
-
-                        <div class="rc-form-field">
-                            <label>@L["Poll_VoteWeightMode"]</label>
-                            <select @bind="SelectedPollVoteWeightMode">
-                                <option value="@PollVoteWeightMode.FixedOne">@L["Poll_VoteWeightModeFixedOne"]</option>
-                                <option value="@PollVoteWeightMode.Metric">@L["Poll_VoteWeightModeMetric"]</option>
-                            </select>
-                        </div>
-
-                        @if (SelectedPollVoteWeightMode == PollVoteWeightMode.Metric)
-                        {
-                            <div class="rc-form-field">
-                                <label>@L["Poll_VoteWeightMetric"]</label>
-                                <select @bind="SelectedPollMetricId">
-                                    <option value="">@L["Poll_SelectMetric"]</option>
-                                    @foreach (var metric in AvailableMetrics)
-                                    {
-                                        <option value="@metric.Id">@metric.Name</option>
-                                    }
-                                </select>
-                            </div>
-                        }
                     </div>
-
-                    @if (SelectedPollVoteWeightMode == PollVoteWeightMode.Metric)
-                    {
-                        <p class="rc-tool-muted">@L["Poll_VoteWeightMetricHelp"]</p>
-                    }
 
                     <div class="rc-tool-subsection">
                         <div class="rc-tool-subsection__header">
@@ -143,7 +116,6 @@ else
                                 </div>
 
                                 <div class="rc-form-field">
-                                    <label>@L["Poll_OptionLabel"]</label>
                                     <input @bind="NewPollOptions[optionIndex].Label" placeholder="@L["Poll_OptionLabel"]" />
                                 </div>
 
@@ -564,8 +536,8 @@ else
     private string Message = string.Empty;
 
     private string NewPollQuestion = string.Empty;
-    private PollVoteWeightMode SelectedPollVoteWeightMode = PollVoteWeightMode.FixedOne;
-    private string SelectedPollMetricId = string.Empty;
+    private Guid? VoteWeightMetricId;
+    private string VoteWeightMetricDisplayName = string.Empty;
     private Guid? SelectedPollHistoryId;
 
     private bool ShowLivePollResults;
@@ -641,6 +613,10 @@ else
                 AvailableTraitDefinitions = await GameSystemService.GetTraitDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
                 AvailableGaugeDefinitions = await GameSystemService.GetGaugeDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
                 AvailableMetrics = await GameSystemService.GetMetricDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
+                var voteWeightMetric = AvailableMetrics.FirstOrDefault(x =>
+                    string.Equals(x.Name, L["SystemMetric_VoteWeight"], StringComparison.CurrentCultureIgnoreCase));
+                VoteWeightMetricId = voteWeightMetric?.Id;
+                VoteWeightMetricDisplayName = voteWeightMetric?.Name ?? L["SystemMetric_VoteWeight"];
 
                 var editor = await GameSystemService.GetGameSystemEditorAsync(AssignedGameSystem.Id, CurrentUserId);
                 if (editor is not null)
@@ -763,6 +739,12 @@ else
         {
             Message = string.Empty;
 
+            if (!VoteWeightMetricId.HasValue)
+            {
+                Message = L["Poll_VoteWeightMetricMissing"];
+                return;
+            }
+
             var request = new PollCreateRequestDto
             {
                 Question = NewPollQuestion,
@@ -780,18 +762,14 @@ else
                         SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null
                     }).ToList()
                 }).ToList(),
-                VoteWeightMode = SelectedPollVoteWeightMode,
-                MetricDefinitionId = SelectedPollVoteWeightMode == PollVoteWeightMode.Metric && !string.IsNullOrWhiteSpace(SelectedPollMetricId)
-                    ? Guid.Parse(SelectedPollMetricId)
-                    : null
+                VoteWeightMode = PollVoteWeightMode.Metric,
+                MetricDefinitionId = VoteWeightMetricId
             };
 
             LatestPoll = await PollService.CreatePollAsync(SessionId, CurrentUserId, request);
 
             NewPollQuestion = string.Empty;
             NewPollOptions = new List<PollOptionRowModel> { new(), new() };
-            SelectedPollVoteWeightMode = PollVoteWeightMode.FixedOne;
-            SelectedPollMetricId = string.Empty;
             SelectedPollHistoryId = null;
             ShowLivePollResults = false;
             ShowPollVoteDetails = false;

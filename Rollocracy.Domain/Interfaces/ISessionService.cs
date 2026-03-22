@@ -30,6 +30,8 @@ namespace Rollocracy.Domain.Interfaces
 
         Task SetSessionActiveStateAsync(Guid sessionId, Guid gameMasterUserAccountId, bool isActive);
 
+        Task DeleteSessionAsync(Guid sessionId, Guid gameMasterUserAccountId);
+
         Task<int> GetAliveCharacterCountAsync(Guid sessionId);
 
         Task<List<PlayerSession>> GetEligibleSpecialRolePlayersAsync(Guid sessionId, Guid gameMasterUserAccountId);
@@ -53,6 +55,15 @@ namespace Rollocracy.Domain.Interfaces
         Task<SessionGauge> CreateSessionGaugeAsync(
             Guid sessionId,
             Guid gameMasterUserAccountId,
+            string name,
+            int minValue,
+            int maxValue,
+            int currentValue);
+
+        Task UpdateSessionGaugeAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            Guid sessionGaugeId,
             string name,
             int minValue,
             int maxValue,

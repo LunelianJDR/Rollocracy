@@ -22,6 +22,8 @@ namespace Rollocracy.Domain.Interfaces
             string description,
             TestResolutionMode testResolutionMode);
 
+        Task DeleteGameSystemAsync(Guid gameSystemId, Guid ownerUserAccountId);
+
         Task<AttributeDefinition> AddAttributeDefinitionAsync(
             Guid gameSystemId,
             Guid ownerUserAccountId,

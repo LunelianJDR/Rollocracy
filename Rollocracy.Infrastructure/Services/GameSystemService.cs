@@ -13,6 +13,7 @@ namespace Rollocracy.Infrastructure.Services
     {
         private readonly IDbContextFactory<RollocracyDbContext> _contextFactory;
         private readonly IStringLocalizer _localizer;
+        private string VoteWeightMetricName => _localizer["SystemMetric_VoteWeight"];
 
         public GameSystemService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
@@ -80,6 +81,18 @@ namespace Rollocracy.Infrastructure.Services
                 IsHealthGauge = true
             });
 
+            context.MetricDefinitions.Add(new MetricDefinition
+            {
+                Id = Guid.NewGuid(),
+                GameSystemId = system.Id,
+                Name = VoteWeightMetricName,
+                BaseValue = 1,
+                MinValue = 0,
+                MaxValue = 9999,
+                RoundMode = ComputedValueRoundMode.None,
+                DisplayOrder = 0
+            });
+
             await context.SaveChangesAsync();
 
             return system;
@@ -107,6 +120,64 @@ namespace Rollocracy.Infrastructure.Services
             system.TestResolutionMode = testResolutionMode;
 
             await context.SaveChangesAsync();
+        }
+
+        public async Task DeleteGameSystemAsync(Guid gameSystemId, Guid ownerUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            await EnsureUserCanManageGameSystemsAsync(context, ownerUserAccountId);
+
+            var system = await context.GameSystems
+                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
+
+            if (system == null)
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+
+            if (system.LockedToSessionId.HasValue)
+                throw new Exception(_localizer["Backend_CannotDeleteLockedSessionGameSystem"]);
+
+            var impactedSessions = await GetSessionsUsingSystemAsync(context, system.Id);
+
+            // Si des sessions utilisent encore ce système partagé,
+            // on leur crée automatiquement une copie verrouillée dédiée,
+            // puis on réassigne chaque session vers sa copie.
+            foreach (var session in impactedSessions)
+            {
+                var clonedSystem = await CloneGameSystemForSessionAsync(system.Id, ownerUserAccountId, session.Id);
+
+                await using var assignContext = await _contextFactory.CreateDbContextAsync();
+
+                var sessionToUpdate = await assignContext.Sessions
+                    .FirstOrDefaultAsync(s => s.Id == session.Id && s.GameMasterUserAccountId == ownerUserAccountId);
+
+                if (sessionToUpdate == null)
+                    throw new Exception(_localizer["Backend_SessionNotFound"]);
+
+                sessionToUpdate.GameSystemId = clonedSystem.Id;
+                await assignContext.SaveChangesAsync();
+            }
+
+            // On recharge le système dans un contexte propre après les éventuelles duplications.
+            await using var deleteContext = await _contextFactory.CreateDbContextAsync();
+
+            var systemToDelete = await deleteContext.GameSystems
+                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
+
+            if (systemToDelete == null)
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+
+            var snapshots = await deleteContext.GameSystemSnapshots
+                .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            if (snapshots.Count > 0)
+            {
+                deleteContext.GameSystemSnapshots.RemoveRange(snapshots);
+            }
+
+            deleteContext.GameSystems.Remove(systemToDelete);
+            await deleteContext.SaveChangesAsync();
         }
 
         public async Task<AttributeDefinition> AddAttributeDefinitionAsync(
@@ -370,7 +441,7 @@ namespace Rollocracy.Infrastructure.Services
             {
                 Id = Guid.NewGuid(),
                 OwnerUserAccountId = sourceSystem.OwnerUserAccountId,
-                Name = $"{sourceSystem.Name} (copie session)",
+                Name = $"{sourceSystem.Name} { _localizer["GameSystem_ForSession"] } {session.SessionName}",
                 Description = sourceSystem.Description,
                 TestResolutionMode = sourceSystem.TestResolutionMode,
                 DefaultTestDiceCount = sourceSystem.DefaultTestDiceCount,
@@ -2464,6 +2535,18 @@ namespace Rollocracy.Infrastructure.Services
                 .Select(x => x.MetricDefinitionId!.Value)
                 .ToHashSet();
 
+            var voteWeightMetric = metrics.FirstOrDefault(x =>
+                string.Equals(x.Name?.Trim(), VoteWeightMetricName, StringComparison.CurrentCultureIgnoreCase));
+
+            if (voteWeightMetric == null || voteWeightMetric.IsDeleted)
+                throw new Exception(_localizer["Backend_VoteWeightMetricRequired"]);
+
+            if (string.IsNullOrWhiteSpace(voteWeightMetric.Name) ||
+                !string.Equals(voteWeightMetric.Name.Trim(), VoteWeightMetricName, StringComparison.Ordinal))
+            {
+                throw new Exception(_localizer["Backend_VoteWeightMetricNameLocked"]);
+            }
+
             foreach (var metric in metrics.Where(x => !x.IsDeleted))
             {
                 if (string.IsNullOrWhiteSpace(metric.Name))
@@ -2525,10 +2608,16 @@ namespace Rollocracy.Infrastructure.Services
                 .Select(x => x.MetricDefinitionId!.Value)
                 .ToHashSet();
 
+            var voteWeightMetricIds = currentDefinitions
+                .Where(x => string.Equals(x.Name, VoteWeightMetricName, StringComparison.CurrentCultureIgnoreCase))
+                .Select(x => x.Id)
+                .ToHashSet();
+
             var removedIds = requestMetrics
                 .Where(x => x.MetricDefinitionId.HasValue && x.IsDeleted)
                 .Select(x => x.MetricDefinitionId!.Value)
                 .Union(currentDefinitions.Where(x => !requestExistingIds.Contains(x.Id)).Select(x => x.Id))
+                .Where(x => !voteWeightMetricIds.Contains(x))
                 .Distinct()
                 .ToList();
 

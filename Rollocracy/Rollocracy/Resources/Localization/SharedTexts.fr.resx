@@ -1074,7 +1074,7 @@
   <value>Ajouter une conséquence à cette option</value>
 </data>
 	<data name="Poll_OptionLabel" xml:space="preserve">
-  <value>Libellé de l'option</value>
+  <value>Option n°</value>
 </data>
 	<data name="Poll_TotalWeightedVotes" xml:space="preserve">
   <value>Total pondéré des votes</value>
@@ -2038,5 +2038,476 @@
 </data>
 	<data name="AudienceFilter_IncludeNPCs" xml:space="preserve">
   <value>Inclure les PNJ</value>
+</data>
+	<data name="ResumeSession_Subtitle" xml:space="preserve">
+  <value>Gérez vos sessions de jeu, leur accès et leurs actions principales.</value>
+</data>
+	<data name="ResumeSession_TotalSessions" xml:space="preserve">
+  <value>Sessions</value>
+</data>
+	<data name="ResumeSession_ActiveSessions" xml:space="preserve">
+  <value>Actives</value>
+</data>
+	<data name="ResumeSession_InactiveSessions" xml:space="preserve">
+  <value>Inactives</value>
+</data>
+	<data name="ResumeSession_TotalAliveCharacters" xml:space="preserve">
+  <value>Personnages vivants</value>
+</data>
+	<data name="ResumeSession_ListTitle" xml:space="preserve">
+  <value>Liste des sessions</value>
+</data>
+	<data name="ResumeSession_ListSubtitle" xml:space="preserve">
+  <value>Ouvrez, paramétrez, activez, désactivez ou supprimez vos sessions.</value>
+</data>
+	<data name="ResumeSession_StatusActive" xml:space="preserve">
+  <value>Session active</value>
+</data>
+	<data name="ResumeSession_StatusInactive" xml:space="preserve">
+  <value>Session désactivée</value>
+</data>
+	<data name="ResumeSession_DeleteDisabledBecauseActive" xml:space="preserve">
+  <value>La suppression n’est possible que pour une session désactivée.</value>
+</data>
+	<data name="ResumeSession_PlayerCanJoin" xml:space="preserve">
+  <value>Session active : des joueurs peuvent rejoindre la session.</value>
+</data>
+	<data name="ResumeSession_DeleteConfirmation" xml:space="preserve">
+  <value>Êtes-vous sûr de vouloir supprimer cette session ? Cette action est irréversible.</value>
+</data>
+	<data name="Backend_CannotDeleteActiveSession" xml:space="preserve">
+  <value>Une session active ne peut pas être supprimée.</value>
+</data>
+	<data name="CreateSession_Subtitle" xml:space="preserve">
+  <value>Créez une session désactivée, choisissez son système de jeu et préparez sa configuration.</value>
+</data>
+	<data name="CreateSession_GameSystemSection" xml:space="preserve">
+  <value>Système de jeu</value>
+</data>
+	<data name="CreateSession_GameSystemSectionSubtitle" xml:space="preserve">
+  <value>Sélectionnez le système à dupliquer pour cette session.</value>
+</data>
+	<data name="CreateSession_SelectedGameSystem" xml:space="preserve">
+  <value>Système sélectionné</value>
+</data>
+	<data name="CreateSession_EditSelectedGameSystem" xml:space="preserve">
+  <value>Éditer système sélectionné</value>
+</data>
+	<data name="CreateSession_NoGameSystem" xml:space="preserve">
+  <value>Vous devez d’abord créer au moins un système de jeu.</value>
+</data>
+	<data name="CreateSession_GameSystemRequired" xml:space="preserve">
+  <value>Vous devez sélectionner un système de jeu.</value>
+</data>
+	<data name="CreateSession_CreateGameSystemTitle" xml:space="preserve">
+  <value>Créer un système de jeu</value>
+</data>
+	<data name="CreateSession_CreateGameSystemSubtitle" xml:space="preserve">
+  <value>Créez rapidement un système, puis éditez-le plus finement si nécessaire.</value>
+</data>
+	<data name="CreateSession_CreateGameSystemButton" xml:space="preserve">
+  <value>Créer système</value>
+</data>
+	<data name="CreateSession_GameSystemCreated" xml:space="preserve">
+  <value>Le système de jeu a bien été créé et sélectionné.</value>
+</data>
+	<data name="SessionSettings_Subtitle" xml:space="preserve">
+  <value>Modifiez les paramètres de la session, gérez les rôles spéciaux et les jauges de session.</value>
+</data>
+	<data name="SessionSettings_GameSystemSection" xml:space="preserve">
+  <value>Système de jeu de la session</value>
+</data>
+	<data name="SessionSettings_GameSystemSectionSubtitle" xml:space="preserve">
+  <value>Le système affecté à cette session peut être édité, mais pas remplacé depuis cet écran.</value>
+</data>
+	<data name="SessionSettings_NoAssignedGameSystem" xml:space="preserve">
+  <value>Aucun système de jeu n’est actuellement affecté à cette session.</value>
+</data>
+	<data name="SessionSettings_AssignedGameSystemId" xml:space="preserve">
+  <value>Identifiant du système affecté</value>
+</data>
+	<data name="SessionSettings_EditAssignedGameSystem" xml:space="preserve">
+  <value>Éditer le système affecté</value>
+</data>
+	<data name="SessionSettings_SpecialRolesSection" xml:space="preserve">
+  <value>Rôles spéciaux joueurs</value>
+</data>
+	<data name="SessionSettings_SpecialRolesSectionSubtitle" xml:space="preserve">
+  <value>Attribuez ou retirez des rôles spéciaux aux joueurs éligibles de la session.</value>
+</data>
+	<data name="SessionSettings_SpecialRole" xml:space="preserve">
+  <value>Rôle spécial</value>
+</data>
+	<data name="SessionSettings_SessionGaugesSection" xml:space="preserve">
+  <value>Jauges de session</value>
+</data>
+	<data name="SessionSettings_SessionGaugesSectionSubtitle" xml:space="preserve">
+  <value>Ajoutez, modifiez ou supprimez les jauges propres à cette session.</value>
+</data>
+	<data name="SessionSettings_CurrentValueLabel" xml:space="preserve">
+  <value>Valeur actuelle</value>
+</data>
+	<data name="SessionSettings_EditGauge" xml:space="preserve">
+  <value>Modifier jauge</value>
+</data>
+	<data name="SessionSettings_AddGaugeTitle" xml:space="preserve">
+  <value>Ajouter une jauge</value>
+</data>
+	<data name="SessionSettings_AddGaugeSubtitle" xml:space="preserve">
+  <value>Définissez son nom, ses bornes et sa valeur courante.</value>
+</data>
+	<data name="Backend_SessionNameTooLong" xml:space="preserve">
+  <value>Le nom de la session ne peut pas dépasser 16 caractères.</value>
+</data>
+	<data name="Session_NameMaxLength" xml:space="preserve">
+  <value>Le nom de la session ne peut pas dépasser 16 caractères.</value>
+</data>
+	<data name="SessionSettings_NewJoinUrl" xml:space="preserve">
+  <value>Nouvel URL de jointure</value>
+</data>
+	<data name="SessionSettings_NameRequired" xml:space="preserve">
+  <value>Le nom de la session est requis.</value>
+</data>
+	<data name="Common_Confirm" xml:space="preserve">
+  <value>Oui</value>
+</data>
+	<data name="Common_Cancel" xml:space="preserve">
+  <value>Annuler</value>
+</data>
+	<data name="SessionSettings_UpdateJoinUrlText" xml:space="preserve">
+  <value>Modifier l'URL</value>
+</data>
+	<data name="SessionSettings_SpecialRoles_Description" xml:space="preserve">
+  <value>Deux rôles spéciaux peuvent être affectés aux joueurs de confiance :</value>
+</data>
+
+	<data name="SessionSettings_SpecialRoles_Observer" xml:space="preserve">
+  <value>Observateur : permet au joueur de voir la liste de tous les personnages de la session</value>
+</data>
+
+	<data name="SessionSettings_SpecialRoles_Assistant" xml:space="preserve">
+  <value>Assistant : permet au joueur de modifier les personnages des autres joueurs, ainsi que d’éditer le système de règle affecté à la session</value>
+</data>
+	<data name="GameSystem_ForSession" xml:space="preserve">
+  <value>pour</value>
+</data>
+	<data name="GameSystems_Subtitle" xml:space="preserve">
+  <value>Créez, consultez, éditez ou supprimez vos systèmes de jeu.</value>
+</data>
+	<data name="GameSystems_TotalSystems" xml:space="preserve">
+  <value>Systèmes</value>
+</data>
+	<data name="GameSystems_UsedSystems" xml:space="preserve">
+  <value>Utilisés</value>
+</data>
+	<data name="GameSystems_FreeSystems" xml:space="preserve">
+  <value>Libres</value>
+</data>
+	<data name="GameSystems_CreatePanelTitle" xml:space="preserve">
+  <value>Créer un système</value>
+</data>
+	<data name="GameSystems_CreatePanelSubtitle" xml:space="preserve">
+  <value>Préparez un nouveau système de jeu réutilisable dans vos futures sessions.</value>
+</data>
+	<data name="GameSystems_ListTitle" xml:space="preserve">
+  <value>Liste des systèmes</value>
+</data>
+	<data name="GameSystems_ListSubtitle" xml:space="preserve">
+  <value>Chaque système peut être édité ou supprimé. Les sessions utilisatrices seront sécurisées automatiquement.</value>
+</data>
+	<data name="GameSystems_UsedBySessions" xml:space="preserve">
+  <value>Sessions utilisatrices</value>
+</data>
+	<data name="GameSystems_DeleteUsedWarning" xml:space="preserve">
+  <value>Ce système est actuellement utilisé par {0} session(s). En cas de suppression, chaque session recevra automatiquement sa propre copie verrouillée.</value>
+</data>
+	<data name="GameSystems_DeleteConfirmation" xml:space="preserve">
+  <value>Êtes-vous sûr de vouloir supprimer ce système de jeu ? Cette action est irréversible.</value>
+</data>
+	<data name="GameSystems_DeleteConfirmationWithSessions" xml:space="preserve">
+  <value>Ce système est utilisé par {0} session(s). Si vous le supprimez, chaque session recevra automatiquement une copie dédiée du système avant suppression. Cette action est irréversible. Confirmer ?</value>
+</data>
+	<data name="GameSystems_Created" xml:space="preserve">
+  <value>Le système de jeu a bien été créé.</value>
+</data>
+	<data name="GameSystems_Deleted" xml:space="preserve">
+  <value>Le système de jeu a bien été supprimé.</value>
+</data>
+	<data name="Backend_CannotDeleteLockedSessionGameSystem" xml:space="preserve">
+  <value>Un système verrouillé à une session ne peut pas être supprimé depuis cette liste.</value>
+</data>
+	<data name="EditGameSystem_Subtitle" xml:space="preserve">
+  <value>Éditez le système de jeu par sections compactes et repliables.</value>
+</data>
+	<data name="EditGameSystem_BackToList" xml:space="preserve">
+  <value>Retour à la liste</value>
+</data>
+	<data name="EditGameSystem_StatsAttributes" xml:space="preserve">
+  <value>Caractéristiques</value>
+</data>
+	<data name="EditGameSystem_StatsDerivedStats" xml:space="preserve">
+  <value>Compétences</value>
+</data>
+	<data name="EditGameSystem_StatsMetrics" xml:space="preserve">
+  <value>Metrics</value>
+</data>
+	<data name="EditGameSystem_StatsTraits" xml:space="preserve">
+  <value>Attributs</value>
+</data>
+	<data name="EditGameSystem_StatsGauges" xml:space="preserve">
+  <value>Jauges</value>
+</data>
+	<data name="EditGameSystem_StatsTalents" xml:space="preserve">
+  <value>Talents</value>
+</data>
+	<data name="EditGameSystem_StatsItems" xml:space="preserve">
+  <value>Objets</value>
+</data>
+	<data name="EditGameSystem_StatsSessions" xml:space="preserve">
+  <value>Sessions liées</value>
+</data>
+	<data name="EditGameSystem_GeneralSectionSubtitle" xml:space="preserve">
+  <value>Paramètres généraux du système, résolution et dés par défaut.</value>
+</data>
+	<data name="EditGameSystem_AttributesSubtitle" xml:space="preserve">
+  <value>Définissez les caractéristiques de base et leurs valeurs par défaut.</value>
+</data>
+	<data name="EditGameSystem_TraitsSubtitle" xml:space="preserve">
+  <value>Définissez les attributs à choix et leurs modificateurs éventuels.</value>
+</data>
+	<data name="EditGameSystem_GaugesSubtitle" xml:space="preserve">
+  <value>Définissez les jauges du système, leurs bornes et leur type.</value>
+</data>
+	<data name="EditGameSystem_TalentsSubtitle" xml:space="preserve">
+  <value>Définissez les talents et leurs modificateurs.</value>
+</data>
+	<data name="EditGameSystem_ItemsSubtitle" xml:space="preserve">
+  <value>Définissez les objets et leurs modificateurs.</value>
+</data>
+	<data name="EditGameSystem_NoAttributes" xml:space="preserve">
+  <value>Aucune caractéristique pour l’instant.</value>
+</data>
+	<data name="EditGameSystem_NoDerivedStats" xml:space="preserve">
+  <value>Aucune compétence pour l’instant.</value>
+</data>
+	<data name="EditGameSystem_NoMetrics" xml:space="preserve">
+  <value>Aucune metric pour l’instant.</value>
+</data>
+	<data name="EditGameSystem_NoTraits" xml:space="preserve">
+  <value>Aucun attribut à choix pour l’instant.</value>
+</data>
+	<data name="EditGameSystem_NoGauges" xml:space="preserve">
+  <value>Aucune jauge pour l’instant.</value>
+</data>
+	<data name="EditGameSystem_NoTalents" xml:space="preserve">
+  <value>Aucun talent pour l’instant.</value>
+</data>
+	<data name="EditGameSystem_NoItems" xml:space="preserve">
+  <value>Aucun objet pour l’instant.</value>
+</data>
+	<data name="EditGameSystem_LockedCopyTitle" xml:space="preserve">
+  <value>Copie verrouillée de session</value>
+</data>
+	<data name="EditGameSystem_LockedCopyText" xml:space="preserve">
+  <value>Ce système est une copie dédiée à une session. Les modifications ne toucheront pas les autres sessions.</value>
+</data>
+	<data name="EditGameSystem_Subtitle" xml:space="preserve">
+  <value>Éditez le système de jeu par sections compactes et repliables.</value>
+</data>
+	<data name="EditGameSystem_BackToList" xml:space="preserve">
+  <value>Retour à la liste</value>
+</data>
+
+	<data name="EditGameSystem_StatsAttributes" xml:space="preserve">
+  <value>Caractéristiques</value>
+</data>
+	<data name="EditGameSystem_StatsDerivedStats" xml:space="preserve">
+  <value>Compétences</value>
+</data>
+	<data name="EditGameSystem_StatsMetrics" xml:space="preserve">
+  <value>Metrics</value>
+</data>
+	<data name="EditGameSystem_StatsTraits" xml:space="preserve">
+  <value>Attributs</value>
+</data>
+	<data name="EditGameSystem_StatsGauges" xml:space="preserve">
+  <value>Jauges</value>
+</data>
+	<data name="EditGameSystem_StatsTalents" xml:space="preserve">
+  <value>Talents</value>
+</data>
+	<data name="EditGameSystem_StatsItems" xml:space="preserve">
+  <value>Objets</value>
+</data>
+	<data name="EditGameSystem_StatsSessions" xml:space="preserve">
+  <value>Sessions liées</value>
+</data>
+
+	<data name="EditGameSystem_GeneralSectionSubtitle" xml:space="preserve">
+  <value>Paramètres généraux du système, résolution et dés par défaut.</value>
+</data>
+	<data name="EditGameSystem_AttributesSubtitle" xml:space="preserve">
+  <value>Définissez les caractéristiques de base et leurs valeurs par défaut.</value>
+</data>
+	<data name="EditGameSystem_TraitsSubtitle" xml:space="preserve">
+  <value>Définissez les attributs à choix et leurs modificateurs éventuels.</value>
+</data>
+	<data name="EditGameSystem_GaugesSubtitle" xml:space="preserve">
+  <value>Définissez les jauges du système, leurs bornes et leur type.</value>
+</data>
+	<data name="EditGameSystem_TalentsSubtitle" xml:space="preserve">
+  <value>Définissez les talents et leurs modificateurs.</value>
+</data>
+	<data name="EditGameSystem_ItemsSubtitle" xml:space="preserve">
+  <value>Définissez les objets et leurs modificateurs.</value>
+</data>
+
+	<data name="EditGameSystem_NoDerivedStats" xml:space="preserve">
+  <value>Aucune compétence pour l’instant.</value>
+</data>
+	<data name="EditGameSystem_NoMetrics" xml:space="preserve">
+  <value>Aucune metric pour l’instant.</value>
+</data>
+	<data name="EditGameSystem_NoTraits" xml:space="preserve">
+  <value>Aucun attribut à choix pour l’instant.</value>
+</data>
+	<data name="EditGameSystem_NoTalents" xml:space="preserve">
+  <value>Aucun talent pour l’instant.</value>
+</data>
+	<data name="EditGameSystem_NoItems" xml:space="preserve">
+  <value>Aucun objet pour l’instant.</value>
+</data>
+
+	<data name="EditGameSystem_MetricFormulaSection" xml:space="preserve">
+  <value>Formule de la metric</value>
+</data>
+	<data name="EditGameSystem_AddMetricFormulaStepRow" xml:space="preserve">
+  <value>Ajouter une étape de formule</value>
+</data>
+	<data name="EditGameSystem_MetricFormulaOperation" xml:space="preserve">
+  <value>Opération</value>
+</data>
+	<data name="EditGameSystem_MetricFormulaOperation_Add" xml:space="preserve">
+  <value>Ajouter</value>
+</data>
+	<data name="EditGameSystem_MetricFormulaOperation_Subtract" xml:space="preserve">
+  <value>Soustraire</value>
+</data>
+	<data name="EditGameSystem_MetricFormulaOperation_Multiply" xml:space="preserve">
+  <value>Multiplier</value>
+</data>
+	<data name="EditGameSystem_MetricFormulaOperation_Divide" xml:space="preserve">
+  <value>Diviser</value>
+</data>
+	<data name="EditGameSystem_MetricFormulaSourceType" xml:space="preserve">
+  <value>Type de source</value>
+</data>
+	<data name="EditGameSystem_MetricFormulaSource_BaseAttribute" xml:space="preserve">
+  <value>Caractéristique</value>
+</data>
+	<data name="EditGameSystem_MetricFormulaSource_Gauge" xml:space="preserve">
+  <value>Jauge</value>
+</data>
+	<data name="EditGameSystem_MetricFormulaSource_DerivedStat" xml:space="preserve">
+  <value>Compétence</value>
+</data>
+	<data name="EditGameSystem_MetricFormulaSource_Metric" xml:space="preserve">
+  <value>Metric</value>
+</data>
+	<data name="EditGameSystem_MetricFormulaSource_Constant" xml:space="preserve">
+  <value>Constante</value>
+</data>
+	<data name="EditGameSystem_MetricFormulaConstantValue" xml:space="preserve">
+  <value>Valeur constante</value>
+</data>
+	<data name="EditGameSystem_MetricFormulaSourceValue" xml:space="preserve">
+  <value>Source</value>
+</data>
+	<data name="EditGameSystem_MetricComponentsSection" xml:space="preserve">
+  <value>Composants de metric</value>
+</data>
+
+	<data name="EditGameSystem_TraitOptionsSection" xml:space="preserve">
+  <value>Options du trait</value>
+</data>
+	<data name="EditGameSystem_AddTraitOptionRow" xml:space="preserve">
+  <value>Ajouter une option</value>
+</data>
+	<data name="EditGameSystem_ChoiceModifiersSection" xml:space="preserve">
+  <value>Modificateurs d’option</value>
+</data>
+	<data name="EditGameSystem_AddChoiceModifierRow" xml:space="preserve">
+  <value>Ajouter un modificateur</value>
+</data>
+
+	<data name="EditGameSystem_TalentModifiersSection" xml:space="preserve">
+  <value>Modificateurs du talent</value>
+</data>
+	<data name="EditGameSystem_AddTalentModifierRow" xml:space="preserve">
+  <value>Ajouter un modificateur</value>
+</data>
+
+	<data name="EditGameSystem_ItemModifiersSection" xml:space="preserve">
+  <value>Modificateurs de l’objet</value>
+</data>
+	<data name="EditGameSystem_AddItemModifierRow" xml:space="preserve">
+  <value>Ajouter un modificateur</value>
+</data>
+	<data name="SystemMetric_VoteWeight" xml:space="preserve">
+  <value>Poids de vote</value>
+</data>
+	<data name="EditGameSystem_ModifierOperation" xml:space="preserve">
+  <value>Opération du modificateur</value>
+</data>
+	<data name="EditGameSystem_ModifierOperation_Add" xml:space="preserve">
+  <value>Ajouter une valeur</value>
+</data>
+	<data name="EditGameSystem_ModifierTargetType" xml:space="preserve">
+  <value>Type de cible</value>
+</data>
+	<data name="EditGameSystem_ModifierTarget_BaseAttribute" xml:space="preserve">
+  <value>Caractéristique</value>
+</data>
+	<data name="EditGameSystem_ModifierTarget_Gauge" xml:space="preserve">
+  <value>Jauge</value>
+</data>
+	<data name="EditGameSystem_ModifierTarget_DerivedStat" xml:space="preserve">
+  <value>Compétence</value>
+</data>
+	<data name="EditGameSystem_ModifierTarget_Metric" xml:space="preserve">
+  <value>Metric</value>
+</data>
+	<data name="EditGameSystem_ModifierTarget" xml:space="preserve">
+  <value>Cible du modificateur</value>
+</data>
+	<data name="EditGameSystem_ModifierValueMode" xml:space="preserve">
+  <value>Mode de valeur</value>
+</data>
+	<data name="EditGameSystem_ModifierValueMode_Fixed" xml:space="preserve">
+  <value>Valeur fixe</value>
+</data>
+	<data name="EditGameSystem_ModifierValueMode_Metric" xml:space="preserve">
+  <value>Depuis une metric</value>
+</data>
+	<data name="EditGameSystem_ModifierValue" xml:space="preserve">
+  <value>Valeur</value>
+</data>
+	<data name="EditGameSystem_ModifierSourceMetric" xml:space="preserve">
+  <value>Metric source</value>
+</data>
+	<data name="Backend_VoteWeightMetricRequired" xml:space="preserve">
+  <value>Le système doit toujours contenir la metric obligatoire « Poids de vote ».</value>
+</data>
+	<data name="Backend_VoteWeightMetricNameLocked" xml:space="preserve">
+  <value>La metric obligatoire « Poids de vote » ne peut pas être renommée.</value>
+</data>
+	<data name="Backend_VoteWeightMetricNotFound" xml:space="preserve">
+  <value>La metric obligatoire « Poids de vote » est introuvable pour ce système.</value>
+</data>
+	<data name="Poll_VoteWeightMetricMissing" xml:space="preserve">
+  <value>Impossible de créer le sondage : la metric obligatoire « Poids de vote » est absente du système.</value>
+</data>
+	<data name="EditGameSystem_VoteWeightMetricLocked" xml:space="preserve">
+  <value>Cette metric est obligatoire et ne peut pas être supprimée.</value>
 </data>
 </root>
