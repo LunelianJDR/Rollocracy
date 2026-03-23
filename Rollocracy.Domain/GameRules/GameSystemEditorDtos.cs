@@ -12,20 +12,22 @@ namespace Rollocracy.Domain.GameRules
     public class BaseAttributeReferenceDto
     {
         public Guid AttributeDefinitionId { get; set; }
+        public string TemporaryKey { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
     }
 
     public class EditableAttributeDefinitionDto
     {
         public Guid? AttributeDefinitionId { get; set; }
+        public string TemporaryKey { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public int MinValue { get; set; }
         public int MaxValue { get; set; }
         public int DefaultValue { get; set; }
         public BaseValueGenerationMode DefaultValueMode { get; set; }
-        public int DefaultValueFlatBonus { get; set; }
         public int DefaultValueDiceCount { get; set; }
         public int DefaultValueDiceSides { get; set; }
+        public int DefaultValueFlatBonus { get; set; }
         public bool IsDeleted { get; set; }
     }
 
@@ -33,6 +35,7 @@ namespace Rollocracy.Domain.GameRules
     {
         public Guid? DerivedStatComponentId { get; set; }
         public Guid AttributeDefinitionId { get; set; }
+        public string AttributeTemporaryKey { get; set; } = string.Empty;
         public string AttributeName { get; set; } = string.Empty;
         public int Weight { get; set; }
         public bool IsDeleted { get; set; }
@@ -93,6 +96,7 @@ namespace Rollocracy.Domain.GameRules
         public bool IsDeleted { get; set; }
 
         public List<EditableModifierDefinitionDto> Modifiers { get; set; } = new();
+        public bool IsLockedForCharacterCreation { get; set; }
     }
 
     public class EditableTraitDefinitionDto
@@ -101,6 +105,7 @@ namespace Rollocracy.Domain.GameRules
         public string Name { get; set; } = string.Empty;
         public bool IsDeleted { get; set; }
         public List<EditableTraitOptionDto> Options { get; set; } = new();
+        public bool IsRandomSelectionGroup { get; set; }
     }
 
     public class EditableGaugeDefinitionDto
@@ -158,6 +163,8 @@ namespace Rollocracy.Domain.GameRules
         public int? CriticalFailureValue { get; set; }
         public bool IsLockedToSessionCopy { get; set; }
         public bool CanUndoLastChange { get; set; }
+        public bool IsGeneric { get; set; }
+        public bool CanEditGenericFlag { get; set; }
 
         public List<GameSystemImpactSessionDto> ImpactedSessions { get; set; } = new();
         public List<BaseAttributeReferenceDto> AvailableBaseAttributes { get; set; } = new();
@@ -182,6 +189,7 @@ namespace Rollocracy.Domain.GameRules
         public int? CriticalSuccessValue { get; set; }
         public int? CriticalFailureValue { get; set; }
         public bool ConfirmSharedSystemChanges { get; set; }
+        public bool IsGeneric { get; set; }
 
         public List<EditableAttributeDefinitionDto> Attributes { get; set; } = new();
         public List<EditableDerivedStatDefinitionDto> DerivedStats { get; set; } = new();

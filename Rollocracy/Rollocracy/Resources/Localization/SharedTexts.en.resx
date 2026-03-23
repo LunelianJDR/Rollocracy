@@ -2510,4 +2510,40 @@
 	<data name="EditGameSystem_ModifierSourceMetric" xml:space="preserve">
   <value>Source metric</value>
 </data>
+	<data name="EditGameSystem_TraitIsRandomGroup" xml:space="preserve">
+  <value>Random group at character creation</value>
+</data>
+	<data name="EditGameSystem_TraitOptionLockedForCreation" xml:space="preserve">
+  <value>Locked option at character creation</value>
+</data>
+	<data name="CreateCharacter_RandomTraitGroup" xml:space="preserve">
+  <value>Assigned randomly</value>
+</data>
+	<data name="Backend_RandomTraitGroupNeedsUnlockedOption" xml:space="preserve">
+  <value>A random trait group must contain at least one unlocked option.</value>
+</data>
+	<data name="Backend_LockedTraitOptionCannotBeSelected" xml:space="preserve">
+  <value>This trait option is locked and cannot be selected during character creation.</value>
+</data>
+	<data name="GameSystems_GenericBadge" xml:space="preserve">
+  <value>generic</value>
+</data>
+	<data name="GameSystems_GenericLabel" xml:space="preserve">
+  <value>Generic system</value>
+</data>
+	<data name="CreateSession_GenericSystemNotice" xml:space="preserve">
+  <value>This system is generic: a dedicated copy will automatically be created for this session.</value>
+</data>
+	<data name="SessionSettings_EditAssignedGameSystemCreatesCopy" xml:space="preserve">
+  <value>This system is currently shared. Editing it will first create a copy dedicated to this session.</value>
+</data>
+	<data name="EditGameSystem_IsGeneric" xml:space="preserve">
+  <value>Generic system</value>
+</data>
+	<data name="EditGameSystem_IsGenericHelp" xml:space="preserve">
+  <value>A generic system can be selected by any GM when creating a session.</value>
+</data>
+	<data name="EditGameSystem_SharedConfirmMessage" xml:space="preserve">
+  <value>This system is shared with existing sessions. Do you confirm applying the changes to this shared system?</value>
+</data>
 </root>

@@ -50,14 +50,14 @@ namespace Rollocracy.Infrastructure.Services
             if (normalizedJms <= 0)
                 throw new Exception(_localizer["Backend_OnlyUsersWithPositiveJmsCanCreateSession"]);
 
-            var sourceGameSystemExists = await context.GameSystems
+            var selectedGameSystem = await context.GameSystems
                 .AsNoTracking()
-                .AnyAsync(gs =>
+                .FirstOrDefaultAsync(gs =>
                     gs.Id == gameSystemId &&
-                    gs.OwnerUserAccountId == gameMasterUserAccountId &&
-                    gs.LockedToSessionId == null);
+                    gs.LockedToSessionId == null &&
+                    (gs.OwnerUserAccountId == gameMasterUserAccountId || gs.IsGeneric));
 
-            if (!sourceGameSystemExists)
+            if (selectedGameSystem == null)
                 throw new Exception(_localizer["Backend_SourceGameSystemNotFound"]);
 
             var sessionSlug = GenerateSessionSlug(trimmedSessionName);
@@ -75,7 +75,7 @@ namespace Rollocracy.Infrastructure.Services
             {
                 Id = Guid.NewGuid(),
                 GameMasterUserAccountId = gameMasterUserAccountId,
-                GameSystemId = null,
+                GameSystemId = selectedGameSystem.Id,
                 SessionName = trimmedSessionName,
                 SessionSlug = sessionSlug,
                 SessionPassword = sessionPassword.Trim(),
@@ -394,7 +394,10 @@ namespace Rollocracy.Infrastructure.Services
 
             var system = await context.GameSystems
                 .AsNoTracking()
-                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == gameMasterUserAccountId);
+                .FirstOrDefaultAsync(gs =>
+                    gs.Id == gameSystemId &&
+                    gs.LockedToSessionId == null &&
+                    (gs.OwnerUserAccountId == gameMasterUserAccountId || gs.IsGeneric));
 
             if (system == null)
                 throw new Exception(_localizer["Backend_GameSystemNotFound"]);

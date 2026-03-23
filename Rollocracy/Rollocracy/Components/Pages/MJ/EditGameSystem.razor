@@ -53,6 +53,21 @@ else
                 {
                     <p>@Message</p>
                 }
+                @if (ShowSharedConfirm)
+                {
+                    <div class="rc-filter-group-card">
+                        <p>@L["EditGameSystem_SharedConfirmMessage"]</p>
+
+                        <div class="rc-tool-actions">
+                            <button type="button" @onclick="ConfirmSharedSave">
+                                @L["Common_Confirm"]
+                            </button>
+                            <button type="button" @onclick="CancelSharedSave">
+                                @L["Common_Cancel"]
+                            </button>
+                        </div>
+                    </div>
+                }
 
                 <div class="rc-test-stats-grid">
                     <div class="rc-stat-card">
@@ -162,16 +177,25 @@ else
                     </div>
 
                     <div class="rc-form-field">
-                        <label>@L["EditGameSystem_CriticalSuccessValue"]</label>
+                        <label>@GetCriticalSuccessLabel()</label>
                         <input type="number" @bind="CurrentSystem.CriticalSuccessValue" />
-                        <span class="rc-tool-muted">@L["EditGameSystem_CriticalHelp"]</span>
                     </div>
 
                     <div class="rc-form-field">
-                        <label>@L["EditGameSystem_CriticalFailureValue"]</label>
+                        <label>@GetCriticalFailureLabel()</label>
                         <input type="number" @bind="CurrentSystem.CriticalFailureValue" />
-                        <span class="rc-tool-muted">@L["EditGameSystem_CriticalHelp"]</span>
                     </div>
+
+                    @if (CurrentSystem.CanEditGenericFlag && !CurrentSystem.IsLockedToSessionCopy)
+                    {
+                        <div class="rc-form-field">
+                            <label>@L["EditGameSystem_IsGeneric"]</label>
+                            <label class="rc-filter-toggle">
+                                <input type="checkbox" @bind="CurrentSystem.IsGeneric" />
+                                <span>@L["Common_Yes"]</span>
+                            </label>
+                        </div>
+                    }
 
                     <div class="rc-form-field rc-form-field--full">
                         <label>@L["EditGameSystem_Description"]</label>
@@ -396,10 +420,10 @@ else
                                                         <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
                                                             <div class="rc-form-field">
                                                                 <label>@L["EditGameSystem_ComponentAttribute"]</label>
-                                                                <select @bind="component.AttributeDefinitionId">
-                                                                    @foreach (var attributeRef in CurrentSystem.AvailableBaseAttributes)
+                                                                <select @key="GetEditableBaseAttributesRenderKey()" @bind="component.AttributeTemporaryKey">
+                                                                    @foreach (var attributeRef in GetEditableBaseAttributes())
                                                                     {
-                                                                        <option value="@attributeRef.AttributeDefinitionId">@attributeRef.Name</option>
+                                                                        <option @key="attributeRef.TemporaryKey" value="@attributeRef.TemporaryKey">@attributeRef.Name</option>
                                                                     }
                                                                 </select>
                                                             </div>
@@ -407,7 +431,7 @@ else
                                                             <div class="rc-form-field">
                                                                 <label>@L["EditGameSystem_ComponentWeight"]</label>
                                                                 <input type="number" @bind="component.Weight" />
-                                                                <span class="rc-tool-muted">@L["EditGameSystem_ComponentWeightHelp"]</span>
+                                                                <!--<span class="rc-tool-muted">@L["EditGameSystem_ComponentWeightHelp"]</span>-->
                                                             </div>
                                                         </div>
 
@@ -745,6 +769,14 @@ else
                                                 <label>@L["Common_Name"]</label>
                                                 <input @bind="trait.Name" />
                                             </div>
+                                        
+                                            <div class="rc-form-field">
+                                                <label></label>
+                                                <label class="rc-filter-toggle">
+                                                    <input type="checkbox" @bind="trait.IsRandomSelectionGroup" />
+                                                    <span>@L["EditGameSystem_TraitIsRandomGroup"]</span>
+                                                </label>
+                                            </div>
                                         </div>
 
                                         <div class="rc-tool-subsection">
@@ -774,7 +806,16 @@ else
                                                                 <label>@L["Common_Name"]</label>
                                                                 <input @bind="option.Name" />
                                                             </div>
+                                                            <div class="rc-form-field">
+                                                                <label></label>
+                                                                <label class="rc-filter-toggle">
+                                                                    <input type="checkbox" @bind="option.IsLockedForCharacterCreation" />
+                                                                    <span>@L["EditGameSystem_TraitOptionLockedForCreation"]</span>
+                                                                </label>
+                                                            </div>
                                                         </div>
+
+                                                        
 
                                                         <div class="rc-tool-subsection">
                                                             <div class="rc-tool-subsection__header">
@@ -803,6 +844,7 @@ else
                                                                                 <option value="@ModifierTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_BaseAttribute"]</option>
                                                                                 <option value="@ModifierTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
                                                                                 <option value="@ModifierTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                                                                                <option value="@ModifierTargetType.Gauge">@L["EditGameSystem_ModifierTarget_Gauge"]</option>
                                                                             </select>
                                                                         </div>
 
@@ -843,6 +885,7 @@ else
                                                                                 </select>
                                                                             </div>
                                                                         }
+
                                                                     </div>
 
                                                                     <div class="rc-tool-actions">
@@ -1061,6 +1104,7 @@ else
                                                                 <option value="@ModifierTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_BaseAttribute"]</option>
                                                                 <option value="@ModifierTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
                                                                 <option value="@ModifierTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                                                                <option value="@ModifierTargetType.Gauge">@L["EditGameSystem_ModifierTarget_Gauge"]</option>
                                                             </select>
                                                         </div>
 
@@ -1213,6 +1257,7 @@ else
                                                                 <option value="@ModifierTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_BaseAttribute"]</option>
                                                                 <option value="@ModifierTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
                                                                 <option value="@ModifierTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                                                                <option value="@ModifierTargetType.Gauge">@L["EditGameSystem_ModifierTarget_Gauge"]</option>
                                                             </select>
                                                         </div>
 
@@ -1354,10 +1399,42 @@ else
         Navigation.NavigateTo("/mj/gamesystems");
     }
 
+    private List<BaseAttributeReferenceDto> GetEditableBaseAttributes()
+    {
+        if (CurrentSystem is null)
+            return new List<BaseAttributeReferenceDto>();
+
+        return CurrentSystem.Attributes
+            .Where(x => !x.IsDeleted)
+            .Select(x => new BaseAttributeReferenceDto
+            {
+                AttributeDefinitionId = x.AttributeDefinitionId ?? Guid.Empty,
+                TemporaryKey = !string.IsNullOrWhiteSpace(x.TemporaryKey)
+                    ? x.TemporaryKey
+                    : (x.AttributeDefinitionId?.ToString("N") ?? string.Empty),
+                Name = x.Name
+            })
+            .Where(x => !string.IsNullOrWhiteSpace(x.TemporaryKey))
+            .ToList();
+    }
+
+    private string GetEditableBaseAttributesRenderKey()
+{
+    var attributes = GetEditableBaseAttributes();
+
+    return string.Join("|", attributes.Select(x => $"{x.TemporaryKey}:{x.Name}"));
+}
+
     private void AddAttributeRow()
     {
-        CurrentSystem?.Attributes.Add(new EditableAttributeDefinitionDto
+        if (CurrentSystem is null)
+            return;
+
+        var tempKey = Guid.NewGuid().ToString("N");
+
+        CurrentSystem.Attributes.Add(new EditableAttributeDefinitionDto
         {
+            TemporaryKey = tempKey,
             Name = string.Empty,
             MinValue = 0,
             MaxValue = 20,
@@ -1380,14 +1457,17 @@ else
 
     private void AddDerivedComponentRow(EditableDerivedStatDefinitionDto derivedStat)
     {
-        if (CurrentSystem is null || CurrentSystem.AvailableBaseAttributes.Count == 0)
+        var availableAttributes = GetEditableBaseAttributes();
+
+        if (availableAttributes.Count == 0)
             return;
 
-        var attribute = CurrentSystem.AvailableBaseAttributes.First();
+        var attribute = availableAttributes.First();
 
         derivedStat.Components.Add(new EditableDerivedStatComponentDto
         {
             AttributeDefinitionId = attribute.AttributeDefinitionId,
+            AttributeTemporaryKey = attribute.TemporaryKey,
             AttributeName = attribute.Name,
             Weight = 100
         });
@@ -1398,7 +1478,8 @@ else
         if (CurrentSystem is null)
             return string.Empty;
 
-        return CurrentSystem.AvailableBaseAttributes
+        return CurrentSystem.Attributes
+            .Where(x => !x.IsDeleted)
             .FirstOrDefault(a => a.AttributeDefinitionId == attributeDefinitionId)?.Name ?? string.Empty;
     }
 
@@ -1701,14 +1782,68 @@ else
 
     private sealed record ModifierTargetOption(Guid Id, string Name);
 
+    private string GetCriticalSuccessLabel()
+    {
+        if (CurrentSystem is null)
+            return L["EditGameSystem_CriticalSuccessValue"];
+
+        var sign = CurrentSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold
+            ? "≥"
+            : "≤";
+
+        return $"{L["EditGameSystem_CriticalSuccessValue"]} {sign}";
+    }
+
+    private string GetCriticalFailureLabel()
+    {
+        if (CurrentSystem is null)
+            return L["EditGameSystem_CriticalFailureValue"];
+
+        var sign = CurrentSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold
+            ? "≤"
+            : "≥";
+
+        return $"{L["EditGameSystem_CriticalFailureValue"]} {sign}";
+    }
+
     private async Task SaveChanges()
+    {
+        await SaveChangesInternal(false);
+    }
+
+    private async Task ConfirmSharedSave()
+    {
+        await SaveChangesInternal(true);
+    }
+
+    private Task CancelSharedSave()
+    {
+        ShowSharedConfirm = false;
+        Message = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveChangesInternal(bool confirmShared)
     {
         if (CurrentSystem is null)
             return;
 
+        // Si le système est partagé avec des sessions existantes
+        // et qu'on n'a pas encore confirmé explicitement,
+        // on affiche d'abord le panneau de confirmation.
+        if (!confirmShared &&
+            !CurrentSystem.IsLockedToSessionCopy &&
+            CurrentSystem.ImpactedSessions.Count > 0)
+        {
+            ShowSharedConfirm = true;
+            Message = string.Empty;
+            return;
+        }
+
         try
         {
             Message = string.Empty;
+            ShowSharedConfirm = false;
 
             PrepareMetricsForSave(CurrentSystem.Metrics);
 
@@ -1721,6 +1856,8 @@ else
                 DefaultTestDiceSides = CurrentSystem.DefaultTestDiceSides,
                 CriticalSuccessValue = CurrentSystem.CriticalSuccessValue,
                 CriticalFailureValue = CurrentSystem.CriticalFailureValue,
+                ConfirmSharedSystemChanges = confirmShared,
+                IsGeneric = CurrentSystem.IsGeneric,
                 Attributes = CurrentSystem.Attributes,
                 DerivedStats = CurrentSystem.DerivedStats,
                 Metrics = CurrentSystem.Metrics,

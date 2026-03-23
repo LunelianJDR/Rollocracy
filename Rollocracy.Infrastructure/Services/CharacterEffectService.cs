@@ -449,8 +449,6 @@ namespace Rollocracy.Infrastructure.Services
                         continue;
                 }
 
-                // Ces deux filtres sont volontairement préparés pour 5B.
-                // On les ignore ici pour éviter de figer un stockage transitoire.
                 filtered.Add(character.Id);
             }
 
@@ -563,8 +561,11 @@ namespace Rollocracy.Infrastructure.Services
             if (!isValid)
                 throw new Exception(_localizer["Backend_InvalidCharacterEffectTarget"]);
 
-            if (effect.ValueMode == ModifierValueMode.Metric && (!effect.SourceMetricId.HasValue || !metricDefinitions.Any(x => x.Id == effect.SourceMetricId.Value)))
+            if (effect.ValueMode == ModifierValueMode.Metric &&
+                (!effect.SourceMetricId.HasValue || !metricDefinitions.Any(x => x.Id == effect.SourceMetricId.Value)))
+            {
                 throw new Exception(_localizer["Backend_InvalidCharacterEffectSourceMetric"]);
+            }
         }
 
         private async Task ApplySingleEffectAsync(
@@ -597,172 +598,471 @@ namespace Rollocracy.Infrastructure.Services
             switch (effect.OperationType)
             {
                 case CharacterEffectOperationType.AddValue:
-                    var resolvedEffectValue = ResolveEffectValue(
-                        character.Id,
-                        effect,
-                        attributeDefinitions,
-                        gaugeDefinitions,
-                        derivedDefinitions,
-                        metricDefinitions,
-                        derivedComponents,
-                        metricComponents,
-                        metricFormulaSteps,
-                        traitValues,
-                        attributeValues,
-                        gaugeValues,
-                        characterTalents,
-                        characterItems,
-                        choiceModifiers,
-                        talentModifiers,
-                        itemModifiers,
-                        characterModifiers);
-
-                    if (effect.TargetType == CharacterEffectTargetType.SessionGauge)
                     {
-                        var gauge = sessionGauges.First(x => x.Id == effect.TargetId);
+                        var resolvedEffectValue = ResolveEffectValue(
+                            character.Id,
+                            effect,
+                            attributeDefinitions,
+                            gaugeDefinitions,
+                            derivedDefinitions,
+                            metricDefinitions,
+                            derivedComponents,
+                            metricComponents,
+                            metricFormulaSteps,
+                            traitValues,
+                            attributeValues,
+                            gaugeValues,
+                            characterTalents,
+                            characterItems,
+                            choiceModifiers,
+                            talentModifiers,
+                            itemModifiers,
+                            characterModifiers);
 
-                        gauge.CurrentValue = Math.Clamp(
-                            gauge.CurrentValue + resolvedEffectValue,
-                            gauge.MinValue,
-                            gauge.MaxValue);
-                    }
-                    else if (effect.TargetType == CharacterEffectTargetType.BaseAttribute)
-
-                    if (effect.TargetType == CharacterEffectTargetType.BaseAttribute)
-                    {
-                        var definition = attributeDefinitions.First(x => x.Id == effect.TargetId);
-                        var value = attributeValues.FirstOrDefault(x => x.AttributeDefinitionId == effect.TargetId);
-
-                        if (value == null)
+                        if (effect.TargetType == CharacterEffectTargetType.SessionGauge)
                         {
-                            value = new CharacterAttributeValue
-                            {
-                                Id = Guid.NewGuid(),
-                                CharacterId = character.Id,
-                                AttributeDefinitionId = definition.Id,
-                                Value = definition.DefaultValue
-                            };
+                            var gauge = sessionGauges.First(x => x.Id == effect.TargetId);
 
-                            context.CharacterAttributeValues.Add(value);
-                            attributeValues.Add(value);
+                            gauge.CurrentValue = Math.Clamp(
+                                gauge.CurrentValue + resolvedEffectValue,
+                                gauge.MinValue,
+                                gauge.MaxValue);
                         }
-
-                        value.Value = Math.Clamp(
-                            value.Value + resolvedEffectValue,
-                            definition.MinValue,
-                            definition.MaxValue);
-                    }
-                    else if (effect.TargetType == CharacterEffectTargetType.Gauge)
-                    {
-                        var definition = gaugeDefinitions.First(x => x.Id == effect.TargetId);
-                        var value = gaugeValues.FirstOrDefault(x => x.GaugeDefinitionId == effect.TargetId);
-
-                        if (value == null)
+                        else if (effect.TargetType == CharacterEffectTargetType.BaseAttribute)
                         {
-                            value = new CharacterGaugeValue
-                            {
-                                Id = Guid.NewGuid(),
-                                CharacterId = character.Id,
-                                GaugeDefinitionId = definition.Id,
-                                Value = definition.DefaultValue
-                            };
+                            var definition = attributeDefinitions.First(x => x.Id == effect.TargetId);
+                            var value = attributeValues.FirstOrDefault(x => x.AttributeDefinitionId == effect.TargetId);
 
-                            context.CharacterGaugeValues.Add(value);
-                            gaugeValues.Add(value);
+                            if (value == null)
+                            {
+                                value = new CharacterAttributeValue
+                                {
+                                    Id = Guid.NewGuid(),
+                                    CharacterId = character.Id,
+                                    AttributeDefinitionId = definition.Id,
+                                    Value = definition.DefaultValue
+                                };
+
+                                context.CharacterAttributeValues.Add(value);
+                                attributeValues.Add(value);
+                            }
+
+                            value.Value = Math.Clamp(
+                                value.Value + resolvedEffectValue,
+                                definition.MinValue,
+                                definition.MaxValue);
                         }
-
-                        value.Value = Math.Clamp(
-                            value.Value + resolvedEffectValue,
-                            definition.MinValue,
-                            definition.MaxValue);
-                    }
-                    else
-                    {
-                        var existingModifier = characterModifiers.FirstOrDefault(x =>
-                            x.TargetType == effect.TargetType &&
-                            x.TargetId == effect.TargetId &&
-                            x.SourceType == sourceType &&
-                            x.SourceId == sourceId);
-
-                        if (existingModifier == null)
+                        else if (effect.TargetType == CharacterEffectTargetType.Gauge)
                         {
-                            existingModifier = new CharacterModifier
-                            {
-                                Id = Guid.NewGuid(),
-                                CharacterId = character.Id,
-                                TargetType = effect.TargetType,
-                                TargetId = effect.TargetId,
-                                AddValue = resolvedEffectValue,
-                                SourceType = sourceType,
-                                SourceId = sourceId,
-                                SourceNameSnapshot = sourceName,
-                                CreatedAtUtc = DateTime.UtcNow
-                            };
+                            var definition = gaugeDefinitions.First(x => x.Id == effect.TargetId);
+                            var value = gaugeValues.FirstOrDefault(x => x.GaugeDefinitionId == effect.TargetId);
 
-                            context.CharacterModifiers.Add(existingModifier);
-                            characterModifiers.Add(existingModifier);
+                            if (value == null)
+                            {
+                                value = new CharacterGaugeValue
+                                {
+                                    Id = Guid.NewGuid(),
+                                    CharacterId = character.Id,
+                                    GaugeDefinitionId = definition.Id,
+                                    Value = definition.DefaultValue
+                                };
+
+                                context.CharacterGaugeValues.Add(value);
+                                gaugeValues.Add(value);
+                            }
+
+                            value.Value = Math.Clamp(
+                                value.Value + resolvedEffectValue,
+                                definition.MinValue,
+                                definition.MaxValue);
                         }
                         else
                         {
-                            existingModifier.AddValue += resolvedEffectValue;
-                            existingModifier.SourceNameSnapshot = sourceName;
+                            var existingModifier = characterModifiers.FirstOrDefault(x =>
+                                x.TargetType == effect.TargetType &&
+                                x.TargetId == effect.TargetId &&
+                                x.SourceType == sourceType &&
+                                x.SourceId == sourceId);
+
+                            if (existingModifier == null)
+                            {
+                                existingModifier = new CharacterModifier
+                                {
+                                    Id = Guid.NewGuid(),
+                                    CharacterId = character.Id,
+                                    TargetType = effect.TargetType,
+                                    TargetId = effect.TargetId,
+                                    AddValue = resolvedEffectValue,
+                                    SourceType = sourceType,
+                                    SourceId = sourceId,
+                                    SourceNameSnapshot = sourceName,
+                                    CreatedAtUtc = DateTime.UtcNow
+                                };
+
+                                context.CharacterModifiers.Add(existingModifier);
+                                characterModifiers.Add(existingModifier);
+                            }
+                            else
+                            {
+                                existingModifier.AddValue += resolvedEffectValue;
+                                existingModifier.SourceNameSnapshot = sourceName;
+                            }
                         }
+
+                        break;
                     }
-                    break;
 
                 case CharacterEffectOperationType.GrantTalent:
-                    if (!characterTalents.Any(x => x.TalentDefinitionId == effect.TargetId))
                     {
-                        var entity = new CharacterTalent
+                        if (!characterTalents.Any(x => x.TalentDefinitionId == effect.TargetId))
                         {
-                            Id = Guid.NewGuid(),
-                            CharacterId = character.Id,
-                            TalentDefinitionId = effect.TargetId
-                        };
+                            var entity = new CharacterTalent
+                            {
+                                Id = Guid.NewGuid(),
+                                CharacterId = character.Id,
+                                TalentDefinitionId = effect.TargetId
+                            };
 
-                        context.CharacterTalents.Add(entity);
-                        characterTalents.Add(entity);
+                            context.CharacterTalents.Add(entity);
+                            characterTalents.Add(entity);
+
+                            await ApplyGaugeModifiersFromTalentAsync(
+                                context,
+                                character,
+                                effect.TargetId,
+                                true,
+                                gaugeDefinitions,
+                                attributeDefinitions,
+                                derivedDefinitions,
+                                metricDefinitions,
+                                derivedComponents,
+                                metricComponents,
+                                metricFormulaSteps,
+                                traitValues,
+                                choiceModifiers,
+                                talentModifiers,
+                                itemModifiers,
+                                attributeValues,
+                                gaugeValues,
+                                characterTalents,
+                                characterItems,
+                                characterModifiers);
+                        }
+
+                        break;
                     }
-                    break;
 
                 case CharacterEffectOperationType.RevokeTalent:
-                    var talent = characterTalents.FirstOrDefault(x => x.TalentDefinitionId == effect.TargetId);
-                    if (talent != null)
                     {
-                        context.CharacterTalents.Remove(talent);
-                        characterTalents.Remove(talent);
+                        var talent = characterTalents.FirstOrDefault(x => x.TalentDefinitionId == effect.TargetId);
+                        if (talent != null)
+                        {
+                            await ApplyGaugeModifiersFromTalentAsync(
+                                context,
+                                character,
+                                effect.TargetId,
+                                false,
+                                gaugeDefinitions,
+                                attributeDefinitions,
+                                derivedDefinitions,
+                                metricDefinitions,
+                                derivedComponents,
+                                metricComponents,
+                                metricFormulaSteps,
+                                traitValues,
+                                choiceModifiers,
+                                talentModifiers,
+                                itemModifiers,
+                                attributeValues,
+                                gaugeValues,
+                                characterTalents,
+                                characterItems,
+                                characterModifiers);
+
+                            context.CharacterTalents.Remove(talent);
+                            characterTalents.Remove(talent);
+                        }
+
+                        break;
                     }
-                    break;
 
                 case CharacterEffectOperationType.GrantItem:
-                    if (!characterItems.Any(x => x.ItemDefinitionId == effect.TargetId))
                     {
-                        var entity = new CharacterItem
+                        if (!characterItems.Any(x => x.ItemDefinitionId == effect.TargetId))
                         {
-                            Id = Guid.NewGuid(),
-                            CharacterId = character.Id,
-                            ItemDefinitionId = effect.TargetId
-                        };
+                            var entity = new CharacterItem
+                            {
+                                Id = Guid.NewGuid(),
+                                CharacterId = character.Id,
+                                ItemDefinitionId = effect.TargetId
+                            };
 
-                        context.CharacterItems.Add(entity);
-                        characterItems.Add(entity);
+                            context.CharacterItems.Add(entity);
+                            characterItems.Add(entity);
+
+                            await ApplyGaugeModifiersFromItemAsync(
+                                context,
+                                character,
+                                effect.TargetId,
+                                true,
+                                gaugeDefinitions,
+                                attributeDefinitions,
+                                derivedDefinitions,
+                                metricDefinitions,
+                                derivedComponents,
+                                metricComponents,
+                                metricFormulaSteps,
+                                traitValues,
+                                choiceModifiers,
+                                talentModifiers,
+                                itemModifiers,
+                                attributeValues,
+                                gaugeValues,
+                                characterTalents,
+                                characterItems,
+                                characterModifiers);
+                        }
+
+                        break;
                     }
-                    break;
 
                 case CharacterEffectOperationType.RevokeItem:
-                    var item = characterItems.FirstOrDefault(x => x.ItemDefinitionId == effect.TargetId);
-                    if (item != null)
                     {
-                        context.CharacterItems.Remove(item);
-                        characterItems.Remove(item);
+                        var item = characterItems.FirstOrDefault(x => x.ItemDefinitionId == effect.TargetId);
+                        if (item != null)
+                        {
+                            await ApplyGaugeModifiersFromItemAsync(
+                                context,
+                                character,
+                                effect.TargetId,
+                                false,
+                                gaugeDefinitions,
+                                attributeDefinitions,
+                                derivedDefinitions,
+                                metricDefinitions,
+                                derivedComponents,
+                                metricComponents,
+                                metricFormulaSteps,
+                                traitValues,
+                                choiceModifiers,
+                                talentModifiers,
+                                itemModifiers,
+                                attributeValues,
+                                gaugeValues,
+                                characterTalents,
+                                characterItems,
+                                characterModifiers);
+
+                            context.CharacterItems.Remove(item);
+                            characterItems.Remove(item);
+                        }
+
+                        break;
                     }
-                    break;
 
                 default:
                     throw new Exception(_localizer["Backend_InvalidCharacterEffectOperation"]);
             }
 
             await Task.CompletedTask;
+        }
+
+        private async Task ApplyGaugeModifiersFromTalentAsync(
+            RollocracyDbContext context,
+            Character character,
+            Guid talentDefinitionId,
+            bool isGrant,
+            List<GaugeDefinition> gaugeDefinitions,
+            List<AttributeDefinition> attributeDefinitions,
+            List<DerivedStatDefinition> derivedDefinitions,
+            List<MetricDefinition> metricDefinitions,
+            List<DerivedStatComponent> derivedComponents,
+            List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> metricFormulaSteps,
+            List<CharacterTraitValue> traitValues,
+            List<ChoiceOptionModifierDefinition> choiceModifiers,
+            List<TalentModifierDefinition> talentModifiers,
+            List<ItemModifierDefinition> itemModifiers,
+            List<CharacterAttributeValue> attributeValues,
+            List<CharacterGaugeValue> gaugeValues,
+            List<CharacterTalent> characterTalents,
+            List<CharacterItem> characterItems,
+            List<CharacterModifier> characterModifiers)
+        {
+            var gaugeModifiers = talentModifiers
+                .Where(x => x.TalentDefinitionId == talentDefinitionId && x.TargetType == ModifierTargetType.Gauge)
+                .ToList();
+
+            foreach (var modifier in gaugeModifiers)
+            {
+                var delta = ResolveGaugeModifierDelta(
+                    character.Id,
+                    modifier.TargetId,
+                    modifier.AddValue,
+                    modifier.ValueMode,
+                    modifier.SourceMetricId,
+                    attributeDefinitions,
+                    gaugeDefinitions,
+                    derivedDefinitions,
+                    metricDefinitions,
+                    derivedComponents,
+                    metricComponents,
+                    metricFormulaSteps,
+                    traitValues,
+                    choiceModifiers,
+                    talentModifiers,
+                    itemModifiers,
+                    attributeValues,
+                    gaugeValues,
+                    characterTalents,
+                    characterItems,
+                    characterModifiers);
+
+                if (!isGrant)
+                    delta = -delta;
+
+                await ApplyGaugeDeltaAsync(context, character.Id, modifier.TargetId, delta, gaugeDefinitions, gaugeValues);
+            }
+        }
+
+        private async Task ApplyGaugeModifiersFromItemAsync(
+            RollocracyDbContext context,
+            Character character,
+            Guid itemDefinitionId,
+            bool isGrant,
+            List<GaugeDefinition> gaugeDefinitions,
+            List<AttributeDefinition> attributeDefinitions,
+            List<DerivedStatDefinition> derivedDefinitions,
+            List<MetricDefinition> metricDefinitions,
+            List<DerivedStatComponent> derivedComponents,
+            List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> metricFormulaSteps,
+            List<CharacterTraitValue> traitValues,
+            List<ChoiceOptionModifierDefinition> choiceModifiers,
+            List<TalentModifierDefinition> talentModifiers,
+            List<ItemModifierDefinition> itemModifiers,
+            List<CharacterAttributeValue> attributeValues,
+            List<CharacterGaugeValue> gaugeValues,
+            List<CharacterTalent> characterTalents,
+            List<CharacterItem> characterItems,
+            List<CharacterModifier> characterModifiers)
+        {
+            var gaugeModifiers = itemModifiers
+                .Where(x => x.ItemDefinitionId == itemDefinitionId && x.TargetType == ModifierTargetType.Gauge)
+                .ToList();
+
+            foreach (var modifier in gaugeModifiers)
+            {
+                var delta = ResolveGaugeModifierDelta(
+                    character.Id,
+                    modifier.TargetId,
+                    modifier.AddValue,
+                    modifier.ValueMode,
+                    modifier.SourceMetricId,
+                    attributeDefinitions,
+                    gaugeDefinitions,
+                    derivedDefinitions,
+                    metricDefinitions,
+                    derivedComponents,
+                    metricComponents,
+                    metricFormulaSteps,
+                    traitValues,
+                    choiceModifiers,
+                    talentModifiers,
+                    itemModifiers,
+                    attributeValues,
+                    gaugeValues,
+                    characterTalents,
+                    characterItems,
+                    characterModifiers);
+
+                if (!isGrant)
+                    delta = -delta;
+
+                await ApplyGaugeDeltaAsync(context, character.Id, modifier.TargetId, delta, gaugeDefinitions, gaugeValues);
+            }
+        }
+
+        private int ResolveGaugeModifierDelta(
+            Guid characterId,
+            Guid targetGaugeId,
+            int addValue,
+            ModifierValueMode valueMode,
+            Guid? sourceMetricId,
+            List<AttributeDefinition> attributeDefinitions,
+            List<GaugeDefinition> gaugeDefinitions,
+            List<DerivedStatDefinition> derivedDefinitions,
+            List<MetricDefinition> metricDefinitions,
+            List<DerivedStatComponent> derivedComponents,
+            List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> metricFormulaSteps,
+            List<CharacterTraitValue> traitValues,
+            List<ChoiceOptionModifierDefinition> choiceModifiers,
+            List<TalentModifierDefinition> talentModifiers,
+            List<ItemModifierDefinition> itemModifiers,
+            List<CharacterAttributeValue> attributeValues,
+            List<CharacterGaugeValue> gaugeValues,
+            List<CharacterTalent> characterTalents,
+            List<CharacterItem> characterItems,
+            List<CharacterModifier> characterModifiers)
+        {
+            if (valueMode != ModifierValueMode.Metric || !sourceMetricId.HasValue)
+                return addValue;
+
+            var metricValue = ResolveCharacterValue(
+                characterId,
+                CharacterEffectTargetType.Metric,
+                sourceMetricId.Value,
+                attributeDefinitions,
+                gaugeDefinitions,
+                derivedDefinitions,
+                metricDefinitions,
+                derivedComponents,
+                metricComponents,
+                metricFormulaSteps,
+                attributeValues,
+                gaugeValues,
+                traitValues,
+                characterTalents,
+                characterItems,
+                choiceModifiers,
+                talentModifiers,
+                itemModifiers,
+                characterModifiers);
+
+            var sign = addValue < 0 ? -1 : 1;
+            return metricValue * sign;
+        }
+
+        private async Task ApplyGaugeDeltaAsync(
+            RollocracyDbContext context,
+            Guid characterId,
+            Guid gaugeDefinitionId,
+            int delta,
+            List<GaugeDefinition> gaugeDefinitions,
+            List<CharacterGaugeValue> gaugeValues)
+        {
+            var definition = gaugeDefinitions.First(x => x.Id == gaugeDefinitionId);
+            var gaugeValue = gaugeValues.FirstOrDefault(x => x.GaugeDefinitionId == gaugeDefinitionId);
+
+            if (gaugeValue == null)
+            {
+                gaugeValue = new CharacterGaugeValue
+                {
+                    Id = Guid.NewGuid(),
+                    CharacterId = characterId,
+                    GaugeDefinitionId = gaugeDefinitionId,
+                    Value = definition.DefaultValue
+                };
+
+                context.CharacterGaugeValues.Add(gaugeValue);
+                gaugeValues.Add(gaugeValue);
+            }
+
+            gaugeValue.Value = Math.Clamp(
+                gaugeValue.Value + delta,
+                definition.MinValue,
+                definition.MaxValue);
         }
 
         private void UpdateCharacterAliveState(
@@ -910,7 +1210,9 @@ namespace Rollocracy.Infrastructure.Services
                         x.AttributeDefinitionId == definition.Id)?.Value ?? definition.DefaultValue;
 
                     var modifierValue = rawModifiers
-                        .Where(x => x.ValueMode != ModifierValueMode.Metric && x.TargetType == ModifierTargetType.BaseAttribute && x.TargetId == definition.Id)
+                        .Where(x => x.ValueMode != ModifierValueMode.Metric &&
+                                    x.TargetType == ModifierTargetType.BaseAttribute &&
+                                    x.TargetId == definition.Id)
                         .Sum(x => x.AddValue);
 
                     return Math.Clamp(baseValue + modifierValue, definition.MinValue, definition.MaxValue);
@@ -979,7 +1281,6 @@ namespace Rollocracy.Infrastructure.Services
                 _ => 0
             };
         }
-
 
         private static HashSet<Guid> BuildEffectiveOwnedDefinitionIds(
             IEnumerable<Guid> directIds,
@@ -1108,8 +1409,6 @@ namespace Rollocracy.Infrastructure.Services
                 itemModifiers,
                 characterModifiers);
 
-            // En 6D, pour un effet basé sur une metric, on réutilise le signe porté
-            // par Value : >= 0 pour un bonus, < 0 pour un malus.
             var sign = effect.Value < 0 ? -1 : 1;
             return metricValue * sign;
         }

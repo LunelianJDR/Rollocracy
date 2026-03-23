@@ -29,5 +29,8 @@ namespace Rollocracy.Domain.Entities
 
         // Si ce système est réservé à une session précise
         public Guid? LockedToSessionId { get; set; }
+
+        // Si ce système est générique (utilisable par tous)
+        public bool IsGeneric { get; set; }
     }
 }

@@ -84,6 +84,17 @@ textarea {
     transition: border-color var(--rc-transition), box-shadow var(--rc-transition), background var(--rc-transition);
 }
 
+input,
+select {
+    min-height: 44px;
+}
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
     input:focus,
     select:focus,
     textarea:focus {
@@ -931,6 +942,14 @@ html[data-theme="dark"] .rc-character-card.selected {
     gap: 0.9rem 1rem;
 }
 
+.rc-tool-form-grid {
+    align-items: end;
+}
+
+    .rc-tool-form-grid .rc-form-field {
+        align-self: end;
+    }
+
 .rc-form-field {
     display: flex;
     flex-direction: column;
@@ -1312,12 +1331,14 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
 /* Slider délai : remplissage depuis la gauche */
 .rc-difficulty-slider input[type="range"].rc-difficulty-slider--classic {
     background: linear-gradient( to right, var(--rc-accent) 0%, var(--rc-accent) var(--slider-progress, 0%), var(--rc-bg-alt) var(--slider-progress, 0%), var(--rc-bg-alt) 100% );
+    min-height:10px;
 }
 
 /* Slider difficulté : remplissage depuis le centre */
-.rc-difficulty-slider input[type="range"].rc-difficulty-slider--centered {
-    background: linear-gradient( to right, var(--rc-bg-alt) 0%, var(--rc-bg-alt) var(--difficulty-progress-start, 50%), var(--difficulty-progress-color, transparent) var(--difficulty-progress-start, 50%), var(--difficulty-progress-color, transparent) var(--difficulty-progress-end, 50%), var(--rc-bg-alt) var(--difficulty-progress-end, 50%), var(--rc-bg-alt) 100% );
-}
+    .rc-difficulty-slider input[type="range"].rc-difficulty-slider--centered {
+        background: linear-gradient( to right, var(--rc-bg-alt) 0%, var(--rc-bg-alt) var(--difficulty-progress-start, 50%), var(--difficulty-progress-color, transparent) var(--difficulty-progress-start, 50%), var(--difficulty-progress-color, transparent) var(--difficulty-progress-end, 50%), var(--rc-bg-alt) var(--difficulty-progress-end, 50%), var(--rc-bg-alt) 100% );
+        min-height: 10px;
+    }
 
 /* On neutralise la piste native WebKit/Blink */
 .rc-difficulty-slider input[type="range"]::-webkit-slider-runnable-track {

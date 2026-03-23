@@ -74,7 +74,11 @@ else
                             <select id="selected-game-system" @bind="SelectedGameSystemIdString">
                                 @foreach (var system in OwnedGameSystems)
                                 {
-                                    <option value="@system.Id.ToString()">@system.Name</option>
+                                    <option value="@system.Id.ToString()">
+                                        @(system.IsGeneric
+                                            ? $"{system.Name} ({L["GameSystems_GenericBadge"]})"
+                                            : system.Name)
+                                    </option>
                                 }
                             </select>
                         </div>
@@ -88,11 +92,24 @@ else
                                 </div>
 
                                 <div class="rc-inline-picker">
-                                    <button type="button" @onclick="EditSelectedSystem">
-                                        @L["CreateSession_EditSelectedGameSystem"]
-                                    </button>
+                                    @if (SelectedGameSystem.IsGeneric)
+                                    {
+                                        <div>@L["CreateSession_GenericSystemNotice"]</div>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" @onclick="EditSelectedSystem">
+                                            @L["CreateSession_EditSelectedGameSystem"]
+                                        </button>
+                                    }
                                 </div>
                             </div>
+                            @if (!string.IsNullOrEmpty(SelectedGameSystem.Description))
+                            {
+                                <div class="rc-inline-info">
+                                    <div>@SelectedGameSystem.Description</div>
+                                </div>
+                            }
                         }
                     }
                 </div>
@@ -233,7 +250,7 @@ else
 
     private async Task LoadGameSystemsAsync()
     {
-        OwnedGameSystems = await GameSystemService.GetGameSystemsByOwnerAsync(CurrentUserId);
+        OwnedGameSystems = await GameSystemService.GetSelectableGameSystemsAsync(CurrentUserId);
 
         if (OwnedGameSystems.Count == 0)
         {
@@ -281,10 +298,10 @@ else
                 SessionName,
                 SessionPassword);
 
-            await GameSystemService.CloneGameSystemForSessionAsync(
-                SelectedGameSystemId.Value,
-                CurrentUserId,
-                session.Id);
+            if (SelectedGameSystem?.IsGeneric == true)
+            {
+                await GameSystemService.EnsureSessionUsesEditableGameSystemAsync(session.Id, CurrentUserId);
+            }
 
             Navigation.NavigateTo($"/mj/session/{session.Id}");
         }

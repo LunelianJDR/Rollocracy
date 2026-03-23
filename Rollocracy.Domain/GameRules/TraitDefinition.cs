@@ -12,5 +12,7 @@ namespace Rollocracy.Domain.GameRules
         // Nom du type d'attribut
         // Exemples : Classe, Race, Background
         public string Name { get; set; } = string.Empty;
+
+        public bool IsRandomSelectionGroup { get; set; }
     }
 }

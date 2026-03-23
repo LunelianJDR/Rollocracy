@@ -89,6 +89,7 @@ namespace Rollocracy.Domain.Characters
     {
         public Guid TraitOptionId { get; set; }
         public string Name { get; set; } = string.Empty;
+        public bool IsLockedForCharacterCreation { get; set; }
     }
 
     public class CharacterCreationTraitDto
@@ -96,6 +97,7 @@ namespace Rollocracy.Domain.Characters
         public Guid TraitDefinitionId { get; set; }
         public string Name { get; set; } = string.Empty;
         public List<CharacterCreationTraitOptionDto> Options { get; set; } = new();
+        public bool IsRandomSelectionGroup { get; set; }
     }
 
     public class CharacterCreationTemplateDto

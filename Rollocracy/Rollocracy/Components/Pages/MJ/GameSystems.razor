@@ -151,6 +151,13 @@ else
                                     <label>@L["GameSystems_UsedBySessions"]</label>
                                     <div class="rc-readonly-value">@item.ImpactedSessionsCount</div>
                                 </div>
+
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["GameSystems_GenericLabel"]</label>
+                                    <div class="rc-readonly-value">
+                                        @(item.System.IsGeneric? L["Common_Yes"] : L["Common_No"])
+                                    </div>
+                                </div>
                             </div>
 
                             <div class="rc-tool-actions">

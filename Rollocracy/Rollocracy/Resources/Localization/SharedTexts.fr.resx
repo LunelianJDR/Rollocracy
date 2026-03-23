@@ -2510,4 +2510,40 @@
 	<data name="EditGameSystem_VoteWeightMetricLocked" xml:space="preserve">
   <value>Cette metric est obligatoire et ne peut pas être supprimée.</value>
 </data>
+	<data name="EditGameSystem_TraitIsRandomGroup" xml:space="preserve">
+  <value>Groupe aléatoire à la création</value>
+</data>
+	<data name="EditGameSystem_TraitOptionLockedForCreation" xml:space="preserve">
+  <value>Option verrouillée à la création</value>
+</data>
+	<data name="CreateCharacter_RandomTraitGroup" xml:space="preserve">
+  <value>Attribué aléatoirement</value>
+</data>
+	<data name="Backend_RandomTraitGroupNeedsUnlockedOption" xml:space="preserve">
+  <value>Un groupe de traits aléatoire doit contenir au moins une option non verrouillée.</value>
+</data>
+	<data name="Backend_LockedTraitOptionCannotBeSelected" xml:space="preserve">
+  <value>Cette option de trait est verrouillée et ne peut pas être sélectionnée à la création.</value>
+</data>
+	<data name="GameSystems_GenericBadge" xml:space="preserve">
+  <value>générique</value>
+</data>
+	<data name="GameSystems_GenericLabel" xml:space="preserve">
+  <value>Système générique</value>
+</data>
+	<data name="CreateSession_GenericSystemNotice" xml:space="preserve">
+  <value>Ce système est générique : une copie dédiée sera automatiquement créée pour cette session.</value>
+</data>
+	<data name="SessionSettings_EditAssignedGameSystemCreatesCopy" xml:space="preserve">
+  <value>Ce système est actuellement partagé. L’édition créera d’abord une copie dédiée à cette session.</value>
+</data>
+	<data name="EditGameSystem_IsGeneric" xml:space="preserve">
+  <value>Système générique</value>
+</data>
+	<data name="EditGameSystem_IsGenericHelp" xml:space="preserve">
+  <value>Un système générique peut être sélectionné par tous les MJ lors de la création d’une session.</value>
+</data>
+	<data name="EditGameSystem_SharedConfirmMessage" xml:space="preserve">
+  <value>Ce système est partagé avec des sessions existantes. Confirmez-vous l’application des changements à ce système partagé ?</value>
+</data>
 </root>

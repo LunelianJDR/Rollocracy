@@ -160,6 +160,10 @@ else
                                         @AssignedGameSystem.Description
                                     }
                                 </div>
+                                @if (AssignedGameSystem is not null && !AssignedGameSystem.LockedToSessionId.HasValue)
+                                {
+                                    <p class="rc-tool-muted">@L["SessionSettings_EditAssignedGameSystemCreatesCopy"]</p>
+                                }
                             </div>
                         </div>
 
@@ -565,12 +569,27 @@ else
         }
     }
 
-    private void EditAssignedGameSystem()
+    private async Task EditAssignedGameSystem()
     {
-        if (CurrentSession?.GameSystemId is not Guid gameSystemId)
+        if (CurrentSession is null)
             return;
 
-        Navigation.NavigateTo($"/mj/gamesystems/{gameSystemId}");
+        try
+        {
+            Message = string.Empty;
+
+            var editableSystem = await GameSystemService.EnsureSessionUsesEditableGameSystemAsync(
+                CurrentSession.Id,
+                CurrentUserId);
+
+            await LoadAll();
+
+            Navigation.NavigateTo($"/mj/gamesystems/{editableSystem.Id}");
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
     }
 
     private void OpenSpecialRoleEditor()

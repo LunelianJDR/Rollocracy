@@ -12,5 +12,7 @@ namespace Rollocracy.Domain.GameRules
         // Nom de l'option
         // Exemples : Guerrier, Mage, Elfe, Humain
         public string Name { get; set; } = string.Empty;
+
+        public bool IsLockedForCharacterCreation { get; set; }
     }
 }
