@@ -2067,3 +2067,176 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
         margin-right: 0;
     }
 }
+
+/* =========================================================
+   I-2.F.1 - SESSION CHARACTER PANEL INLINE EDITION
+   ========================================================= */
+
+.rc-character-detail-panel textarea,
+.rc-character-detail-panel input,
+.rc-character-detail-panel select {
+    width: 100%;
+    max-width: none;
+}
+
+.rc-character-detail-panel__actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.rc-character-bio {
+    white-space: pre-wrap;
+}
+
+/* =========================================================
+   I-2.F.3 - GLOBAL SESSION GAUGES IN HEADER
+   ========================================================= */
+.rc-global-session-gauges {
+    padding: 0 1.25rem 0.9rem 1.25rem;
+    border-bottom: 1px solid var(--rc-border);
+    background: var(--rc-surface);
+}
+
+    .rc-global-session-gauges .rc-session-gauge-strip {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 0.75rem;
+        width: 100%;
+    }
+
+.rc-session-gauge-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.rc-session-gauge-strip__title {
+    align-self: center;
+    font-size: 0.82rem;
+    color: var(--rc-text-soft);
+    white-space: nowrap;
+}
+
+.rc-session-gauge-card {
+    min-width: 210px;
+    max-width: 260px;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 18px;
+    background: var(--rc-surface-2);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.rc-session-gauge-card__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: baseline;
+}
+
+.rc-session-gauge-card__name {
+    font-weight: 700;
+    color: var(--rc-text);
+}
+
+.rc-session-gauge-card__value {
+    color: var(--rc-text-soft);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.rc-session-gauge-card__track {
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--rc-bg-alt);
+    border: 1px solid var(--rc-border);
+    overflow: hidden;
+}
+
+.rc-session-gauge-card__fill {
+    height: 100%;
+    background: var(--rc-accent);
+    border-radius: 999px;
+}
+
+.rc-session-gauge-card__editor {
+    display: flex;
+    gap: 0.45rem;
+    align-items: center;
+}
+
+    .rc-session-gauge-card__editor input {
+        width: 90px;
+        min-height: 40px;
+        max-width: none;
+    }
+
+    .rc-session-gauge-card__editor button {
+        min-height: 40px;
+    }
+
+@media (max-width: 1280px) {
+    .rc-global-session-gauges .rc-session-gauge-strip {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 960px) {
+    .rc-global-session-gauges {
+        padding: 0 1rem 0.75rem 1rem;
+    }
+
+    .rc-session-gauge-strip {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .rc-session-gauge-card {
+        min-width: 100%;
+        max-width: none;
+    }
+}
+
+.rc-session-gauge-card__edit-trigger {
+    min-height: 38px;
+    border-radius: 999px;
+    border: 1px solid var(--rc-border);
+    background: var(--rc-surface);
+    color: var(--rc-text);
+    padding: 0.45rem 0.8rem;
+    cursor: pointer;
+    transition: background var(--rc-transition), border-color var(--rc-transition);
+}
+
+    .rc-session-gauge-card__edit-trigger:hover {
+        background: var(--rc-bg-alt);
+    }
+
+.rc-round-icon-button {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.rc-session-gauge-card--button {
+    text-align: left;
+    cursor: pointer;
+    transition: transform var(--rc-transition), border-color var(--rc-transition), background var(--rc-transition);
+}
+
+    .rc-session-gauge-card--button:hover {
+        background: var(--rc-bg-alt);
+        border-color: var(--rc-accent);
+        transform: translateY(-1px);
+    }

@@ -69,6 +69,20 @@ namespace Rollocracy.Infrastructure.Services
             var metricDefinitionId = metricDefinition.Id;
             var metricNameSnapshot = metricDefinition.Name;
 
+            var eligibleCharacterIds = await _characterEffectService.ResolveTargetCharacterIdsAsync(
+                sessionId,
+                request.AdvancedFilter ?? new CharacterTargetFilterDto
+                {
+                    OnlyAlive = true,
+                    OnlyDead = false,
+                    OnlyOnline = false,
+                    IncludeNpcs = false,
+                    MatchAllConditions = true
+                });
+
+            if (eligibleCharacterIds.Count == 0)
+                throw new Exception(_localizer["Backend_PollNoEligibleCharacters"]);
+
             var poll = new SessionPoll
             {
                 Id = Guid.NewGuid(),
@@ -83,6 +97,16 @@ namespace Rollocracy.Infrastructure.Services
             };
 
             context.SessionPolls.Add(poll);
+
+            foreach (var characterId in eligibleCharacterIds.Distinct())
+            {
+                context.SessionPollEligibleCharacters.Add(new SessionPollEligibleCharacter
+                {
+                    Id = Guid.NewGuid(),
+                    SessionPollId = poll.Id,
+                    CharacterId = characterId
+                });
+            }
 
             var optionIdMap = new Dictionary<int, Guid>();
 
@@ -229,6 +253,15 @@ namespace Rollocracy.Infrastructure.Services
             if (playerSession == null)
                 throw new Exception(_localizer["Backend_PlayerSessionNotFound"]);
 
+            var aliveCharacter = await context.Characters
+                .AsNoTracking()
+                .Where(c => c.PlayerSessionId == playerSessionId && c.IsAlive && !c.IsNpc)
+                .OrderByDescending(c => c.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (aliveCharacter == null)
+                return null;
+
             var poll = await context.SessionPolls
                 .AsNoTracking()
                 .Where(p =>
@@ -237,7 +270,14 @@ namespace Rollocracy.Infrastructure.Services
                         !p.IsClosed ||
                         (p.ClosedAtUtc.HasValue && p.ClosedAtUtc.Value >= recentLimitUtc)
                     ))
-                .OrderByDescending(p => p.CreatedAtUtc)
+                .Join(
+                    context.SessionPollEligibleCharacters.AsNoTracking(),
+                    poll => poll.Id,
+                    eligible => eligible.SessionPollId,
+                    (poll, eligible) => new { poll, eligible })
+                .Where(x => x.eligible.CharacterId == aliveCharacter.Id)
+                .OrderByDescending(x => x.poll.CreatedAtUtc)
+                .Select(x => x.poll)
                 .FirstOrDefaultAsync();
 
             if (poll == null)
@@ -288,6 +328,13 @@ namespace Rollocracy.Infrastructure.Services
 
             if (existingVote != null)
                 throw new Exception(_localizer["Backend_PlayerAlreadyVoted"]);
+
+            var isEligible = await context.SessionPollEligibleCharacters
+                .AsNoTracking()
+                .AnyAsync(x => x.SessionPollId == pollId && x.CharacterId == aliveCharacter.Id);
+
+            if (!isEligible)
+                throw new Exception(_localizer["Backend_PlayerNotEligibleForPoll"]);
 
             decimal voteWeight = 1.00m;
 
@@ -1341,7 +1388,27 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(c => playerSessions.Select(ps => ps.Id).Contains(c.PlayerSessionId))
                 .ToListAsync();
 
+            var eligibleCharacterIds = await context.SessionPollEligibleCharacters
+                .AsNoTracking()
+                .Where(x => x.SessionPollId == pollId)
+                .Select(x => x.CharacterId)
+                .ToListAsync();
+
+            var eligibleCharacters = characters
+                .Where(c => eligibleCharacterIds.Contains(c.Id))
+                .ToList();
+
+            var eligiblePlayerSessionIds = eligibleCharacters
+                .Select(c => c.PlayerSessionId)
+                .Distinct()
+                .ToHashSet();
+
             var onlinePlayersCount = playerSessions.Count(ps => _presenceTracker.IsPlayerOnline(ps.Id));
+            var eligiblePlayersCount = eligiblePlayerSessionIds.Count;
+            var eligibleOnlinePlayersCount = playerSessions.Count(ps =>
+                eligiblePlayerSessionIds.Contains(ps.Id) &&
+                _presenceTracker.IsPlayerOnline(ps.Id));
+
             var totalVotes = votes.Count;
             var totalWeightedVotes = votes.Sum(v => v.VoteWeight);
 
@@ -1408,10 +1475,10 @@ namespace Rollocracy.Infrastructure.Services
                 MetricName = poll.MetricNameSnapshot,
                 TotalVotes = totalVotes,
                 TotalWeightedVotes = totalWeightedVotes,
-                OnlinePlayersCount = onlinePlayersCount,
-                ParticipationPercent = onlinePlayersCount == 0
+                OnlinePlayersCount = eligibleOnlinePlayersCount,
+                ParticipationPercent = eligiblePlayersCount == 0
                     ? 0
-                    : (double)totalVotes * 100.0 / onlinePlayersCount,
+                    : (double)totalVotes * 100.0 / eligiblePlayersCount,
                 Options = options.Select(o =>
                 {
                     var count = votes.Count(v => v.SessionPollOptionId == o.Id);

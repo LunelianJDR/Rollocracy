@@ -49,6 +49,8 @@ namespace Rollocracy.Domain.Interfaces
             bool includeOffline,
             bool includeDead);
 
+        Task<List<Guid>> ResolveTargetCharacterIdsAsync(Guid sessionId, CharacterTargetFilterDto filter);
+
         Task<Guid> GetPlayerSessionIdForUserAsync(Guid sessionId, Guid userAccountId);
 
         Task<RandomDrawEditorDto?> GetRandomDrawEditorAsync(Guid sessionId, Guid userAccountId);
@@ -72,5 +74,6 @@ namespace Rollocracy.Domain.Interfaces
             Guid characterId,
             Guid gameMasterUserAccountId,
             UpdateCharacterRequestDto request);
+
     }
 }

@@ -2546,4 +2546,37 @@
 	<data name="EditGameSystem_SharedConfirmMessage" xml:space="preserve">
   <value>This system is shared with existing sessions. Do you confirm applying the changes to this shared system?</value>
 </data>
+	<data name="SessionPage_ShowDerivedStats" xml:space="preserve">
+  <value>Show skills</value>
+</data>
+	<data name="SessionPage_EditBiography" xml:space="preserve">
+  <value>Edit biography</value>
+</data>
+	<data name="SessionPage_BiographySaved" xml:space="preserve">
+  <value>Biography saved.</value>
+</data>
+	<data name="SessionPage_NoBiography" xml:space="preserve">
+  <value>No biography.</value>
+</data>
+	<data name="SessionPage_ShowStats" xml:space="preserve">
+  <value>Statistics</value>
+</data>
+	<data name="Poll_NoEligibleCharacters" xml:space="preserve">
+  <value>No character matches the selected advanced filters.</value>
+</data>
+	<data name="Backend_PollNoEligibleCharacters" xml:space="preserve">
+  <value>No character is eligible for this poll with the selected filters.</value>
+</data>
+	<data name="Backend_PlayerNotEligibleForPoll" xml:space="preserve">
+  <value>Your character is not eligible to vote in this poll.</value>
+</data>
+	<data name="Layout_SessionGauges" xml:space="preserve">
+  <value>Session gauges</value>
+</data>
+	<data name="Backend_SessionGaugeEditAccessDenied" xml:space="preserve">
+  <value>You are not allowed to edit session gauges.</value>
+</data>
+	<data name="Backend_SessionGaugeNotFound" xml:space="preserve">
+  <value>The requested session gauge could not be found.</value>
+</data>
 </root>

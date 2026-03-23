@@ -2546,4 +2546,37 @@
 	<data name="EditGameSystem_SharedConfirmMessage" xml:space="preserve">
   <value>Ce système est partagé avec des sessions existantes. Confirmez-vous l’application des changements à ce système partagé ?</value>
 </data>
+	<data name="SessionPage_ShowDerivedStats" xml:space="preserve">
+  <value>Afficher les compétences</value>
+</data>
+	<data name="SessionPage_EditBiography" xml:space="preserve">
+  <value>Éditer la biographie</value>
+</data>
+	<data name="SessionPage_BiographySaved" xml:space="preserve">
+  <value>Biographie enregistrée.</value>
+</data>
+	<data name="SessionPage_NoBiography" xml:space="preserve">
+  <value>Aucune biographie.</value>
+</data>
+	<data name="SessionPage_ShowStats" xml:space="preserve">
+  <value>Statistiques</value>
+</data>
+	<data name="Poll_NoEligibleCharacters" xml:space="preserve">
+  <value>Aucun personnage ne correspond aux filtres avancés sélectionnés.</value>
+</data>
+	<data name="Backend_PollNoEligibleCharacters" xml:space="preserve">
+  <value>Aucun personnage n’est éligible pour ce sondage avec les filtres sélectionnés.</value>
+</data>
+	<data name="Backend_PlayerNotEligibleForPoll" xml:space="preserve">
+  <value>Votre personnage n’est pas éligible pour voter à ce sondage.</value>
+</data>
+	<data name="Layout_SessionGauges" xml:space="preserve">
+  <value>Jauges de session</value>
+</data>
+	<data name="Backend_SessionGaugeEditAccessDenied" xml:space="preserve">
+  <value>Vous n’avez pas l’autorisation de modifier les jauges de session.</value>
+</data>
+	<data name="Backend_SessionGaugeNotFound" xml:space="preserve">
+  <value>La jauge de session demandée est introuvable.</value>
+</data>
 </root>

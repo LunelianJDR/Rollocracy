@@ -49,6 +49,7 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<SessionPoll> SessionPolls => Set<SessionPoll>();
         public DbSet<SessionPollOption> SessionPollOptions => Set<SessionPollOption>();
         public DbSet<SessionPollVote> SessionPollVotes => Set<SessionPollVote>();
+        public DbSet<SessionPollEligibleCharacter> SessionPollEligibleCharacters => Set<SessionPollEligibleCharacter>();
         public DbSet<SessionPollWeightRule> SessionPollWeightRules => Set<SessionPollWeightRule>();
         public DbSet<SessionPollOptionConsequence> SessionPollOptionConsequences => Set<SessionPollOptionConsequence>();
         public DbSet<SessionPollAppliedEffect> SessionPollAppliedEffects => Set<SessionPollAppliedEffect>();
@@ -173,6 +174,13 @@ namespace Rollocracy.Infrastructure.Persistence
 
                 entity.Property(x => x.ResultSnapshotJson)
                     .HasColumnType("text");
+            });
+
+            modelBuilder.Entity<SessionPollEligibleCharacter>(entity =>
+            {
+                entity.HasIndex(x => x.SessionPollId);
+                entity.HasIndex(x => x.CharacterId);
+                entity.HasIndex(x => new { x.SessionPollId, x.CharacterId }).IsUnique();
             });
         }
     }

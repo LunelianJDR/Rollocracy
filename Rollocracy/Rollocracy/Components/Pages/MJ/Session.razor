@@ -5,19 +5,13 @@
 @using Microsoft.Extensions.Localization
 @using Rollocracy.Domain.Characters
 @using Rollocracy.Domain.Entities
-@using Rollocracy.Domain.GameRules
-@using Rollocracy.Domain.GameTests
 @using Rollocracy.Localization
-@using Rollocracy.Domain.Polls
 @using DomainSession = Rollocracy.Domain.Entities.Session
 @inject NavigationManager Navigation
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
-@inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
 @inject Rollocracy.Domain.Interfaces.ICharacterService CharacterService
-@inject Rollocracy.Domain.Interfaces.IGameTestService GameTestService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IStringLocalizer<SharedTexts> L
-@inject Rollocracy.Domain.Interfaces.IPollService PollService
 
 <h3>@L["SessionPage_Title"]</h3>
 
@@ -60,91 +54,54 @@ else
         </button>
     }
 
-    <hr />
+    <section class="rc-character-view">
+        <div class="rc-character-view__top">
+            <div class="rc-character-view__heading">
+                <h4>@L["SessionPage_CharactersSection"]</h4>
+                <p class="rc-character-view__subtitle">@L["SessionPage_NoCharactersToDisplay"]</p>
+            </div>
 
-    <p><strong>@L["SessionPage_ConnectedPlayers"] :</strong> @SessionStats.ConnectedPlayersCount</p>
-    <p><strong>@L["SessionPage_AliveCharactersCount"] :</strong> @SessionStats.AliveCharactersCount</p>
-    <p><strong>@L["SessionPage_TotalCharactersCount"] :</strong> @SessionStats.TotalCharactersCount</p>
-
-    <hr />
-
-    <h4>@L["SessionPage_SessionGaugesSection"]</h4>
-
-    @if (SessionGauges.Count == 0)
-    {
-        <p>@L["SessionPage_NoSessionGauges"]</p>
-    }
-    else
-    {
-        <ul>
-            @foreach (var gauge in SessionGauges)
-            {
-                <li>
-                    <strong>@gauge.Name</strong> : @gauge.CurrentValue / @gauge.MaxValue
-                    (min @gauge.MinValue)
-                    <button @onclick="() => AskDeleteSessionGauge(gauge.SessionGaugeId)">
-                        @L["EditGameSystem_Delete"]
-                    </button>
-                </li>
-            }
-        </ul>
-    }
-
-
-    @if (PendingSessionGaugeDeleteId.HasValue)
-    {
-        <div style="margin-top:12px; padding:8px; border:1px solid #ccc;">
-            <p>@L["SessionPage_ConfirmDeleteSessionGauge"]</p>
-            <button @onclick="ConfirmDeleteSessionGauge">@L["Common_Confirm"]</button>
-            <button @onclick="CancelDeleteSessionGauge">@L["Common_Cancel"]</button>
-        </div>
-    }
-
-    <hr />
-
-<section class="rc-character-view">
-    <div class="rc-character-view__top">
-        <div class="rc-character-view__heading">
-            <h4>@L["SessionPage_CharactersSection"]</h4>
-            <p class="rc-character-view__subtitle">@L["SessionPage_NoCharactersToDisplay"]</p>
+            <div class="rc-character-view__actions">
+                <button @onclick="CreateNpc">@L["SessionPage_CreateNpc"]</button>
+            </div>
         </div>
 
-        <div class="rc-character-view__actions">
-            <button @onclick="CreateNpc">@L["SessionPage_CreateNpc"]</button>
+        <div class="rc-character-view__filters">
+            <label class="rc-filter-toggle">
+                <input type="checkbox" @bind="ShowAttributes" />
+                <span>@L["SessionPage_ShowAttributes"]</span>
+            </label>
+
+            <label class="rc-filter-toggle">
+                <input type="checkbox" @bind="ShowDerivedStats" />
+                <span>@L["SessionPage_ShowDerivedStats"]</span>
+            </label>
+
+            <label class="rc-filter-toggle">
+                <input type="checkbox" @bind="ShowTraits" />
+                <span>@L["SessionPage_ShowTraits"]</span>
+            </label>
+
+            <label class="rc-filter-toggle">
+                <input type="checkbox" @bind="ShowGauges" />
+                <span>@L["SessionPage_ShowGauges"]</span>
+            </label>
+
+            <label class="rc-filter-toggle">
+                <input type="checkbox" @bind="IncludeOffline" @bind:after="RefreshCharacterSection" />
+                <span>@L["SessionPage_ShowOfflineCharacters"]</span>
+            </label>
+
+            <label class="rc-filter-toggle">
+                <input type="checkbox" @bind="IncludeDead" @bind:after="RefreshCharacterSection" />
+                <span>@L["SessionPage_ShowDeadCharacters"]</span>
+            </label>
+
+            <label class="rc-filter-toggle">
+                <input type="checkbox" @bind="IncludeNpcs" @bind:after="RefreshCharacterSection" />
+                <span>@L["SessionPage_ShowNpcs"]</span>
+            </label>
         </div>
-    </div>
-
-    <div class="rc-character-view__filters">
-        <label class="rc-filter-toggle">
-            <input type="checkbox" @bind="ShowAttributes" />
-            <span>@L["SessionPage_ShowAttributes"]</span>
-        </label>
-
-        <label class="rc-filter-toggle">
-            <input type="checkbox" @bind="ShowTraits" />
-            <span>@L["SessionPage_ShowTraits"]</span>
-        </label>
-
-        <label class="rc-filter-toggle">
-            <input type="checkbox" @bind="ShowGauges" />
-            <span>@L["SessionPage_ShowGauges"]</span>
-        </label>
-
-        <label class="rc-filter-toggle">
-            <input type="checkbox" @bind="IncludeOffline" @bind:after="RefreshCharacterSection" />
-            <span>@L["SessionPage_ShowOfflineCharacters"]</span>
-        </label>
-
-        <label class="rc-filter-toggle">
-            <input type="checkbox" @bind="IncludeDead" @bind:after="RefreshCharacterSection" />
-            <span>@L["SessionPage_ShowDeadCharacters"]</span>
-        </label>
-
-        <label class="rc-filter-toggle">
-            <input type="checkbox" @bind="IncludeNpcs" @bind:after="RefreshCharacterSection" />
-            <span>@L["SessionPage_ShowNpcs"]</span>
-        </label>
-    </div>
 
         <div class="rc-character-view__layout @(SelectedCharacterSheet is not null ? "has-selection" : string.Empty)">
             <div class="rc-character-view__grid">
@@ -204,7 +161,7 @@ else
                                 </div>
                             }
 
-                            @if (ShowTraits && character.DerivedStats.Count > 0)
+                            @if (ShowDerivedStats && character.DerivedStats.Count > 0)
                             {
                                 <div class="rc-character-card__section">
                                     <div class="rc-character-card__section-title">@L["PlayerRoom_DerivedStats"]</div>
@@ -290,35 +247,204 @@ else
                         </div>
 
                         <div class="rc-character-detail-panel__actions">
-                            @if (!ShowCharacterBioPanel)
+                            @if (IsCharacterEditMode)
                             {
-                                <button @onclick="EditSelectedCharacter">@L["SessionPage_EditCharacter"]</button>
-                                <button @onclick="ShowCharacterBio">@L["PlayerRoom_CharacterBiography"]</button>
+                                <button @onclick="SaveSelectedCharacterEdits">@L["Common_Save"]</button>
+                                <button @onclick="CancelCharacterPanelEdition">@L["Common_Cancel"]</button>
+                            }
+                            else if (ShowCharacterBioPanel)
+                            {
+                                @if (IsBiographyEditMode)
+                                {
+                                    <button @onclick="SaveSelectedBiography">@L["Common_Save"]</button>
+                                    <button @onclick="CancelCharacterPanelEdition">@L["Common_Cancel"]</button>
+                                }
+                                else
+                                {
+                                    <button @onclick="BeginBiographyEdit">@L["SessionPage_EditBiography"]</button>
+                                    <button @onclick="HideCharacterBio">@L["SessionPage_ShowStats"]</button>
+                                }
                             }
                             else
                             {
-                                <button @onclick="EditSelectedCharacter">@L["SessionPage_EditCharacter"]</button>
-                                <button @onclick="HideCharacterBio">@L["Common_Cancel"]</button>
+                                <button @onclick="BeginCharacterEdit">@L["SessionPage_EditCharacter"]</button>
+                                <button @onclick="ShowCharacterBio">@L["PlayerRoom_CharacterBiography"]</button>
                             }
                         </div>
                     </div>
 
-                    @if (ShowCharacterBioPanel)
-                    {
-                        <div class="rc-character-detail-panel__body">
-                            @if (string.IsNullOrWhiteSpace(SelectedCharacterSheet.Biography))
+                    <div class="rc-character-detail-panel__body">
+                        @if (!string.IsNullOrWhiteSpace(CharacterPanelMessage))
+                        {
+                            <div class="rc-inline-warning">
+                                <p>@CharacterPanelMessage</p>
+                            </div>
+                        }
+
+                        @if (ShowCharacterBioPanel)
+                        {
+                            @if (IsBiographyEditMode && SelectedEditableCharacter is not null)
                             {
-                                <p>@L["EditCharacter_NotFound"]</p>
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["EditCharacter_Biography"]</div>
+                                    <textarea rows="10" @bind="SelectedEditableCharacter.Biography"></textarea>
+                                </div>
                             }
                             else
                             {
-                                <p class="rc-character-bio">@SelectedCharacterSheet.Biography</p>
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["PlayerRoom_CharacterBiography"]</div>
+
+                                    @if (string.IsNullOrWhiteSpace(SelectedCharacterSheet.Biography))
+                                    {
+                                        <p>@L["SessionPage_NoBiography"]</p>
+                                    }
+                                    else
+                                    {
+                                        <p class="rc-character-bio">@SelectedCharacterSheet.Biography</p>
+                                    }
+                                </div>
                             }
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="rc-character-detail-panel__body">
+                        }
+                        else if (IsCharacterEditMode && SelectedEditableCharacter is not null)
+                        {
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["EditCharacter_PlayerName"]</div>
+                                <div>@SelectedEditableCharacter.PlayerName</div>
+                            </div>
+
+                            <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                <div class="rc-form-field">
+                                    <label>@L["EditCharacter_Name"]</label>
+                                    <input @bind="SelectedEditableCharacter.Name" />
+                                </div>
+                            </div>
+
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["PlayerRoom_Attributes"]</div>
+                                <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                    @foreach (var attributeItem in SelectedEditableCharacter.Attributes)
+                                    {
+                                        <div class="rc-form-field">
+                                            <label>@attributeItem.Name (@attributeItem.MinValue - @attributeItem.MaxValue)</label>
+                                            <input type="number"
+                                                   min="@attributeItem.MinValue"
+                                                   max="@attributeItem.MaxValue"
+                                                   @bind="attributeItem.Value" />
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            @if (SelectedEditableCharacter.DerivedStats.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["PlayerRoom_DerivedStats"]</div>
+                                    <ul class="rc-detail-list">
+                                        @foreach (var derivedItem in SelectedEditableCharacter.DerivedStats)
+                                        {
+                                            <li>@derivedItem.Name : @derivedItem.Value</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            @if (SelectedEditableCharacter.Metrics.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["EditCharacter_Metrics"]</div>
+                                    <ul class="rc-detail-list">
+                                        @foreach (var metricItem in SelectedEditableCharacter.Metrics)
+                                        {
+                                            <li>@metricItem.Name : @metricItem.Value</li>
+                                        }
+                                    </ul>
+                                </div>
+                            }
+
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["PlayerRoom_Traits"]</div>
+                                <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                    @foreach (var traitItem in SelectedEditableCharacter.Traits)
+                                    {
+                                        <div class="rc-form-field">
+                                            <label>@traitItem.TraitName</label>
+                                            <select @bind="traitItem.SelectedOptionId">
+                                                <option value="">--</option>
+                                                @foreach (var optionItem in traitItem.Options)
+                                                {
+                                                    <option value="@optionItem.TraitOptionId">@optionItem.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["PlayerRoom_Gauges"]</div>
+                                <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                    @foreach (var gaugeItem in SelectedEditableCharacter.Gauges)
+                                    {
+                                        <div class="rc-form-field">
+                                            <label>
+                                                @gaugeItem.Name (@gaugeItem.MinValue - @gaugeItem.MaxValue)
+                                                @if (gaugeItem.IsHealthGauge)
+                                                {
+                                                    <span>- @L["EditCharacter_HealthGauge"]</span>
+                                                }
+                                            </label>
+                                            <input type="number"
+                                                   min="@gaugeItem.MinValue"
+                                                   max="@gaugeItem.MaxValue"
+                                                   @bind="gaugeItem.Value" />
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["EditCharacter_Talents"]</div>
+                                @if (SelectedEditableCharacter.Talents.Count == 0)
+                                {
+                                    <p>@L["EditCharacter_NoTalentsDefined"]</p>
+                                }
+                                else
+                                {
+                                    <div class="rc-character-inline-list">
+                                        @foreach (var talentItem in SelectedEditableCharacter.Talents)
+                                        {
+                                            <label class="rc-filter-toggle">
+                                                <input type="checkbox" @bind="talentItem.IsSelected" />
+                                                <span>@talentItem.Name</span>
+                                            </label>
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="rc-detail-block">
+                                <div class="rc-detail-block__title">@L["EditCharacter_Items"]</div>
+                                @if (SelectedEditableCharacter.Items.Count == 0)
+                                {
+                                    <p>@L["EditCharacter_NoItemsDefined"]</p>
+                                }
+                                else
+                                {
+                                    <div class="rc-character-inline-list">
+                                        @foreach (var item in SelectedEditableCharacter.Items)
+                                        {
+                                            <label class="rc-filter-toggle">
+                                                <input type="checkbox" @bind="item.IsSelected" />
+                                                <span>@item.Name</span>
+                                            </label>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
                             <div class="rc-detail-block">
                                 <div class="rc-detail-block__title">@L["SessionPage_PlayerName"]</div>
                                 <div>@(SelectedCharacterSummary?.PlayerName ?? "-")</div>
@@ -392,8 +518,8 @@ else
                                     }
                                 </ul>
                             </div>
-                        </div>
-                    }
+                        }
+                    </div>
                 </aside>
             }
         </div>
@@ -410,68 +536,33 @@ else
     private HubConnection? hubConnection;
 
     private DomainSession? CurrentSession;
-    private GameSystem? AssignedGameSystem;
-    private List<GameSystem> OwnedGameSystems = new();
-    private List<AttributeDefinition> AvailableAttributes = new();
     private List<SessionCharacterSummaryDto> Characters = new();
-    private List<SessionGaugeDto> SessionGauges = new();
-    private string NewSessionGaugeName = string.Empty;
-    private int NewSessionGaugeMinValue = 0;
-    private int NewSessionGaugeMaxValue = 10;
-    private int NewSessionGaugeCurrentValue = 10;
-    private Guid? PendingSessionGaugeDeleteId;
     private CharacterSheetDto? SelectedCharacterSheet;
-    private SessionPublicStatsDto SessionStats = new();
-    private GameMasterActiveGameTestDto? ActiveTest;
-
-    private List<TraitDefinition> AvailableTraitDefinitions = new();
-    private Dictionary<Guid, List<TraitOption>> TraitOptionsByDefinition = new();
-    private List<GaugeDefinition> AvailableGaugeDefinitions = new();
-    private List<MetricDefinition> AvailableMetrics = new();
-    private List<EditableDerivedStatDefinitionDto> AvailableDerivedStats = new();
-    private List<EditableTalentDefinitionDto> AvailableTalents = new();
-    private List<EditableItemDefinitionDto> AvailableItems = new();
-    private List<PlayerSession> SpecialRoleEligiblePlayers = new();
-    private List<PlayerSession> SpecialRoleAssignments = new();
-    private string SelectedSpecialRolePlayerSessionId = string.Empty;
-    private SessionSpecialRole SelectedSpecialRole = SessionSpecialRole.Observer;
-    private bool ShowSpecialRoleEditor;
-
-    private TestModifierMode NewModifierMode = TestModifierMode.Bonus;
-    private int NewDifficultyValue = 0;
-    private TestTargetScope NewTargetScope = TestTargetScope.OnlineLivingCharacters;
-
-    private HashSet<Guid> SelectedTraitOptionIds = new();
-    private List<ConsequenceRowModel> ConsequenceRows = new();
 
     private bool IsLoaded;
     private bool ShowSessionPassword;
 
     private bool ShowAttributes;
+    private bool ShowDerivedStats;
     private bool ShowTraits;
     private bool ShowGauges;
     private bool IncludeOffline;
     private bool IncludeDead;
     private bool IncludeNpcs;
     private bool ShowCharacterBioPanel;
+    private bool IsCharacterEditMode;
+    private bool IsBiographyEditMode;
+    private EditableCharacterDto? SelectedEditableCharacter;
+    private string CharacterPanelMessage = string.Empty;
 
     private SessionCharacterSummaryDto? SelectedCharacterSummary
-    => SelectedCharacterSheet is null
-        ? null
-        : Characters.FirstOrDefault(x => x.CharacterId == SelectedCharacterSheet.CharacterId);
+        => SelectedCharacterSheet is null
+            ? null
+            : Characters.FirstOrDefault(x => x.CharacterId == SelectedCharacterSheet.CharacterId);
 
     private Guid CurrentUserId;
     private string CurrentUsername = string.Empty;
     private string JoinUrl = string.Empty;
-    private string Message = string.Empty;
-    private string SelectedGameSystemId = string.Empty;
-
-    private string SelectedAttributeId = string.Empty;
-    private GameTestTargetKind NewTargetKind = GameTestTargetKind.BaseAttribute;
-    private bool UseSystemDefaultDice = true;
-    private int NewDiceCount = 1;
-    private int NewDiceSides = 100;
-    private int? NewSuccessThreshold;
 
     protected override async Task OnInitializedAsync()
     {
@@ -508,35 +599,38 @@ else
         });
 
         hubConnection.On("CharacterStateChanged", async () =>
-        {
-            await InvokeAsync(async () =>
-            {
-                await RefreshSessionVisuals();
-                StateHasChanged();
-            });
-        });
+{
+    await InvokeAsync(async () =>
+    {
+        await RefreshSessionVisuals();
 
-        hubConnection.On("TestChanged", async () =>
+        if (SelectedCharacterSheet is not null)
         {
-            await InvokeAsync(async () =>
-            {
-                await LoadActiveTest();
-                StateHasChanged();
-            });
-        });
+            SelectedCharacterSheet = await CharacterService.GetCharacterSheetForSessionAsync(
+                SessionId,
+                SelectedCharacterSheet.CharacterId);
 
-        hubConnection.On("PollChanged", async () =>
-        {
-            await InvokeAsync(async () =>
+            if (IsCharacterEditMode && SelectedEditableCharacter is not null)
             {
-                await LoadLatestPoll();
-                StateHasChanged();
-            });
-        });
+                SelectedEditableCharacter = await CharacterService.GetEditableCharacterForSessionAsync(
+                    SessionId,
+                    SelectedEditableCharacter.CharacterId,
+                    CurrentUserId);
+            }
+        }
+
+        StateHasChanged();
+    });
+});
 
         await hubConnection.StartAsync();
         await hubConnection.SendAsync("JoinSessionGroup", SessionId.ToString());
         await hubConnection.SendAsync("JoinPlayerPresence", SessionId.ToString(), Guid.NewGuid().ToString(), true);
+
+        ShowAttributes = false;
+        ShowDerivedStats = false;
+        ShowTraits = true;
+        ShowGauges = false;
 
         IsLoaded = true;
     }
@@ -544,137 +638,17 @@ else
     private async Task LoadSessionData()
     {
         CurrentSession = await SessionService.GetSessionByIdAsync(SessionId);
-        OwnedGameSystems = await GameSystemService.GetGameSystemsByOwnerAsync(CurrentUserId);
-
-        AssignedGameSystem = null;
-        AvailableAttributes.Clear();
-        AvailableTraitDefinitions.Clear();
-        TraitOptionsByDefinition.Clear();
-        AvailableGaugeDefinitions.Clear();
-        AvailableMetrics.Clear();
-        AvailableDerivedStats.Clear();
-        AvailableTalents.Clear();
-        AvailableItems.Clear();
-        SelectedGameSystemId = string.Empty;
-
-        SpecialRoleEligiblePlayers = await SessionService.GetEligibleSpecialRolePlayersAsync(SessionId, CurrentUserId);
-        SpecialRoleAssignments = await SessionService.GetPlayersWithSpecialRolesAsync(SessionId, CurrentUserId);
-        SessionGauges = await SessionService.GetSessionGaugesAsync(SessionId, CurrentUserId);
-
-        if (CurrentSession?.GameSystemId is Guid gameSystemId)
-        {
-            AssignedGameSystem = await GameSystemService.GetGameSystemByIdAsync(gameSystemId, CurrentUserId);
-
-            if (AssignedGameSystem is not null)
-            {
-                AvailableAttributes = await GameSystemService.GetAttributeDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
-                AvailableTraitDefinitions = await GameSystemService.GetTraitDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
-                AvailableGaugeDefinitions = await GameSystemService.GetGaugeDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
-                AvailableMetrics = await GameSystemService.GetMetricDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
-
-                var editor = await GameSystemService.GetGameSystemEditorAsync(AssignedGameSystem.Id, CurrentUserId);
-                if (editor is not null)
-                {
-                    AvailableDerivedStats = editor.DerivedStats;
-                    AvailableTalents = editor.Talents;
-                    AvailableItems = editor.Items;
-                }
-
-                NewDiceCount = AssignedGameSystem.DefaultTestDiceCount;
-                NewDiceSides = AssignedGameSystem.DefaultTestDiceSides;
-                UseSystemDefaultDice = true;
-                SelectedAttributeId = AvailableAttributes.FirstOrDefault()?.Id.ToString() ?? AvailableDerivedStats.FirstOrDefault()?.DerivedStatDefinitionId?.ToString() ?? string.Empty;
-
-                foreach (var traitDefinition in AvailableTraitDefinitions)
-                {
-                    var options = await GameSystemService.GetTraitOptionsAsync(traitDefinition.Id, CurrentUserId);
-                    TraitOptionsByDefinition[traitDefinition.Id] = options;
-                }
-
-                if (AssignedGameSystem.LockedToSessionId == null)
-                {
-                    SelectedGameSystemId = AssignedGameSystem.Id.ToString();
-                }
-            }
-        }
-
         await RefreshSessionVisuals();
-        await LoadActiveTest();
-        await LoadLatestPoll();
-    }
-
-        private async Task CreateSessionGauge()
-    {
-        try
-        {
-            Message = string.Empty;
-
-            await SessionService.CreateSessionGaugeAsync(
-                SessionId,
-                CurrentUserId,
-                NewSessionGaugeName,
-                NewSessionGaugeMinValue,
-                NewSessionGaugeMaxValue,
-                NewSessionGaugeCurrentValue);
-
-            NewSessionGaugeName = string.Empty;
-            NewSessionGaugeMinValue = 0;
-            NewSessionGaugeMaxValue = 10;
-            NewSessionGaugeCurrentValue = 10;
-
-            await LoadSessionData();
-        }
-        catch (Exception ex)
-        {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
-        }
-    }
-
-    private void AskDeleteSessionGauge(Guid sessionGaugeId)
-    {
-        PendingSessionGaugeDeleteId = sessionGaugeId;
-    }
-
-    private Task CancelDeleteSessionGauge()
-    {
-        PendingSessionGaugeDeleteId = null;
-        return Task.CompletedTask;
-    }
-
-    private async Task ConfirmDeleteSessionGauge()
-    {
-        if (!PendingSessionGaugeDeleteId.HasValue)
-            return;
-
-        try
-        {
-            Message = string.Empty;
-
-            await SessionService.DeleteSessionGaugeAsync(SessionId, CurrentUserId, PendingSessionGaugeDeleteId.Value);
-            PendingSessionGaugeDeleteId = null;
-
-            await LoadSessionData();
-        }
-        catch (Exception ex)
-        {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
-        }
     }
 
     private async Task RefreshSessionVisuals()
     {
-        SessionStats = await CharacterService.GetSessionPublicStatsAsync(SessionId);
         Characters = await CharacterService.GetSessionCharacterSummariesAsync(SessionId, IncludeOffline, IncludeDead, IncludeNpcs);
 
         if (SelectedCharacterSheet is not null)
         {
             SelectedCharacterSheet = await CharacterService.GetCharacterSheetForSessionAsync(SessionId, SelectedCharacterSheet.CharacterId);
         }
-    }
-
-    private async Task LoadActiveTest()
-    {
-        ActiveTest = await GameTestService.GetActiveGameTestForSessionAsync(SessionId);
     }
 
     private async Task RefreshCharacterSection()
@@ -688,12 +662,20 @@ else
         if (SelectedCharacterSheet?.CharacterId == characterId)
         {
             SelectedCharacterSheet = null;
+            SelectedEditableCharacter = null;
             ShowCharacterBioPanel = false;
+            IsCharacterEditMode = false;
+            IsBiographyEditMode = false;
+            CharacterPanelMessage = string.Empty;
             return;
         }
 
         SelectedCharacterSheet = await CharacterService.GetCharacterSheetForSessionAsync(SessionId, characterId);
+        SelectedEditableCharacter = null;
         ShowCharacterBioPanel = false;
+        IsCharacterEditMode = false;
+        IsBiographyEditMode = false;
+        CharacterPanelMessage = string.Empty;
     }
 
     private void ToggleSessionPasswordVisibility()
@@ -701,675 +683,173 @@ else
         ShowSessionPassword = !ShowSessionPassword;
     }
 
-    private void GoToCreateGameSystem()
-    {
-        Navigation.NavigateTo("/mj/gamesystems");
-    }
-
-    private void AddSpecialRole()
-    {
-        ShowSpecialRoleEditor = true;
-
-        if (string.IsNullOrWhiteSpace(SelectedSpecialRolePlayerSessionId) && SpecialRoleEligiblePlayers.Count > 0)
-        {
-            SelectedSpecialRolePlayerSessionId = SpecialRoleEligiblePlayers.First().Id.ToString();
-        }
-    }
-
-    private async Task ValidateSpecialRole()
-    {
-        try
-        {
-            Message = string.Empty;
-
-            if (string.IsNullOrWhiteSpace(SelectedSpecialRolePlayerSessionId))
-            {
-                Message = L["SessionPage_SelectPlayer"];
-                return;
-            }
-
-            await SessionService.AssignSpecialRoleAsync(
-                SessionId,
-                CurrentUserId,
-                Guid.Parse(SelectedSpecialRolePlayerSessionId),
-                SelectedSpecialRole);
-
-            ShowSpecialRoleEditor = false;
-            await LoadSessionData();
-        }
-        catch (Exception ex)
-        {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
-        }
-    }
-
-    private async Task RemoveSpecialRole(Guid playerSessionId)
-    {
-        try
-        {
-            Message = string.Empty;
-            await SessionService.RemoveSpecialRoleAsync(SessionId, CurrentUserId, playerSessionId);
-            await LoadSessionData();
-        }
-        catch (Exception ex)
-        {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
-        }
-    }
-
-    private async Task AssignSelectedGameSystem()
-    {
-        try
-        {
-            Message = string.Empty;
-
-            if (string.IsNullOrWhiteSpace(SelectedGameSystemId))
-            {
-                Message = L["SessionPage_SelectGameSystemRequired"];
-                return;
-            }
-
-            var gameSystemId = Guid.Parse(SelectedGameSystemId);
-
-            await SessionService.AssignGameSystemToSessionAsync(SessionId, CurrentUserId, gameSystemId);
-
-            await LoadSessionData();
-            Message = L["SessionPage_GameSystemAssigned"];
-        }
-        catch (Exception ex)
-        {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
-        }
-    }
-
-    private async Task CreateGameTest()
-    {
-        try
-        {
-            Message = string.Empty;
-
-            if (string.IsNullOrWhiteSpace(SelectedAttributeId))
-            {
-                Message = L["GameTest_AttributeRequired"];
-                return;
-            }
-
-            var filterGroups = new List<GameTestTraitFilterGroupDto>();
-
-            foreach (var traitDefinition in AvailableTraitDefinitions)
-            {
-                if (!TraitOptionsByDefinition.TryGetValue(traitDefinition.Id, out var traitOptions))
-                    continue;
-
-                var selectedOptionIds = traitOptions
-                    .Where(o => SelectedTraitOptionIds.Contains(o.Id))
-                    .Select(o => o.Id)
-                    .ToList();
-
-                if (selectedOptionIds.Count > 0)
-                {
-                    filterGroups.Add(new GameTestTraitFilterGroupDto
-                    {
-                        TraitDefinitionId = traitDefinition.Id,
-                        TraitDefinitionName = traitDefinition.Name,
-                        SelectedOptionIds = selectedOptionIds
-                    });
-                }
-            }
-
-            var request = new GameTestCreateRequestDto
-            {
-                TargetKind = NewTargetKind,
-                TargetDefinitionId = Guid.Parse(SelectedAttributeId),
-                UseSystemDefaultDice = UseSystemDefaultDice,
-                DiceCount = UseSystemDefaultDice ? AssignedGameSystem?.DefaultTestDiceCount ?? NewDiceCount : NewDiceCount,
-                DiceSides = UseSystemDefaultDice ? AssignedGameSystem?.DefaultTestDiceSides ?? NewDiceSides : NewDiceSides,
-                CriticalSuccessValue = UseSystemDefaultDice ? AssignedGameSystem?.CriticalSuccessValue : null,
-                CriticalFailureValue = UseSystemDefaultDice ? AssignedGameSystem?.CriticalFailureValue : null,
-                SuccessThreshold = NewSuccessThreshold,
-                ModifierMode = NewModifierMode,
-                DifficultyValue = NewDifficultyValue,
-                TargetScope = NewTargetScope,
-                TraitFilters = filterGroups,
-                TraitFilterMode = NewTraitFilterMode,
-                Consequences = ConsequenceRows.Select(c => new GameTestConsequenceDraftDto
-                {
-                    ApplyOn = c.ApplyOn,
-                    OperationType = c.OperationType,
-                    TargetKind = c.TargetKind,
-                    TargetDefinitionId = c.TargetDefinitionId,
-                    ModifierMode = c.ModifierMode,
-                    Value = c.ValueMode == ModifierValueMode.Metric ? 0 : c.Value,
-                    ValueMode = c.ValueMode,
-                    SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null
-                }).ToList()
-            };
-
-            ActiveTest = await GameTestService.CreateGameTestAsync(
-                SessionId,
-                CurrentUserId,
-                request);
-
-            Message = L["GameTest_Created"];
-        }
-        catch (Exception ex)
-        {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
-        }
-    }
-
-    private void EditAssignedGameSystem()
-    {
-        if (AssignedGameSystem is null)
-            return;
-
-        Navigation.NavigateTo($"/mj/gamesystems/{AssignedGameSystem.Id}");
-    }
-
-    private async Task CloneAndEditAssignedGameSystem()
-    {
-        try
-        {
-            Message = string.Empty;
-
-            if (AssignedGameSystem is null)
-            {
-                Message = L["SessionPage_NoAssignedGameSystem"];
-                return;
-            }
-
-            var clonedSystem = await GameSystemService.CloneGameSystemForSessionAsync(
-                AssignedGameSystem.Id,
-                CurrentUserId,
-                SessionId);
-
-            await SessionService.AssignGameSystemToSessionAsync(SessionId, CurrentUserId, clonedSystem.Id);
-
-            Navigation.NavigateTo($"/mj/gamesystems/{clonedSystem.Id}");
-        }
-        catch (Exception ex)
-        {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (hubConnection is not null)
-        {
-            await hubConnection.DisposeAsync();
-        }
-    }
-
-    private void ToggleTraitFilter(Guid optionId, object? isCheckedValue)
-    {
-        var isChecked = false;
-
-        if (isCheckedValue is bool boolValue)
-        {
-            isChecked = boolValue;
-        }
-        else if (isCheckedValue is string stringValue && bool.TryParse(stringValue, out var parsed))
-        {
-            isChecked = parsed;
-        }
-
-        if (isChecked)
-        {
-            SelectedTraitOptionIds.Add(optionId);
-        }
-        else
-        {
-            SelectedTraitOptionIds.Remove(optionId);
-        }
-    }
-
-    private void OnTestTargetKindChanged()
-    {
-        SelectedAttributeId = NewTargetKind switch
-        {
-            GameTestTargetKind.BaseAttribute => AvailableAttributes.FirstOrDefault()?.Id.ToString() ?? string.Empty,
-            GameTestTargetKind.DerivedStat => AvailableDerivedStats.FirstOrDefault()?.DerivedStatDefinitionId?.ToString() ?? string.Empty,
-            _ => string.Empty
-        };
-    }
-
-    private string GetOutcomeLabel(GameTestOutcome outcome)
-    {
-        return outcome switch
-        {
-            GameTestOutcome.CriticalSuccess => L["GameTest_CriticalSuccess"],
-            GameTestOutcome.CriticalFailure => L["GameTest_CriticalFailure"],
-            GameTestOutcome.Success => L["GameTest_Success"],
-            _ => L["GameTest_Failure"]
-        };
-    }
-
-    private string GetOutcomeCssClass(GameMasterGameTestResultLineDto resultLine)
-    {
-        if (!resultLine.HasRolled)
-            return "pending";
-
-        return resultLine.Outcome switch
-        {
-            GameTestOutcome.CriticalSuccess => "critical-success",
-            GameTestOutcome.CriticalFailure => "critical-failure",
-            GameTestOutcome.Success => "success",
-            _ => "failure"
-        };
-    }
-
-    private void AddSuccessConsequence()
-    {
-        AddConsequence(TestConsequenceApplyOn.OnSuccess);
-    }
-
-    private void AddFailureConsequence()
-    {
-        AddConsequence(TestConsequenceApplyOn.OnFailure);
-    }
-
-    private void AddConsequence(TestConsequenceApplyOn applyOn)
-    {
-        var targetKind = AvailableGaugeDefinitions.Count > 0
-            ? TestConsequenceTargetKind.Gauge
-            : TestConsequenceTargetKind.Attribute;
-
-        ConsequenceRows.Add(new ConsequenceRowModel
-        {
-            RowId = Guid.NewGuid(),
-            ApplyOn = applyOn,
-            OperationType = TestConsequenceOperationType.AddValue,
-            TargetKind = targetKind,
-            TargetDefinitionId = GetFirstConsequenceTargetId(targetKind),
-            ModifierMode = TestModifierMode.Malus,
-            Value = 1,
-            ValueMode = ModifierValueMode.Fixed,
-            SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id
-        });
-    }
-
-    private void RemoveConsequenceRow(Guid rowId)
-    {
-        var row = ConsequenceRows.FirstOrDefault(x => x.RowId == rowId);
-
-        if (row is not null)
-        {
-            ConsequenceRows.Remove(row);
-        }
-    }
-
-    private void ChangeConsequenceOperation(ConsequenceRowModel row, string? rawValue)
-    {
-        if (!int.TryParse(rawValue, out var parsed))
-            return;
-
-        row.OperationType = (TestConsequenceOperationType)parsed;
-
-        switch (row.OperationType)
-        {
-            case TestConsequenceOperationType.AddValue:
-                row.TargetKind = AvailableGaugeDefinitions.Count > 0
-                    ? TestConsequenceTargetKind.Gauge
-                    : TestConsequenceTargetKind.Attribute;
-                row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
-                if (row.Value == 0)
-                    row.Value = 1;
-                break;
-
-            case TestConsequenceOperationType.GrantTalent:
-            case TestConsequenceOperationType.RevokeTalent:
-                row.TargetKind = TestConsequenceTargetKind.Talent;
-                row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
-                row.Value = 0;
-                row.ValueMode = ModifierValueMode.Fixed;
-                row.SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id;
-                break;
-
-            case TestConsequenceOperationType.GrantItem:
-            case TestConsequenceOperationType.RevokeItem:
-                row.TargetKind = TestConsequenceTargetKind.Item;
-                row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
-                row.Value = 0;
-                row.ValueMode = ModifierValueMode.Fixed;
-                row.SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id;
-                break;
-        }
-    }
-
-    private void ChangeConsequenceTargetKind(ConsequenceRowModel row, string? rawValue)
-    {
-        if (!int.TryParse(rawValue, out var parsed))
-            return;
-
-        row.TargetKind = (TestConsequenceTargetKind)parsed;
-        row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
-    }
-
-    private Guid GetFirstConsequenceTargetId(TestConsequenceTargetKind targetKind)
-    {
-        return targetKind switch
-        {
-            TestConsequenceTargetKind.Gauge => AvailableGaugeDefinitions.FirstOrDefault()?.Id ?? Guid.Empty,
-            TestConsequenceTargetKind.SessionGauge => SessionGauges.FirstOrDefault()?.SessionGaugeId ?? Guid.Empty,
-            TestConsequenceTargetKind.Attribute => AvailableAttributes.FirstOrDefault()?.Id ?? Guid.Empty,
-            TestConsequenceTargetKind.DerivedStat => AvailableDerivedStats.FirstOrDefault()?.DerivedStatDefinitionId ?? Guid.Empty,
-            TestConsequenceTargetKind.Metric => AvailableMetrics.FirstOrDefault()?.Id ?? Guid.Empty,
-            TestConsequenceTargetKind.Talent => AvailableTalents.FirstOrDefault()?.TalentDefinitionId ?? Guid.Empty,
-            TestConsequenceTargetKind.Item => AvailableItems.FirstOrDefault()?.ItemDefinitionId ?? Guid.Empty,
-            _ => Guid.Empty
-        };
-    }
-
-    private class ConsequenceRowModel
-    {
-        public Guid RowId { get; set; }
-        public TestConsequenceApplyOn ApplyOn { get; set; }
-        public TestConsequenceOperationType OperationType { get; set; } = TestConsequenceOperationType.AddValue;
-        public TestConsequenceTargetKind TargetKind { get; set; }
-        public Guid TargetDefinitionId { get; set; }
-        public TestModifierMode ModifierMode { get; set; }
-        public int Value { get; set; }
-        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
-        public Guid? SourceMetricId { get; set; }
-    }
-
-    private TestTraitFilterMode NewTraitFilterMode = TestTraitFilterMode.AndBetweenGroups;
-
-    private Task ShowRollbackConfirmation()
-    {
-        ConfirmRollbackVisible = true;
-        return Task.CompletedTask;
-    }
-
-    private Task CancelRollback()
-    {
-        ConfirmRollbackVisible = false;
-        return Task.CompletedTask;
-    }
-
-    private async Task RollbackLatestTestConfirmed()
-    {
-        try
-        {
-            Message = string.Empty;
-            ConfirmRollbackVisible = false;
-
-            await GameTestService.RollbackLatestTestAsync(SessionId, CurrentUserId);
-
-            await LoadSessionData();
-
-            Message = L["GameTest_RollbackSuccess"];
-        }
-        catch (Exception ex)
-        {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
-        }
-    }
-
-    private bool ConfirmRollbackVisible;
-
-    private PollForGameMasterDto? LatestPoll;
-    private PollVoteWeightMode SelectedPollVoteWeightMode = PollVoteWeightMode.FixedOne;
-    private string SelectedPollMetricId = string.Empty;
-    private string NewPollQuestion = string.Empty;
-    private List<PollOptionRowModel> NewPollOptions = new()
-        {
-            new(),
-            new()
-        };
-
-    private class PollOptionRowModel
-    {
-        public string Label { get; set; } = string.Empty;
-
-        public List<PollOptionConsequenceRowModel> Consequences { get; set; } = new();
-    }
-
-    private class PollOptionConsequenceRowModel
-    {
-        public Guid RowId { get; set; }
-
-        public TestConsequenceOperationType OperationType { get; set; } = TestConsequenceOperationType.AddValue;
-
-        public TestConsequenceTargetKind TargetKind { get; set; }
-
-        public Guid TargetDefinitionId { get; set; }
-
-        public TestModifierMode ModifierMode { get; set; }
-
-        public int Value { get; set; }
-
-        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
-
-        public Guid? SourceMetricId { get; set; }
-    }
-
-    private async Task LoadLatestPoll()
-    {
-        LatestPoll = await PollService.GetLatestPollForGameMasterAsync(SessionId);
-        RecentPolls = await PollService.GetRecentPollsForGameMasterAsync(SessionId, 5);
-        ConfirmUndoPollConsequencesVisible = false;
-    }
-
-    private Task AddPollOption()
-    {
-        NewPollOptions.Add(new PollOptionRowModel());
-        return Task.CompletedTask;
-    }
-
-    private Task RemovePollOption(int index)
-    {
-        if (index >= 0 && index < NewPollOptions.Count && NewPollOptions.Count > 2)
-        {
-            NewPollOptions.RemoveAt(index);
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private async Task CreatePoll()
-    {
-        try
-        {
-            Message = string.Empty;
-
-            var request = new PollCreateRequestDto
-            {
-                Question = NewPollQuestion,
-                Options = NewPollOptions.Select(o => new PollOptionDraftDto
-                {
-                    Label = o.Label,
-                    Consequences = o.Consequences.Select(c => new PollOptionConsequenceInlineDraftDto
-                    {
-                        OperationType = c.OperationType,
-                        TargetKind = c.TargetKind,
-                        TargetDefinitionId = c.TargetDefinitionId,
-                        ModifierMode = c.ModifierMode,
-                        Value = c.ValueMode == ModifierValueMode.Metric ? 0 : c.Value,
-                        ValueMode = c.ValueMode,
-                        SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null
-                    }).ToList()
-                }).ToList(),
-                VoteWeightMode = SelectedPollVoteWeightMode,
-                MetricDefinitionId = SelectedPollVoteWeightMode == PollVoteWeightMode.Metric && !string.IsNullOrWhiteSpace(SelectedPollMetricId)
-                    ? Guid.Parse(SelectedPollMetricId)
-                    : null
-            };
-
-            LatestPoll = await PollService.CreatePollAsync(SessionId, CurrentUserId, request);
-
-            NewPollQuestion = string.Empty;
-            NewPollOptions = new List<PollOptionRowModel> { new(), new() };
-            SelectedPollVoteWeightMode = PollVoteWeightMode.FixedOne;
-            SelectedPollMetricId = string.Empty;
-
-            Message = L["Poll_Created"];
-        }
-        catch (Exception ex)
-        {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
-        }
-    }
-
-    private async Task ClosePoll()
-    {
-        try
-        {
-            Message = string.Empty;
-
-            await PollService.ClosePollAsync(SessionId, CurrentUserId);
-            await LoadLatestPoll();
-
-            Message = L["Poll_Closed"];
-        }
-        catch (Exception ex)
-        {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
-        }
-    }
-
-    private bool CanUndoLatestPollConsequences =>
-    LatestPoll is not null &&
-    LatestPoll.IsClosed &&
-    LatestPoll.ConsequencesApplied &&
-    RecentPolls.FirstOrDefault()?.PollId == LatestPoll.PollId;
-
-    private Task ShowUndoPollConsequencesConfirmation()
-    {
-        ConfirmUndoPollConsequencesVisible = true;
-        return Task.CompletedTask;
-    }
-
-    private Task CancelUndoPollConsequences()
-    {
-        ConfirmUndoPollConsequencesVisible = false;
-        return Task.CompletedTask;
-    }
-
-    private async Task UndoLatestPollConsequencesConfirmed()
-    {
-        try
-        {
-            Message = string.Empty;
-            ConfirmUndoPollConsequencesVisible = false;
-
-            await PollService.UndoLatestPollConsequencesAsync(SessionId, CurrentUserId);
-            await LoadLatestPoll();
-            await RefreshSessionVisuals();
-
-            Message = L["Poll_UndoConsequencesSuccess"];
-        }
-        catch (Exception ex)
-        {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
-        }
-    }
-
-    private bool ConfirmUndoPollConsequencesVisible;
-
-    private List<PollForGameMasterDto> RecentPolls = new();
-    private Guid? SelectedPollHistoryId;
-    private bool ShowLivePollResults;
-
-    private Task ToggleLivePollResults()
-    {
-        ShowLivePollResults = !ShowLivePollResults;
-        return Task.CompletedTask;
-    }
-
-    private async Task LoadPollHistory()
-    {
-        if (SelectedPollHistoryId is null || SelectedPollHistoryId == Guid.Empty)
-        {
-            await LoadLatestPoll();
-            return;
-        }
-
-        var selectedPoll = await PollService.GetPollByIdForGameMasterAsync(SessionId, SelectedPollHistoryId.Value);
-
-        if (selectedPoll is not null)
-        {
-            LatestPoll = selectedPoll;
-        }
-    }
-
-    private bool ShowPollVoteDetails;
-
-    private Task TogglePollVoteDetails()
-    {
-        ShowPollVoteDetails = !ShowPollVoteDetails;
-        return Task.CompletedTask;
-    }
-
-    private Task AddPollOptionConsequence(int optionIndex)
-    {
-        if (optionIndex < 0 || optionIndex >= NewPollOptions.Count)
-            return Task.CompletedTask;
-
-        var targetKind = AvailableGaugeDefinitions.Count > 0
-            ? TestConsequenceTargetKind.Gauge
-            : TestConsequenceTargetKind.Attribute;
-
-        var targetDefinitionId = Guid.Empty;
-
-        if (targetKind == TestConsequenceTargetKind.Gauge && AvailableGaugeDefinitions.Count > 0)
-        {
-            targetDefinitionId = AvailableGaugeDefinitions[0].Id;
-        }
-        else if (AvailableAttributes.Count > 0)
-        {
-            targetDefinitionId = AvailableAttributes[0].Id;
-        }
-
-        NewPollOptions[optionIndex].Consequences.Add(new PollOptionConsequenceRowModel
-        {
-            RowId = Guid.NewGuid(),
-            TargetKind = targetKind,
-            TargetDefinitionId = targetDefinitionId,
-            ModifierMode = TestModifierMode.Malus,
-            OperationType = TestConsequenceOperationType.AddValue,
-            Value = 1,
-            ValueMode = ModifierValueMode.Fixed,
-            SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id
-        });
-
-        return Task.CompletedTask;
-    }
-
-    private Task RemovePollOptionConsequence(int optionIndex, Guid rowId)
-    {
-        if (optionIndex < 0 || optionIndex >= NewPollOptions.Count)
-            return Task.CompletedTask;
-
-        var row = NewPollOptions[optionIndex].Consequences.FirstOrDefault(x => x.RowId == rowId);
-
-        if (row is not null)
-        {
-            NewPollOptions[optionIndex].Consequences.Remove(row);
-        }
-
-        return Task.CompletedTask;
-    }
-
     private Task ShowCharacterBio()
     {
         ShowCharacterBioPanel = true;
+        IsCharacterEditMode = false;
+        IsBiographyEditMode = false;
+        CharacterPanelMessage = string.Empty;
         return Task.CompletedTask;
     }
 
     private Task HideCharacterBio()
     {
         ShowCharacterBioPanel = false;
+        IsBiographyEditMode = false;
+        CharacterPanelMessage = string.Empty;
         return Task.CompletedTask;
     }
 
-    private void EditSelectedCharacter()
+    private async Task BeginCharacterEdit()
     {
         if (SelectedCharacterSheet is null)
             return;
 
-        Navigation.NavigateTo($"/mj/session/{SessionId}/characters/{SelectedCharacterSheet.CharacterId}/edit");
+        SelectedEditableCharacter = await CharacterService.GetEditableCharacterForSessionAsync(
+            SessionId,
+            SelectedCharacterSheet.CharacterId,
+            CurrentUserId);
+
+        IsCharacterEditMode = SelectedEditableCharacter is not null;
+        IsBiographyEditMode = false;
+        ShowCharacterBioPanel = false;
+        CharacterPanelMessage = string.Empty;
+    }
+
+    private async Task BeginBiographyEdit()
+    {
+        if (SelectedCharacterSheet is null)
+            return;
+
+        SelectedEditableCharacter = await CharacterService.GetEditableCharacterForSessionAsync(
+            SessionId,
+            SelectedCharacterSheet.CharacterId,
+            CurrentUserId);
+
+        ShowCharacterBioPanel = true;
+        IsBiographyEditMode = SelectedEditableCharacter is not null;
+        IsCharacterEditMode = false;
+        CharacterPanelMessage = string.Empty;
+    }
+
+    private Task CancelCharacterPanelEdition()
+    {
+        IsCharacterEditMode = false;
+        IsBiographyEditMode = false;
+        CharacterPanelMessage = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveSelectedCharacterEdits()
+    {
+        if (SelectedEditableCharacter is null)
+            return;
+
+        try
+        {
+            CharacterPanelMessage = string.Empty;
+
+            var result = await CharacterService.UpdateCharacterForSessionAsync(
+                SessionId,
+                SelectedEditableCharacter.CharacterId,
+                CurrentUserId,
+                new UpdateCharacterRequestDto
+                {
+                    Name = SelectedEditableCharacter.Name,
+                    Biography = SelectedEditableCharacter.Biography,
+                    Attributes = SelectedEditableCharacter.Attributes,
+                    Traits = SelectedEditableCharacter.Traits,
+                    Gauges = SelectedEditableCharacter.Gauges,
+                    SelectedTalentIds = SelectedEditableCharacter.Talents
+                        .Where(x => x.IsSelected)
+                        .Select(x => x.DefinitionId)
+                        .ToList(),
+                    SelectedItemIds = SelectedEditableCharacter.Items
+                        .Where(x => x.IsSelected)
+                        .Select(x => x.DefinitionId)
+                        .ToList()
+                });
+
+            await RefreshSessionVisuals();
+
+            if (SelectedCharacterSheet is not null)
+            {
+                SelectedCharacterSheet = await CharacterService.GetCharacterSheetForSessionAsync(
+                    SessionId,
+                    SelectedCharacterSheet.CharacterId);
+            }
+
+            SelectedEditableCharacter = await CharacterService.GetEditableCharacterForSessionAsync(
+                SessionId,
+                SelectedEditableCharacter.CharacterId,
+                CurrentUserId);
+
+            IsCharacterEditMode = false;
+            CharacterPanelMessage = L["EditCharacter_Saved"];
+
+            if (result.ResurrectionBlocked)
+            {
+                CharacterPanelMessage = $"{CharacterPanelMessage} {L["EditCharacter_ResurrectionBlocked"]}";
+            }
+        }
+        catch (Exception ex)
+        {
+            CharacterPanelMessage = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task SaveSelectedBiography()
+    {
+        if (SelectedEditableCharacter is null)
+            return;
+
+        try
+        {
+            CharacterPanelMessage = string.Empty;
+
+            await CharacterService.UpdateCharacterForSessionAsync(
+                SessionId,
+                SelectedEditableCharacter.CharacterId,
+                CurrentUserId,
+                new UpdateCharacterRequestDto
+                {
+                    Name = SelectedEditableCharacter.Name,
+                    Biography = SelectedEditableCharacter.Biography,
+                    Attributes = SelectedEditableCharacter.Attributes,
+                    Traits = SelectedEditableCharacter.Traits,
+                    Gauges = SelectedEditableCharacter.Gauges,
+                    SelectedTalentIds = SelectedEditableCharacter.Talents
+                        .Where(x => x.IsSelected)
+                        .Select(x => x.DefinitionId)
+                        .ToList(),
+                    SelectedItemIds = SelectedEditableCharacter.Items
+                        .Where(x => x.IsSelected)
+                        .Select(x => x.DefinitionId)
+                        .ToList()
+                });
+
+            await RefreshSessionVisuals();
+
+            if (SelectedCharacterSheet is not null)
+            {
+                SelectedCharacterSheet = await CharacterService.GetCharacterSheetForSessionAsync(
+                    SessionId,
+                    SelectedCharacterSheet.CharacterId);
+            }
+
+            SelectedEditableCharacter = await CharacterService.GetEditableCharacterForSessionAsync(
+                SessionId,
+                SelectedEditableCharacter.CharacterId,
+                CurrentUserId);
+
+            IsBiographyEditMode = false;
+            ShowCharacterBioPanel = true;
+            CharacterPanelMessage = L["SessionPage_BiographySaved"];
+        }
+        catch (Exception ex)
+        {
+            CharacterPanelMessage = $"{L["Common_Error"]} : {ex.Message}";
+        }
     }
 
     private async Task CreateNpc()
@@ -1378,8 +858,11 @@ else
         Navigation.NavigateTo($"/player/create-character/{playerSessionId}?npc=true");
     }
 
-    private void GoToGameTestPage()
+    public async ValueTask DisposeAsync()
     {
-        Navigation.NavigateTo($"/mj/session/{SessionId}/test");
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
     }
 }

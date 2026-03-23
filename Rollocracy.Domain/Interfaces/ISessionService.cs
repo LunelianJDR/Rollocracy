@@ -52,6 +52,14 @@ namespace Rollocracy.Domain.Interfaces
 
         Task<List<SessionGaugeDto>> GetSessionGaugesAsync(Guid sessionId, Guid gameMasterUserAccountId);
 
+        Task<List<SessionGaugeDto>> GetVisibleSessionGaugesAsync(Guid sessionId, Guid userAccountId);
+
+        Task UpdateSessionGaugeCurrentValueAsync(
+            Guid sessionId,
+            Guid userAccountId,
+            Guid sessionGaugeId,
+            int currentValue);
+
         Task<SessionGauge> CreateSessionGaugeAsync(
             Guid sessionId,
             Guid gameMasterUserAccountId,

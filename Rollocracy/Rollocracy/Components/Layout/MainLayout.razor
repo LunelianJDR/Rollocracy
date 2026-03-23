@@ -1,7 +1,8 @@
 ﻿@inherits LayoutComponentBase
-@implements IDisposable
+@implements IAsyncDisposable
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
 @using Microsoft.Extensions.Localization
 @using Rollocracy.Domain.Characters
 @using Rollocracy.Domain.Entities
@@ -37,9 +38,9 @@
                 @if (CurrentSession is not null)
                 {
                     <div class="rc-session-strip">
-                            <h5 class="rc-tool-panel__title">@L["SessionPage_JoinUrl"]</h5>
+                        <h5 class="rc-tool-panel__title">@L["SessionPage_JoinUrl"]</h5>
+
                         <div class="rc-session-strip__group">
-                            <!--    <span class="rc-session-strip__label">@L["SessionPage_JoinUrl"]</span> //-->
                             <code class="rc-session-strip__value rc-session-strip__value--link">@JoinUrl</code>
                         </div>
 
@@ -53,7 +54,7 @@
                                             class="icon-button"
                                             @onclick="ToggleSessionPasswordVisibility"
                                             title="@(ShowSessionPassword? L["SessionPage_HidePassword"] : L["SessionPage_ShowPassword"])">
-                                        @(ShowSessionPassword ? "👁" : "👁")
+                                        👁
                                     </button>
                                 }
                             </div>
@@ -67,6 +68,78 @@
                 }
             </div>
         </header>
+        @if (CurrentSession is not null && CanViewSessionGauges)
+        {
+            <div class="rc-global-session-gauges">
+                <div class="rc-session-gauge-strip">
+                    <div class="rc-session-gauge-strip__title">@L["Layout_SessionGauges"]</div>
+
+                    @foreach (var gauge in CurrentSessionGauges)
+                    {
+                        var percent = gauge.MaxValue <= gauge.MinValue
+                            ? 0
+                            : Math.Clamp((int)Math.Round((double)(gauge.CurrentValue - gauge.MinValue) * 100 / (gauge.MaxValue - gauge.MinValue)), 0, 100);
+
+                        @if (CanEditSessionGauges && EditingSessionGaugeId != gauge.SessionGaugeId)
+                        {
+                            <button type="button"
+                                    class="rc-session-gauge-card rc-session-gauge-card--button"
+                                    @onclick="() => BeginSessionGaugeEdit(gauge.SessionGaugeId, gauge.CurrentValue)">
+                                <div class="rc-session-gauge-card__header">
+                                    <span class="rc-session-gauge-card__name">@gauge.Name</span>
+                                    <span class="rc-session-gauge-card__value">@gauge.CurrentValue / @gauge.MaxValue</span>
+                                </div>
+
+                                <div class="rc-session-gauge-card__track">
+                                    <div class="rc-session-gauge-card__fill" style="@($"width:{percent}%")"></div>
+                                </div>
+                            </button>
+                        }
+                        else
+                        {
+                            <div class="rc-session-gauge-card">
+                                <div class="rc-session-gauge-card__header">
+                                    <span class="rc-session-gauge-card__name">@gauge.Name</span>
+                                    <span class="rc-session-gauge-card__value">@gauge.CurrentValue / @gauge.MaxValue</span>
+                                </div>
+
+                                <div class="rc-session-gauge-card__track">
+                                    <div class="rc-session-gauge-card__fill" style="@($"width:{percent}%")"></div>
+                                </div>
+
+                                @if (CanEditSessionGauges && EditingSessionGaugeId == gauge.SessionGaugeId)
+                                {
+                                    <div class="rc-session-gauge-card__editor">
+                                        <input type="number"
+                                               min="@gauge.MinValue"
+                                               max="@gauge.MaxValue"
+                                               value="@GetSessionGaugeEditedValue(gauge.SessionGaugeId, gauge.CurrentValue)"
+                                               @onchange="e => ChangeSessionGaugeEditedValue(gauge.SessionGaugeId, int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : gauge.CurrentValue)" />
+                                        <button type="button"
+                                                class="rc-round-icon-button"
+                                                @onclick="() => SaveSessionGaugeQuickValue(gauge.SessionGaugeId)"
+                                                title="@L["Common_Confirm"]">
+                                            ✓
+                                        </button>
+                                        <button type="button"
+                                                class="rc-round-icon-button"
+                                                @onclick="CancelSessionGaugeEdit"
+                                                title="@L["Common_Cancel"]">
+                                            ✕
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(SessionGaugeMessage))
+                {
+                    <div class="rc-inline-error">@SessionGaugeMessage</div>
+                }
+            </div>
+        }
 
         <main class="rc-main">
             <article class="rc-main__content">
@@ -83,17 +156,26 @@
 </div>
 
 @code {
+    private HubConnection? hubConnection;
     private bool IsSidebarCollapsed;
     private bool CanShowMjMenus;
     private bool ShowSessionPassword;
+    private bool CanViewSessionGauges;
+    private bool CanEditSessionGauges;
 
     private string CurrentTheme = "light";
     private string CurrentUserDisplayName = string.Empty;
     private string JoinUrl = string.Empty;
+    private string SessionGaugeMessage = string.Empty;
 
+    private Guid? CurrentUserId;
     private Guid? CurrentSessionId;
     private Session? CurrentSession;
     private SessionPublicStatsDto? CurrentSessionStats;
+    private List<SessionGaugeDto> CurrentSessionGauges = new();
+
+    private readonly Dictionary<Guid, int> SessionGaugeEditedValues = new();
+    private Guid? EditingSessionGaugeId;
 
     private string DisplayedPassword
         => CurrentSession is null
@@ -119,6 +201,8 @@
         await JS.InvokeVoidAsync("rollocracyTheme.applyTheme", CurrentTheme);
 
         await RefreshShellContextAsync();
+        await EnsureHubConnectionAsync();
+
         StateHasChanged();
     }
 
@@ -132,18 +216,27 @@
             : string.Empty;
 
         CanShowMjMenus = false;
+        CurrentUserId = null;
+
         var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (!string.IsNullOrWhiteSpace(userIdValue) && Guid.TryParse(userIdValue, out var userId))
         {
+            CurrentUserId = userId;
             CanShowMjMenus = await SessionService.CanUserCreateSessionsAsync(userId);
         }
 
-        CurrentSessionId = TryExtractCurrentSessionId();
+        CurrentSessionId = await TryExtractCurrentSessionIdAsync();
         CurrentSession = null;
         CurrentSessionStats = null;
+        CurrentSessionGauges.Clear();
+        SessionGaugeEditedValues.Clear();
+        EditingSessionGaugeId = null;
         JoinUrl = string.Empty;
         ShowSessionPassword = false;
+        CanViewSessionGauges = false;
+        CanEditSessionGauges = false;
+        SessionGaugeMessage = string.Empty;
 
         if (!CurrentSessionId.HasValue)
             return;
@@ -162,9 +255,31 @@
         {
             JoinUrl = $"{Navigation.BaseUri}{CurrentSession.SessionSlug}";
         }
+
+        if (CurrentUserId.HasValue)
+        {
+            var visibleGauges = await SessionService.GetVisibleSessionGaugesAsync(CurrentSessionId.Value, CurrentUserId.Value);
+
+            CurrentSessionGauges = visibleGauges;
+            CanViewSessionGauges = visibleGauges.Count > 0;
+
+            foreach (var gauge in visibleGauges)
+            {
+                SessionGaugeEditedValues[gauge.SessionGaugeId] = gauge.CurrentValue;
+            }
+
+            if (CanViewSessionGauges)
+            {
+                var playerSession = await ResolveCurrentPlayerSessionAsync(CurrentSessionId.Value, CurrentUserId.Value);
+
+                CanEditSessionGauges =
+                    CurrentSession.GameMasterUserAccountId == CurrentUserId.Value ||
+                    playerSession?.SpecialRole == SessionSpecialRole.Assistant;
+            }
+        }
     }
 
-    private Guid? TryExtractCurrentSessionId()
+    private async Task<Guid?> TryExtractCurrentSessionIdAsync()
     {
         var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
         if (string.IsNullOrWhiteSpace(relativePath))
@@ -172,14 +287,67 @@
 
         var segments = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        if (segments.Length < 3)
-            return null;
+        if (segments.Length >= 3 &&
+            segments[0].Equals("mj", StringComparison.OrdinalIgnoreCase) &&
+            segments[1].Equals("session", StringComparison.OrdinalIgnoreCase) &&
+            Guid.TryParse(segments[2], out var mjSessionId))
+        {
+            return mjSessionId;
+        }
 
-        if (!segments[0].Equals("mj", StringComparison.OrdinalIgnoreCase) ||
-            !segments[1].Equals("session", StringComparison.OrdinalIgnoreCase))
-            return null;
+        if (segments.Length >= 3 &&
+            segments[0].Equals("player", StringComparison.OrdinalIgnoreCase) &&
+            segments[1].Equals("room", StringComparison.OrdinalIgnoreCase) &&
+            Guid.TryParse(segments[2], out var playerSessionId))
+        {
+            var playerSession = await SessionService.GetPlayerByIdAsync(playerSessionId);
+            return playerSession?.SessionId;
+        }
 
-        return Guid.TryParse(segments[2], out var sessionId) ? sessionId : null;
+        return null;
+    }
+
+    private async Task<PlayerSession?> ResolveCurrentPlayerSessionAsync(Guid sessionId, Guid userAccountId)
+    {
+        var players = await SessionService.GetPlayersAsync(sessionId);
+
+        return players.FirstOrDefault(ps => ps.UserAccountId == userAccountId);
+    }
+
+    private async Task EnsureHubConnectionAsync()
+    {
+        if (hubConnection is not null)
+            return;
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/sessionhub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On("CharacterStateChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await RefreshShellContextAsync();
+                StateHasChanged();
+            });
+        });
+
+        hubConnection.On("PresenceChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await RefreshShellContextAsync();
+                StateHasChanged();
+            });
+        });
+
+        await hubConnection.StartAsync();
+
+        if (CurrentSessionId.HasValue)
+        {
+            await hubConnection.SendAsync("JoinSessionGroup", CurrentSessionId.Value.ToString());
+        }
     }
 
     private Task ToggleSidebar()
@@ -200,17 +368,79 @@
         return Task.CompletedTask;
     }
 
+    private int GetSessionGaugeEditedValue(Guid sessionGaugeId, int fallbackValue)
+    {
+        return SessionGaugeEditedValues.TryGetValue(sessionGaugeId, out var value)
+            ? value
+            : fallbackValue;
+    }
+
+    private void BeginSessionGaugeEdit(Guid sessionGaugeId, int currentValue)
+    {
+        EditingSessionGaugeId = sessionGaugeId;
+        SessionGaugeEditedValues[sessionGaugeId] = currentValue;
+        SessionGaugeMessage = string.Empty;
+    }
+
+    private void CancelSessionGaugeEdit()
+    {
+        EditingSessionGaugeId = null;
+        SessionGaugeMessage = string.Empty;
+    }
+
+    private void ChangeSessionGaugeEditedValue(Guid sessionGaugeId, int value)
+    {
+        SessionGaugeEditedValues[sessionGaugeId] = value;
+    }
+
+    private async Task SaveSessionGaugeQuickValue(Guid sessionGaugeId)
+    {
+        if (!CurrentSessionId.HasValue || !CurrentUserId.HasValue || !SessionGaugeEditedValues.TryGetValue(sessionGaugeId, out var value))
+            return;
+
+        try
+        {
+            SessionGaugeMessage = string.Empty;
+
+            await SessionService.UpdateSessionGaugeCurrentValueAsync(
+                CurrentSessionId.Value,
+                CurrentUserId.Value,
+                sessionGaugeId,
+                value);
+
+            EditingSessionGaugeId = null;
+
+            await RefreshShellContextAsync();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            SessionGaugeMessage = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         _ = InvokeAsync(async () =>
         {
             await RefreshShellContextAsync();
+
+            if (hubConnection is not null && CurrentSessionId.HasValue)
+            {
+                await hubConnection.SendAsync("JoinSessionGroup", CurrentSessionId.Value.ToString());
+            }
+
             StateHasChanged();
         });
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         Navigation.LocationChanged -= OnLocationChanged;
+
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
+        }
     }
 }

@@ -12,15 +12,18 @@ namespace Rollocracy.Infrastructure.Services
         private readonly IDbContextFactory<RollocracyDbContext> _contextFactory;
         private readonly IStringLocalizer _localizer;
         private readonly IPresenceTracker _presenceTracker;
+        private readonly ISessionNotifier _sessionNotifier;
 
         public SessionService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
             IStringLocalizerFactory localizerFactory,
-            IPresenceTracker presenceTracker)
+            IPresenceTracker presenceTracker,
+            ISessionNotifier sessionNotifier)
         {
             _contextFactory = contextFactory;
             _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
             _presenceTracker = presenceTracker;
+            _sessionNotifier = sessionNotifier;
         }
 
         public async Task<Session> CreateSessionAsync(
@@ -263,6 +266,41 @@ namespace Rollocracy.Infrastructure.Services
 
             playerSession.SpecialRole = SessionSpecialRole.None;
             await context.SaveChangesAsync();
+        }
+
+        private async Task<(bool CanView, bool CanEdit)> GetSessionGaugePermissionsAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            Guid userAccountId)
+        {
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == sessionId);
+
+            if (session == null)
+                return (false, false);
+
+            if (session.GameMasterUserAccountId == userAccountId)
+                return (true, true);
+
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps => ps.SessionId == sessionId && ps.UserAccountId == userAccountId);
+
+            if (playerSession == null)
+                return (false, false);
+
+            return playerSession.SpecialRole switch
+            {
+                SessionSpecialRole.Assistant => (true, true),
+                SessionSpecialRole.Observer => (true, false),
+                _ => (false, false)
+            };
+        }
+
+        private static int ClampSessionGaugeValue(SessionGauge gauge, int currentValue)
+        {
+            return Math.Clamp(currentValue, gauge.MinValue, gauge.MaxValue);
         }
 
         public async Task<Session?> GetSessionByOwnerAndSlugAsync(string gameMasterUsername, string sessionSlug)
@@ -513,6 +551,55 @@ namespace Rollocracy.Infrastructure.Services
                     CurrentValue = x.CurrentValue
                 })
                 .ToListAsync();
+        }
+
+        public async Task<List<SessionGaugeDto>> GetVisibleSessionGaugesAsync(Guid sessionId, Guid userAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var permissions = await GetSessionGaugePermissionsAsync(context, sessionId, userAccountId);
+
+            if (!permissions.CanView)
+                return new List<SessionGaugeDto>();
+
+            return await context.SessionGauges
+                .AsNoTracking()
+                .Where(g => g.SessionId == sessionId)
+                .OrderBy(g => g.Name)
+                .Select(g => new SessionGaugeDto
+                {
+                    SessionGaugeId = g.Id,
+                    Name = g.Name,
+                    MinValue = g.MinValue,
+                    MaxValue = g.MaxValue,
+                    CurrentValue = g.CurrentValue
+                })
+                .ToListAsync();
+        }
+
+        public async Task UpdateSessionGaugeCurrentValueAsync(
+            Guid sessionId,
+            Guid userAccountId,
+            Guid sessionGaugeId,
+            int currentValue)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var permissions = await GetSessionGaugePermissionsAsync(context, sessionId, userAccountId);
+
+            if (!permissions.CanEdit)
+                throw new Exception(_localizer["Backend_SessionGaugeEditAccessDenied"]);
+
+            var gauge = await context.SessionGauges
+                .FirstOrDefaultAsync(g => g.Id == sessionGaugeId && g.SessionId == sessionId);
+
+            if (gauge == null)
+                throw new Exception(_localizer["Backend_SessionGaugeNotFound"]);
+
+            gauge.CurrentValue = ClampSessionGaugeValue(gauge, currentValue);
+
+            await context.SaveChangesAsync();
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
         }
 
         public async Task<SessionGauge> CreateSessionGaugeAsync(

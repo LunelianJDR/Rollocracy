@@ -1,7 +1,8 @@
+using Rollocracy.Domain.Characters;
+using Rollocracy.Domain.GameRules;
+using Rollocracy.Domain.GameTests;
 using System;
 using System.Collections.Generic;
-using Rollocracy.Domain.GameTests;
-using Rollocracy.Domain.GameRules;
 
 namespace Rollocracy.Domain.Polls
 {
@@ -51,6 +52,7 @@ namespace Rollocracy.Domain.Polls
 
         public PollVoteWeightMode VoteWeightMode { get; set; } = PollVoteWeightMode.FixedOne;
         public Guid? MetricDefinitionId { get; set; }
+        public CharacterTargetFilterDto AdvancedFilter { get; set; } = new();
     }
 
     public class PollVoteLineDto

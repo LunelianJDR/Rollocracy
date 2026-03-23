@@ -16,17 +16,20 @@ namespace Rollocracy.Infrastructure.Services
         private readonly IStringLocalizer _localizer;
         private readonly IPresenceTracker _presenceTracker;
         private readonly ICharacterEffectService _characterEffectService;
+        private readonly ISessionNotifier _sessionNotifier;
 
         public CharacterService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
             IStringLocalizerFactory localizerFactory,
             IPresenceTracker presenceTracker,
-            ICharacterEffectService characterEffectService)
+            ICharacterEffectService characterEffectService,
+            ISessionNotifier sessionNotifier)
         {
             _contextFactory = contextFactory;
             _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
             _presenceTracker = presenceTracker;
             _characterEffectService = characterEffectService;
+            _sessionNotifier = sessionNotifier;
         }
 
         public async Task<PlayerRoomStateDto> GetPlayerRoomStateAsync(Guid playerSessionId)
@@ -897,6 +900,11 @@ namespace Rollocracy.Infrastructure.Services
             return await BuildEditableCharacterAsync(context, session, row.playerSession, row.character);
         }
 
+        public async Task<List<Guid>> ResolveTargetCharacterIdsAsync(Guid sessionId, CharacterTargetFilterDto filter)
+        {
+            return await _characterEffectService.ResolveTargetCharacterIdsAsync(sessionId, filter);
+        }
+
         public async Task<CharacterUpdateResultDto> UpdateCharacterForSessionAsync(
             Guid sessionId,
             Guid characterId,
@@ -1265,6 +1273,8 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             await context.SaveChangesAsync();
+
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
 
             return new CharacterUpdateResultDto
             {
