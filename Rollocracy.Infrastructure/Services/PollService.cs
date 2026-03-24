@@ -473,8 +473,6 @@ namespace Rollocracy.Infrastructure.Services
 
                             gaugeValue.Value += signedValue;
 
-                            await UpdateCharacterAliveStateAsync(context, vote.CharacterId);
-
                             hasAppliedEffects = true;
 
                             context.SessionPollAppliedEffects.Add(new SessionPollAppliedEffect
@@ -489,6 +487,46 @@ namespace Rollocracy.Infrastructure.Services
                                 OperationType = TestConsequenceOperationType.AddValue,
                                 PreviousValue = previousValue,
                                 NewValue = gaugeValue.Value,
+                                PreviousHasTargetLink = false,
+                                NewHasTargetLink = false,
+                                PreviousIsAlive = previousCharacterAlive,
+                                NewIsAlive = character.IsAlive,
+                                PreviousDiedAtUtc = previousCharacterDiedAt,
+                                NewDiedAtUtc = character.DiedAtUtc,
+                                AppliedAtUtc = DateTime.UtcNow
+                            });
+                        }
+                    }
+                    else if (consequence.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                    {
+                        var sessionGauge = await context.SessionGauges
+                            .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.SessionId == poll.SessionId);
+
+                        if (sessionGauge != null)
+                        {
+                            var previousCharacterAlive = character.IsAlive;
+                            var previousCharacterDiedAt = character.DiedAtUtc;
+                            var previousValue = sessionGauge.CurrentValue;
+
+                            sessionGauge.CurrentValue = Math.Clamp(
+                                sessionGauge.CurrentValue + signedValue,
+                                sessionGauge.MinValue,
+                                sessionGauge.MaxValue);
+
+                            hasAppliedEffects = true;
+
+                            context.SessionPollAppliedEffects.Add(new SessionPollAppliedEffect
+                            {
+                                Id = Guid.NewGuid(),
+                                SessionPollId = poll.Id,
+                                CharacterId = vote.CharacterId,
+                                SessionPollVoteId = vote.Id,
+                                SessionPollOptionId = vote.SessionPollOptionId,
+                                TargetKind = TestConsequenceTargetKind.SessionGauge,
+                                TargetDefinitionId = consequence.TargetDefinitionId,
+                                OperationType = TestConsequenceOperationType.AddValue,
+                                PreviousValue = previousValue,
+                                NewValue = sessionGauge.CurrentValue,
                                 PreviousHasTargetLink = false,
                                 NewHasTargetLink = false,
                                 PreviousIsAlive = previousCharacterAlive,
@@ -542,13 +580,13 @@ namespace Rollocracy.Infrastructure.Services
 
                 await context.SaveChangesAsync();
 
-                // 2) Nouveau moteur commun : DerivedStat / Metric / Talent / Item
                 var commonEngineConsequences = voteConsequences
                     .Where(c => !(
                         c.OperationType == TestConsequenceOperationType.AddValue &&
                         c.ValueMode != ModifierValueMode.Metric &&
                         (c.TargetKind == TestConsequenceTargetKind.Attribute ||
-                         c.TargetKind == TestConsequenceTargetKind.Gauge)))
+                         c.TargetKind == TestConsequenceTargetKind.Gauge ||
+                         c.TargetKind == TestConsequenceTargetKind.SessionGauge)))
                     .ToList();
 
                 foreach (var consequence in commonEngineConsequences)
@@ -803,6 +841,16 @@ namespace Rollocracy.Infrastructure.Services
                     if (gaugeValue != null)
                     {
                         gaugeValue.Value = effect.PreviousValue;
+                    }
+                }
+                else if (effect.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                {
+                    var sessionGauge = await context.SessionGauges
+                        .FirstOrDefaultAsync(g => g.Id == effect.TargetDefinitionId && g.SessionId == latestPoll.SessionId);
+
+                    if (sessionGauge != null)
+                    {
+                        sessionGauge.CurrentValue = effect.PreviousValue;
                     }
                 }
                 else

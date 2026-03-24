@@ -288,18 +288,13 @@ else
                 return;
             }
 
-            await GameSystemService.CreateGameSystemAsync(
+            var createdSystem = await GameSystemService.CreateGameSystemAsync(
                 CurrentUserId,
                 NewSystemName,
                 NewSystemDescription,
                 NewSystemResolutionMode);
 
-            NewSystemName = string.Empty;
-            NewSystemDescription = string.Empty;
-            NewSystemResolutionMode = TestResolutionMode.SuccessThreshold;
-
-            await LoadGameSystems();
-            Message = L["GameSystems_Created"];
+            Navigation.NavigateTo($"/mj/gamesystems/{createdSystem.Id}");
         }
         catch (Exception ex)
         {

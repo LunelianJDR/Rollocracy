@@ -13,8 +13,6 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IStringLocalizer<SharedTexts> L
 
-<h3>@L["SessionPage_Title"]</h3>
-
 @if (!IsLoaded)
 {
     <p>@L["Common_Loading"]</p>
@@ -25,34 +23,7 @@ else if (CurrentSession is null)
 }
 else
 {
-    <p><strong>@L["SessionPage_Name"] :</strong> @CurrentSession.SessionName</p>
-    <p><strong>@L["SessionPage_Slug"] :</strong> @CurrentSession.SessionSlug</p>
-
-    <p><strong>@L["SessionPage_JoinUrl"] :</strong></p>
-    <p><code>@JoinUrl</code></p>
-
-    <p>
-        <strong>@L["SessionPage_Password"] :</strong>
-        @if (string.IsNullOrWhiteSpace(CurrentSession.SessionPassword))
-        {
-            <span>@L["Common_None"]</span>
-        }
-        else if (ShowSessionPassword)
-        {
-            <code>@CurrentSession.SessionPassword</code>
-        }
-        else
-        {
-            <code>****</code>
-        }
-    </p>
-
-    @if (!string.IsNullOrWhiteSpace(CurrentSession.SessionPassword))
-    {
-        <button @onclick="ToggleSessionPasswordVisibility">
-            @(ShowSessionPassword? L["SessionPage_HidePassword"] : L["SessionPage_ShowPassword"])
-        </button>
-    }
+    <h3>@CurrentSession.SessionName</h3>
 
     <section class="rc-character-view">
         <div class="rc-character-view__top">
@@ -101,6 +72,15 @@ else
                 <input type="checkbox" @bind="IncludeNpcs" @bind:after="RefreshCharacterSection" />
                 <span>@L["SessionPage_ShowNpcs"]</span>
             </label>
+            <div class="rc-form-field">
+                <label>@L["SessionPage_SortBy"]</label>
+                <select @bind="CharacterSortMode">
+                    @foreach (var option in GetCharacterSortOptions())
+                    {
+                        <option value="@option.Value">@option.Label</option>
+                    }
+                </select>
+            </div>
         </div>
 
         <div class="rc-character-view__layout @(SelectedCharacterSheet is not null ? "has-selection" : string.Empty)">
@@ -113,7 +93,7 @@ else
                 }
                 else
                 {
-                    @foreach (var character in Characters)
+                    @foreach (var character in GetSortedCharacters())
                     {
                         var healthGauges = character.Gauges.Where(g => g.IsHealthGauge).ToList();
                         var regularGauges = character.Gauges.Where(g => !g.IsHealthGauge).ToList();
@@ -549,6 +529,7 @@ else
     private bool IncludeOffline;
     private bool IncludeDead;
     private bool IncludeNpcs;
+    private string CharacterSortMode = "character-name";
     private bool ShowCharacterBioPanel;
     private bool IsCharacterEditMode;
     private bool IsBiographyEditMode;
@@ -649,6 +630,79 @@ else
         {
             SelectedCharacterSheet = await CharacterService.GetCharacterSheetForSessionAsync(SessionId, SelectedCharacterSheet.CharacterId);
         }
+    }
+
+    private IEnumerable<(string Value, string Label)> GetCharacterSortOptions()
+    {
+        yield return ("character-name", L["SessionPage_Sort_CharacterName"]);
+        yield return ("player-name", L["SessionPage_Sort_PlayerName"]);
+
+        var healthGaugeNames = Characters
+            .SelectMany(x => x.Gauges)
+            .Where(x => x.IsHealthGauge)
+            .Select(x => x.Name)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        foreach (var gaugeName in healthGaugeNames)
+        {
+            yield return ($"gauge:{gaugeName}", $"{L["SessionPage_Sort_HealthGauge"]} - {gaugeName}");
+        }
+
+        var traitNames = Characters
+            .SelectMany(x => x.Traits)
+            .Select(x => x.TraitName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        foreach (var traitName in traitNames)
+        {
+            yield return ($"trait:{traitName}", $"{L["SessionPage_Sort_Trait"]} - {traitName}");
+        }
+    }
+
+    private IEnumerable<SessionCharacterSummaryDto> GetSortedCharacters()
+    {
+        var query = Characters.AsEnumerable();
+
+        query = CharacterSortMode switch
+        {
+            "player-name" => query
+                .OrderBy(x => x.PlayerName, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(x => x.CharacterName, StringComparer.CurrentCultureIgnoreCase),
+
+            _ when CharacterSortMode.StartsWith("gauge:", StringComparison.OrdinalIgnoreCase) => query
+                .OrderBy(x => GetGaugeSortValue(x, CharacterSortMode["gauge:".Length..]))
+                .ThenBy(x => x.CharacterName, StringComparer.CurrentCultureIgnoreCase),
+
+            _ when CharacterSortMode.StartsWith("trait:", StringComparison.OrdinalIgnoreCase) => query
+                .OrderBy(x => GetTraitSortValue(x, CharacterSortMode["trait:".Length..]), StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(x => x.CharacterName, StringComparer.CurrentCultureIgnoreCase),
+
+            _ => query
+                .OrderBy(x => x.CharacterName, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(x => x.PlayerName, StringComparer.CurrentCultureIgnoreCase)
+        };
+
+        return query;
+    }
+
+    private int GetGaugeSortValue(SessionCharacterSummaryDto character, string gaugeName)
+    {
+        return character.Gauges
+            .FirstOrDefault(x => string.Equals(x.Name, gaugeName, StringComparison.CurrentCultureIgnoreCase))
+            ?.Value ?? int.MaxValue;
+    }
+
+    private string GetTraitSortValue(SessionCharacterSummaryDto character, string traitName)
+    {
+        return character.Traits
+            .FirstOrDefault(x => string.Equals(x.TraitName, traitName, StringComparison.CurrentCultureIgnoreCase))
+            ?.OptionName ?? string.Empty;
     }
 
     private async Task RefreshCharacterSection()

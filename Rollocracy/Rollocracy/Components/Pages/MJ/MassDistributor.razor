@@ -95,17 +95,17 @@ else
                     </div>
                 </div>
 
-                <div class="rc-tool-subsection">
+                <div class="rc-filter-group-card">
                     <div class="rc-tool-subsection__header">
-                        <div class="rc-tool-subsection__title">@L["MassDistribution_EffectsSection"]</div>
+                        <div class="rc-filter-group-card__title">@L["GameTest_Consequences"]</div>
                         <div class="rc-tool-inline-actions">
-                            <button @onclick="AddEffect">@L["MassDistribution_AddEffect"]</button>
+                            <button @onclick="AddEffect">@L["GameTest_AddConsequence"]</button>
                         </div>
                     </div>
 
                     @if (Request.Effects.Count == 0)
                     {
-                        <p class="rc-tool-muted">@L["MassDistribution_NoEffects"]</p>
+                        <p class="rc-tool-muted">@L["GameTest_NoConsequence"]</p>
                     }
                     else
                     {
@@ -272,7 +272,7 @@ else
             <div class="rc-tool-panel">
                 <div class="rc-tool-panel__header">
                     <div>
-                        <h5 class="rc-tool-panel__title">@L["MassDistribution_PreviewResult"]</h5>
+                        <h5 class="rc-tool-panel__title">@PreviewPanelTitle</h5>
                         <p class="rc-tool-panel__subtitle">@L["MassDistribution_TargetCount"] : @PreviewCharacters.Count</p>
                     </div>
                 </div>
@@ -316,6 +316,7 @@ else
     private List<MassDistributionPreviewCharacterDto> PreviewCharacters { get; set; } = new();
 
     private MassDistributionLastBatchDto? LastBatch;
+    private bool HasAppliedDistribution;
 
     private List<CharacterFilterGroupItem> AdvancedTraitOptionGroups
     => Editor?.TraitOptions
@@ -353,6 +354,11 @@ else
 
     private List<CharacterFilterReferenceItem> AdvancedMetricTargets
         => Editor?.Metrics.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
+
+    private string PreviewPanelTitle
+        => HasAppliedDistribution
+            ? L["MassDistribution_AffectedCharacters"]
+            : L["MassDistribution_PreviewResult"];
 
     protected override async Task OnInitializedAsync()
     {
@@ -418,6 +424,7 @@ else
         try
         {
             Message = string.Empty;
+            HasAppliedDistribution = false;
             PreviewCharacters = await MassDistributionService.PreviewTargetsAsync(SessionId, CurrentUserId, Request);
         }
         catch (Exception ex)
@@ -431,9 +438,15 @@ else
         try
         {
             Message = string.Empty;
+
             var count = await MassDistributionService.ApplyAsync(SessionId, CurrentUserId, Request);
+
+            HasAppliedDistribution = true;
             PreviewCharacters = await MassDistributionService.PreviewTargetsAsync(SessionId, CurrentUserId, Request);
             LastBatch = await MassDistributionService.GetLastBatchAsync(SessionId, CurrentUserId);
+
+            await LoadCharacterSummariesAsync();
+
             Message = $"{L["MassDistribution_ApplySuccess"]} : {count}";
         }
         catch (Exception ex)
@@ -447,9 +460,15 @@ else
         try
         {
             Message = string.Empty;
+
             var batchName = await MassDistributionService.UndoLastAsync(SessionId, CurrentUserId);
+
             LastBatch = await MassDistributionService.GetLastBatchAsync(SessionId, CurrentUserId);
             PreviewCharacters.Clear();
+            HasAppliedDistribution = false;
+
+            await LoadCharacterSummariesAsync();
+
             Message = $"{L["MassDistribution_UndoSuccess"]} : {batchName}";
         }
         catch (Exception ex)

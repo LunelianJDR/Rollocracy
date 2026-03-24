@@ -16,15 +16,18 @@ namespace Rollocracy.Infrastructure.Services
         private readonly IDbContextFactory<RollocracyDbContext> _contextFactory;
         private readonly ICharacterEffectService _characterEffectService;
         private readonly IStringLocalizer _localizer;
+        private readonly ISessionNotifier _sessionNotifier;
 
         public MassDistributionService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
             ICharacterEffectService characterEffectService,
-            IStringLocalizerFactory localizerFactory)
+            IStringLocalizerFactory localizerFactory,
+            ISessionNotifier sessionNotifier)
         {
             _contextFactory = contextFactory;
             _characterEffectService = characterEffectService;
             _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
+            _sessionNotifier = sessionNotifier;
         }
 
         public async Task<MassDistributionEditorDto?> GetEditorAsync(Guid sessionId, Guid userAccountId)
@@ -156,7 +159,7 @@ namespace Rollocracy.Infrastructure.Services
 
             await using var context = await _contextFactory.CreateDbContextAsync();
 
-            var snapshotJson = await BuildUndoSnapshotJsonAsync(context, targetCharacterIds);
+            var snapshotJson = await BuildUndoSnapshotJsonAsync(context, sessionId, targetCharacterIds);
 
             var batch = new MassDistributionBatch
             {
@@ -270,6 +273,10 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => targetCharacterIds.Contains(x.CharacterId))
                 .ToListAsync();
 
+            var currentSessionGauges = await context.SessionGauges
+                .Where(x => x.SessionId == sessionId)
+                .ToListAsync();
+
             context.CharacterAttributeValues.RemoveRange(currentAttributeValues);
             context.CharacterGaugeValues.RemoveRange(currentGaugeValues);
             context.CharacterTalents.RemoveRange(currentCharacterTalents);
@@ -306,6 +313,15 @@ namespace Rollocracy.Infrastructure.Services
                     GaugeDefinitionId = value.GaugeDefinitionId,
                     Value = value.Value
                 });
+            }
+
+            foreach (var sessionGauge in currentSessionGauges)
+            {
+                var snapshotGauge = snapshot.SessionGauges.FirstOrDefault(x => x.Id == sessionGauge.Id);
+                if (snapshotGauge != null)
+                {
+                    sessionGauge.CurrentValue = snapshotGauge.CurrentValue;
+                }
             }
 
             foreach (var value in snapshot.CharacterTalents)
@@ -348,6 +364,7 @@ namespace Rollocracy.Infrastructure.Services
             batch.UndoneAtUtc = DateTime.UtcNow;
 
             await context.SaveChangesAsync();
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
 
             return batch.Name;
         }
@@ -364,7 +381,10 @@ namespace Rollocracy.Infrastructure.Services
                 throw new Exception(_localizer["Backend_SessionAccessDenied"]);
         }
 
-        private async Task<string> BuildUndoSnapshotJsonAsync(RollocracyDbContext context, List<Guid> targetCharacterIds)
+        private async Task<string> BuildUndoSnapshotJsonAsync(
+    RollocracyDbContext context,
+    Guid sessionId,
+    List<Guid> targetCharacterIds)
         {
             var characters = await context.Characters
                 .AsNoTracking()
@@ -396,6 +416,11 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => targetCharacterIds.Contains(x.CharacterId))
                 .ToListAsync();
 
+            var sessionGauges = await context.SessionGauges
+                .AsNoTracking()
+                .Where(x => x.SessionId == sessionId)
+                .ToListAsync();
+
             var snapshot = new MassDistributionUndoSnapshot
             {
                 Characters = characters.Select(x => new CharacterUndoState
@@ -417,6 +442,12 @@ namespace Rollocracy.Infrastructure.Services
                     CharacterId = x.CharacterId,
                     GaugeDefinitionId = x.GaugeDefinitionId,
                     Value = x.Value
+                }).ToList(),
+                SessionGauges = sessionGauges.Select(x => new SessionGaugeUndoState
+                {
+                    Id = x.Id,
+                    SessionId = x.SessionId,
+                    CurrentValue = x.CurrentValue
                 }).ToList(),
                 CharacterTalents = characterTalents.Select(x => new CharacterTalentUndoState
                 {
@@ -452,6 +483,7 @@ namespace Rollocracy.Infrastructure.Services
             public List<CharacterUndoState> Characters { get; set; } = new();
             public List<CharacterAttributeValueUndoState> AttributeValues { get; set; } = new();
             public List<CharacterGaugeValueUndoState> GaugeValues { get; set; } = new();
+            public List<SessionGaugeUndoState> SessionGauges { get; set; } = new();
             public List<CharacterTalentUndoState> CharacterTalents { get; set; } = new();
             public List<CharacterItemUndoState> CharacterItems { get; set; } = new();
             public List<CharacterModifierUndoState> CharacterModifiers { get; set; } = new();
@@ -478,6 +510,13 @@ namespace Rollocracy.Infrastructure.Services
             public Guid CharacterId { get; set; }
             public Guid GaugeDefinitionId { get; set; }
             public int Value { get; set; }
+        }
+
+        private sealed class SessionGaugeUndoState
+        {
+            public Guid Id { get; set; }
+            public Guid SessionId { get; set; }
+            public int CurrentValue { get; set; }
         }
 
         private sealed class CharacterTalentUndoState

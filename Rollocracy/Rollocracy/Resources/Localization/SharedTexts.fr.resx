@@ -868,10 +868,10 @@
 </data>
 
 	<data name="GameTest_DifficultyMode" xml:space="preserve">
-  <value>Mode difficulté</value>
+  <value>Bonus/Malus</value>
 </data>
 	<data name="GameTest_DifficultyValue" xml:space="preserve">
-  <value>Modificateur de difficulté</value>
+  <value>Valeur</value>
 </data>
 	<data name="GameTest_DifficultySummary" xml:space="preserve">
   <value>Difficulté</value>
@@ -1560,6 +1560,9 @@
 </data>
 	<data name="Backend_MassDistributionNoBatchToUndo" xml:space="preserve">
   <value>Aucun lot de distribution de masse à annuler.</value>
+</data>
+	<data name="MassDistribution_AffectedCharacters" xml:space="preserve">
+  <value>Personnages affectés par la distribution</value>
 </data>
 	<data name="Backend_MassDistributionUndoSnapshotInvalid" xml:space="preserve">
   <value>Le snapshot d'annulation du dernier lot est invalide.</value>
@@ -2579,4 +2582,71 @@
 	<data name="Backend_SessionGaugeNotFound" xml:space="preserve">
   <value>La jauge de session demandée est introuvable.</value>
 </data>
+	<data name="GameTest_GlobalThresholds" xml:space="preserve">
+  <value>Paliers de réussite globaux</value>
+</data>
+	<data name="GameTest_AddGlobalThreshold" xml:space="preserve">
+  <value>Ajouter un palier de réussite</value>
+</data>
+	<data name="GameTest_RemoveGlobalThreshold" xml:space="preserve">
+  <value>Retirer un palier de réussite</value>
+</data>
+	<data name="GameTest_GlobalThresholdLabel" xml:space="preserve">
+  <value>Palier global {0}</value>
+</data>
+	<data name="GameTest_OnGlobalSuccess" xml:space="preserve">
+  <value>Réussite globale</value>
+</data>
+	<data name="GameTest_OnModerateSuccess" xml:space="preserve">
+  <value>Réussite modérée</value>
+</data>
+	<data name="GameTest_OnModerateFailure" xml:space="preserve">
+  <value>Échec modéré</value>
+</data>
+	<data name="GameTest_OnGlobalFailure" xml:space="preserve">
+  <value>Échec global</value>
+</data>
+	<data name="GameTest_GlobalOutcome_GlobalSuccess" xml:space="preserve">
+  <value>Résultat global : réussite globale</value>
+</data>
+	<data name="GameTest_GlobalOutcome_ModerateSuccess" xml:space="preserve">
+  <value>Résultat global : réussite modérée</value>
+</data>
+	<data name="GameTest_GlobalOutcome_ModerateFailure" xml:space="preserve">
+  <value>Résultat global : échec modéré</value>
+</data>
+	<data name="GameTest_GlobalOutcome_GlobalFailure" xml:space="preserve">
+  <value>Résultat global : échec global</value>
+</data>
+	<data name="Backend_GlobalThresholdAtLeastOneRequired" xml:space="preserve">
+  <value>Au moins un palier global est requis.</value>
+</data>
+	<data name="Backend_InvalidGlobalThresholdConfiguration" xml:space="preserve">
+  <value>La configuration des paliers globaux est invalide.</value>
+</data>
+	<data name="Backend_InvalidGlobalThresholdValue" xml:space="preserve">
+  <value>Une valeur de palier global est invalide.</value>
+</data>
+	<data name="Backend_GlobalThresholdsMustBeDescending" xml:space="preserve">
+  <value>Les paliers globaux doivent être strictement décroissants.</value>
+</data>
+	<data name="SessionPage_SortBy" xml:space="preserve">
+  <value>Trier par</value>
+</data>
+	<data name="SessionPage_Sort_CharacterName" xml:space="preserve">
+  <value>Nom du personnage</value>
+</data>
+	<data name="SessionPage_Sort_PlayerName" xml:space="preserve">
+  <value>Nom du joueur</value>
+</data>
+	<data name="SessionPage_Sort_HealthGauge" xml:space="preserve">
+  <value>Jauge de vie</value>
+</data>
+	<data name="SessionPage_Sort_Trait" xml:space="preserve">
+  <value>Trait</value>
+</data>
+	<data name="GameTest_NoGlobalThresholds" xml:space="preserve">
+  <value>Aucun palier de réussite global défini.</value>
+</data>
+	
 </root>

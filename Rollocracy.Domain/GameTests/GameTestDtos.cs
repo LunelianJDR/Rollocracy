@@ -69,6 +69,10 @@ namespace Rollocracy.Domain.GameTests
 
         public int AutoRollDelaySeconds { get; set; } = 20;
 
+        public int? GlobalSuccessThreshold1Percent { get; set; } = 50;
+        public int? GlobalSuccessThreshold2Percent { get; set; }
+        public int? GlobalSuccessThreshold3Percent { get; set; }
+
         public CharacterTargetFilterDto AdvancedFilter { get; set; } = new();
 
         public List<GameTestTraitFilterGroupDto> TraitFilters { get; set; } = new();
@@ -202,6 +206,11 @@ namespace Rollocracy.Domain.GameTests
         public int CriticalFailureCount { get; set; }
 
         public double SuccessRatePercent { get; set; }
+
+        public int? GlobalSuccessThreshold1Percent { get; set; }
+        public int? GlobalSuccessThreshold2Percent { get; set; }
+        public int? GlobalSuccessThreshold3Percent { get; set; }
+        public GameTestGlobalOutcome GlobalOutcome { get; set; }
 
         public int? BestDiceTotal { get; set; }
 

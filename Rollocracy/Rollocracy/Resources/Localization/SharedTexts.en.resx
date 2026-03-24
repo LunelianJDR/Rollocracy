@@ -868,10 +868,10 @@
 </data>
 
 	<data name="GameTest_DifficultyMode" xml:space="preserve">
-  <value>Difficulty mode</value>
+  <value>Bonus/Malus</value>
 </data>
 	<data name="GameTest_DifficultyValue" xml:space="preserve">
-  <value>Difficulty modifier</value>
+  <value>Value</value>
 </data>
 	<data name="GameTest_DifficultySummary" xml:space="preserve">
   <value>Difficulty</value>
@@ -1563,6 +1563,9 @@
 </data>
 	<data name="Backend_MassDistributionUndoSnapshotInvalid" xml:space="preserve">
   <value>The undo snapshot for the last batch is invalid.</value>
+</data>
+	<data name="MassDistribution_AffectedCharacters" xml:space="preserve">
+  <value>Characters affected by the distribution</value>
 </data>
 	<data name="TestConsequence_Operation_AddValue" xml:space="preserve">
   <value>Add / remove a value</value>
@@ -2578,5 +2581,71 @@
 </data>
 	<data name="Backend_SessionGaugeNotFound" xml:space="preserve">
   <value>The requested session gauge could not be found.</value>
+</data>
+	<data name="GameTest_GlobalThresholds" xml:space="preserve">
+  <value>Global success thresholds</value>
+</data>
+	<data name="GameTest_AddGlobalThreshold" xml:space="preserve">
+  <value>Add success threshold</value>
+</data>
+	<data name="GameTest_RemoveGlobalThreshold" xml:space="preserve">
+  <value>Remove success threshold</value>
+</data>
+	<data name="GameTest_GlobalThresholdLabel" xml:space="preserve">
+  <value>Global threshold {0}</value>
+</data>
+	<data name="GameTest_OnGlobalSuccess" xml:space="preserve">
+  <value>Global success</value>
+</data>
+	<data name="GameTest_OnModerateSuccess" xml:space="preserve">
+  <value>Moderate success</value>
+</data>
+	<data name="GameTest_OnModerateFailure" xml:space="preserve">
+  <value>Moderate failure</value>
+</data>
+	<data name="GameTest_OnGlobalFailure" xml:space="preserve">
+  <value>Global failure</value>
+</data>
+	<data name="GameTest_GlobalOutcome_GlobalSuccess" xml:space="preserve">
+  <value>Global result: global success</value>
+</data>
+	<data name="GameTest_GlobalOutcome_ModerateSuccess" xml:space="preserve">
+  <value>Global result: moderate success</value>
+</data>
+	<data name="GameTest_GlobalOutcome_ModerateFailure" xml:space="preserve">
+  <value>Global result: moderate failure</value>
+</data>
+	<data name="GameTest_GlobalOutcome_GlobalFailure" xml:space="preserve">
+  <value>Global result: global failure</value>
+</data>
+	<data name="Backend_GlobalThresholdAtLeastOneRequired" xml:space="preserve">
+  <value>At least one global threshold is required.</value>
+</data>
+	<data name="Backend_InvalidGlobalThresholdConfiguration" xml:space="preserve">
+  <value>The global threshold configuration is invalid.</value>
+</data>
+	<data name="Backend_InvalidGlobalThresholdValue" xml:space="preserve">
+  <value>A global threshold value is invalid.</value>
+</data>
+	<data name="Backend_GlobalThresholdsMustBeDescending" xml:space="preserve">
+  <value>Global thresholds must be strictly descending.</value>
+</data>
+	<data name="SessionPage_SortBy" xml:space="preserve">
+  <value>Sort by</value>
+</data>
+	<data name="SessionPage_Sort_CharacterName" xml:space="preserve">
+  <value>Character name</value>
+</data>
+	<data name="SessionPage_Sort_PlayerName" xml:space="preserve">
+  <value>Player name</value>
+</data>
+	<data name="SessionPage_Sort_HealthGauge" xml:space="preserve">
+  <value>Health gauge</value>
+</data>
+	<data name="SessionPage_Sort_Trait" xml:space="preserve">
+  <value>Trait</value>
+</data>
+	<data name="GameTest_NoGlobalThresholds" xml:space="preserve">
+  <value>No global success threshold defined.</value>
 </data>
 </root>

@@ -12,6 +12,7 @@
 @using Rollocracy.Domain.Characters
 @using Rollocracy.Components.Pages.MJ.Shared
 @using System.Globalization
+@using Microsoft.JSInterop
 @inject NavigationManager Navigation
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
 @inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
@@ -19,6 +20,7 @@
 @inject Rollocracy.Domain.Interfaces.ICharacterService CharacterService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IStringLocalizer<SharedTexts> L
+@inject IJSRuntime JS
 
 <h3>@L["GameTest_GameMasterSectionTitle"]</h3>
 
@@ -159,7 +161,7 @@ else
                         </div>
 
                         <div class="rc-form-field rc-form-field--full">
-                            <label>@L["GameTest_DifficultyValue"]</label>
+                            <label>@L["GameTest_DifficultyMode"]</label>
                             <div class="rc-difficulty-slider">
                                 <input type="range"
                                        class="rc-difficulty-slider--centered"
@@ -178,25 +180,69 @@ else
                             </div>
                         </div>
                         
+                        <div class="rc-form-field rc-form-field--full">
+                            <div class="rc-tool-subsection__header">
+                            <label>@L["GameTest_GlobalThresholds"]</label>
+                                <div class="rc-tool-inline-actions">
+                                    <button type="button" @onclick="AddGlobalThreshold" disabled="@(GlobalSuccessThresholds.Count >= 3)">
+                                        @L["GameTest_AddGlobalThreshold"]
+                                    </button>
+                                    <button type="button" @onclick="RemoveGlobalThreshold" disabled="@(GlobalSuccessThresholds.Count == 0)">
+                                        @L["GameTest_RemoveGlobalThreshold"]
+                                    </button>
+                                </div>
+                            </div>
+
+                            @if (GlobalSuccessThresholds.Count == 0)
+                            {
+                                <p>@L["GameTest_NoGlobalThresholds"]</p>
+                            }
+                            else
+                            {
+                                <div class="rc-global-threshold-slider">
+                                    <div class="rc-global-threshold-slider__track-wrapper"
+                                         @onmousemove="HandleGlobalThresholdTrackMouseMove"
+                                         @onmouseup="EndGlobalThresholdDrag"
+                                         @onmouseleave="EndGlobalThresholdDrag">
+                                        <div class="rc-global-threshold-slider__track"
+                                             @ref="GlobalThresholdSliderTrackRef"
+                                             style="@GetGlobalThresholdTrackStyle()"></div>
+
+                                        @for (var i = 0; i < GlobalSuccessThresholds.Count; i++)
+                                        {
+                                            var thresholdValue = GlobalSuccessThresholds[i];
+                                            var thresholdIndex = i;
+
+                                            <button type="button"
+                                                    class="rc-global-threshold-slider__handle"
+                                                    style="@GetGlobalThresholdHandleStyle(thresholdValue)"
+                                                    @onmousedown="() => BeginGlobalThresholdDrag(thresholdIndex)">
+                                                <span class="rc-global-threshold-slider__badge">@($"{thresholdValue}%")</span>
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
                     </div>
                     <hr />
                     
-                        <CharacterAudienceFilters Title="@L["GameTest_TargetScope"]"
-                                                    OnlyOnline="@(NewTargetScope == TestTargetScope.OnlineLivingCharacters)"
-                                                    OnlyAlive="@(NewTargetScope == TestTargetScope.AllLivingCharacters)"
-                                                    IncludeNpcs="IncludeNpcsInTest"
-                                                    OnlyOnlineChanged="@(value => NewTargetScope = value ? TestTargetScope.OnlineLivingCharacters : NewTargetScope)"
-                                                    OnlyAliveChanged="@(value => NewTargetScope = value ? TestTargetScope.AllLivingCharacters : NewTargetScope)"
-                                                    IncludeNpcsChanged="@(value => IncludeNpcsInTest = value)" />
+                    <CharacterAudienceFilters Title="@L["GameTest_TargetScope"]"
+                                                OnlyOnline="@(NewTargetScope == TestTargetScope.OnlineLivingCharacters)"
+                                                OnlyAlive="@(NewTargetScope == TestTargetScope.AllLivingCharacters)"
+                                                IncludeNpcs="IncludeNpcsInTest"
+                                                OnlyOnlineChanged="@(value => NewTargetScope = value ? TestTargetScope.OnlineLivingCharacters : NewTargetScope)"
+                                                OnlyAliveChanged="@(value => NewTargetScope = value ? TestTargetScope.AllLivingCharacters : NewTargetScope)"
+                                                IncludeNpcsChanged="@(value => IncludeNpcsInTest = value)" />
                             
-                        <CharacterAdvancedFilters Filter="AdvancedFilter"
-                                                    TraitOptionGroups="AdvancedTraitOptionGroups"
-                                                    TalentOptions="AdvancedTalentOptions"
-                                                    ItemOptions="AdvancedItemOptions"
-                                                    AttributeTargets="AdvancedAttributeTargets"
-                                                    GaugeTargets="AdvancedGaugeTargets"
-                                                    DerivedStatTargets="AdvancedDerivedTargets"
-                                                    MetricTargets="AdvancedMetricTargets" />
+                    <CharacterAdvancedFilters Filter="AdvancedFilter"
+                                                TraitOptionGroups="AdvancedTraitOptionGroups"
+                                                TalentOptions="AdvancedTalentOptions"
+                                                ItemOptions="AdvancedItemOptions"
+                                                AttributeTargets="AdvancedAttributeTargets"
+                                                GaugeTargets="AdvancedGaugeTargets"
+                                                DerivedStatTargets="AdvancedDerivedTargets"
+                                                MetricTargets="AdvancedMetricTargets" />
                     
                     
                         <div class="rc-filter-group-card">
@@ -222,12 +268,12 @@ else
                                             <div class="rc-consequence-card__grid">
                                                 <div class="rc-form-field">
                                                     <label>@L["GameTest_When"]</label>
-                                                    <select @bind="row.ApplyOn">
-                                                        <option value="@TestConsequenceApplyOn.OnSuccess">@L["GameTest_OnSuccess"]</option>
-                                                        <option value="@TestConsequenceApplyOn.OnFailure">@L["GameTest_OnFailure"]</option>
-                                                        <option value="@TestConsequenceApplyOn.OnCriticalSuccess">@L["GameTest_OnCriticalSuccess"]</option>
-                                                        <option value="@TestConsequenceApplyOn.OnCriticalFailure">@L["GameTest_OnCriticalFailure"]</option>
-                                                    </select>
+                                                <select @bind="row.ApplyOn">
+                                                    @foreach (var applyOnOption in GetAvailableConsequenceApplyOnOptions())
+                                                    {
+                                                        <option value="@applyOnOption.Value">@applyOnOption.Label</option>
+                                                    }
+                                                </select>
                                                 </div>
 
                                                 <div class="rc-form-field">
@@ -545,6 +591,7 @@ else
     private int NewDiceCount = 1;
     private int NewDiceSides = 100;
     private int? NewSuccessThreshold;
+    private List<int> GlobalSuccessThresholds = new();
 
     private bool IncludeNpcsInTest;
     private string IncludeNpcsMode
@@ -711,10 +758,21 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
             .WithAutomaticReconnect()
             .Build();
 
+        hubConnection.On("CharacterStateChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadCharacterSummariesAsync();
+                await LoadActiveTest();
+                StateHasChanged();
+            });
+        });
+
         hubConnection.On("TestChanged", async () =>
         {
             await InvokeAsync(async () =>
             {
+                await LoadCharacterSummariesAsync();
                 await LoadActiveTest();
                 StateHasChanged();
             });
@@ -971,6 +1029,9 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
                 DifficultyValue = difficultyValue,
                 TargetScope = NewTargetScope,
                 TraitFilterMode = NewTraitFilterMode,
+                GlobalSuccessThreshold1Percent = GlobalSuccessThresholds.Count >= 1 ? GlobalSuccessThresholds[0] : null,
+                GlobalSuccessThreshold2Percent = GlobalSuccessThresholds.Count >= 2 ? GlobalSuccessThresholds[1] : null,
+                GlobalSuccessThreshold3Percent = GlobalSuccessThresholds.Count >= 3 ? GlobalSuccessThresholds[2] : null,
                 AdvancedFilter = new CharacterTargetFilterDto
                 {
                     OnlyAlive = true,
@@ -982,19 +1043,31 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
                     TalentIds = AdvancedFilter.TalentIds.ToList(),
                     ItemIds = AdvancedFilter.ItemIds.ToList(),
                     ValueFilters = AdvancedFilter.ValueFilters
-                        .Select(x => new CharacterValueFilterDto
-                        {
-                            TargetType = x.TargetType,
-                            TargetId = x.TargetId,
-                            TargetName = x.TargetName,
-                            ComparisonType = x.ComparisonType,
-                            Value = x.Value
-                        })
-                        .ToList()
+            .Select(x => new CharacterValueFilterDto
+            {
+                TargetType = x.TargetType,
+                TargetId = x.TargetId,
+                TargetName = x.TargetName,
+                ComparisonType = x.ComparisonType,
+                Value = x.Value
+            })
+            .ToList()
                 },
+                Consequences = ConsequenceRows.Select(row => new GameTestConsequenceDraftDto
+                {
+                    ApplyOn = row.ApplyOn,
+                    OperationType = row.OperationType,
+                    TargetKind = row.TargetKind,
+                    TargetDefinitionId = row.TargetDefinitionId,
+                    ModifierMode = row.ModifierMode,
+                    Value = row.ValueMode == ModifierValueMode.Metric ? 0 : row.Value,
+                    ValueMode = row.ValueMode,
+                    SourceMetricId = row.ValueMode == ModifierValueMode.Metric ? row.SourceMetricId : null
+                }).ToList()
             };
 
             ActiveTest = await GameTestService.CreateGameTestAsync(SessionId, CurrentUserId, request);
+            await LoadCharacterSummariesAsync();
             Message = L["GameTest_Created"];
         }
         catch (Exception ex)
@@ -1112,6 +1185,243 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
     private string FormatSignedValue(int value)
     {
         return value > 0 ? $"+{value}" : value.ToString();
+    }
+
+    private bool HasModerateSuccessThreshold => GlobalSuccessThresholds.Count >= 2;
+    private bool HasModerateFailureThreshold => GlobalSuccessThresholds.Count >= 3;
+
+    private int? DraggingGlobalThresholdIndex;
+    private ElementReference GlobalThresholdSliderTrackRef;
+
+    private void AddGlobalThreshold()
+    {
+        if (GlobalSuccessThresholds.Count >= 3)
+            return;
+
+        if (GlobalSuccessThresholds.Count == 0)
+        {
+            GlobalSuccessThresholds.Add(50);
+            return;
+        }
+
+        if (GlobalSuccessThresholds.Count == 1)
+        {
+            var first = GlobalSuccessThresholds[0];
+            var second = Math.Max(5, first - 20);
+            if (second >= first)
+                second = first - 5;
+
+            if (second >= 5)
+                GlobalSuccessThresholds.Add(second);
+
+            NormalizeGlobalThresholds();
+            return;
+        }
+
+        if (GlobalSuccessThresholds.Count == 2)
+        {
+            var second = GlobalSuccessThresholds[1];
+            var third = Math.Max(5, second - 20);
+            if (third >= second)
+                third = second - 5;
+
+            if (third >= 5)
+                GlobalSuccessThresholds.Add(third);
+
+            NormalizeGlobalThresholds();
+        }
+    }
+
+    private void RemoveGlobalThreshold()
+    {
+        if (GlobalSuccessThresholds.Count == 0)
+            return;
+
+        GlobalSuccessThresholds.RemoveAt(GlobalSuccessThresholds.Count - 1);
+        NormalizeGlobalThresholds();
+    }
+
+    private void NormalizeGlobalThresholds()
+    {
+        GlobalSuccessThresholds = GlobalSuccessThresholds
+            .Select(NormalizeSingleThresholdValue)
+            .Distinct()
+            .OrderByDescending(x => x)
+            .Take(3)
+            .ToList();
+
+        EnforceThresholdSpacing();
+    }
+
+    private int NormalizeSingleThresholdValue(int value)
+    {
+        var normalized = (int)Math.Round(value / 5.0) * 5;
+        normalized = Math.Clamp(normalized, 5, 95);
+        return normalized;
+    }
+
+    private void EnforceThresholdSpacing()
+    {
+        if (GlobalSuccessThresholds.Count <= 1)
+            return;
+
+        GlobalSuccessThresholds = GlobalSuccessThresholds
+            .OrderByDescending(x => x)
+            .ToList();
+
+        for (var i = 1; i < GlobalSuccessThresholds.Count; i++)
+        {
+            var maxAllowed = GlobalSuccessThresholds[i - 1] - 5;
+            if (GlobalSuccessThresholds[i] > maxAllowed)
+                GlobalSuccessThresholds[i] = maxAllowed;
+        }
+
+        for (var i = GlobalSuccessThresholds.Count - 2; i >= 0; i--)
+        {
+            var minAllowed = GlobalSuccessThresholds[i + 1] + 5;
+            if (GlobalSuccessThresholds[i] < minAllowed)
+                GlobalSuccessThresholds[i] = minAllowed;
+        }
+
+        for (var i = 0; i < GlobalSuccessThresholds.Count; i++)
+        {
+            GlobalSuccessThresholds[i] = Math.Clamp(GlobalSuccessThresholds[i], 5, 95);
+        }
+
+        for (var i = 1; i < GlobalSuccessThresholds.Count; i++)
+        {
+            if (GlobalSuccessThresholds[i - 1] - GlobalSuccessThresholds[i] < 5)
+                GlobalSuccessThresholds[i] = Math.Max(5, GlobalSuccessThresholds[i - 1] - 5);
+        }
+
+        GlobalSuccessThresholds = GlobalSuccessThresholds
+            .Distinct()
+            .OrderByDescending(x => x)
+            .Take(3)
+            .ToList();
+    }
+
+    private string GetGlobalThresholdTrackStyle()
+    {
+        if (GlobalSuccessThresholds.Count == 0)
+            return "background: var(--rc-bg-alt);";
+
+        if (GlobalSuccessThresholds.Count == 1)
+        {
+            var t1 = GlobalSuccessThresholds[0];
+            return $"background: linear-gradient(to right, #a13f3f 0%, #a13f3f {t1}%, #1d6b3c {t1}%, #1d6b3c 100%);";
+        }
+
+        if (GlobalSuccessThresholds.Count == 2)
+        {
+            var t1 = GlobalSuccessThresholds[0];
+            var t2 = GlobalSuccessThresholds[1];
+            return $"background: linear-gradient(to right, #a13f3f 0%, #a13f3f {t2}%, #d4b100 {t2}%, #d4b100 {t1}%, #1d6b3c {t1}%, #1d6b3c 100%);";
+        }
+
+        var x = GlobalSuccessThresholds[0];
+        var y = GlobalSuccessThresholds[1];
+        var z = GlobalSuccessThresholds[2];
+
+        return $"background: linear-gradient(to right, #a13f3f 0%, #a13f3f {z}%, #d97a1f {z}%, #d97a1f {y}%, #d4b100 {y}%, #d4b100 {x}%, #1d6b3c {x}%, #1d6b3c 100%);";
+    }
+
+    private string GetGlobalThresholdHandleStyle(int value)
+    {
+        return $"left: {value}%;";
+    }
+
+    private string GetGlobalThresholdLabel(int index)
+    {
+        return L["GameTest_GlobalThresholdLabel", index + 1];
+    }
+
+    private void BeginGlobalThresholdDrag(int index)
+    {
+        DraggingGlobalThresholdIndex = index;
+    }
+
+    private void EndGlobalThresholdDrag()
+    {
+        DraggingGlobalThresholdIndex = null;
+    }
+
+    private async Task HandleGlobalThresholdTrackMouseMove(MouseEventArgs args)
+    {
+        if (!DraggingGlobalThresholdIndex.HasValue)
+            return;
+
+        var trackRect = await JS.InvokeAsync<DomRectDto>("rollocracyThresholds.getElementRect", GlobalThresholdSliderTrackRef);
+        if (trackRect.Width <= 0)
+            return;
+
+        var relativeX = args.ClientX - trackRect.Left;
+        var percentage = (relativeX / trackRect.Width) * 100.0;
+        var normalized = NormalizeSingleThresholdValue((int)Math.Round(percentage));
+
+        SetGlobalThresholdValue(DraggingGlobalThresholdIndex.Value, normalized);
+    }
+
+    private void SetGlobalThresholdValue(int index, int value)
+    {
+        if (index < 0 || index >= GlobalSuccessThresholds.Count)
+            return;
+
+        value = NormalizeSingleThresholdValue(value);
+
+        var maxAllowed = index == 0 ? 95 : GlobalSuccessThresholds[index - 1] - 5;
+        var minAllowed = index == GlobalSuccessThresholds.Count - 1 ? 5 : GlobalSuccessThresholds[index + 1] + 5;
+
+        value = Math.Clamp(value, minAllowed, maxAllowed);
+
+        GlobalSuccessThresholds[index] = value;
+        GlobalSuccessThresholds = GlobalSuccessThresholds
+            .OrderByDescending(x => x)
+            .ToList();
+    }
+
+    private string GetGlobalThresholdBarClass(int segmentIndex)
+    {
+        return segmentIndex switch
+        {
+            0 => "rc-global-threshold-bar__segment rc-global-threshold-bar__segment--success",
+            1 => "rc-global-threshold-bar__segment rc-global-threshold-bar__segment--moderate-success",
+            2 => "rc-global-threshold-bar__segment rc-global-threshold-bar__segment--moderate-failure",
+            _ => "rc-global-threshold-bar__segment rc-global-threshold-bar__segment--failure"
+        };
+    }
+
+    private List<(TestConsequenceApplyOn Value, string Label)> GetAvailableConsequenceApplyOnOptions()
+    {
+        var result = new List<(TestConsequenceApplyOn, string)>
+    {
+        (TestConsequenceApplyOn.OnSuccess, L["GameTest_OnSuccess"]),
+        (TestConsequenceApplyOn.OnFailure, L["GameTest_OnFailure"]),
+        (TestConsequenceApplyOn.OnCriticalSuccess, L["GameTest_OnCriticalSuccess"]),
+        (TestConsequenceApplyOn.OnCriticalFailure, L["GameTest_OnCriticalFailure"])
+    };
+
+        if (GlobalSuccessThresholds.Count >= 1)
+        {
+            result.Add((TestConsequenceApplyOn.OnGlobalSuccess, L["GameTest_OnGlobalSuccess"]));
+        }
+
+        if (GlobalSuccessThresholds.Count >= 2)
+        {
+            result.Add((TestConsequenceApplyOn.OnModerateSuccess, L["GameTest_OnModerateSuccess"]));
+        }
+
+        if (GlobalSuccessThresholds.Count >= 3)
+        {
+            result.Add((TestConsequenceApplyOn.OnModerateFailure, L["GameTest_OnModerateFailure"]));
+        }
+        
+        if (GlobalSuccessThresholds.Count >= 1)
+        {
+            result.Add((TestConsequenceApplyOn.OnGlobalFailure, L["GameTest_OnGlobalFailure"]));
+        }
+
+        return result;
     }
 
     private void AddGenericConsequence()
@@ -1254,4 +1564,9 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
             await hubConnection.DisposeAsync();
     }
 
+    private sealed class DomRectDto
+    {
+        public double Left { get; set; }
+        public double Width { get; set; }
+    }
 }
