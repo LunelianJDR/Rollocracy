@@ -23,7 +23,6 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IStringLocalizer<SharedTexts> L
 
-<h3>@L["Poll_GameMasterSectionTitle"]</h3>
 
 @if (!IsLoaded)
 {
@@ -82,34 +81,16 @@ else
                             <label>@L["Poll_Question"]</label>
                             <input @bind="NewPollQuestion" />
                         </div>
-
-                        <div class="rc-form-field">
-                            <label>@L["Poll_VoteWeightMode"]</label>
-                            <select @bind="SelectedPollVoteWeightMode">
-                                <option value="@PollVoteWeightMode.FixedOne">@L["Poll_VoteWeightModeFixedOne"]</option>
-                                <option value="@PollVoteWeightMode.Metric">@L["Poll_VoteWeightModeMetric"]</option>
-                            </select>
-                        </div>
-
-                        @if (SelectedPollVoteWeightMode == PollVoteWeightMode.Metric)
-                        {
-                            <div class="rc-form-field">
-                                <label>@L["Poll_VoteWeightMetric"]</label>
-                                <select @bind="SelectedPollMetricId">
-                                    <option value="">@L["Poll_SelectMetric"]</option>
-                                    @foreach (var metric in AvailableMetrics)
-                                    {
-                                        <option value="@metric.Id">@metric.Name</option>
-                                    }
-                                </select>
-                            </div>
-                        }
                     </div>
 
-                    @if (SelectedPollVoteWeightMode == PollVoteWeightMode.Metric)
-                    {
-                        <p class="rc-tool-muted">@L["Poll_VoteWeightMetricHelp"]</p>
-                    }
+                    <CharacterAdvancedFilters Filter="AdvancedFilter"
+                                              TraitOptionGroups="TraitOptionGroups"
+                                              TalentOptions="TalentFilterOptions"
+                                              ItemOptions="ItemFilterOptions"
+                                              AttributeTargets="AttributeTargets"
+                                              GaugeTargets="GaugeTargets"
+                                              DerivedStatTargets="DerivedStatTargets"
+                                              MetricTargets="MetricTargets" />
 
                     <div class="rc-tool-subsection">
                         <div class="rc-tool-subsection__header">
@@ -143,7 +124,6 @@ else
                                 </div>
 
                                 <div class="rc-form-field">
-                                    <label>@L["Poll_OptionLabel"]</label>
                                     <input @bind="NewPollOptions[optionIndex].Label" placeholder="@L["Poll_OptionLabel"]" />
                                 </div>
 
@@ -564,9 +544,22 @@ else
     private string Message = string.Empty;
 
     private string NewPollQuestion = string.Empty;
-    private PollVoteWeightMode SelectedPollVoteWeightMode = PollVoteWeightMode.FixedOne;
-    private string SelectedPollMetricId = string.Empty;
+    private Guid? VoteWeightMetricId;
+    private string VoteWeightMetricDisplayName = string.Empty;
     private Guid? SelectedPollHistoryId;
+
+    private CharacterTargetFilterDto AdvancedFilter = new()
+    {
+        MatchAllConditions = true
+    };
+
+    private List<CharacterFilterGroupItem> TraitOptionGroups = new();
+    private List<CharacterFilterReferenceItem> TalentFilterOptions = new();
+    private List<CharacterFilterReferenceItem> ItemFilterOptions = new();
+    private List<CharacterFilterReferenceItem> AttributeTargets = new();
+    private List<CharacterFilterReferenceItem> GaugeTargets = new();
+    private List<CharacterFilterReferenceItem> DerivedStatTargets = new();
+    private List<CharacterFilterReferenceItem> MetricTargets = new();
 
     private bool ShowLivePollResults;
     private bool ShowPollVoteDetails;
@@ -642,6 +635,11 @@ else
                 AvailableGaugeDefinitions = await GameSystemService.GetGaugeDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
                 AvailableMetrics = await GameSystemService.GetMetricDefinitionsAsync(AssignedGameSystem.Id, CurrentUserId);
 
+                var voteWeightMetric = AvailableMetrics.FirstOrDefault(x =>
+                    string.Equals(x.Name, L["SystemMetric_VoteWeight"], StringComparison.CurrentCultureIgnoreCase));
+                VoteWeightMetricId = voteWeightMetric?.Id;
+                VoteWeightMetricDisplayName = voteWeightMetric?.Name ?? L["SystemMetric_VoteWeight"];
+
                 var editor = await GameSystemService.GetGameSystemEditorAsync(AssignedGameSystem.Id, CurrentUserId);
                 if (editor is not null)
                 {
@@ -649,6 +647,81 @@ else
                     AvailableTalents = editor.Talents;
                     AvailableItems = editor.Items;
                 }
+
+                TraitOptionGroups.Clear();
+
+                foreach (var definition in AvailableTraitDefinitions)
+                {
+                    var options = await GameSystemService.GetTraitOptionsAsync(definition.Id, CurrentUserId);
+
+                    var optionItems = options
+                        .Select(option => new CharacterFilterReferenceItem
+                        {
+                            Id = option.Id,
+                            Name = option.Name
+                        })
+                        .ToList();
+
+                    if (optionItems.Count > 0)
+                    {
+                        TraitOptionGroups.Add(new CharacterFilterGroupItem
+                        {
+                            GroupName = definition.Name,
+                            Options = optionItems
+                        });
+                    }
+                }
+
+                TalentFilterOptions = AvailableTalents
+                    .Where(x => x.TalentDefinitionId.HasValue)
+                    .Select(x => new CharacterFilterReferenceItem
+                    {
+                        Id = x.TalentDefinitionId!.Value,
+                        Name = x.Name
+                    })
+                    .ToList();
+
+                ItemFilterOptions = AvailableItems
+                    .Where(x => x.ItemDefinitionId.HasValue)
+                    .Select(x => new CharacterFilterReferenceItem
+                    {
+                        Id = x.ItemDefinitionId!.Value,
+                        Name = x.Name
+                    })
+                    .ToList();
+
+                AttributeTargets = AvailableAttributes
+                    .Select(x => new CharacterFilterReferenceItem
+                    {
+                        Id = x.Id,
+                        Name = x.Name
+                    })
+                    .ToList();
+
+                GaugeTargets = AvailableGaugeDefinitions
+                    .Select(x => new CharacterFilterReferenceItem
+                    {
+                        Id = x.Id,
+                        Name = x.Name
+                    })
+                    .ToList();
+
+                DerivedStatTargets = AvailableDerivedStats
+                    .Where(x => x.DerivedStatDefinitionId.HasValue)
+                    .Select(x => new CharacterFilterReferenceItem
+                    {
+                        Id = x.DerivedStatDefinitionId!.Value,
+                        Name = x.Name
+                    })
+                    .ToList();
+
+                MetricTargets = AvailableMetrics
+                    .Select(x => new CharacterFilterReferenceItem
+                    {
+                        Id = x.Id,
+                        Name = x.Name
+                    })
+                    .ToList();
             }
         }
 
@@ -763,6 +836,12 @@ else
         {
             Message = string.Empty;
 
+            if (!VoteWeightMetricId.HasValue)
+            {
+                Message = L["Poll_VoteWeightMetricMissing"];
+                return;
+            }
+
             var request = new PollCreateRequestDto
             {
                 Question = NewPollQuestion,
@@ -780,21 +859,43 @@ else
                         SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null
                     }).ToList()
                 }).ToList(),
-                VoteWeightMode = SelectedPollVoteWeightMode,
-                MetricDefinitionId = SelectedPollVoteWeightMode == PollVoteWeightMode.Metric && !string.IsNullOrWhiteSpace(SelectedPollMetricId)
-                    ? Guid.Parse(SelectedPollMetricId)
-                    : null
+                VoteWeightMode = PollVoteWeightMode.Metric,
+                MetricDefinitionId = VoteWeightMetricId,
+                AdvancedFilter = new CharacterTargetFilterDto
+                {
+                    OnlyAlive = true,
+                    OnlyDead = false,
+                    OnlyOnline = false,
+                    IncludeNpcs = false,
+                    MatchAllConditions = AdvancedFilter.MatchAllConditions,
+                    TraitOptionIds = AdvancedFilter.TraitOptionIds.ToList(),
+                    TalentIds = AdvancedFilter.TalentIds.ToList(),
+                    ItemIds = AdvancedFilter.ItemIds.ToList(),
+                    ValueFilters = AdvancedFilter.ValueFilters
+            .Select(x => new CharacterValueFilterDto
+            {
+                TargetType = x.TargetType,
+                TargetId = x.TargetId,
+                TargetName = x.TargetName,
+                ComparisonType = x.ComparisonType,
+                Value = x.Value
+            })
+            .ToList()
+                }
             };
 
             LatestPoll = await PollService.CreatePollAsync(SessionId, CurrentUserId, request);
 
             NewPollQuestion = string.Empty;
             NewPollOptions = new List<PollOptionRowModel> { new(), new() };
-            SelectedPollVoteWeightMode = PollVoteWeightMode.FixedOne;
-            SelectedPollMetricId = string.Empty;
             SelectedPollHistoryId = null;
             ShowLivePollResults = false;
             ShowPollVoteDetails = false;
+
+            AdvancedFilter = new CharacterTargetFilterDto
+            {
+                MatchAllConditions = true
+            };
 
             RecentPolls = await PollService.GetRecentPollsForGameMasterAsync(SessionId, 5);
 

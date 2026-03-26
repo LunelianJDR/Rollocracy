@@ -7,6 +7,8 @@ namespace Rollocracy.Domain.Interfaces
     {
         Task<List<GameSystem>> GetGameSystemsByOwnerAsync(Guid ownerUserAccountId);
 
+        Task<List<GameSystem>> GetSelectableGameSystemsAsync(Guid requestingUserAccountId);
+
         Task<GameSystem?> GetGameSystemByIdAsync(Guid gameSystemId, Guid ownerUserAccountId);
 
         Task<GameSystem> CreateGameSystemAsync(
@@ -21,6 +23,8 @@ namespace Rollocracy.Domain.Interfaces
             string name,
             string description,
             TestResolutionMode testResolutionMode);
+
+        Task DeleteGameSystemAsync(Guid gameSystemId, Guid ownerUserAccountId);
 
         Task<AttributeDefinition> AddAttributeDefinitionAsync(
             Guid gameSystemId,
@@ -63,6 +67,8 @@ namespace Rollocracy.Domain.Interfaces
             Guid sourceGameSystemId,
             Guid ownerUserAccountId,
             Guid sessionId);
+
+        Task<GameSystem> EnsureSessionUsesEditableGameSystemAsync(Guid sessionId, Guid requestingUserAccountId);
 
         Task<GameSystemEditorDto?> GetGameSystemEditorAsync(Guid gameSystemId, Guid ownerUserAccountId);
 

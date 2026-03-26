@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Rollocracy.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Rollocracy.Infrastructure.Persistence;
 namespace Rollocracy.Infrastructure.Migrations
 {
     [DbContext(typeof(RollocracyDbContext))]
-    partial class RollocracyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260323213956_AddSessionPollEligibleCharacters")]
+    partial class AddSessionPollEligibleCharacters
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -924,18 +927,6 @@ namespace Rollocracy.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("DifficultyValue")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("GlobalConsequencesApplied")
-                        .HasColumnType("boolean");
-
-                    b.Property<int?>("GlobalSuccessThreshold1Percent")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("GlobalSuccessThreshold2Percent")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("GlobalSuccessThreshold3Percent")
                         .HasColumnType("integer");
 
                     b.Property<bool>("IsClosed")

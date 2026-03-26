@@ -3,16 +3,17 @@
 
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.Extensions.Localization
+@using Microsoft.Extensions.Localization @using Rollocracy.Domain.Characters
 @using Rollocracy.Domain.Entities
 @using Rollocracy.Localization
+@using DomainSession = Rollocracy.Domain.Entities.Session
 
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
+@inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
-<h3>@L["SessionSettings_Title"]</h3>
 
 @if (!IsLoaded)
 {
@@ -28,38 +29,395 @@ else if (Settings is null)
 }
 else
 {
-    <div>
-        <label>@L["SessionSettings_Name"]</label><br />
-        <input @bind="SessionName" />
-    </div>
+    <section class="rc-tool-section">
+        <div class="rc-tool-layout">
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["SessionSettings_Title"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["SessionSettings_Subtitle"]</p>
+                    </div>
 
-    <div style="margin-top:12px;">
-        <label>@L["SessionSettings_Password"]</label><br />
-        <input @bind="SessionPassword" />
-    </div>
+                    <div class="rc-tool-actions">
+                        <button type="button" @onclick="BackToSession">@L["SessionSettings_BackToSession"]</button>
+                    </div>
+                </div>
 
-    <div style="margin-top:12px;">
-        <label>
-            <input type="checkbox" @bind="UpdateJoinUrlSlug" />
-            @L["SessionSettings_UpdateJoinUrl"]
-        </label>
-    </div>
+                @if (!string.IsNullOrWhiteSpace(Message))
+                {
+                    <p>@Message</p>
+                }
 
-    <div style="margin-top:12px;">
-        <p><strong>@L["SessionSettings_CurrentSlug"] :</strong> @Settings.SessionSlug</p>
-        <p><strong>@L["SessionSettings_CurrentJoinUrl"] :</strong> <code>@Settings.JoinUrl</code></p>
-        <p><strong>@L["SessionSettings_IsActive"] :</strong> @(Settings.IsActive? L["Common_Yes"] : L["Common_No"])</p>
-    </div>
+                <div class="rc-tool-form-grid">
+                    <div class="rc-form-field">
+                        <label for="session-name">@L["SessionSettings_Name"]</label>
+                        <input id="session-name" maxlength="16" @bind="SessionName" />
+                    </div>
 
-    <div style="margin-top:16px;">
-        <button @onclick="SaveSettings">@L["Common_Save"]</button>
-        <button @onclick="BackToSession">@L["SessionSettings_BackToSession"]</button>
-    </div>
+                    <div class="rc-form-field">
+                        <label for="session-password">@L["SessionSettings_Password"]</label>
+                        <input id="session-password" @bind="SessionPassword" />
+                    </div>
 
-    @if (!string.IsNullOrWhiteSpace(Message))
-    {
-        <p style="margin-top:12px;">@Message</p>
-    }
+                    <div class="rc-form-field rc-form-field--readonly">
+                        <label>@L["SessionSettings_CurrentSlug"]</label>
+                        <div class="rc-readonly-value">@Settings.SessionSlug</div>
+                    </div>
+
+                    <div class="rc-form-field rc-form-field--readonly">
+                        <label>@L["SessionSettings_CurrentJoinUrl"]</label>
+                        <div class="rc-readonly-value"><code>@Settings.JoinUrl</code></div>
+                    </div>
+
+                    <div class="rc-form-field">
+                        <label>@L["SessionSettings_UpdateJoinUrlText"]</label>
+                        <label class="rc-filter-toggle">
+                            <input type="checkbox" @bind="UpdateJoinUrlSlug" />
+                            <span>@L["SessionSettings_UpdateJoinUrl"]</span>
+                        </label>
+                    </div>
+
+                    <div class="rc-form-field rc-form-field--readonly">
+                        <label>@L["SessionSettings_NewJoinUrl"]</label>
+                        <div class="rc-readonly-value">
+                            <code>@PreviewJoinUrl</code>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rc-form-field rc-form-field--readonly">
+                        <label>@L["SessionSettings_IsActive"]</label>
+                        <div class="rc-inline-info">
+                            <div class="rc-readonly-value">@(Settings.IsActive? L["Common_Yes"] : L["Common_No"])</div>
+
+                            <div class="rc-inline-picker">
+                                @if (Settings.IsActive)
+                                {
+                                    <button type="button" @onclick="DeactivateSession">
+                                        @L["ResumeSession_Deactivate"]
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" @onclick="ActivateSession">
+                                        @L["ResumeSession_Activate"]
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                <div class="rc-tool-actions">
+                    <button type="button" @onclick="SaveSettings">@L["Common_Save"]</button>
+                </div>
+            </div>
+
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["SessionSettings_GameSystemSection"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["SessionSettings_GameSystemSectionSubtitle"]</p>
+                    </div>
+                </div>
+
+                @if (CurrentSession?.GameSystemId is null)
+                {
+                    <div class="rc-empty-panel">
+                        <p>@L["SessionSettings_NoAssignedGameSystem"]</p>
+                    </div>
+                }
+                else
+                {
+                    @if (AssignedGameSystem is null)
+                    {
+                        <div class="rc-empty-panel">
+                            <p>@L["SessionSettings_NoAssignedGameSystem"]</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="rc-tool-form-grid">
+                            <div class="rc-form-field rc-form-field--readonly">
+                                <label>@L["GameSystems_Name"]</label>
+                                <div class="rc-readonly-value">@AssignedGameSystem.Name</div>
+                            </div>
+
+                            <div class="rc-form-field rc-form-field--readonly">
+                                <label>@L["GameSystems_ResolutionMode"]</label>
+                                <div class="rc-readonly-value">@GetResolutionLabel(AssignedGameSystem.TestResolutionMode)</div>
+                            </div>
+
+                            <div class="rc-form-field rc-form-field--readonly" style="grid-column: 1 / -1;">
+                                <label>@L["GameSystems_Description"]</label>
+                                <div class="rc-readonly-value">
+                                    @if (string.IsNullOrWhiteSpace(AssignedGameSystem.Description))
+                                    {
+                                        <span>@L["Common_None"]</span>
+                                    }
+                                    else
+                                    {
+                                        @AssignedGameSystem.Description
+                                    }
+                                </div>
+                                @if (AssignedGameSystem is not null && !AssignedGameSystem.LockedToSessionId.HasValue)
+                                {
+                                    <p class="rc-tool-muted">@L["SessionSettings_EditAssignedGameSystemCreatesCopy"]</p>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="rc-tool-actions">
+                            <button type="button" @onclick="EditAssignedGameSystem">
+                                @L["SessionSettings_EditAssignedGameSystem"]
+                            </button>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <div class="rc-tool-layout">
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["SessionSettings_SessionGaugesSection"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["SessionSettings_SessionGaugesSectionSubtitle"]</p>
+                    </div>
+
+                    <div class="rc-tool-actions">
+                        <button type="button" @onclick="OpenCreateSessionGaugeEditor">
+                            @L["SessionSettings_AddGaugeTitle"]
+                        </button>
+                    </div>
+                </div>
+
+                @if (SessionGauges.Count == 0)
+                {
+                    <div class="rc-empty-panel">
+                        <p>@L["SessionPage_NoSessionGauges"]</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="rc-consequence-list">
+                        @foreach (var gauge in SessionGauges)
+                        {
+                            var isEditing = EditingSessionGaugeId == gauge.SessionGaugeId;
+                            var isDeleteConfirm = PendingSessionGaugeDeleteId == gauge.SessionGaugeId;
+
+                            <article class="rc-filter-group-card">
+                                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                                    <div class="rc-tool-panel__header-main">
+                                        <h5 class="rc-tool-panel__title">@gauge.Name</h5>
+                                        <p class="rc-tool-panel__subtitle">
+                                            @L["SessionSettings_CurrentValueLabel"] : @gauge.CurrentValue
+                                            · min @gauge.MinValue
+                                            · max @gauge.MaxValue
+                                        </p>
+                                    </div>
+                                </div>
+
+                                @if (isEditing)
+                                {
+                                    <div class="rc-tool-form-grid">
+                                        <div class="rc-form-field">
+                                            <label>@L["SessionPage_SessionGaugeName"]</label>
+                                            <input @bind="EditingSessionGaugeName" />
+                                        </div>
+
+                                        <div class="rc-form-field">
+                                            <label>@L["SessionPage_SessionGaugeMinValue"]</label>
+                                            <input type="number" @bind="EditingSessionGaugeMinValue" />
+                                        </div>
+
+                                        <div class="rc-form-field">
+                                            <label>@L["SessionPage_SessionGaugeMaxValue"]</label>
+                                            <input type="number" @bind="EditingSessionGaugeMaxValue" />
+                                        </div>
+
+                                        <div class="rc-form-field">
+                                            <label>@L["SessionPage_SessionGaugeCurrentValue"]</label>
+                                            <input type="number" @bind="EditingSessionGaugeCurrentValue" />
+                                        </div>
+                                    </div>
+
+                                    <div class="rc-tool-actions">
+                                        <button type="button" @onclick="SaveEditedSessionGauge">@L["Common_Save"]</button>
+                                        <button type="button" @onclick="CancelEditSessionGauge">@L["Common_Cancel"]</button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="rc-tool-form-grid">
+                                        <div class="rc-form-field rc-form-field--readonly">
+                                            <label>@L["SessionPage_SessionGaugeName"]</label>
+                                            <div class="rc-readonly-value">@gauge.Name</div>
+                                        </div>
+
+                                        <div class="rc-form-field rc-form-field--readonly">
+                                            <label>@L["SessionPage_SessionGaugeMinValue"]</label>
+                                            <div class="rc-readonly-value">@gauge.MinValue</div>
+                                        </div>
+
+                                        <div class="rc-form-field rc-form-field--readonly">
+                                            <label>@L["SessionPage_SessionGaugeMaxValue"]</label>
+                                            <div class="rc-readonly-value">@gauge.MaxValue</div>
+                                        </div>
+
+                                        <div class="rc-form-field rc-form-field--readonly">
+                                            <label>@L["SessionPage_SessionGaugeCurrentValue"]</label>
+                                            <div class="rc-readonly-value">@gauge.CurrentValue</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="rc-tool-actions">
+                                        <button type="button" @onclick="() => StartEditSessionGauge(gauge)">
+                                            @L["SessionSettings_EditGauge"]
+                                        </button>
+                                        <button type="button" @onclick="() => AskDeleteSessionGauge(gauge.SessionGaugeId)">
+                                            @L["EditGameSystem_Delete"]
+                                        </button>
+                                    </div>
+                                }
+
+                                @if (isDeleteConfirm)
+                                {
+                                    <div class="rc-filter-group-card">
+                                        <p>@L["SessionPage_ConfirmDeleteSessionGauge"]</p>
+
+                                        <div class="rc-tool-actions">
+                                            <button type="button" @onclick="ConfirmDeleteSessionGauge">@L["Common_Confirm"]</button>
+                                            <button type="button" @onclick="CancelDeleteSessionGauge">@L["Common_Cancel"]</button>
+                                        </div>
+                                    </div>
+                                }
+                            </article>
+                        }
+                    </div>
+                }
+                @if (ShowCreateSessionGaugeEditor)
+                {
+                    <div class="rc-filter-group-card">
+                        <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                            <div class="rc-tool-panel__header-main">
+                                <h5 class="rc-tool-panel__title">@L["SessionSettings_AddGaugeTitle"]</h5>
+                                <p class="rc-tool-panel__subtitle">@L["SessionSettings_AddGaugeSubtitle"]</p>
+                            </div>
+                        </div>
+
+                        <div class="rc-tool-form-grid">
+                            <div class="rc-form-field">
+                                <label>@L["SessionPage_SessionGaugeName"]</label>
+                                <input @bind="NewSessionGaugeName" />
+                            </div>
+
+                            <div class="rc-form-field">
+                                <label>@L["SessionPage_SessionGaugeMinValue"]</label>
+                                <input type="number" @bind="NewSessionGaugeMinValue" />
+                            </div>
+
+                            <div class="rc-form-field">
+                                <label>@L["SessionPage_SessionGaugeMaxValue"]</label>
+                                <input type="number" @bind="NewSessionGaugeMaxValue" />
+                            </div>
+
+                            <div class="rc-form-field">
+                                <label>@L["SessionPage_SessionGaugeCurrentValue"]</label>
+                                <input type="number" @bind="NewSessionGaugeCurrentValue" />
+                            </div>
+                        </div>
+
+                        <div class="rc-tool-actions">
+                            <button type="button" @onclick="CreateSessionGauge">@L["Common_Save"]</button>
+                            <button type="button" @onclick="CancelCreateSessionGaugeEditor">@L["Common_Cancel"]</button>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["SessionSettings_SpecialRolesSection"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["SessionSettings_SpecialRolesSectionSubtitle"]</p>
+                    </div>
+
+                    <div class="rc-tool-actions">
+                        <button type="button" @onclick="OpenSpecialRoleEditor">
+                            @L["SessionPage_AddSpecialRole"]
+                        </button>
+                    </div>
+                </div>
+                <div class="rc-tool-muted" style="margin-top: 0.5rem;">
+                    <p>@L["SessionSettings_SpecialRoles_Description"]</p>
+                    <ul>
+                        <li>@L["SessionSettings_SpecialRoles_Observer"]</li>
+                        <li>@L["SessionSettings_SpecialRoles_Assistant"]</li>
+                    </ul>
+                </div>
+
+                @if (ShowSpecialRoleEditor)
+                {
+                    <div class="rc-filter-group-card">
+                        <div class="rc-tool-form-grid">
+                            <div class="rc-form-field">
+                                <label>@L["SessionPage_SelectPlayer"]</label>
+                                <select @bind="SelectedSpecialRolePlayerSessionId">
+                                    <option value="">@L["SessionPage_SelectPlayer"]</option>
+                                    @foreach (var player in SpecialRoleEligiblePlayers)
+                                    {
+                                        <option value="@player.Id">@player.PlayerName</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="rc-form-field">
+                                <label>@L["SessionSettings_SpecialRole"]</label>
+                                <select @bind="SelectedSpecialRole">
+                                    <option value="@SessionSpecialRole.Observer">@L["SessionSpecialRole_Observer"]</option>
+                                    @* <option value="@SessionSpecialRole.Assistant">@L["SessionSpecialRole_Assistant"]</option> *@
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="rc-tool-actions">
+                            <button type="button" @onclick="ValidateSpecialRole">@L["Common_Save"]</button>
+                            <button type="button" @onclick="CancelSpecialRoleEditor">@L["Common_Cancel"]</button>
+                        </div>
+                    </div>
+                }
+
+                @if (SpecialRoleAssignments.Count == 0)
+                {
+                    <div class="rc-empty-panel">
+                        <p>@L["SessionPage_NoSpecialRoles"]</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="rc-consequence-list">
+                        @foreach (var player in SpecialRoleAssignments)
+                        {
+                            <article class="rc-filter-group-card">
+                                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                                    <div class="rc-tool-panel__header-main">
+                                        <h5 class="rc-tool-panel__title">@player.PlayerName</h5>
+                                        <p class="rc-tool-panel__subtitle">@GetSpecialRoleLabel(player.SpecialRole)</p>
+                                    </div>
+                                </div>
+
+                                <div class="rc-tool-actions">
+                                    <button type="button" @onclick="() => RemoveSpecialRole(player.Id)">
+                                        @L["EditGameSystem_Delete"]
+                                    </button>
+                                </div>
+                            </article>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
 }
 
 @code {
@@ -68,11 +426,38 @@ else
     private bool IsLoaded;
     private bool RedirectToHome;
     private Guid CurrentUserId;
+    private string CurrentUsername = string.Empty;
+
+    private DomainSession? CurrentSession;
     private SessionSettingsDto? Settings;
+
     private string SessionName = string.Empty;
     private string SessionPassword = string.Empty;
     private bool UpdateJoinUrlSlug;
     private string Message = string.Empty;
+
+    private List<PlayerSession> SpecialRoleEligiblePlayers = new();
+    private List<PlayerSession> SpecialRoleAssignments = new();
+    private string SelectedSpecialRolePlayerSessionId = string.Empty;
+    private SessionSpecialRole SelectedSpecialRole = SessionSpecialRole.Observer;
+    private bool ShowSpecialRoleEditor;
+
+    private Rollocracy.Domain.Entities.GameSystem? AssignedGameSystem;
+    private bool ShowCreateSessionGaugeEditor;
+
+    private List<SessionGaugeDto> SessionGauges = new();
+    private string NewSessionGaugeName = string.Empty;
+    private int NewSessionGaugeMinValue = 0;
+    private int NewSessionGaugeMaxValue = 10;
+    private int NewSessionGaugeCurrentValue = 10;
+
+    private Guid? PendingSessionGaugeDeleteId;
+
+    private Guid? EditingSessionGaugeId;
+    private string EditingSessionGaugeName = string.Empty;
+    private int EditingSessionGaugeMinValue;
+    private int EditingSessionGaugeMaxValue = 10;
+    private int EditingSessionGaugeCurrentValue = 10;
 
     protected override async Task OnInitializedAsync()
     {
@@ -90,6 +475,7 @@ else
         }
 
         CurrentUserId = Guid.Parse(userIdValue);
+        CurrentUsername = user.Identity?.Name ?? string.Empty;
 
         var canCreateSessions = await SessionService.CanUserCreateSessionsAsync(CurrentUserId);
 
@@ -100,7 +486,7 @@ else
             return;
         }
 
-        await LoadSettings();
+        await LoadAll();
         IsLoaded = true;
     }
 
@@ -114,17 +500,35 @@ else
         return Task.CompletedTask;
     }
 
-    private async Task LoadSettings()
+    private async Task LoadAll()
     {
         Message = string.Empty;
+
+        CurrentSession = await SessionService.GetSessionByIdAsync(SessionId);
         Settings = await SessionService.GetSessionSettingsAsync(SessionId, CurrentUserId, Navigation.BaseUri);
 
         if (Settings is null)
             return;
 
+        AssignedGameSystem = null;
+
+        if (CurrentSession?.GameSystemId is Guid gameSystemId)
+        {
+            AssignedGameSystem = await GameSystemService.GetGameSystemByIdAsync(gameSystemId, CurrentUserId);
+        }
+
         SessionName = Settings.SessionName;
         SessionPassword = Settings.SessionPassword;
         UpdateJoinUrlSlug = false;
+
+        SpecialRoleEligiblePlayers = await SessionService.GetEligibleSpecialRolePlayersAsync(SessionId, CurrentUserId);
+        SpecialRoleAssignments = await SessionService.GetPlayersWithSpecialRolesAsync(SessionId, CurrentUserId);
+        SessionGauges = await SessionService.GetSessionGaugesAsync(SessionId, CurrentUserId);
+
+        CancelEditSessionGauge();
+        PendingSessionGaugeDeleteId = null;
+        ShowSpecialRoleEditor = false;
+        ShowCreateSessionGaugeEditor = false;
     }
 
     private async Task SaveSettings()
@@ -133,14 +537,26 @@ else
         {
             Message = string.Empty;
 
-            var updatedSession = await SessionService.UpdateSessionSettingsAsync(
+            if (string.IsNullOrWhiteSpace(SessionName))
+            {
+                Message = L["SessionSettings_NameRequired"];
+                return;
+            }
+
+            if (SessionName.Trim().Length > 16)
+            {
+                Message = L["Session_NameMaxLength"];
+                return;
+            }
+
+            await SessionService.UpdateSessionSettingsAsync(
                 SessionId,
                 CurrentUserId,
                 SessionName,
                 SessionPassword,
                 UpdateJoinUrlSlug);
 
-            await LoadSettings();
+            await LoadAll();
 
             Message = UpdateJoinUrlSlug
                 ? L["SessionSettings_SavedWithUrlChange"]
@@ -152,8 +568,292 @@ else
         }
     }
 
+    private async Task EditAssignedGameSystem()
+    {
+        if (CurrentSession is null)
+            return;
+
+        try
+        {
+            Message = string.Empty;
+
+            var editableSystem = await GameSystemService.EnsureSessionUsesEditableGameSystemAsync(
+                CurrentSession.Id,
+                CurrentUserId);
+
+            await LoadAll();
+
+            Navigation.NavigateTo($"/mj/gamesystems/{editableSystem.Id}");
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void OpenSpecialRoleEditor()
+    {
+        ShowSpecialRoleEditor = true;
+
+        if (string.IsNullOrWhiteSpace(SelectedSpecialRolePlayerSessionId) && SpecialRoleEligiblePlayers.Count > 0)
+        {
+            SelectedSpecialRolePlayerSessionId = SpecialRoleEligiblePlayers[0].Id.ToString();
+        }
+    }
+
+    private void CancelSpecialRoleEditor()
+    {
+        ShowSpecialRoleEditor = false;
+    }
+
+    private async Task ValidateSpecialRole()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(SelectedSpecialRolePlayerSessionId))
+            {
+                Message = L["SessionPage_SelectPlayer"];
+                return;
+            }
+
+            await SessionService.AssignSpecialRoleAsync(
+                SessionId,
+                CurrentUserId,
+                Guid.Parse(SelectedSpecialRolePlayerSessionId),
+                SelectedSpecialRole);
+
+            await LoadAll();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task RemoveSpecialRole(Guid playerSessionId)
+    {
+        try
+        {
+            Message = string.Empty;
+            await SessionService.RemoveSpecialRoleAsync(SessionId, CurrentUserId, playerSessionId);
+            await LoadAll();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task CreateSessionGauge()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            await SessionService.CreateSessionGaugeAsync(
+                SessionId,
+                CurrentUserId,
+                NewSessionGaugeName,
+                NewSessionGaugeMinValue,
+                NewSessionGaugeMaxValue,
+                NewSessionGaugeCurrentValue);
+
+            NewSessionGaugeName = string.Empty;
+            NewSessionGaugeMinValue = 0;
+            NewSessionGaugeMaxValue = 10;
+            NewSessionGaugeCurrentValue = 10;
+
+            ShowCreateSessionGaugeEditor = false;
+
+            await LoadAll();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void StartEditSessionGauge(SessionGaugeDto gauge)
+    {
+        EditingSessionGaugeId = gauge.SessionGaugeId;
+        EditingSessionGaugeName = gauge.Name;
+        EditingSessionGaugeMinValue = gauge.MinValue;
+        EditingSessionGaugeMaxValue = gauge.MaxValue;
+        EditingSessionGaugeCurrentValue = gauge.CurrentValue;
+        PendingSessionGaugeDeleteId = null;
+    }
+
+    private void CancelEditSessionGauge()
+    {
+        EditingSessionGaugeId = null;
+        EditingSessionGaugeName = string.Empty;
+        EditingSessionGaugeMinValue = 0;
+        EditingSessionGaugeMaxValue = 10;
+        EditingSessionGaugeCurrentValue = 10;
+    }
+
+    private async Task SaveEditedSessionGauge()
+    {
+        if (!EditingSessionGaugeId.HasValue)
+            return;
+
+        try
+        {
+            Message = string.Empty;
+
+            await SessionService.UpdateSessionGaugeAsync(
+                SessionId,
+                CurrentUserId,
+                EditingSessionGaugeId.Value,
+                EditingSessionGaugeName,
+                EditingSessionGaugeMinValue,
+                EditingSessionGaugeMaxValue,
+                EditingSessionGaugeCurrentValue);
+
+            await LoadAll();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void AskDeleteSessionGauge(Guid sessionGaugeId)
+    {
+        PendingSessionGaugeDeleteId = sessionGaugeId;
+        CancelEditSessionGauge();
+    }
+
+    private Task CancelDeleteSessionGauge()
+    {
+        PendingSessionGaugeDeleteId = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task ConfirmDeleteSessionGauge()
+    {
+        if (!PendingSessionGaugeDeleteId.HasValue)
+            return;
+
+        try
+        {
+            Message = string.Empty;
+            await SessionService.DeleteSessionGaugeAsync(SessionId, CurrentUserId, PendingSessionGaugeDeleteId.Value);
+            await LoadAll();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private string GetSpecialRoleLabel(SessionSpecialRole role)
+    {
+        return role switch
+        {
+            SessionSpecialRole.Assistant => L["SessionSpecialRole_Assistant"],
+            SessionSpecialRole.Observer => L["SessionSpecialRole_Observer"],
+            _ => role.ToString()
+        };
+    }
+
     private void BackToSession()
     {
         Navigation.NavigateTo($"/mj/session/{SessionId}");
+    }
+
+    private async Task ActivateSession()
+    {
+        try
+        {
+            Message = string.Empty;
+            await SessionService.SetSessionActiveStateAsync(SessionId, CurrentUserId, true);
+            await LoadAll();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task DeactivateSession()
+    {
+        try
+        {
+            Message = string.Empty;
+            await SessionService.SetSessionActiveStateAsync(SessionId, CurrentUserId, false);
+            await LoadAll();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void OpenCreateSessionGaugeEditor()
+    {
+        ShowCreateSessionGaugeEditor = true;
+        CancelEditSessionGauge();
+        PendingSessionGaugeDeleteId = null;
+    }
+
+    private void CancelCreateSessionGaugeEditor()
+    {
+        ShowCreateSessionGaugeEditor = false;
+        NewSessionGaugeName = string.Empty;
+        NewSessionGaugeMinValue = 0;
+        NewSessionGaugeMaxValue = 10;
+        NewSessionGaugeCurrentValue = 10;
+    }
+
+    private string PreviewJoinUrl
+    {
+        get
+        {
+            if (Settings is null)
+                return string.Empty;
+
+            if (!UpdateJoinUrlSlug)
+                return Settings.JoinUrl;
+
+            var normalizedBaseUri = Navigation.BaseUri.EndsWith("/") ? Navigation.BaseUri : $"{Navigation.BaseUri}/";
+            var previewSlug = BuildPreviewSlug(SessionName);
+
+            return $"{normalizedBaseUri}{CurrentUsername}/{previewSlug}";
+        }
+    }
+
+    private string BuildPreviewSlug(string sessionName)
+    {
+        if (string.IsNullOrWhiteSpace(sessionName))
+            return Settings?.SessionSlug ?? string.Empty;
+
+        var slug = sessionName.Trim().ToLowerInvariant();
+        slug = slug.Replace(" ", "-");
+        slug = slug.Replace("'", "-");
+        slug = slug.Replace("\"", "-");
+        slug = new string(slug.Where(c => char.IsLetterOrDigit(c) || c == '-').ToArray());
+
+        while (slug.Contains("--"))
+            slug = slug.Replace("--", "-");
+
+        slug = slug.Trim('-');
+
+        if (string.IsNullOrWhiteSpace(slug))
+            return Settings?.SessionSlug ?? string.Empty;
+
+        return slug;
+    }
+
+    private string GetResolutionLabel(Rollocracy.Domain.GameRules.TestResolutionMode mode)
+    {
+        return mode switch
+        {
+            Rollocracy.Domain.GameRules.TestResolutionMode.SuccessThreshold => L["Resolution_SuccessThreshold"],
+            Rollocracy.Domain.GameRules.TestResolutionMode.RollUnderAttribute => L["Resolution_RollUnderAttribute"],
+            _ => mode.ToString()
+        };
     }
 }

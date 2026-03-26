@@ -37,9 +37,9 @@ else
 
     @foreach (var attributeDefinition in Template.Attributes)
     {
-        <div>
-            <label>@attributeDefinition.Name</label><br />
-            <input type="number" @bind="AttributeValues[attributeDefinition.AttributeDefinitionId]" />
+        <div style="margin-top:8px;">
+                <label>@attributeDefinition.Name (@attributeDefinition.MinValue - @attributeDefinition.MaxValue)</label><br />
+                <input value="@attributeDefinition.DefaultValue" readonly />
         </div>
     }
 
@@ -47,7 +47,7 @@ else
 
     @foreach (var traitDefinition in Template.Traits)
     {
-        <div>
+     <!--   <div>
             <label>@traitDefinition.Name</label><br />
             <select @bind="TraitSelections[traitDefinition.TraitDefinitionId]">
                 @foreach (var option in traitDefinition.Options)
@@ -55,7 +55,29 @@ else
                     <option value="@option.TraitOptionId">@option.Name</option>
                 }
             </select>
-        </div>
+        </div>-->
+
+        @if (traitDefinition.IsRandomSelectionGroup)
+        {
+            <div style="margin-top:8px;">
+                <label>@traitDefinition.Name</label><br />
+                <input value="@L["CreateCharacter_RandomTraitGroup"]" readonly />
+            </div>
+        }
+        else
+        {
+            <div style="margin-top:8px;">
+                <label>@traitDefinition.Name</label><br />
+                <select @bind="TraitSelections[traitDefinition.TraitDefinitionId]">
+                    <option value="">--</option>
+                    @foreach (var option in traitDefinition.Options.Where(x => !x.IsLockedForCharacterCreation))
+                    {
+                        <option value="@option.TraitOptionId">@option.Name</option>
+                    }
+                </select>
+            </div>
+        }
+
     }
 
     <button @onclick="HandleCreateCharacter">

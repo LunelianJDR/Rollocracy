@@ -12,7 +12,6 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
-<h3>@L["ResumeSession_Title"]</h3>
 
 @if (!IsLoaded)
 {
@@ -22,47 +21,175 @@ else if (RedirectToHome)
 {
     <p>@L["Common_Loading"]</p>
 }
-else if (SessionSummaries.Count == 0)
-{
-    <p>@L["ResumeSession_None"]</p>
-}
 else
 {
-    @foreach (var item in SessionSummaries)
-    {
-        <div>
-            <p><strong>@L["ResumeSession_Name"] :</strong> @item.Session.SessionName</p>
-            <p><strong>@L["ResumeSession_AliveCharacters"] :</strong> @item.AliveCharacterCount</p>
-            <p><strong>@L["ResumeSession_IsActive"] :</strong> @(item.Session.IsActive? L["Common_Yes"] : L["Common_No"])</p>
+    <section class="rc-tool-section">
+        <div class="rc-tool-panel">
+            <div class="rc-tool-panel__header">
+                <div class="rc-tool-panel__header-main">
+                    <h4 class="rc-tool-panel__title">@L["ResumeSession_Title"]</h4>
+                    <p class="rc-tool-panel__subtitle">@L["ResumeSession_Subtitle"]</p>
+                </div>
 
-            @if (item.Session.IsActive)
+                <div class="rc-tool-actions">
+                    <button type="button" @onclick="GoToCreateSession">
+                        @L["CreateSession_Title"]
+                    </button>
+                </div>
+            </div>
+
+            <div class="rc-test-stats-grid">
+                <div class="rc-stat-card">
+                    <span class="rc-stat-card__label">@L["ResumeSession_TotalSessions"]</span>
+                    <span class="rc-stat-card__value">@SessionSummaries.Count</span>
+                </div>
+
+                <div class="rc-stat-card">
+                    <span class="rc-stat-card__label">@L["ResumeSession_ActiveSessions"]</span>
+                    <span class="rc-stat-card__value">@SessionSummaries.Count(x => x.Session.IsActive)</span>
+                </div>
+
+                <div class="rc-stat-card">
+                    <span class="rc-stat-card__label">@L["ResumeSession_InactiveSessions"]</span>
+                    <span class="rc-stat-card__value">@SessionSummaries.Count(x => !x.Session.IsActive)</span>
+                </div>
+
+                <div class="rc-stat-card">
+                    <span class="rc-stat-card__label">@L["ResumeSession_TotalAliveCharacters"]</span>
+                    <span class="rc-stat-card__value">@SessionSummaries.Sum(x => x.AliveCharacterCount)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="rc-tool-panel">
+            <div class="rc-tool-panel__header">
+                <div class="rc-tool-panel__header-main">
+                    <h4 class="rc-tool-panel__title">@L["ResumeSession_ListTitle"]</h4>
+                    <p class="rc-tool-panel__subtitle">@L["ResumeSession_ListSubtitle"]</p>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Message))
             {
-                <p><strong>@L["ResumeSession_Url"] :</strong> <code>@($"{Navigation.BaseUri}{CurrentUsername}/{item.Session.SessionSlug}")</code></p>
+                <p>@Message</p>
+            }
+
+            @if (SessionSummaries.Count == 0)
+            {
+                <div class="rc-empty-panel">
+                    <p>@L["ResumeSession_None"]</p>
+                </div>
             }
             else
             {
-                <p><strong>@L["ResumeSession_Url"] :</strong> @L["ResumeSession_InactiveUrl"]</p>
-            }
+                <div class="rc-session-list-grid">
+                    @foreach (var item in SessionSummaries)
+                    {
+                        var isDeleteConfirmationOpen = PendingDeleteSessionId == item.Session.Id;
 
-            <button @onclick="() => OpenSession(item.Session.Id)">@L["ResumeSession_Open"]</button>
-            <button @onclick="() => OpenSessionSettings(item.Session.Id)">@L["ResumeSession_EditSettings"]</button>
+                        <article class="rc-filter-group-card @(item.Session.IsActive ? "-active" : "-inactive")">
+                            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                                <div class="rc-tool-panel__header-main">
+                                    <h5 class="rc-tool-panel__title">@item.Session.SessionName</h5>
+                                    <p class="rc-tool-panel__subtitle">
+                                        @(item.Session.IsActive? L["ResumeSession_StatusActive"] : L["ResumeSession_StatusInactive"])
+                                    </p>
+                                </div>
+                            </div>
 
-            @if (item.Session.IsActive)
-            {
-                <button @onclick="() => ToggleSessionState(item.Session.Id, false)">@L["ResumeSession_Deactivate"]</button>
-            }
-            else
-            {
-                <button @onclick="() => ToggleSessionState(item.Session.Id, true)">@L["ResumeSession_Activate"]</button>
+                            <div class="rc-tool-form-grid">
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["ResumeSession_Name"]</label>
+                                    <div class="rc-readonly-value">@item.Session.SessionName</div>
+                                </div>
+
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["ResumeSession_AliveCharacters"]</label>
+                                    <div class="rc-readonly-value">@item.AliveCharacterCount</div>
+                                </div>
+
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["ResumeSession_IsActive"]</label>
+                                    <div class="rc-readonly-value">
+                                        @(item.Session.IsActive? L["Common_Yes"] : L["Common_No"])
+                                    </div>
+                                </div>
+
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["ResumeSession_Url"]</label>
+                                    <div class="rc-readonly-value">
+                                        @if (item.Session.IsActive)
+                                        {
+                                            <code>@($"{Navigation.BaseUri}{CurrentUsername}/{item.Session.SessionSlug}")</code>
+                                        }
+                                        else
+                                        {
+                                            <span>@L["ResumeSession_InactiveUrl"]</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="rc-tool-actions">
+                                <button type="button" @onclick="() => OpenSession(item.Session.Id)">
+                                    @L["ResumeSession_Open"]
+                                </button>
+
+                                <button type="button" @onclick="() => OpenSessionSettings(item.Session.Id)">
+                                    @L["ResumeSession_EditSettings"]
+                                </button>
+
+                                @if (item.Session.IsActive)
+                                {
+                                    <button type="button" @onclick="() => ToggleSessionState(item.Session.Id, false)">
+                                        @L["ResumeSession_Deactivate"]
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" @onclick="() => ToggleSessionState(item.Session.Id, true)">
+                                        @L["ResumeSession_Activate"]
+                                    </button>
+                                }
+
+                                <button type="button"
+                                        disabled="@item.Session.IsActive"
+                                        @onclick="() => AskDeleteSession(item.Session.Id)">
+                                    @L["EditGameSystem_Delete"]
+                                </button>
+                            </div>
+
+                            @if (item.Session.IsActive)
+                            {
+                                <p class="rc-tool-muted">@L["ResumeSession_DeleteDisabledBecauseActive"]</p>
+                            }
+                            else
+                            {
+                                <p class="rc-tool-muted">@L["ResumeSession_PlayerCanJoin"]</p>
+                            }
+
+                            @if (isDeleteConfirmationOpen)
+                            {
+                                <div class="rc-filter-group-card">
+                                    <p>@L["ResumeSession_DeleteConfirmation"]</p>
+
+                                    <div class="rc-tool-actions">
+                                        <button type="button" @onclick="ConfirmDeleteSession">
+                                            @L["Common_Confirm"]
+                                        </button>
+
+                                        <button type="button" @onclick="CancelDeleteSession">
+                                            @L["Common_Cancel"]
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </article>
+                    }
+                </div>
             }
         </div>
-        <hr />
-    }
-}
-
-@if (!string.IsNullOrWhiteSpace(Message))
-{
-    <p>@Message</p>
+    </section>
 }
 
 @code {
@@ -71,6 +198,7 @@ else
     private bool IsLoaded;
     private bool RedirectToHome;
     private string Message = string.Empty;
+    private Guid? PendingDeleteSessionId;
     private List<SessionSummary> SessionSummaries = new();
 
     protected override async Task OnInitializedAsync()
@@ -117,6 +245,7 @@ else
     private async Task LoadSessions()
     {
         Message = string.Empty;
+        PendingDeleteSessionId = null;
         SessionSummaries.Clear();
 
         var sessions = await SessionService.GetSessionsByGameMasterAsync(CurrentUserId);
@@ -133,6 +262,11 @@ else
         }
     }
 
+    private void GoToCreateSession()
+    {
+        Navigation.NavigateTo("/mj/create-session");
+    }
+
     private void OpenSession(Guid sessionId)
     {
         Navigation.NavigateTo($"/mj/session/{sessionId}");
@@ -147,9 +281,44 @@ else
     {
         try
         {
+            Message = string.Empty;
+            PendingDeleteSessionId = null;
+
             await SessionService.SetSessionActiveStateAsync(sessionId, CurrentUserId, isActive);
             await LoadSessions();
             StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void AskDeleteSession(Guid sessionId)
+    {
+        Message = string.Empty;
+        PendingDeleteSessionId = sessionId;
+    }
+
+    private Task CancelDeleteSession()
+    {
+        PendingDeleteSessionId = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task ConfirmDeleteSession()
+    {
+        if (!PendingDeleteSessionId.HasValue)
+            return;
+
+        try
+        {
+            Message = string.Empty;
+
+            await SessionService.DeleteSessionAsync(PendingDeleteSessionId.Value, CurrentUserId);
+
+            PendingDeleteSessionId = null;
+            await LoadSessions();
         }
         catch (Exception ex)
         {

@@ -1,8 +1,7 @@
 /* =========================================================
-   ROLLOCRACY - GLOBAL THEME TOKENS
+   THÈME GLOBAL
    ---------------------------------------------------------
-   Centralizes colors, radii, sizing and transitions used by
-   the layout and tool pages. Light theme is the default.
+   Variables de couleurs, rayons, tailles et transitions.
    ========================================================= */
 :root {
     --rc-bg: #FFFAF3;
@@ -37,10 +36,9 @@ html[data-theme="dark"] {
 }
 
 /* =========================================================
-   GLOBAL RESET / BASE ELEMENTS
+   BASE HTML ET RÉINITIALISATION
    ---------------------------------------------------------
-   Base typography, spacing, inputs, buttons and generic HTML
-   elements used throughout the site.
+   Typographie, espacements et éléments HTML communs.
    ========================================================= */
 html,
 body {
@@ -82,6 +80,17 @@ textarea {
     color: var(--rc-text);
     padding: 0.7rem 0.9rem;
     transition: border-color var(--rc-transition), box-shadow var(--rc-transition), background var(--rc-transition);
+}
+
+input,
+select {
+    min-height: 44px;
+}
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
 }
 
     input:focus,
@@ -130,7 +139,7 @@ ul {
     padding-left: 1.2rem;
 }
 
-/* Generic app buttons outside icon/sidebar links */
+/* Boutons standards de l'application hors icônes/navigation */
 .rc-main button:not(.icon-button):not(.rc-nav__link),
 .rc-main .btn,
 .rc-main a.btn {
@@ -167,7 +176,7 @@ html[data-theme="dark"] .rc-main a.btn:focus {
     box-shadow: 0 0 0 3px rgba(196, 167, 231, 0.18);
 }
 
-/* Blazor fatal error strip */
+/* Bandeau d'erreur Blazor */
 #blazor-error-ui {
     background: #fff0c7;
     color: #5c4400;
@@ -189,10 +198,9 @@ html[data-theme="dark"] .rc-main a.btn:focus {
     }
 
 /* =========================================================
-   GLOBAL SHELL
+   STRUCTURE GÉNÉRALE DE L'APPLICATION
    ---------------------------------------------------------
-   Main 2-column app shell: collapsible sidebar + topbar +
-   scrollable content area.
+   Sidebar repliable, topbar et zone de contenu principale.
    ========================================================= */
 .rc-shell {
     display: grid;
@@ -242,9 +250,9 @@ html[data-theme="dark"] .rc-main a.btn:focus {
 }
 
 /* =========================================================
-   TOP BAR / BRAND / SESSION STRIP
+   TOPBAR ET INFORMATIONS DE SESSION
    ---------------------------------------------------------
-   Header row with site branding and session quick info.
+   Marque du site et informations rapides de session.
    ========================================================= */
 .rc-topbar {
     display: flex;
@@ -346,10 +354,9 @@ html[data-theme="dark"] .rc-main a.btn:focus {
 }
 
 /* =========================================================
-   NAVIGATION SIDEBAR
+   MENU LATÉRAL DE NAVIGATION
    ---------------------------------------------------------
-   Welcome area, top action buttons and navigation links.
-   Includes collapsed-state behavior.
+   Zone utilisateur, actions rapides et liens de navigation.
    ========================================================= */
 .rc-nav {
     display: flex;
@@ -437,6 +444,7 @@ html[data-theme="dark"] .rc-main a.btn:focus {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
+    border-bottom: 1px solid var(--rc-border);
 }
 
 .rc-nav__section-title {
@@ -526,10 +534,9 @@ html[data-theme="dark"] .rc-main a.btn:focus {
 }
 
 /* =========================================================
-   I-1.B - MJ CHARACTER VIEW
+   VUE MJ DES PERSONNAGES
    ---------------------------------------------------------
-   Card grid for character browsing and the right-side detail
-   panel used by the MJ interface.
+   Grille de cartes personnages et panneau de détail.
    ========================================================= */
 .rc-character-view {
     display: flex;
@@ -569,17 +576,28 @@ html[data-theme="dark"] .rc-main a.btn:focus {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    min-height: 40px;
+    min-height: 20px;
+    max-height: 3em;
     padding: 0.4rem 0.75rem;
     border-radius: 999px;
     border: 1px solid var(--rc-border);
     background: var(--rc-surface-2);
+    margin: -0.3rem;
 }
 
     .rc-filter-toggle input[type="checkbox"] {
         width: auto;
         max-width: none;
         margin: 0;
+    }
+
+    .rc-filter-toggle select {
+        max-height: 2.5em;
+        border: none !important;
+    }
+
+    .rc-filter-toggle label {
+        white-space: nowrap;
     }
 
 .rc-character-view__layout {
@@ -867,10 +885,9 @@ html[data-theme="dark"] .rc-character-card.selected {
 }
 
 /* =========================================================
-   I-1.C.1 - MJ GAME TEST TOOL
+   OUTILS MJ : STRUCTURE COMMUNE
    ---------------------------------------------------------
-   Shared tool layout, form grid, result cards, stat cards,
-   slider styles and inline feedback messages.
+   Panneaux, formulaires, cartes de résultat et messages.
    ========================================================= */
 .rc-tool-section {
     display: flex;
@@ -929,7 +946,12 @@ html[data-theme="dark"] .rc-character-card.selected {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.9rem 1rem;
+    align-items: end;
 }
+
+    .rc-tool-form-grid .rc-form-field {
+        align-self: end;
+    }
 
 .rc-form-field {
     display: flex;
@@ -1031,6 +1053,7 @@ html[data-theme="dark"] .rc-character-card.selected {
     display: flex;
     flex-direction: column;
     gap: 0.45rem;
+    margin: -0.3rem;
 }
 
 .rc-filter-group-card__title {
@@ -1057,10 +1080,18 @@ html[data-theme="dark"] .rc-character-card.selected {
             margin: 0;
         }
 
+.rc-filter-group-card.active {
+    border-color: rgba(40, 75, 151, 0.35);
+}
+
+.rc-filter-group-card.inactive {
+    border-color: rgba(198, 125, 25, 0.35);
+}
+
 .rc-consequence-card__grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.8rem 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
 }
 
 .rc-inline-warning {
@@ -1276,10 +1307,11 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
 }
 
 /* =========================================================
-   SLIDERS - OUTILS MJ
-   Le remplissage est porté par l'input lui-même.
-   La piste native est rendue transparente.
-========================================================= */
+   SLIDERS DES OUTILS MJ
+   ---------------------------------------------------------
+   Le remplissage est porté par l'input et la piste native
+   est rendue transparente.
+   ========================================================= */
 
 .rc-difficulty-slider {
     display: flex;
@@ -1287,70 +1319,72 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
     gap: 0.55rem;
 }
 
-.rc-difficulty-slider input[type="range"] {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    max-width: none;
-    height: 8px;
-    border-radius: 999px;
-    outline: none;
-    border: 1px solid var(--rc-border);
-    cursor: pointer;
-    padding: 0;
-    margin: 0;
-}
+    .rc-difficulty-slider input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        max-width: none;
+        height: 8px;
+        border-radius: 999px;
+        outline: none;
+        border: 1px solid var(--rc-border);
+        cursor: pointer;
+        padding: 0;
+        margin: 0;
+    }
 
-/* Slider délai : remplissage depuis la gauche */
-.rc-difficulty-slider input[type="range"].rc-difficulty-slider--classic {
-    background: linear-gradient( to right, var(--rc-accent) 0%, var(--rc-accent) var(--slider-progress, 0%), var(--rc-bg-alt) var(--slider-progress, 0%), var(--rc-bg-alt) 100% );
-}
+        /* Slider délai : remplissage depuis la gauche */
+        .rc-difficulty-slider input[type="range"].rc-difficulty-slider--classic {
+            background: linear-gradient( to right, var(--rc-accent) 0%, var(--rc-accent) var(--slider-progress, 0%), var(--rc-bg-alt) var(--slider-progress, 0%), var(--rc-bg-alt) 100% );
+            min-height: 10px;
+        }
 
-/* Slider difficulté : remplissage depuis le centre */
-.rc-difficulty-slider input[type="range"].rc-difficulty-slider--centered {
-    background: linear-gradient( to right, var(--rc-bg-alt) 0%, var(--rc-bg-alt) var(--difficulty-progress-start, 50%), var(--difficulty-progress-color, transparent) var(--difficulty-progress-start, 50%), var(--difficulty-progress-color, transparent) var(--difficulty-progress-end, 50%), var(--rc-bg-alt) var(--difficulty-progress-end, 50%), var(--rc-bg-alt) 100% );
-}
+        /* Slider difficulté : remplissage depuis le centre */
+        .rc-difficulty-slider input[type="range"].rc-difficulty-slider--centered {
+            background: linear-gradient( to right, var(--rc-bg-alt) 0%, var(--rc-bg-alt) var(--difficulty-progress-start, 50%), var(--difficulty-progress-color, transparent) var(--difficulty-progress-start, 50%), var(--difficulty-progress-color, transparent) var(--difficulty-progress-end, 50%), var(--rc-bg-alt) var(--difficulty-progress-end, 50%), var(--rc-bg-alt) 100% );
+            min-height: 10px;
+        }
 
-/* On neutralise la piste native WebKit/Blink */
-.rc-difficulty-slider input[type="range"]::-webkit-slider-runnable-track {
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-    border: none;
-    height: 8px;
-}
+        /* On neutralise la piste native WebKit/Blink */
+        .rc-difficulty-slider input[type="range"]::-webkit-slider-runnable-track {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            border: none;
+            height: 8px;
+        }
 
-/* Thumb WebKit/Blink */
-.rc-difficulty-slider input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--rc-accent);
-    border: 2px solid var(--rc-surface);
-    box-shadow: var(--rc-shadow);
-    margin-top: -6px;
-    cursor: pointer;
-}
+        /* Thumb WebKit/Blink */
+        .rc-difficulty-slider input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--rc-accent);
+            border: 2px solid var(--rc-surface);
+            box-shadow: var(--rc-shadow);
+            margin-top: -6px;
+            cursor: pointer;
+        }
 
-/* Thumb Firefox */
-.rc-difficulty-slider input[type="range"]::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: var(--rc-accent);
-    border: 2px solid var(--rc-surface);
-    box-shadow: var(--rc-shadow);
-    cursor: pointer;
-}
+        /* Thumb Firefox */
+        .rc-difficulty-slider input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--rc-accent);
+            border: 2px solid var(--rc-surface);
+            box-shadow: var(--rc-shadow);
+            cursor: pointer;
+        }
 
-/* Piste Firefox : transparente aussi */
-.rc-difficulty-slider input[type="range"]::-moz-range-track {
-    background: transparent;
-    border: none;
-    height: 8px;
-}
+        /* Piste Firefox : transparente aussi */
+        .rc-difficulty-slider input[type="range"]::-moz-range-track {
+            background: transparent;
+            border: none;
+            height: 8px;
+        }
 
 .rc-difficulty-slider__ticks {
     display: grid;
@@ -1360,7 +1394,6 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
     text-align: center;
     align-items: start;
 }
-
 
     .rc-difficulty-slider__ticks > span {
         display: flex;
@@ -1389,9 +1422,9 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
         }
 
 /* =========================================================
-   RESPONSIVE RULES
+   ADAPTATION RESPONSIVE
    ---------------------------------------------------------
-   Breakpoints for shell, cards and tool pages.
+   Comportements selon la largeur de l'écran.
    ========================================================= */
 @media (max-width: 1600px) {
     .rc-character-view__layout.has-selection {
@@ -1513,9 +1546,9 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
 }
 
 /* =========================================================
-   I-1.C.2 - MJ POLL PAGE
+   PAGE MJ : SONDAGES
    ---------------------------------------------------------
-   Compléments visuels spécifiques à la page sondage.
+   Ajustements visuels propres à la page de sondage.
    ========================================================= */
 
 .rc-consequence-card--nested {
@@ -1581,9 +1614,9 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
 }
 
 /* =========================================================
-   I-1.C.2 - POLL RESULTS ADJUSTMENTS
+   RÉSULTATS DE SONDAGE
    ---------------------------------------------------------
-   Mise en valeur du vote majoritaire et jauge pondérée.
+   Mise en valeur de l'option gagnante et des jauges.
    ========================================================= */
 
 .rc-poll-option-card--winner {
@@ -1632,9 +1665,9 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
     }
 
 /* =========================================================
-   I-1.C.3 - MASS DISTRIBUTION
+   PAGE MJ : DISTRIBUTION DE MASSE
    ---------------------------------------------------------
-   Mise en forme spécifique de la page distribution de masse.
+   Mise en forme spécifique des distributions.
    ========================================================= */
 
 .rc-inline-info {
@@ -1671,6 +1704,7 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
     padding-top: 0.14rem;
     padding-bottom: 0.14rem;
 }
+
     .rc-inline-pill--removable button {
         font-size: 0.9rem;
         line-height: 1;
@@ -1695,9 +1729,9 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
 }
 
 /* =========================================================
-   I-1.C.4 - RANDOM DRAW
+   PAGE MJ : TIRAGE AU SORT
    ---------------------------------------------------------
-   Historique et panneaux spécifiques au tirage au sort.
+   Historique et panneaux propres au tirage.
    ========================================================= */
 
 .rc-random-draw-history {
@@ -1731,22 +1765,11 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
     min-height: 100px;
 }
 
-/* =========================================
-   FILTERS UNIFIED
-========================================= */
-
-.rc-filter-toggle {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-}
-
-.rc-tool-subsection__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
+/* =========================================================
+   LIENS DE SESSION ET FILTRES COMMUNS
+   ---------------------------------------------------------
+   Ajustements d'affichage pour les liens longs et les filtres.
+   ========================================================= */
 
 .rc-session-strip__value--link {
     max-width: none !important;
@@ -1834,9 +1857,8 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
 }
 
 /* =========================================================
-   RESULT CARD STATES (GameTest)
+   ÉTATS DES CARTES DE RÉSULTAT DE TEST
    ========================================================= */
-
 
 .rc-character-result-card--success {
     border-color: rgba(40, 105, 131, 0.35);
@@ -1857,19 +1879,10 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
 }
 
 /* =========================================================
-   I-1.C-UI.3 - ADVANCED FILTERS
+   FILTRES AVANCÉS
+   ---------------------------------------------------------
+   Groupes de filtres avancés et espacement interne.
    ========================================================= */
-
-.rc-inline-picker {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.rc-tool-subsection--compact {
-    margin-top: 1rem;
-}
 
 .rc-filter-group-card .rc-filter-toggle + .rc-filter-toggle {
     margin-top: 0.35rem;
@@ -1893,3 +1906,771 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
     margin-bottom: 0.35rem;
     color: var(--rc-text);
 }
+
+.rc-session-list-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(700px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+/* =========================================================
+   ÉDITEUR DE SYSTÈME : SECTIONS REPLIABLES
+   ========================================================= */
+
+.rc-collapse-section {
+    border: 1px solid var(--rc-border);
+    border-radius: 22px;
+    background: var(--rc-surface);
+    box-shadow: var(--rc-shadow);
+    overflow: hidden;
+}
+
+    .rc-collapse-section + .rc-collapse-section {
+        margin-top: 0;
+    }
+
+.rc-collapse-section__summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 1rem 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background: var(--rc-surface);
+    border-bottom: 1px solid transparent;
+}
+
+    .rc-collapse-section__summary::-webkit-details-marker {
+        display: none;
+    }
+
+.rc-collapse-section[open] .rc-collapse-section__summary {
+    border-bottom-color: var(--rc-border);
+}
+
+.rc-collapse-section__summary::after {
+    content: "▸";
+    color: var(--rc-text-soft);
+    font-size: 1rem;
+    transition: transform var(--rc-transition);
+    flex-shrink: 0;
+}
+
+.rc-collapse-section[open] .rc-collapse-section__summary::after {
+    transform: rotate(90deg);
+}
+
+.rc-collapse-section__title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--rc-text);
+}
+
+.rc-collapse-section__subtitle {
+    margin-top: 0.2rem;
+    font-size: 0.88rem;
+    color: var(--rc-text-soft);
+}
+
+.rc-collapse-section__body {
+    padding: 1rem;
+    background: var(--rc-bg-alt);
+}
+
+    .rc-collapse-section__body > .rc-tool-panel {
+        box-shadow: none;
+        border-radius: 18px;
+    }
+
+@media (max-width: 960px) {
+    .rc-collapse-section__summary,
+    .rc-collapse-section__body {
+        padding: 0.9rem;
+    }
+}
+
+/* =========================================================
+   ÉDITEUR DE SYSTÈME : AJUSTEMENTS D'INTERFACE
+   ========================================================= */
+
+.rc-tool-form-grid--dense {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    align-items: start;
+}
+
+.rc-tool-form-grid--very-dense {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+    align-items: start;
+}
+
+.rc-tool-layout--top {
+    align-items: start;
+}
+
+.rc-collapse-section__summary-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+}
+
+.rc-collapse-section__summary-text {
+    min-width: 0;
+}
+
+.rc-collapse-section__summary-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-right: 0.5rem;
+}
+
+    .rc-collapse-section__summary-actions button {
+        margin: 0;
+    }
+
+@media (max-width: 960px) {
+    .rc-tool-form-grid--dense,
+    .rc-tool-form-grid--very-dense {
+        grid-template-columns: 1fr;
+    }
+
+    .rc-collapse-section__summary-main {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .rc-collapse-section__summary-actions {
+        margin-right: 0;
+    }
+}
+
+/* =========================================================
+   SESSION MJ : ÉDITION INLINE DE FICHE
+   ========================================================= */
+
+.rc-character-detail-panel textarea,
+.rc-character-detail-panel input,
+.rc-character-detail-panel select {
+    width: 100%;
+    max-width: none;
+}
+
+.rc-character-detail-panel__actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.rc-character-bio {
+    white-space: pre-wrap;
+}
+
+/* =========================================================
+   JAUGES COMMUNES DE SESSION DANS L'EN-TÊTE
+   ========================================================= */
+.rc-global-session-gauges {
+    padding: 0 1.25rem 0.9rem 1.25rem;
+    border-bottom: 1px solid var(--rc-border);
+    background: var(--rc-surface);
+}
+
+    .rc-global-session-gauges .rc-session-gauge-strip {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+        gap: 0.75rem;
+        width: 100%;
+    }
+
+.rc-session-gauge-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.rc-session-gauge-strip__title {
+    align-self: center;
+    font-size: 0.82rem;
+    color: var(--rc-text-soft);
+    white-space: nowrap;
+}
+
+.rc-session-gauge-card {
+    min-width: 210px;
+    max-width: 260px;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 18px;
+    background: var(--rc-surface-2);
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.rc-session-gauge-card__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: baseline;
+}
+
+.rc-session-gauge-card__name {
+    font-weight: 700;
+    color: var(--rc-text);
+}
+
+.rc-session-gauge-card__value {
+    color: var(--rc-text-soft);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.rc-session-gauge-card__track {
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--rc-bg-alt);
+    border: 1px solid var(--rc-border);
+    overflow: hidden;
+}
+
+.rc-session-gauge-card__fill {
+    height: 100%;
+    background: var(--rc-accent);
+    border-radius: 999px;
+}
+
+.rc-session-gauge-card__editor {
+    display: flex;
+    gap: 0.45rem;
+    align-items: center;
+}
+
+    .rc-session-gauge-card__editor input {
+        width: 90px;
+        min-height: 40px;
+        max-width: none;
+    }
+
+    .rc-session-gauge-card__editor button {
+        min-height: 40px;
+    }
+
+@media (max-width: 1280px) {
+    .rc-global-session-gauges .rc-session-gauge-strip {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 960px) {
+    .rc-global-session-gauges {
+        padding: 0 1rem 0.75rem 1rem;
+    }
+
+    .rc-session-gauge-strip {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .rc-session-gauge-card {
+        min-width: 100%;
+        max-width: none;
+    }
+}
+
+.rc-session-gauge-card__edit-trigger {
+    min-height: 38px;
+    border-radius: 999px;
+    border: 1px solid var(--rc-border);
+    background: var(--rc-surface);
+    color: var(--rc-text);
+    padding: 0.45rem 0.8rem;
+    cursor: pointer;
+    transition: background var(--rc-transition), border-color var(--rc-transition);
+}
+
+    .rc-session-gauge-card__edit-trigger:hover {
+        background: var(--rc-bg-alt);
+    }
+
+.rc-round-icon-button {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.rc-session-gauge-card--button {
+    text-align: left;
+    cursor: pointer;
+    transition: transform var(--rc-transition), border-color var(--rc-transition), background var(--rc-transition);
+}
+
+    .rc-session-gauge-card--button:hover {
+        background: var(--rc-bg-alt);
+        border-color: var(--rc-accent);
+        transform: translateY(-1px);
+    }
+
+/* =========================================================
+   TESTS : PALIERS GLOBAUX
+   ========================================================= */
+
+.rc-global-threshold-slider {
+    margin-bottom: 0.85rem;
+}
+
+.rc-global-threshold-slider__track-wrapper {
+    position: relative;
+    padding: 1.25rem 0 0.75rem 0;
+    user-select: none;
+}
+
+.rc-global-threshold-slider__track {
+    position: relative;
+    height: 16px;
+    border-radius: 999px;
+    border: 1px solid var(--rc-border);
+    overflow: hidden;
+}
+
+.rc-global-threshold-slider__handle {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translate(-50%, -50%) !important;
+    width: 22px;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--rc-surface);
+    border: 2px solid var(--rc-accent);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+    cursor: grab;
+    padding: 0;
+    margin: 0;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: none !important;
+}
+
+    .rc-global-threshold-slider__handle:hover,
+    .rc-global-threshold-slider__handle:focus,
+    .rc-global-threshold-slider__handle:focus-visible,
+    .rc-global-threshold-slider__handle:active {
+        transform: translate(-50%, -50%) !important;
+        top: 50% !important;
+        left: var(--unused, 0);
+        border-color: var(--rc-accent);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+        outline: none;
+        transition: none !important;
+    }
+
+    .rc-global-threshold-slider__handle:active {
+        cursor: grabbing;
+    }
+
+.rc-global-threshold-slider__badge {
+    position: absolute;
+    top: 1.75rem;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 0.78rem;
+    color: var(--rc-text-soft);
+    background: var(--rc-surface);
+    border: 1px solid var(--rc-border);
+    border-radius: 999px;
+    padding: 0.15rem 0.45rem;
+    pointer-events: none;
+}
+
+.rc-global-threshold-slider__handle:hover,
+.rc-global-threshold-slider__handle:active,
+.rc-global-threshold-slider__handle:focus,
+.rc-global-threshold-slider__handle:focus-visible {
+    translate: none !important;
+}
+
+button.rc-global-threshold-slider__handle,
+button.rc-global-threshold-slider__handle:hover,
+button.rc-global-threshold-slider__handle:active,
+button.rc-global-threshold-slider__handle:focus,
+button.rc-global-threshold-slider__handle:focus-visible {
+    transform: translate(-50%, -50%) !important;
+}
+
+.rc-global-threshold-slider__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.35rem;
+}
+
+.rc-global-threshold-slider__legend-item {
+    font-size: 0.85rem;
+    color: var(--rc-text-soft);
+}
+
+/* =========================================================
+   ROOM JOUEUR : FICHE ET STREAM
+   ========================================================= */
+
+.rc-player-room {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr) minmax(480px, 2fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.rc-player-room__main {
+    grid-column: 1 / 2;
+    min-width: 0;
+}
+
+.rc-player-room__side {
+    grid-column: 2 / 4;
+    min-width: 0;
+}
+
+.rc-player-character-sheet {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.rc-player-character-sheet__hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 18px;
+    background: var(--rc-surface-2);
+}
+
+.rc-player-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(82px, 1fr));
+    gap: 0.45rem;
+}
+
+.rc-player-stat-card {
+    padding: 0.5rem 0.55rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 14px;
+    background: var(--rc-surface);
+}
+
+.rc-player-character-sheet__name {
+    font-size: 1.55rem;
+    font-weight: 800;
+    text-align: center;
+    color: var(--rc-text);
+}
+
+.rc-player-character-sheet__status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    font-weight: 700;
+    border: 1px solid transparent;
+}
+
+    .rc-player-character-sheet__status.alive {
+        background: rgba(29, 107, 60, 0.12);
+        color: #1d6b3c;
+        border-color: rgba(29, 107, 60, 0.25);
+    }
+
+    .rc-player-character-sheet__status.dead {
+        background: rgba(161, 63, 63, 0.12);
+        color: #a13f3f;
+        border-color: rgba(161, 63, 63, 0.25);
+    }
+
+.rc-player-character-sheet__biography {
+    white-space: pre-wrap;
+    line-height: 1.5;
+    color: var(--rc-text);
+}
+
+.rc-player-stat-card__label {
+    font-size: 0.74rem;
+    color: var(--rc-text-soft);
+    margin-bottom: 0.15rem;
+}
+
+.rc-player-stat-card__value {
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: var(--rc-text);
+}
+
+.rc-player-pill-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.rc-player-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 34px;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid var(--rc-border);
+    background: var(--rc-surface);
+    color: var(--rc-text);
+    font-size: 0.88rem;
+}
+
+.rc-player-gauge {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 18px;
+    background: var(--rc-surface);
+    margin-bottom: 0.65rem;
+}
+
+.rc-player-gauge--health {
+    border-color: rgba(161, 63, 63, 0.28);
+    background: rgba(161, 63, 63, 0.05);
+}
+
+.rc-player-gauge__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: baseline;
+}
+
+.rc-player-gauge__name {
+    font-weight: 700;
+    color: var(--rc-text);
+}
+
+.rc-player-gauge__value {
+    color: var(--rc-text-soft);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.rc-player-gauge__track {
+    width: 100%;
+    height: 12px;
+    border-radius: 999px;
+    background: var(--rc-bg-alt);
+    border: 1px solid var(--rc-border);
+    overflow: hidden;
+}
+
+.rc-player-gauge__fill {
+    height: 100%;
+    background: var(--rc-accent);
+    border-radius: 999px;
+}
+
+.rc-player-gauge--health .rc-player-gauge__fill {
+    background: #a13f3f;
+}
+
+.rc-player-stream {
+    display: grid;
+    grid-template-columns: minmax(240px, 1fr) minmax(440px, 2fr);
+    gap: 0.75rem;
+    align-items: start;
+}
+
+.rc-player-stream__chat,
+.rc-player-stream__video {
+    width: 100%;
+    border: 1px solid var(--rc-border);
+    border-radius: 18px;
+    background: #000;
+}
+
+.rc-player-stream__chat {
+    min-height: 720px;
+}
+
+.rc-player-stream__video {
+    min-height: 720px;
+}
+
+@media (max-width: 1480px) {
+    .rc-player-room {
+        grid-template-columns: 1fr;
+    }
+
+    .rc-player-room__main,
+    .rc-player-room__side {
+        grid-column: auto;
+    }
+
+    .rc-player-stream {
+        grid-template-columns: 1fr;
+    }
+
+    .rc-player-stream__chat,
+    .rc-player-stream__video {
+        min-height: 420px;
+    }
+}
+
+/* =========================================================
+   ROOM JOUEUR : AJUSTEMENTS COMPLÉMENTAIRES
+   ========================================================= */
+
+.rc-player-test-outcome {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0.35rem 0.9rem;
+    border-radius: 999px;
+    font-weight: 700;
+    border: 1px solid transparent;
+    width: fit-content;
+}
+
+    .rc-player-test-outcome.success {
+        background: rgba(29, 107, 60, 0.12);
+        color: #1d6b3c;
+        border-color: rgba(29, 107, 60, 0.25);
+    }
+
+    .rc-player-test-outcome.failure {
+        background: rgba(161, 63, 63, 0.12);
+        color: #a13f3f;
+        border-color: rgba(161, 63, 63, 0.25);
+    }
+
+.rc-player-creation-attribute-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+@media (max-width: 900px) {
+    .rc-player-creation-attribute-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .rc-player-creation-attribute-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================================================
+   ROOM JOUEUR : MODE OBSERVATEUR / ASSISTANT
+   ========================================================= */
+
+.rc-player-room__side .rc-character-view {
+    min-width: 0;
+}
+
+.rc-player-room__side .rc-character-view__filters {
+    margin-bottom: 0.25rem;
+}
+
+.rc-player-room__side .rc-character-view__layout.has-selection {
+    grid-template-columns: minmax(0, 1fr) 360px;
+}
+
+.rc-player-room__side .rc-character-view__grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.rc-player-room__side .rc-character-detail-panel {
+    min-height: 480px;
+}
+
+@media (max-width: 1680px) {
+    .rc-player-room__side .rc-character-view__layout.has-selection {
+        grid-template-columns: 1fr;
+    }
+
+    .rc-player-room__side .rc-character-detail-panel {
+        position: static;
+    }
+}
+
+.rc-character-detail-panel input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    min-height: 16px;
+    margin-right: 0.45rem;
+    vertical-align: middle;
+}
+
+.rc-character-detail-panel label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+/* =========================================================
+   ROOM JOUEUR : COMPACTAGE ET ANIMATION DE LANCER
+   ---------------------------------------------------------
+   Compacte la fiche joueur et centre l'animation de dé.
+   ========================================================= */
+
+.rc-player-character-sheet > .rc-filter-group-card,
+.rc-player-character-sheet > .rc-detail-block {
+    margin-top: 0;
+}
+
+.rc-player-character-sheet .rc-filter-group-card {
+    padding: 0.5rem;
+    gap: 0.3rem;
+}
+
+.rc-player-character-sheet .rc-detail-block {
+    gap: 0.25rem;
+}
+
+.rc-player-character-sheet .rc-detail-block__title {
+    margin-bottom: 0.1rem;
+}
+
+.rc-player-roll-animation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+    padding: 1rem 0;
+}
+
+    .rc-player-roll-animation img {
+        display: block;
+        max-width: 160px;
+        width: 100%;
+        height: auto;
+    }

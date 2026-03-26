@@ -5,6 +5,7 @@ using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace Rollocracy.Infrastructure.Services
@@ -15,17 +16,20 @@ namespace Rollocracy.Infrastructure.Services
         private readonly IStringLocalizer _localizer;
         private readonly IPresenceTracker _presenceTracker;
         private readonly ICharacterEffectService _characterEffectService;
+        private readonly ISessionNotifier _sessionNotifier;
 
         public CharacterService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
             IStringLocalizerFactory localizerFactory,
             IPresenceTracker presenceTracker,
-            ICharacterEffectService characterEffectService)
+            ICharacterEffectService characterEffectService,
+            ISessionNotifier sessionNotifier)
         {
             _contextFactory = contextFactory;
             _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
             _presenceTracker = presenceTracker;
             _characterEffectService = characterEffectService;
+            _sessionNotifier = sessionNotifier;
         }
 
         public async Task<PlayerRoomStateDto> GetPlayerRoomStateAsync(Guid playerSessionId)
@@ -183,10 +187,12 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     TraitDefinitionId = trait.Id,
                     Name = trait.Name,
+                    IsRandomSelectionGroup = trait.IsRandomSelectionGroup,
                     Options = options.Select(o => new CharacterCreationTraitOptionDto
                     {
                         TraitOptionId = o.Id,
-                        Name = o.Name
+                        Name = o.Name,
+                        IsLockedForCharacterCreation = o.IsLockedForCharacterCreation
                     }).ToList()
                 });
             }
@@ -194,12 +200,25 @@ namespace Rollocracy.Infrastructure.Services
             return result;
         }
 
+        private static Guid PickRandomUnlockedTraitOption(
+    List<TraitOption> options)
+        {
+            var eligible = options
+                .Where(x => !x.IsLockedForCharacterCreation)
+                .ToList();
+
+            if (eligible.Count == 0)
+                throw new InvalidOperationException("No unlocked trait option available.");
+
+            return eligible[Random.Shared.Next(eligible.Count)].Id;
+        }
+
         public async Task<Character> CreateCharacterAsync(
-            Guid playerSessionId,
-            string name,
-            string biography,
-            Dictionary<Guid, int> attributeValues,
-            Dictionary<Guid, Guid> traitSelections)
+    Guid playerSessionId,
+    string name,
+    string biography,
+    Dictionary<Guid, int> attributeValues,
+    Dictionary<Guid, Guid> traitSelections)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -241,6 +260,11 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(t => t.GameSystemId == gameSystemId)
                 .ToListAsync();
 
+            var traitOptions = await context.TraitOptions
+                .AsNoTracking()
+                .Where(o => traitDefinitions.Select(t => t.Id).Contains(o.TraitDefinitionId))
+                .ToListAsync();
+
             var gaugeDefinitions = await context.GaugeDefinitions
                 .AsNoTracking()
                 .Where(g => g.GameSystemId == gameSystemId)
@@ -261,13 +285,9 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var attributeDefinition in attributeDefinitions)
             {
+                // Les Attributes ne sont plus choisis par le joueur à la création :
+                // on génère toujours la valeur depuis la définition du système.
                 var value = GenerateAttributeDefaultValue(attributeDefinition);
-
-                if (attributeValues.TryGetValue(attributeDefinition.Id, out var submittedValue))
-                {
-                    value = submittedValue;
-                }
-
                 value = Math.Clamp(value, attributeDefinition.MinValue, attributeDefinition.MaxValue);
 
                 context.CharacterAttributeValues.Add(new CharacterAttributeValue
@@ -281,22 +301,50 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var traitDefinition in traitDefinitions)
             {
-                if (!traitSelections.TryGetValue(traitDefinition.Id, out var selectedOptionId))
+                var optionsForTrait = traitOptions
+                    .Where(o => o.TraitDefinitionId == traitDefinition.Id)
+                    .ToList();
+
+                if (traitDefinition.IsRandomSelectionGroup)
+                {
+                    var unlockedOptions = optionsForTrait
+                        .Where(o => !o.IsLockedForCharacterCreation)
+                        .ToList();
+
+                    if (unlockedOptions.Count == 0)
+                        throw new Exception(_localizer["Backend_RandomTraitGroupNeedsUnlockedOption"]);
+
+                    var selectedOptionId = PickRandomUnlockedTraitOption(optionsForTrait);
+
+                    context.CharacterTraitValues.Add(new CharacterTraitValue
+                    {
+                        Id = Guid.NewGuid(),
+                        CharacterId = character.Id,
+                        TraitDefinitionId = traitDefinition.Id,
+                        TraitOptionId = selectedOptionId
+                    });
+
+                    continue;
+                }
+
+                if (!traitSelections.TryGetValue(traitDefinition.Id, out var selectedOptionIdFromPlayer))
                     throw new Exception(_localizer["Backend_MissingTraitSelection"]);
 
-                var optionExists = await context.TraitOptions
-                    .AsNoTracking()
-                    .AnyAsync(o => o.Id == selectedOptionId && o.TraitDefinitionId == traitDefinition.Id);
+                var selectedOption = optionsForTrait
+                    .FirstOrDefault(o => o.Id == selectedOptionIdFromPlayer);
 
-                if (!optionExists)
+                if (selectedOption == null)
                     throw new Exception(_localizer["Backend_InvalidTraitSelection"]);
+
+                if (selectedOption.IsLockedForCharacterCreation)
+                    throw new Exception(_localizer["Backend_LockedTraitOptionCannotBeSelected"]);
 
                 context.CharacterTraitValues.Add(new CharacterTraitValue
                 {
                     Id = Guid.NewGuid(),
                     CharacterId = character.Id,
                     TraitDefinitionId = traitDefinition.Id,
-                    TraitOptionId = selectedOptionId
+                    TraitOptionId = selectedOptionIdFromPlayer
                 });
             }
 
@@ -363,6 +411,11 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(t => t.GameSystemId == gameSystemId)
                 .ToListAsync();
 
+            var traitOptions = await context.TraitOptions
+                .AsNoTracking()
+                .Where(o => traitDefinitions.Select(t => t.Id).Contains(o.TraitDefinitionId))
+                .ToListAsync();
+
             var gaugeDefinitions = await context.GaugeDefinitions
                 .AsNoTracking()
                 .Where(g => g.GameSystemId == gameSystemId)
@@ -383,13 +436,9 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var attributeDefinition in attributeDefinitions)
             {
+                // Les Attributes ne sont plus saisis à la création :
+                // on génère toujours leur valeur depuis la définition du système.
                 var value = GenerateAttributeDefaultValue(attributeDefinition);
-
-                if (attributeValues.TryGetValue(attributeDefinition.Id, out var submittedValue))
-                {
-                    value = submittedValue;
-                }
-
                 value = Math.Clamp(value, attributeDefinition.MinValue, attributeDefinition.MaxValue);
 
                 context.CharacterAttributeValues.Add(new CharacterAttributeValue
@@ -403,22 +452,50 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var traitDefinition in traitDefinitions)
             {
-                if (!traitSelections.TryGetValue(traitDefinition.Id, out var selectedOptionId))
+                var optionsForTrait = traitOptions
+                    .Where(o => o.TraitDefinitionId == traitDefinition.Id)
+                    .ToList();
+
+                if (traitDefinition.IsRandomSelectionGroup)
+                {
+                    var unlockedOptions = optionsForTrait
+                        .Where(o => !o.IsLockedForCharacterCreation)
+                        .ToList();
+
+                    if (unlockedOptions.Count == 0)
+                        throw new Exception(_localizer["Backend_RandomTraitGroupNeedsUnlockedOption"]);
+
+                    var selectedOptionId = PickRandomUnlockedTraitOption(optionsForTrait);
+
+                    context.CharacterTraitValues.Add(new CharacterTraitValue
+                    {
+                        Id = Guid.NewGuid(),
+                        CharacterId = character.Id,
+                        TraitDefinitionId = traitDefinition.Id,
+                        TraitOptionId = selectedOptionId
+                    });
+
+                    continue;
+                }
+
+                if (!traitSelections.TryGetValue(traitDefinition.Id, out var selectedOptionIdFromPlayer))
                     throw new Exception(_localizer["Backend_MissingTraitSelection"]);
 
-                var optionExists = await context.TraitOptions
-                    .AsNoTracking()
-                    .AnyAsync(o => o.Id == selectedOptionId && o.TraitDefinitionId == traitDefinition.Id);
+                var selectedOption = optionsForTrait
+                    .FirstOrDefault(o => o.Id == selectedOptionIdFromPlayer);
 
-                if (!optionExists)
+                if (selectedOption == null)
                     throw new Exception(_localizer["Backend_InvalidTraitSelection"]);
+
+                if (selectedOption.IsLockedForCharacterCreation)
+                    throw new Exception(_localizer["Backend_LockedTraitOptionCannotBeSelected"]);
 
                 context.CharacterTraitValues.Add(new CharacterTraitValue
                 {
                     Id = Guid.NewGuid(),
                     CharacterId = character.Id,
                     TraitDefinitionId = traitDefinition.Id,
-                    TraitOptionId = selectedOptionId
+                    TraitOptionId = selectedOptionIdFromPlayer
                 });
             }
 
@@ -448,6 +525,32 @@ namespace Rollocracy.Infrastructure.Services
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
             return await BuildCharacterSheetAsync(context, playerSessionId, characterId);
+        }
+
+        public async Task UpdateCharacterBiographyForPlayerAsync(
+            Guid playerSessionId,
+            Guid characterId,
+            string biography)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps => ps.Id == playerSessionId);
+
+            if (playerSession == null)
+                throw new Exception(_localizer["Backend_PlayerSessionNotFound"]);
+
+            var character = await context.Characters
+                .FirstOrDefaultAsync(c => c.Id == characterId && c.PlayerSessionId == playerSessionId);
+
+            if (character == null)
+                throw new Exception(_localizer["Backend_CharacterNotFound"]);
+
+            character.Biography = biography?.Trim() ?? string.Empty;
+
+            await context.SaveChangesAsync();
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(playerSession.SessionId);
         }
 
         public async Task<SessionPublicStatsDto> GetSessionPublicStatsAsync(Guid sessionId)
@@ -823,6 +926,11 @@ namespace Rollocracy.Infrastructure.Services
             return await BuildEditableCharacterAsync(context, session, row.playerSession, row.character);
         }
 
+        public async Task<List<Guid>> ResolveTargetCharacterIdsAsync(Guid sessionId, CharacterTargetFilterDto filter)
+        {
+            return await _characterEffectService.ResolveTargetCharacterIdsAsync(sessionId, filter);
+        }
+
         public async Task<CharacterUpdateResultDto> UpdateCharacterForSessionAsync(
             Guid sessionId,
             Guid characterId,
@@ -907,6 +1015,9 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(v => v.CharacterId == row.character.Id)
                 .ToListAsync();
 
+            var gaugeValuesBeforeInventoryChange = gaugeValues
+                .ToDictionary(x => x.GaugeDefinitionId, x => x.Value);
+
             var characterTalents = await context.CharacterTalents
                 .Where(x => x.CharacterId == row.character.Id)
                 .ToListAsync();
@@ -983,9 +1094,9 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             var selectedTalentIds = request.SelectedTalentIds
-                .Distinct()
-                .Where(id => talentDefinitions.Any(t => t.Id == id))
-                .ToHashSet();
+             .Distinct()
+             .Where(id => talentDefinitions.Any(t => t.Id == id))
+             .ToHashSet();
 
             var selectedItemIds = request.SelectedItemIds
                 .Distinct()
@@ -995,7 +1106,19 @@ namespace Rollocracy.Infrastructure.Services
             var existingTalentIds = characterTalents.Select(x => x.TalentDefinitionId).ToHashSet();
             var existingItemIds = characterItems.Select(x => x.ItemDefinitionId).ToHashSet();
 
-            foreach (var talentIdToAdd in selectedTalentIds.Except(existingTalentIds))
+            var talentIdsToAdd = selectedTalentIds.Except(existingTalentIds).ToList();
+            var talentIdsToRemove = characterTalents
+                .Where(x => !selectedTalentIds.Contains(x.TalentDefinitionId))
+                .Select(x => x.TalentDefinitionId)
+                .ToList();
+
+            var itemIdsToAdd = selectedItemIds.Except(existingItemIds).ToList();
+            var itemIdsToRemove = characterItems
+                .Where(x => !selectedItemIds.Contains(x.ItemDefinitionId))
+                .Select(x => x.ItemDefinitionId)
+                .ToList();
+
+            foreach (var talentIdToAdd in talentIdsToAdd)
             {
                 context.CharacterTalents.Add(new CharacterTalent
                 {
@@ -1005,12 +1128,12 @@ namespace Rollocracy.Infrastructure.Services
                 });
             }
 
-            foreach (var talentToRemove in characterTalents.Where(x => !selectedTalentIds.Contains(x.TalentDefinitionId)).ToList())
+            foreach (var talentToRemove in characterTalents.Where(x => talentIdsToRemove.Contains(x.TalentDefinitionId)).ToList())
             {
                 context.CharacterTalents.Remove(talentToRemove);
             }
 
-            foreach (var itemIdToAdd in selectedItemIds.Except(existingItemIds))
+            foreach (var itemIdToAdd in itemIdsToAdd)
             {
                 context.CharacterItems.Add(new CharacterItem
                 {
@@ -1020,10 +1143,64 @@ namespace Rollocracy.Infrastructure.Services
                 });
             }
 
-            foreach (var itemToRemove in characterItems.Where(x => !selectedItemIds.Contains(x.ItemDefinitionId)).ToList())
+            foreach (var itemToRemove in characterItems.Where(x => itemIdsToRemove.Contains(x.ItemDefinitionId)).ToList())
             {
                 context.CharacterItems.Remove(itemToRemove);
             }
+
+            await context.SaveChangesAsync();
+
+            foreach (var talentIdToAdd in talentIdsToAdd)
+            {
+                await ApplyGaugeModifiersFromTalentInventoryChangeAsync(
+                    context,
+                    gameSystemId,
+                    row.character.Id,
+                    talentIdToAdd,
+                    true);
+            }
+
+            foreach (var talentIdToRemove in talentIdsToRemove)
+            {
+                await ApplyGaugeModifiersFromTalentInventoryChangeAsync(
+                    context,
+                    gameSystemId,
+                    row.character.Id,
+                    talentIdToRemove,
+                    false);
+            }
+
+            foreach (var itemIdToAdd in itemIdsToAdd)
+            {
+                await ApplyGaugeModifiersFromItemInventoryChangeAsync(
+                    context,
+                    gameSystemId,
+                    row.character.Id,
+                    itemIdToAdd,
+                    true);
+            }
+
+            foreach (var itemIdToRemove in itemIdsToRemove)
+            {
+                await ApplyGaugeModifiersFromItemInventoryChangeAsync(
+                    context,
+                    gameSystemId,
+                    row.character.Id,
+                    itemIdToRemove,
+                    false);
+            }
+
+            await context.SaveChangesAsync();
+
+            characterTalents = await context.CharacterTalents
+                .Where(x => x.CharacterId == row.character.Id)
+                .ToListAsync();
+
+            characterItems = await context.CharacterItems
+                .Where(x => x.CharacterId == row.character.Id)
+                .ToListAsync();
+
+            var computedAfterInventoryChange = await ComputeCharacterContextAsync(context, gameSystemId, row.character.Id);
 
             var proposedGaugeValues = new Dictionary<Guid, int>();
             var previousGaugeValues = new Dictionary<Guid, int>();
@@ -1034,16 +1211,29 @@ namespace Rollocracy.Infrastructure.Services
                 var requestedValue = request.Gauges
                     .FirstOrDefault(x => x.GaugeDefinitionId == definition.Id)?.Value;
 
-                var previousValue = existingValue?.Value ?? definition.DefaultValue;
-                var nextValue = requestedValue ?? previousValue;
-                nextValue = Math.Clamp(nextValue, definition.MinValue, definition.MaxValue);
+                var computedGauge = computedAfterInventoryChange.GaugeLines.FirstOrDefault(x => x.Name == definition.Name);
+
+                var effectiveMaxValue = computedGauge?.MaxValue ?? definition.MaxValue;
+                var previousValue = computedGauge?.Value ?? existingValue?.Value ?? definition.DefaultValue;
+
+                var originalValueBeforeInventoryChange =
+                    gaugeValuesBeforeInventoryChange.TryGetValue(definition.Id, out var originalGaugeValue)
+                        ? originalGaugeValue
+                        : definition.DefaultValue;
+
+                var inventoryDelta = previousValue - originalValueBeforeInventoryChange;
+
+                var requestedBaseValue = requestedValue ?? originalValueBeforeInventoryChange;
+                var nextValue = requestedBaseValue + inventoryDelta;
+
+                nextValue = Math.Clamp(nextValue, definition.MinValue, effectiveMaxValue);
 
                 previousGaugeValues[definition.Id] = previousValue;
                 proposedGaugeValues[definition.Id] = nextValue;
             }
 
             var healthGauges = gaugeDefinitions.Where(g => g.IsHealthGauge).ToList();
-            var wouldBeAlive = healthGauges.All(g => proposedGaugeValues[g.Id] > 0);
+            var wouldBeAlive = healthGauges.All(g => proposedGaugeValues.GetValueOrDefault(g.Id) > 0);
             var resurrectionBlocked = false;
 
             if (!row.character.IsAlive && wouldBeAlive)
@@ -1109,6 +1299,8 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             await context.SaveChangesAsync();
+
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
 
             return new CharacterUpdateResultDto
             {
@@ -1370,7 +1562,8 @@ namespace Rollocracy.Infrastructure.Services
                 Gauges = gaugeDefinitions
                     .Select(definition =>
                     {
-                        var value = gaugeValues.FirstOrDefault(v => v.GaugeDefinitionId == definition.Id)?.Value
+                        var computedGauge = computed.GaugeLines.FirstOrDefault(x => x.Name == definition.Name);
+                        var fallbackValue = gaugeValues.FirstOrDefault(v => v.GaugeDefinitionId == definition.Id)?.Value
                             ?? definition.DefaultValue;
 
                         return new EditableCharacterGaugeDto
@@ -1378,8 +1571,8 @@ namespace Rollocracy.Infrastructure.Services
                             GaugeDefinitionId = definition.Id,
                             Name = definition.Name,
                             MinValue = definition.MinValue,
-                            MaxValue = definition.MaxValue,
-                            Value = value,
+                            MaxValue = computedGauge?.MaxValue ?? definition.MaxValue,
+                            Value = computedGauge?.Value ?? fallbackValue,
                             IsHealthGauge = definition.IsHealthGauge
                         };
                     })
@@ -1425,6 +1618,145 @@ namespace Rollocracy.Infrastructure.Services
             };
         }
 
+        private async Task ApplyGaugeModifiersFromTalentInventoryChangeAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            Guid characterId,
+            Guid talentDefinitionId,
+            bool isGrant)
+        {
+            var gaugeModifiers = await context.TalentModifierDefinitions
+                .AsNoTracking()
+                .Where(x => x.TalentDefinitionId == talentDefinitionId && x.TargetType == ModifierTargetType.Gauge)
+                .ToListAsync();
+
+            foreach (var modifier in gaugeModifiers)
+            {
+                var delta = await ResolveInventoryGaugeModifierDeltaAsync(
+                    context,
+                    gameSystemId,
+                    characterId,
+                    modifier.AddValue,
+                    modifier.ValueMode,
+                    modifier.SourceMetricId);
+
+                if (isGrant)
+                {
+                    await ApplyGaugeDeltaForInventoryChangeAsync(
+                        context,
+                        gameSystemId,
+                        characterId,
+                        modifier.TargetId,
+                        delta);
+                }
+            }
+        }
+
+        private async Task ApplyGaugeModifiersFromItemInventoryChangeAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            Guid characterId,
+            Guid itemDefinitionId,
+            bool isGrant)
+        {
+            var gaugeModifiers = await context.ItemModifierDefinitions
+                .AsNoTracking()
+                .Where(x => x.ItemDefinitionId == itemDefinitionId && x.TargetType == ModifierTargetType.Gauge)
+                .ToListAsync();
+
+            foreach (var modifier in gaugeModifiers)
+            {
+                var delta = await ResolveInventoryGaugeModifierDeltaAsync(
+                    context,
+                    gameSystemId,
+                    characterId,
+                    modifier.AddValue,
+                    modifier.ValueMode,
+                    modifier.SourceMetricId);
+
+                if (isGrant)
+                {
+                    await ApplyGaugeDeltaForInventoryChangeAsync(
+                        context,
+                        gameSystemId,
+                        characterId,
+                        modifier.TargetId,
+                        delta);
+                }
+            }
+        }
+
+        private async Task<int> ResolveInventoryGaugeModifierDeltaAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            Guid characterId,
+            int addValue,
+            ModifierValueMode valueMode,
+            Guid? sourceMetricId)
+        {
+            if (valueMode != ModifierValueMode.Metric || !sourceMetricId.HasValue)
+                return addValue;
+
+            var metricDefinition = await context.MetricDefinitions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == sourceMetricId.Value && x.GameSystemId == gameSystemId);
+
+            if (metricDefinition == null)
+                return addValue;
+
+            var computed = await ComputeCharacterContextAsync(context, gameSystemId, characterId);
+
+            var metricLine = computed.MetricLines
+                .FirstOrDefault(x => x.Name == metricDefinition.Name);
+
+            var metricValue = metricLine?.Value ?? 0;
+            var sign = addValue < 0 ? -1 : 1;
+
+            return metricValue * sign;
+        }
+
+        private async Task ApplyGaugeDeltaForInventoryChangeAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            Guid characterId,
+            Guid gaugeDefinitionId,
+            int delta)
+        {
+            var definition = await context.GaugeDefinitions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == gaugeDefinitionId && x.GameSystemId == gameSystemId);
+
+            if (definition == null)
+                return;
+
+            var gaugeValue = await context.CharacterGaugeValues
+                .FirstOrDefaultAsync(x => x.CharacterId == characterId && x.GaugeDefinitionId == gaugeDefinitionId);
+
+            if (gaugeValue == null)
+            {
+                gaugeValue = new CharacterGaugeValue
+                {
+                    Id = Guid.NewGuid(),
+                    CharacterId = characterId,
+                    GaugeDefinitionId = gaugeDefinitionId,
+                    Value = definition.DefaultValue
+                };
+
+                context.CharacterGaugeValues.Add(gaugeValue);
+                await context.SaveChangesAsync();
+            }
+
+            var computed = await ComputeCharacterContextAsync(context, gameSystemId, characterId);
+            var gaugeLine = computed.GaugeLines.FirstOrDefault(x => x.Name == definition.Name);
+
+            var effectiveMax = gaugeLine?.MaxValue ?? definition.MaxValue;
+
+            gaugeValue.Value = Math.Clamp(
+                gaugeValue.Value + delta,
+                definition.MinValue,
+                effectiveMax);
+        }
+
         private async Task<ComputedCharacterContext> ComputeCharacterContextAsync(
             RollocracyDbContext context,
             Guid gameSystemId,
@@ -1441,23 +1773,7 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(v => v.CharacterId == characterId)
                 .ToListAsync();
 
-            var gaugeLines = await context.CharacterGaugeValues
-                .AsNoTracking()
-                .Where(v => v.CharacterId == characterId)
-                .Join(
-                    context.GaugeDefinitions,
-                    value => value.GaugeDefinitionId,
-                    definition => definition.Id,
-                    (value, definition) => new CharacterGaugeLineDto
-                    {
-                        Name = definition.Name,
-                        Value = value.Value,
-                        MinValue = definition.MinValue,
-                        MaxValue = definition.MaxValue,
-                        IsHealthGauge = definition.IsHealthGauge
-                    })
-                .OrderBy(x => x.Name)
-                .ToListAsync();
+            List<CharacterGaugeLineDto> gaugeLines;
 
             var gaugeDefinitions = await context.GaugeDefinitions
                 .AsNoTracking()
@@ -1470,9 +1786,7 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(v => v.CharacterId == characterId)
                 .ToListAsync();
 
-            // En 6A, les gauges restent utilisées comme valeurs directes.
-            // On prépare simplement le dictionnaire attendu par le moteur de metrics.
-            var effectiveGaugeValues = gaugeDefinitions.ToDictionary(
+            Dictionary<Guid, int> effectiveGaugeValues = gaugeDefinitions.ToDictionary(
                 definition => definition.Id,
                 definition =>
                 {
@@ -1785,6 +2099,31 @@ namespace Rollocracy.Infrastructure.Services
                     Name = definition.Name,
                     Value = metricValues[definition.Id]
                 })
+                .ToList();
+
+            gaugeLines = gaugeDefinitions
+                .Select(definition =>
+                {
+                    var gaugeBonus = resolvedModifiers
+                        .Where(m => m.TargetType == ModifierTargetType.Gauge && m.TargetId == definition.Id)
+                        .Sum(m => m.AddValue);
+
+                    var effectiveMax = Math.Max(definition.MinValue, definition.MaxValue + gaugeBonus);
+                    var baseValue = rawGaugeValues.FirstOrDefault(v => v.GaugeDefinitionId == definition.Id)?.Value
+                        ?? definition.DefaultValue;
+
+                    var effectiveValue = Math.Clamp(baseValue, definition.MinValue, effectiveMax);
+
+                    return new CharacterGaugeLineDto
+                    {
+                        Name = definition.Name,
+                        Value = effectiveValue,
+                        MinValue = definition.MinValue,
+                        MaxValue = effectiveMax,
+                        IsHealthGauge = definition.IsHealthGauge
+                    };
+                })
+                .OrderBy(x => x.Name)
                 .ToList();
 
             return new ComputedCharacterContext

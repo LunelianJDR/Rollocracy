@@ -12,22 +12,25 @@ namespace Rollocracy.Infrastructure.Services
         private readonly IDbContextFactory<RollocracyDbContext> _contextFactory;
         private readonly IStringLocalizer _localizer;
         private readonly IPresenceTracker _presenceTracker;
+        private readonly ISessionNotifier _sessionNotifier;
 
         public SessionService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
             IStringLocalizerFactory localizerFactory,
-            IPresenceTracker presenceTracker)
+            IPresenceTracker presenceTracker,
+            ISessionNotifier sessionNotifier)
         {
             _contextFactory = contextFactory;
             _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
             _presenceTracker = presenceTracker;
+            _sessionNotifier = sessionNotifier;
         }
 
         public async Task<Session> CreateSessionAsync(
-            Guid gameMasterUserAccountId,
-            Guid gameSystemId,
-            string sessionName,
-            string sessionPassword)
+    Guid gameMasterUserAccountId,
+    Guid gameSystemId,
+    string sessionName,
+    string sessionPassword)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -39,10 +42,28 @@ namespace Rollocracy.Infrastructure.Services
 
             var normalizedJms = NormalizeSessionCapacity(gameMasterUser.MaxPlayersPerSession);
 
+            var trimmedSessionName = sessionName.Trim();
+
+            if (string.IsNullOrWhiteSpace(trimmedSessionName))
+                throw new Exception(_localizer["Backend_SessionNameRequired"]);
+
+            if (trimmedSessionName.Length > 16)
+                throw new Exception(_localizer["Backend_SessionNameTooLong"]);
+
             if (normalizedJms <= 0)
                 throw new Exception(_localizer["Backend_OnlyUsersWithPositiveJmsCanCreateSession"]);
 
-            var sessionSlug = GenerateSessionSlug(sessionName);
+            var selectedGameSystem = await context.GameSystems
+                .AsNoTracking()
+                .FirstOrDefaultAsync(gs =>
+                    gs.Id == gameSystemId &&
+                    gs.LockedToSessionId == null &&
+                    (gs.OwnerUserAccountId == gameMasterUserAccountId || gs.IsGeneric));
+
+            if (selectedGameSystem == null)
+                throw new Exception(_localizer["Backend_SourceGameSystemNotFound"]);
+
+            var sessionSlug = GenerateSessionSlug(trimmedSessionName);
 
             var existingSession = await context.Sessions
                 .AsNoTracking()
@@ -57,11 +78,11 @@ namespace Rollocracy.Infrastructure.Services
             {
                 Id = Guid.NewGuid(),
                 GameMasterUserAccountId = gameMasterUserAccountId,
-                GameSystemId = null,
-                SessionName = sessionName.Trim(),
+                GameSystemId = selectedGameSystem.Id,
+                SessionName = trimmedSessionName,
                 SessionSlug = sessionSlug,
                 SessionPassword = sessionPassword.Trim(),
-                IsActive = true
+                IsActive = false
             };
 
             context.Sessions.Add(session);
@@ -247,6 +268,41 @@ namespace Rollocracy.Infrastructure.Services
             await context.SaveChangesAsync();
         }
 
+        private async Task<(bool CanView, bool CanEdit)> GetSessionGaugePermissionsAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            Guid userAccountId)
+        {
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == sessionId);
+
+            if (session == null)
+                return (false, false);
+
+            if (session.GameMasterUserAccountId == userAccountId)
+                return (true, true);
+
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps => ps.SessionId == sessionId && ps.UserAccountId == userAccountId);
+
+            if (playerSession == null)
+                return (false, false);
+
+            return playerSession.SpecialRole switch
+            {
+                SessionSpecialRole.Assistant => (true, true),
+                SessionSpecialRole.Observer => (true, false),
+                _ => (false, false)
+            };
+        }
+
+        private static int ClampSessionGaugeValue(SessionGauge gauge, int currentValue)
+        {
+            return Math.Clamp(currentValue, gauge.MinValue, gauge.MaxValue);
+        }
+
         public async Task<Session?> GetSessionByOwnerAndSlugAsync(string gameMasterUsername, string sessionSlug)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -297,6 +353,154 @@ namespace Rollocracy.Infrastructure.Services
                 .ToListAsync();
         }
 
+        public async Task<List<PlayerResumableSessionDto>> GetResumablePlayerSessionsAsync(Guid userAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var playerSessions = await context.PlayerSessions
+                .AsNoTracking()
+                .Where(ps => ps.UserAccountId == userAccountId && !ps.IsGameMaster)
+                .ToListAsync();
+
+            if (playerSessions.Count == 0)
+                return new List<PlayerResumableSessionDto>();
+
+            var playerSessionIds = playerSessions.Select(x => x.Id).ToList();
+            var sessionIds = playerSessions.Select(x => x.SessionId).Distinct().ToList();
+
+            var sessions = await context.Sessions
+                .AsNoTracking()
+                .Where(s => sessionIds.Contains(s.Id))
+                .ToListAsync();
+
+            var gameMasterIds = sessions.Select(x => x.GameMasterUserAccountId).Distinct().ToList();
+
+            var gameMasters = await context.UserAccounts
+                .AsNoTracking()
+                .Where(u => gameMasterIds.Contains(u.Id))
+                .ToListAsync();
+
+            var characters = await context.Characters
+                .AsNoTracking()
+                .Where(c => playerSessionIds.Contains(c.PlayerSessionId))
+                .ToListAsync();
+
+            var result = new List<PlayerResumableSessionDto>();
+
+            foreach (var playerSession in playerSessions)
+            {
+                var session = sessions.FirstOrDefault(x => x.Id == playerSession.SessionId);
+                if (session == null)
+                    continue;
+
+                var gm = gameMasters.FirstOrDefault(x => x.Id == session.GameMasterUserAccountId);
+                var playerCharacters = characters.Where(c => c.PlayerSessionId == playerSession.Id).ToList();
+
+                var aliveCount = playerCharacters.Count(c => c.IsAlive);
+                var deadCount = playerCharacters.Count(c => !c.IsAlive);
+                var totalCount = playerCharacters.Count;
+
+                if (totalCount == 0)
+                    continue;
+
+                result.Add(new PlayerResumableSessionDto
+                {
+                    PlayerSessionId = playerSession.Id,
+                    SessionId = session.Id,
+                    SessionName = session.SessionName,
+                    SessionSlug = session.SessionSlug,
+                    GameMasterUsername = gm?.Username ?? string.Empty,
+                    SessionIsActive = session.IsActive,
+                    TotalCharactersCount = totalCount,
+                    AliveCharactersCount = aliveCount,
+                    DeadCharactersCount = deadCount,
+                    SpecialRole = playerSession.SpecialRole
+                });
+            }
+
+            return result
+                .OrderByDescending(x => x.AliveCharactersCount)
+                .ThenBy(x => x.GameMasterUsername)
+                .ThenBy(x => x.SessionName)
+                .ToList();
+        }
+
+        public async Task<Guid> JoinSessionAsync(
+    Guid userAccountId,
+    string gameMasterUsername,
+    string sessionSlug,
+    string? sessionPassword)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            if (string.IsNullOrWhiteSpace(gameMasterUsername))
+                throw new Exception(_localizer["Backend_JoinSessionGameMasterRequired"]);
+
+            if (string.IsNullOrWhiteSpace(sessionSlug))
+                throw new Exception(_localizer["Backend_JoinSessionSlugRequired"]);
+
+            var normalizedGameMasterUsername = gameMasterUsername.Trim();
+            var normalizedSessionSlug = sessionSlug.Trim();
+
+            var userAccount = await context.UserAccounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userAccountId);
+
+            if (userAccount == null)
+                throw new Exception(_localizer["Backend_UserNotFound"]);
+
+            var gameMaster = await context.UserAccounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedGameMasterUsername.ToLower());
+
+            if (gameMaster == null)
+                throw new Exception(_localizer["Backend_JoinSessionNotFound"]);
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s =>
+                    s.GameMasterUserAccountId == gameMaster.Id &&
+                    s.SessionSlug.ToLower() == normalizedSessionSlug.ToLower());
+
+            if (session == null)
+                throw new Exception(_localizer["Backend_JoinSessionNotFound"]);
+
+            if (!session.IsActive)
+                throw new Exception(_localizer["Backend_JoinSessionInactive"]);
+
+            var expectedPassword = session.SessionPassword?.Trim() ?? string.Empty;
+            var providedPassword = sessionPassword?.Trim() ?? string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(expectedPassword) && !string.Equals(expectedPassword, providedPassword, StringComparison.Ordinal))
+                throw new Exception(_localizer["Backend_JoinSessionInvalidPassword"]);
+
+            var existingPlayerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps =>
+                    ps.SessionId == session.Id &&
+                    ps.UserAccountId == userAccountId &&
+                    !ps.IsGameMaster);
+
+            if (existingPlayerSession != null)
+                return existingPlayerSession.Id;
+
+            var playerSession = new PlayerSession
+            {
+                Id = Guid.NewGuid(),
+                SessionId = session.Id,
+                UserAccountId = userAccountId,
+                PlayerName = userAccount.Username,
+                IsGameMaster = false,
+                SpecialRole = SessionSpecialRole.None,
+                JoinedAt = DateTime.UtcNow
+            };
+
+            context.PlayerSessions.Add(playerSession);
+            await context.SaveChangesAsync();
+
+            return playerSession.Id;
+        }
+
         public async Task SetSessionActiveStateAsync(Guid sessionId, Guid gameMasterUserAccountId, bool isActive)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -309,6 +513,47 @@ namespace Rollocracy.Infrastructure.Services
 
             session.IsActive = isActive;
             await context.SaveChangesAsync();
+        }
+
+        public async Task DeleteSessionAsync(Guid sessionId, Guid gameMasterUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            await using var transaction = await context.Database.BeginTransactionAsync();
+
+            var session = await context.Sessions
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (session == null)
+                throw new Exception(_localizer["Backend_SessionNotFound"]);
+
+            if (session.IsActive)
+                throw new Exception(_localizer["Backend_CannotDeleteActiveSession"]);
+
+            // Système dupliqué et verrouillé à cette session, s'il existe.
+            var lockedGameSystem = await context.GameSystems
+                .FirstOrDefaultAsync(gs =>
+                    gs.OwnerUserAccountId == gameMasterUserAccountId &&
+                    gs.LockedToSessionId == sessionId);
+
+            // Si la session pointe encore vers ce système dupliqué,
+            // on détache d'abord la FK pour éviter tout conflit de suppression.
+            if (lockedGameSystem is not null && session.GameSystemId == lockedGameSystem.Id)
+            {
+                session.GameSystemId = null;
+                await context.SaveChangesAsync();
+            }
+
+            // Suppression du système dédié à la session, puis de la session.
+            // Les dépendances exclusives sont censées suivre la cascade existante.
+            if (lockedGameSystem is not null)
+            {
+                context.GameSystems.Remove(lockedGameSystem);
+            }
+
+            context.Sessions.Remove(session);
+
+            await context.SaveChangesAsync();
+            await transaction.CommitAsync();
         }
 
         public async Task<int> GetAliveCharacterCountAsync(Guid sessionId)
@@ -335,7 +580,10 @@ namespace Rollocracy.Infrastructure.Services
 
             var system = await context.GameSystems
                 .AsNoTracking()
-                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == gameMasterUserAccountId);
+                .FirstOrDefaultAsync(gs =>
+                    gs.Id == gameSystemId &&
+                    gs.LockedToSessionId == null &&
+                    (gs.OwnerUserAccountId == gameMasterUserAccountId || gs.IsGeneric));
 
             if (system == null)
                 throw new Exception(_localizer["Backend_GameSystemNotFound"]);
@@ -409,6 +657,9 @@ namespace Rollocracy.Infrastructure.Services
             if (string.IsNullOrWhiteSpace(trimmedSessionName))
                 throw new Exception(_localizer["Backend_SessionNameRequired"]);
 
+            if (trimmedSessionName.Length > 16)
+                throw new Exception(_localizer["Backend_SessionNameTooLong"]);
+
             session.SessionName = trimmedSessionName;
             session.SessionPassword = sessionPassword.Trim();
 
@@ -448,6 +699,55 @@ namespace Rollocracy.Infrastructure.Services
                     CurrentValue = x.CurrentValue
                 })
                 .ToListAsync();
+        }
+
+        public async Task<List<SessionGaugeDto>> GetVisibleSessionGaugesAsync(Guid sessionId, Guid userAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var permissions = await GetSessionGaugePermissionsAsync(context, sessionId, userAccountId);
+
+            if (!permissions.CanView)
+                return new List<SessionGaugeDto>();
+
+            return await context.SessionGauges
+                .AsNoTracking()
+                .Where(g => g.SessionId == sessionId)
+                .OrderBy(g => g.Name)
+                .Select(g => new SessionGaugeDto
+                {
+                    SessionGaugeId = g.Id,
+                    Name = g.Name,
+                    MinValue = g.MinValue,
+                    MaxValue = g.MaxValue,
+                    CurrentValue = g.CurrentValue
+                })
+                .ToListAsync();
+        }
+
+        public async Task UpdateSessionGaugeCurrentValueAsync(
+            Guid sessionId,
+            Guid userAccountId,
+            Guid sessionGaugeId,
+            int currentValue)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var permissions = await GetSessionGaugePermissionsAsync(context, sessionId, userAccountId);
+
+            if (!permissions.CanEdit)
+                throw new Exception(_localizer["Backend_SessionGaugeEditAccessDenied"]);
+
+            var gauge = await context.SessionGauges
+                .FirstOrDefaultAsync(g => g.Id == sessionGaugeId && g.SessionId == sessionId);
+
+            if (gauge == null)
+                throw new Exception(_localizer["Backend_SessionGaugeNotFound"]);
+
+            gauge.CurrentValue = ClampSessionGaugeValue(gauge, currentValue);
+
+            await context.SaveChangesAsync();
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
         }
 
         public async Task<SessionGauge> CreateSessionGaugeAsync(
@@ -491,6 +791,40 @@ namespace Rollocracy.Infrastructure.Services
             await context.SaveChangesAsync();
 
             return entity;
+        }
+
+        public async Task UpdateSessionGaugeAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            Guid sessionGaugeId,
+            string name,
+            int minValue,
+            int maxValue,
+            int currentValue)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            await EnsureGameMasterOwnsSessionAsync(context, sessionId, gameMasterUserAccountId);
+
+            var entity = await context.SessionGauges
+                .FirstOrDefaultAsync(x => x.Id == sessionGaugeId && x.SessionId == sessionId);
+
+            if (entity == null)
+                throw new Exception(_localizer["Backend_SessionGaugeNotFound"]);
+
+            var trimmedName = name.Trim();
+
+            if (string.IsNullOrWhiteSpace(trimmedName))
+                throw new Exception(_localizer["Backend_SessionGaugeNameRequired"]);
+
+            if (maxValue < minValue)
+                throw new Exception(_localizer["Backend_SessionGaugeRangeInvalid"]);
+
+            entity.Name = trimmedName;
+            entity.MinValue = minValue;
+            entity.MaxValue = maxValue;
+            entity.CurrentValue = Math.Clamp(currentValue, minValue, maxValue);
+
+            await context.SaveChangesAsync();
         }
 
         public async Task DeleteSessionGaugeAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid sessionGaugeId)

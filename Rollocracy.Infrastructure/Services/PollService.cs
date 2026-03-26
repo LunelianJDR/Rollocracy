@@ -16,6 +16,7 @@ namespace Rollocracy.Infrastructure.Services
         private readonly ISessionNotifier _sessionNotifier;
         private readonly IPresenceTracker _presenceTracker;
         private readonly ICharacterEffectService _characterEffectService;
+        private string VoteWeightMetricName => _localizer["SystemMetric_VoteWeight"];
 
         public PollService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
@@ -56,26 +57,31 @@ namespace Rollocracy.Infrastructure.Services
             if (!gameSystemId.HasValue)
                 throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
 
-            Guid? metricDefinitionId = null;
-            var metricNameSnapshot = string.Empty;
+            var metricDefinition = await context.MetricDefinitions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m =>
+                    m.GameSystemId == gameSystemId.Value &&
+                    m.Name == VoteWeightMetricName);
 
-            if (request.VoteWeightMode == PollVoteWeightMode.Metric)
-            {
-                if (!request.MetricDefinitionId.HasValue)
-                    throw new Exception(_localizer["Backend_PollMetricRequired"]);
+            if (metricDefinition == null)
+                throw new Exception(_localizer["Backend_VoteWeightMetricNotFound"]);
 
-                var metricDefinition = await context.MetricDefinitions
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(m =>
-                        m.Id == request.MetricDefinitionId.Value &&
-                        m.GameSystemId == gameSystemId.Value);
+            var metricDefinitionId = metricDefinition.Id;
+            var metricNameSnapshot = metricDefinition.Name;
 
-                if (metricDefinition == null)
-                    throw new Exception(_localizer["Backend_InvalidPollMetric"]);
+            var eligibleCharacterIds = await _characterEffectService.ResolveTargetCharacterIdsAsync(
+                sessionId,
+                request.AdvancedFilter ?? new CharacterTargetFilterDto
+                {
+                    OnlyAlive = true,
+                    OnlyDead = false,
+                    OnlyOnline = false,
+                    IncludeNpcs = false,
+                    MatchAllConditions = true
+                });
 
-                metricDefinitionId = metricDefinition.Id;
-                metricNameSnapshot = metricDefinition.Name;
-            }
+            if (eligibleCharacterIds.Count == 0)
+                throw new Exception(_localizer["Backend_PollNoEligibleCharacters"]);
 
             var poll = new SessionPoll
             {
@@ -84,13 +90,23 @@ namespace Rollocracy.Infrastructure.Services
                 Question = request.Question.Trim(),
                 IsClosed = false,
                 ConsequencesApplied = false,
-                VoteWeightMode = request.VoteWeightMode,
+                VoteWeightMode = PollVoteWeightMode.Metric,
                 MetricDefinitionId = metricDefinitionId,
                 MetricNameSnapshot = metricNameSnapshot,
                 CreatedAtUtc = DateTime.UtcNow
             };
 
             context.SessionPolls.Add(poll);
+
+            foreach (var characterId in eligibleCharacterIds.Distinct())
+            {
+                context.SessionPollEligibleCharacters.Add(new SessionPollEligibleCharacter
+                {
+                    Id = Guid.NewGuid(),
+                    SessionPollId = poll.Id,
+                    CharacterId = characterId
+                });
+            }
 
             var optionIdMap = new Dictionary<int, Guid>();
 
@@ -237,6 +253,15 @@ namespace Rollocracy.Infrastructure.Services
             if (playerSession == null)
                 throw new Exception(_localizer["Backend_PlayerSessionNotFound"]);
 
+            var aliveCharacter = await context.Characters
+                .AsNoTracking()
+                .Where(c => c.PlayerSessionId == playerSessionId && c.IsAlive && !c.IsNpc)
+                .OrderByDescending(c => c.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (aliveCharacter == null)
+                return null;
+
             var poll = await context.SessionPolls
                 .AsNoTracking()
                 .Where(p =>
@@ -245,7 +270,14 @@ namespace Rollocracy.Infrastructure.Services
                         !p.IsClosed ||
                         (p.ClosedAtUtc.HasValue && p.ClosedAtUtc.Value >= recentLimitUtc)
                     ))
-                .OrderByDescending(p => p.CreatedAtUtc)
+                .Join(
+                    context.SessionPollEligibleCharacters.AsNoTracking(),
+                    poll => poll.Id,
+                    eligible => eligible.SessionPollId,
+                    (poll, eligible) => new { poll, eligible })
+                .Where(x => x.eligible.CharacterId == aliveCharacter.Id)
+                .OrderByDescending(x => x.poll.CreatedAtUtc)
+                .Select(x => x.poll)
                 .FirstOrDefaultAsync();
 
             if (poll == null)
@@ -296,6 +328,13 @@ namespace Rollocracy.Infrastructure.Services
 
             if (existingVote != null)
                 throw new Exception(_localizer["Backend_PlayerAlreadyVoted"]);
+
+            var isEligible = await context.SessionPollEligibleCharacters
+                .AsNoTracking()
+                .AnyAsync(x => x.SessionPollId == pollId && x.CharacterId == aliveCharacter.Id);
+
+            if (!isEligible)
+                throw new Exception(_localizer["Backend_PlayerNotEligibleForPoll"]);
 
             decimal voteWeight = 1.00m;
 
@@ -434,8 +473,6 @@ namespace Rollocracy.Infrastructure.Services
 
                             gaugeValue.Value += signedValue;
 
-                            await UpdateCharacterAliveStateAsync(context, vote.CharacterId);
-
                             hasAppliedEffects = true;
 
                             context.SessionPollAppliedEffects.Add(new SessionPollAppliedEffect
@@ -450,6 +487,46 @@ namespace Rollocracy.Infrastructure.Services
                                 OperationType = TestConsequenceOperationType.AddValue,
                                 PreviousValue = previousValue,
                                 NewValue = gaugeValue.Value,
+                                PreviousHasTargetLink = false,
+                                NewHasTargetLink = false,
+                                PreviousIsAlive = previousCharacterAlive,
+                                NewIsAlive = character.IsAlive,
+                                PreviousDiedAtUtc = previousCharacterDiedAt,
+                                NewDiedAtUtc = character.DiedAtUtc,
+                                AppliedAtUtc = DateTime.UtcNow
+                            });
+                        }
+                    }
+                    else if (consequence.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                    {
+                        var sessionGauge = await context.SessionGauges
+                            .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.SessionId == poll.SessionId);
+
+                        if (sessionGauge != null)
+                        {
+                            var previousCharacterAlive = character.IsAlive;
+                            var previousCharacterDiedAt = character.DiedAtUtc;
+                            var previousValue = sessionGauge.CurrentValue;
+
+                            sessionGauge.CurrentValue = Math.Clamp(
+                                sessionGauge.CurrentValue + signedValue,
+                                sessionGauge.MinValue,
+                                sessionGauge.MaxValue);
+
+                            hasAppliedEffects = true;
+
+                            context.SessionPollAppliedEffects.Add(new SessionPollAppliedEffect
+                            {
+                                Id = Guid.NewGuid(),
+                                SessionPollId = poll.Id,
+                                CharacterId = vote.CharacterId,
+                                SessionPollVoteId = vote.Id,
+                                SessionPollOptionId = vote.SessionPollOptionId,
+                                TargetKind = TestConsequenceTargetKind.SessionGauge,
+                                TargetDefinitionId = consequence.TargetDefinitionId,
+                                OperationType = TestConsequenceOperationType.AddValue,
+                                PreviousValue = previousValue,
+                                NewValue = sessionGauge.CurrentValue,
                                 PreviousHasTargetLink = false,
                                 NewHasTargetLink = false,
                                 PreviousIsAlive = previousCharacterAlive,
@@ -503,13 +580,13 @@ namespace Rollocracy.Infrastructure.Services
 
                 await context.SaveChangesAsync();
 
-                // 2) Nouveau moteur commun : DerivedStat / Metric / Talent / Item
                 var commonEngineConsequences = voteConsequences
                     .Where(c => !(
                         c.OperationType == TestConsequenceOperationType.AddValue &&
                         c.ValueMode != ModifierValueMode.Metric &&
                         (c.TargetKind == TestConsequenceTargetKind.Attribute ||
-                         c.TargetKind == TestConsequenceTargetKind.Gauge)))
+                         c.TargetKind == TestConsequenceTargetKind.Gauge ||
+                         c.TargetKind == TestConsequenceTargetKind.SessionGauge)))
                     .ToList();
 
                 foreach (var consequence in commonEngineConsequences)
@@ -764,6 +841,16 @@ namespace Rollocracy.Infrastructure.Services
                     if (gaugeValue != null)
                     {
                         gaugeValue.Value = effect.PreviousValue;
+                    }
+                }
+                else if (effect.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                {
+                    var sessionGauge = await context.SessionGauges
+                        .FirstOrDefaultAsync(g => g.Id == effect.TargetDefinitionId && g.SessionId == latestPoll.SessionId);
+
+                    if (sessionGauge != null)
+                    {
+                        sessionGauge.CurrentValue = effect.PreviousValue;
                     }
                 }
                 else
@@ -1349,7 +1436,27 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(c => playerSessions.Select(ps => ps.Id).Contains(c.PlayerSessionId))
                 .ToListAsync();
 
+            var eligibleCharacterIds = await context.SessionPollEligibleCharacters
+                .AsNoTracking()
+                .Where(x => x.SessionPollId == pollId)
+                .Select(x => x.CharacterId)
+                .ToListAsync();
+
+            var eligibleCharacters = characters
+                .Where(c => eligibleCharacterIds.Contains(c.Id))
+                .ToList();
+
+            var eligiblePlayerSessionIds = eligibleCharacters
+                .Select(c => c.PlayerSessionId)
+                .Distinct()
+                .ToHashSet();
+
             var onlinePlayersCount = playerSessions.Count(ps => _presenceTracker.IsPlayerOnline(ps.Id));
+            var eligiblePlayersCount = eligiblePlayerSessionIds.Count;
+            var eligibleOnlinePlayersCount = playerSessions.Count(ps =>
+                eligiblePlayerSessionIds.Contains(ps.Id) &&
+                _presenceTracker.IsPlayerOnline(ps.Id));
+
             var totalVotes = votes.Count;
             var totalWeightedVotes = votes.Sum(v => v.VoteWeight);
 
@@ -1416,10 +1523,10 @@ namespace Rollocracy.Infrastructure.Services
                 MetricName = poll.MetricNameSnapshot,
                 TotalVotes = totalVotes,
                 TotalWeightedVotes = totalWeightedVotes,
-                OnlinePlayersCount = onlinePlayersCount,
-                ParticipationPercent = onlinePlayersCount == 0
+                OnlinePlayersCount = eligibleOnlinePlayersCount,
+                ParticipationPercent = eligiblePlayersCount == 0
                     ? 0
-                    : (double)totalVotes * 100.0 / onlinePlayersCount,
+                    : (double)totalVotes * 100.0 / eligiblePlayersCount,
                 Options = options.Select(o =>
                 {
                     var count = votes.Count(v => v.SessionPollOptionId == o.Id);

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Rollocracy.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Rollocracy.Infrastructure.Persistence;
 namespace Rollocracy.Infrastructure.Migrations
 {
     [DbContext(typeof(RollocracyDbContext))]
-    partial class RollocracyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260323132942_AddGameSystemIsGeneric")]
+    partial class AddGameSystemIsGeneric
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -926,18 +929,6 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<int>("DifficultyValue")
                         .HasColumnType("integer");
 
-                    b.Property<bool>("GlobalConsequencesApplied")
-                        .HasColumnType("boolean");
-
-                    b.Property<int?>("GlobalSuccessThreshold1Percent")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("GlobalSuccessThreshold2Percent")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("GlobalSuccessThreshold3Percent")
-                        .HasColumnType("integer");
-
                     b.Property<bool>("IsClosed")
                         .HasColumnType("boolean");
 
@@ -1248,30 +1239,6 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SessionPollAppliedEffects");
-                });
-
-            modelBuilder.Entity("Rollocracy.Domain.Polls.SessionPollEligibleCharacter", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CharacterId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SessionPollId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CharacterId");
-
-                    b.HasIndex("SessionPollId");
-
-                    b.HasIndex("SessionPollId", "CharacterId")
-                        .IsUnique();
-
-                    b.ToTable("SessionPollEligibleCharacters");
                 });
 
             modelBuilder.Entity("Rollocracy.Domain.Polls.SessionPollOption", b =>

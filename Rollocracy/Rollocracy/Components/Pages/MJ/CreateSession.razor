@@ -5,13 +5,15 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
 @using Rollocracy.Localization
+@using Rollocracy.Domain.Entities
+@using Rollocracy.Domain.GameRules
 
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
+@inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
-<h3>@L["CreateSession_Title"]</h3>
 
 @if (!IsLoaded)
 {
@@ -23,48 +25,179 @@ else if (RedirectToHome)
 }
 else
 {
-    <div>
-        <label>@L["CreateSession_Name"]</label><br />
-        <input @bind="SessionName" />
-    </div>
+    <section class="rc-tool-section">
+        <div class="rc-tool-layout">
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["CreateSession_Title"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["CreateSession_Subtitle"]</p>
+                    </div>
+                </div>
 
-    <div>
-        <label>@L["CreateSession_PasswordOptional"]</label><br />
-        <input @bind="SessionPassword" />
-    </div>
+                @if (!string.IsNullOrWhiteSpace(Message))
+                {
+                    <p>@Message</p>
+                }
 
-    <button @onclick="HandleCreateSession">@L["CreateSession_Submit"]</button>
+                <div class="rc-tool-form-grid">
+                    <div class="rc-form-field">
+                        <label for="session-name">@L["CreateSession_Name"]</label>
+                        <input id="session-name" maxlength="16" @bind="SessionName" />
+                    </div>
 
-    @if (!string.IsNullOrWhiteSpace(Message))
-    {
-        <p>@Message</p>
-    }
+                    <div class="rc-form-field">
+                        <label for="session-password">@L["CreateSession_PasswordOptional"]</label>
+                        <input id="session-password" @bind="SessionPassword" />
+                    </div>
+                </div>
 
-    @if (!string.IsNullOrWhiteSpace(CreatedJoinUrl))
-    {
-        <p>@L["CreateSession_UrlLabel"] : <code>@CreatedJoinUrl</code></p>
+                <div class="rc-tool-subsection rc-tool-subsection--compact">
+                    <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                        <div class="rc-tool-panel__header-main">
+                            <h5 class="rc-tool-panel__title">@L["CreateSession_GameSystemSection"]</h5>
+                            <p class="rc-tool-panel__subtitle">@L["CreateSession_GameSystemSectionSubtitle"]</p>
+                        </div>
+                    </div>
 
-        @if (string.IsNullOrWhiteSpace(CreatedSessionPassword))
-        {
-            <p>@L["CreateSession_PasswordLabel"] : @L["Common_None"]</p>
-        }
-        else
-        {
-            <p>@L["CreateSession_PasswordLabel"] : <code>@CreatedSessionPassword</code></p>
-        }
-    }
+                    @if (OwnedGameSystems.Count == 0)
+                    {
+                        <div class="rc-empty-panel">
+                            <p>@L["CreateSession_NoGameSystem"]</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="rc-form-field">
+                            <label for="selected-game-system">@L["CreateSession_SelectedGameSystem"]</label>
+                            <select id="selected-game-system" @bind="SelectedGameSystemIdString">
+                                @foreach (var system in OwnedGameSystems)
+                                {
+                                    <option value="@system.Id.ToString()">
+                                        @(system.IsGeneric
+                                            ? $"{system.Name} ({L["GameSystems_GenericBadge"]})"
+                                            : system.Name)
+                                    </option>
+                                }
+                            </select>
+                        </div>
+
+                        @if (SelectedGameSystem is not null)
+                        {
+                            <div class="rc-inline-info">
+                                <div>
+                                    <strong>@SelectedGameSystem.Name</strong>
+                                    <div>@GetResolutionLabel(SelectedGameSystem.TestResolutionMode)</div>
+                                </div>
+
+                                <div class="rc-inline-picker">
+                                    @if (SelectedGameSystem.IsGeneric)
+                                    {
+                                        <div>@L["CreateSession_GenericSystemNotice"]</div>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" @onclick="EditSelectedSystem">
+                                            @L["CreateSession_EditSelectedGameSystem"]
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(SelectedGameSystem.Description))
+                            {
+                                <div class="rc-inline-info">
+                                    <div>@SelectedGameSystem.Description</div>
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+
+                <div class="rc-tool-actions">
+                    <button type="button" @onclick="HandleCreateSession" disabled="@IsCreatingSession">
+                        @L["CreateSession_Submit"]
+                    </button>
+                </div>
+            </div>
+
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["CreateSession_CreateGameSystemTitle"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["CreateSession_CreateGameSystemSubtitle"]</p>
+                    </div>
+                </div>
+
+                <div class="rc-tool-form-grid">
+                    <div class="rc-form-field">
+                        <label for="new-system-name">@L["GameSystems_Name"]</label>
+                        <input id="new-system-name" @bind="NewSystemName" />
+                    </div>
+
+                    <div class="rc-form-field">
+                        <label for="new-system-resolution">@L["GameSystems_ResolutionMode"]</label>
+                        <select id="new-system-resolution" @bind="NewSystemResolutionMode">
+                            <option value="@TestResolutionMode.SuccessThreshold">@L["Resolution_SuccessThreshold"]</option>
+                            <option value="@TestResolutionMode.RollUnderAttribute">@L["Resolution_RollUnderAttribute"]</option>
+                        </select>
+                    </div>
+
+                    <div class="rc-form-field" style="grid-column: 1 / -1;">
+                        <label for="new-system-description">@L["GameSystems_Description"]</label>
+                        <textarea id="new-system-description" rows="4" @bind="NewSystemDescription"></textarea>
+                    </div>
+                </div>
+
+                <div class="rc-tool-actions">
+                    <button type="button" @onclick="CreateGameSystem" disabled="@IsCreatingGameSystem">
+                        @L["CreateSession_CreateGameSystemButton"]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
 }
 
 @code {
     private string SessionName = string.Empty;
     private string SessionPassword = string.Empty;
     private string Message = string.Empty;
-    private string CreatedJoinUrl = string.Empty;
-    private string CreatedSessionPassword = string.Empty;
+
     private bool IsLoaded;
     private bool RedirectToHome;
+    private bool IsCreatingSession;
+    private bool IsCreatingGameSystem;
+
     private Guid CurrentUserId;
     private string CurrentUsername = string.Empty;
+
+    private List<GameSystem> OwnedGameSystems = new();
+
+    private Guid? SelectedGameSystemId;
+    private string SelectedGameSystemIdString
+    {
+        get => SelectedGameSystemId?.ToString() ?? string.Empty;
+        set
+        {
+            if (Guid.TryParse(value, out var parsed))
+            {
+                SelectedGameSystemId = parsed;
+            }
+            else
+            {
+                SelectedGameSystemId = null;
+            }
+        }
+    }
+
+    private string NewSystemName = string.Empty;
+    private string NewSystemDescription = string.Empty;
+    private TestResolutionMode NewSystemResolutionMode = TestResolutionMode.SuccessThreshold;
+
+    private GameSystem? SelectedGameSystem =>
+        SelectedGameSystemId.HasValue
+            ? OwnedGameSystems.FirstOrDefault(x => x.Id == SelectedGameSystemId.Value)
+            : null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -100,6 +233,7 @@ else
             return;
         }
 
+        await LoadGameSystemsAsync();
         IsLoaded = true;
     }
 
@@ -113,13 +247,31 @@ else
         return Task.CompletedTask;
     }
 
+    private async Task LoadGameSystemsAsync()
+    {
+        OwnedGameSystems = await GameSystemService.GetSelectableGameSystemsAsync(CurrentUserId);
+
+        if (OwnedGameSystems.Count == 0)
+        {
+            SelectedGameSystemId = null;
+            return;
+        }
+
+        if (!SelectedGameSystemId.HasValue || OwnedGameSystems.All(x => x.Id != SelectedGameSystemId.Value))
+        {
+            SelectedGameSystemId = OwnedGameSystems[0].Id;
+        }
+    }
+
     private async Task HandleCreateSession()
     {
+        if (IsCreatingSession)
+            return;
+
         try
         {
+            IsCreatingSession = true;
             Message = string.Empty;
-            CreatedJoinUrl = string.Empty;
-            CreatedSessionPassword = string.Empty;
 
             if (string.IsNullOrWhiteSpace(SessionName))
             {
@@ -127,17 +279,28 @@ else
                 return;
             }
 
-            var gameSystemId = Guid.NewGuid();
+            if (SessionName.Trim().Length > 16)
+            {
+                Message = L["Session_NameMaxLength"];
+                return;
+            }
+
+            if (!SelectedGameSystemId.HasValue)
+            {
+                Message = L["CreateSession_GameSystemRequired"];
+                return;
+            }
 
             var session = await SessionService.CreateSessionAsync(
                 CurrentUserId,
-                gameSystemId,
+                SelectedGameSystemId.Value,
                 SessionName,
                 SessionPassword);
 
-            CreatedJoinUrl = $"{Navigation.BaseUri}{CurrentUsername}/{session.SessionSlug}";
-            CreatedSessionPassword = SessionPassword;
-            Message = L["CreateSession_Success"];
+            if (SelectedGameSystem?.IsGeneric == true)
+            {
+                await GameSystemService.EnsureSessionUsesEditableGameSystemAsync(session.Id, CurrentUserId);
+            }
 
             Navigation.NavigateTo($"/mj/session/{session.Id}");
         }
@@ -145,5 +308,68 @@ else
         {
             Message = $"{L["Common_Error"]} : {ex.Message}";
         }
+        finally
+        {
+            IsCreatingSession = false;
+        }
+    }
+
+    private async Task CreateGameSystem()
+    {
+        if (IsCreatingGameSystem)
+            return;
+
+        try
+        {
+            IsCreatingGameSystem = true;
+            Message = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(NewSystemName))
+            {
+                Message = L["GameSystems_NameRequired"];
+                return;
+            }
+
+            var system = await GameSystemService.CreateGameSystemAsync(
+                CurrentUserId,
+                NewSystemName,
+                NewSystemDescription,
+                NewSystemResolutionMode);
+
+            NewSystemName = string.Empty;
+            NewSystemDescription = string.Empty;
+            NewSystemResolutionMode = TestResolutionMode.SuccessThreshold;
+
+            await LoadGameSystemsAsync();
+            SelectedGameSystemId = system.Id;
+
+            Message = L["CreateSession_GameSystemCreated"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+        finally
+        {
+            IsCreatingGameSystem = false;
+        }
+    }
+
+    private void EditSelectedSystem()
+    {
+        if (!SelectedGameSystemId.HasValue)
+            return;
+
+        Navigation.NavigateTo($"/mj/gamesystems/{SelectedGameSystemId.Value}");
+    }
+
+    private string GetResolutionLabel(TestResolutionMode mode)
+    {
+        return mode switch
+        {
+            TestResolutionMode.SuccessThreshold => L["Resolution_SuccessThreshold"],
+            TestResolutionMode.RollUnderAttribute => L["Resolution_RollUnderAttribute"],
+            _ => mode.ToString()
+        };
     }
 }

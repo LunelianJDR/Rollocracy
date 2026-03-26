@@ -2,24 +2,61 @@
 @rendermode InteractiveServer
 @using Microsoft.Extensions.Localization
 @using Rollocracy.Localization
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ISessionService SessionService
 
-<h3>@L["Join_Title"]</h3>
 
-<p>@L["Join_Description"]</p>
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToLogin)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else
+{
+    <section class="rc-tool-section">
+        <div class="rc-tool-panel">
+            <div class="rc-tool-panel__header">
+                <div class="rc-tool-panel__header-main">
+                    <h4 class="rc-tool-panel__title">@L["Layout_PlayerJoinSession"]</h4>
+                    <p class="rc-tool-panel__subtitle">@L["JoinSession_Subtitle"]</p>
+                </div>
+            </div>
 
-<div>
-    <label>@L["Join_GameMasterUsername"]</label><br />
-    <input @bind="GameMasterUsername" />
-</div>
+            @if (!string.IsNullOrWhiteSpace(Message))
+            {
+                <p>@Message</p>
+            }
 
-<div>
-    <label>@L["Join_SessionSlug"]</label><br />
-    <input @bind="SessionSlug" />
-</div>
+            <div class="rc-tool-form-grid--dense">
+                <div class="rc-form-field">
+                    <label>@L["JoinSession_GameMasterUsername"]</label>
+                    <input @bind="GameMasterUsername" />
+                </div>
 
-<button @onclick="GoToSession">@L["Join_Submit"]</button>
+                <div class="rc-form-field">
+                    <label>@L["JoinSession_SessionSlug"]</label>
+                    <input @bind="SessionSlug" />
+                </div>
+
+                <div class="rc-form-field">
+                    <label>@L["JoinSession_Password"]</label>
+                    <input type="password" @bind="SessionPassword" />
+                </div>
+            </div>
+
+            <div class="rc-tool-actions">
+                <button type="button" @onclick="JoinSession">@L["Layout_PlayerJoinSession"]</button>
+            </div>
+        </div>
+    </section>
+}
 
 @if (!string.IsNullOrWhiteSpace(Message))
 {
@@ -27,24 +64,80 @@
 }
 
 @code {
+    [SupplyParameterFromQuery(Name = "gm")]
+    public string? PrefilledGameMasterUsername { get; set; }
+
+    [SupplyParameterFromQuery(Name = "slug")]
+    public string? PrefilledSessionSlug { get; set; }
+
+    private Guid CurrentUserId;
+    private bool IsLoaded;
+    private bool RedirectToLogin;
+
     private string GameMasterUsername = string.Empty;
     private string SessionSlug = string.Empty;
+    private string SessionPassword = string.Empty;
     private string Message = string.Empty;
 
-    private void GoToSession()
+    protected override async Task OnInitializedAsync()
     {
-        if (string.IsNullOrWhiteSpace(GameMasterUsername))
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!isAuthenticated || string.IsNullOrWhiteSpace(userIdValue))
         {
-            Message = L["Join_GameMasterRequired"];
+            RedirectToLogin = true;
+            IsLoaded = true;
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(SessionSlug))
+        CurrentUserId = Guid.Parse(userIdValue);
+        IsLoaded = true;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrWhiteSpace(PrefilledGameMasterUsername))
         {
-            Message = L["Join_SessionSlugRequired"];
-            return;
+            GameMasterUsername = PrefilledGameMasterUsername;
         }
 
-        Navigation.NavigateTo($"/{GameMasterUsername.Trim()}/{SessionSlug.Trim()}");
+        if (!string.IsNullOrWhiteSpace(PrefilledSessionSlug))
+        {
+            SessionSlug = PrefilledSessionSlug;
+        }
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToLogin)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task JoinSession()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            var playerSessionId = await SessionService.JoinSessionAsync(
+                CurrentUserId,
+                GameMasterUsername,
+                SessionSlug,
+                SessionPassword);
+
+            Navigation.NavigateTo($"/player/room/{playerSessionId}");
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
     }
 }

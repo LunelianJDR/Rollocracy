@@ -44,5 +44,10 @@ namespace Rollocracy.Domain.GameTests
         public DateTime AutoRollAtUtc { get; set; }
 
         public DateTime? ClosedAtUtc { get; set; }
+
+        public int? GlobalSuccessThreshold1Percent { get; set; }
+        public int? GlobalSuccessThreshold2Percent { get; set; }
+        public int? GlobalSuccessThreshold3Percent { get; set; }
+        public bool GlobalConsequencesApplied { get; set; }
     }
 }

@@ -13,6 +13,7 @@ namespace Rollocracy.Infrastructure.Services
     {
         private readonly IDbContextFactory<RollocracyDbContext> _contextFactory;
         private readonly IStringLocalizer _localizer;
+        private string VoteWeightMetricName => _localizer["SystemMetric_VoteWeight"];
 
         public GameSystemService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
@@ -33,13 +34,30 @@ namespace Rollocracy.Infrastructure.Services
                 .ToListAsync();
         }
 
+        public async Task<List<GameSystem>> GetSelectableGameSystemsAsync(Guid requestingUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            await EnsureUserCanManageGameSystemsAsync(context, requestingUserAccountId);
+
+            return await context.GameSystems
+                .AsNoTracking()
+                .Where(gs =>
+                    gs.LockedToSessionId == null &&
+                    (gs.OwnerUserAccountId == requestingUserAccountId || gs.IsGeneric))
+                .OrderBy(gs => gs.Name)
+                .ToListAsync();
+        }
+
         public async Task<GameSystem?> GetGameSystemByIdAsync(Guid gameSystemId, Guid ownerUserAccountId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
             return await context.GameSystems
                 .AsNoTracking()
-                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
+                .FirstOrDefaultAsync(gs =>
+                    gs.Id == gameSystemId &&
+                    (gs.OwnerUserAccountId == ownerUserAccountId || gs.IsGeneric));
         }
 
         public async Task<GameSystem> CreateGameSystemAsync(
@@ -64,7 +82,8 @@ namespace Rollocracy.Infrastructure.Services
                 CriticalSuccessValue = null,
                 CriticalFailureValue = null,
                 SourceGameSystemId = null,
-                LockedToSessionId = null
+                LockedToSessionId = null,
+                IsGeneric = false
             };
 
             context.GameSystems.Add(system);
@@ -78,6 +97,18 @@ namespace Rollocracy.Infrastructure.Services
                 MaxValue = 10,
                 DefaultValue = 10,
                 IsHealthGauge = true
+            });
+
+            context.MetricDefinitions.Add(new MetricDefinition
+            {
+                Id = Guid.NewGuid(),
+                GameSystemId = system.Id,
+                Name = VoteWeightMetricName,
+                BaseValue = 1,
+                MinValue = 0,
+                MaxValue = 9999,
+                RoundMode = ComputedValueRoundMode.None,
+                DisplayOrder = 0
             });
 
             await context.SaveChangesAsync();
@@ -107,6 +138,64 @@ namespace Rollocracy.Infrastructure.Services
             system.TestResolutionMode = testResolutionMode;
 
             await context.SaveChangesAsync();
+        }
+
+        public async Task DeleteGameSystemAsync(Guid gameSystemId, Guid ownerUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            await EnsureUserCanManageGameSystemsAsync(context, ownerUserAccountId);
+
+            var system = await context.GameSystems
+                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
+
+            if (system == null)
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+
+            if (system.LockedToSessionId.HasValue)
+                throw new Exception(_localizer["Backend_CannotDeleteLockedSessionGameSystem"]);
+
+            var impactedSessions = await GetSessionsUsingSystemAsync(context, system.Id);
+
+            // Si des sessions utilisent encore ce système partagé,
+            // on leur crée automatiquement une copie verrouillée dédiée,
+            // puis on réassigne chaque session vers sa copie.
+            foreach (var session in impactedSessions)
+            {
+                var clonedSystem = await CloneGameSystemForSessionAsync(system.Id, ownerUserAccountId, session.Id);
+
+                await using var assignContext = await _contextFactory.CreateDbContextAsync();
+
+                var sessionToUpdate = await assignContext.Sessions
+                    .FirstOrDefaultAsync(s => s.Id == session.Id && s.GameMasterUserAccountId == ownerUserAccountId);
+
+                if (sessionToUpdate == null)
+                    throw new Exception(_localizer["Backend_SessionNotFound"]);
+
+                sessionToUpdate.GameSystemId = clonedSystem.Id;
+                await assignContext.SaveChangesAsync();
+            }
+
+            // On recharge le système dans un contexte propre après les éventuelles duplications.
+            await using var deleteContext = await _contextFactory.CreateDbContextAsync();
+
+            var systemToDelete = await deleteContext.GameSystems
+                .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
+
+            if (systemToDelete == null)
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+
+            var snapshots = await deleteContext.GameSystemSnapshots
+                .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            if (snapshots.Count > 0)
+            {
+                deleteContext.GameSystemSnapshots.RemoveRange(snapshots);
+            }
+
+            deleteContext.GameSystems.Remove(systemToDelete);
+            await deleteContext.SaveChangesAsync();
         }
 
         public async Task<AttributeDefinition> AddAttributeDefinitionAsync(
@@ -370,7 +459,7 @@ namespace Rollocracy.Infrastructure.Services
             {
                 Id = Guid.NewGuid(),
                 OwnerUserAccountId = sourceSystem.OwnerUserAccountId,
-                Name = $"{sourceSystem.Name} (copie session)",
+                Name = $"{sourceSystem.Name} { _localizer["GameSystem_ForSession"] } {session.SessionName}",
                 Description = sourceSystem.Description,
                 TestResolutionMode = sourceSystem.TestResolutionMode,
                 DefaultTestDiceCount = sourceSystem.DefaultTestDiceCount,
@@ -378,7 +467,8 @@ namespace Rollocracy.Infrastructure.Services
                 CriticalSuccessValue = sourceSystem.CriticalSuccessValue,
                 CriticalFailureValue = sourceSystem.CriticalFailureValue,
                 SourceGameSystemId = sourceSystem.Id,
-                LockedToSessionId = sessionId
+                LockedToSessionId = sessionId,
+                IsGeneric = false
             };
 
             context.GameSystems.Add(clonedSystem);
@@ -738,6 +828,50 @@ namespace Rollocracy.Infrastructure.Services
             return clonedSystem;
         }
 
+        public async Task<GameSystem> EnsureSessionUsesEditableGameSystemAsync(Guid sessionId, Guid requestingUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            await EnsureUserCanManageGameSystemsAsync(context, requestingUserAccountId);
+
+            var session = await context.Sessions
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == requestingUserAccountId);
+
+            if (session == null)
+                throw new Exception(_localizer["Backend_SessionNotFound"]);
+
+            if (!session.GameSystemId.HasValue)
+                throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
+
+            var currentSystem = await context.GameSystems
+                .AsNoTracking()
+                .FirstOrDefaultAsync(gs => gs.Id == session.GameSystemId.Value);
+
+            if (currentSystem == null)
+                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+
+            if (currentSystem.LockedToSessionId == session.Id)
+                return currentSystem;
+
+            var clonedSystem = await CloneGameSystemForSessionAsync(
+                currentSystem.Id,
+                requestingUserAccountId,
+                session.Id);
+
+            await using var assignContext = await _contextFactory.CreateDbContextAsync();
+
+            var sessionToUpdate = await assignContext.Sessions
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == requestingUserAccountId);
+
+            if (sessionToUpdate == null)
+                throw new Exception(_localizer["Backend_SessionNotFound"]);
+
+            sessionToUpdate.GameSystemId = clonedSystem.Id;
+            await assignContext.SaveChangesAsync();
+
+            return clonedSystem;
+        }
+
         public async Task<GameSystemEditorDto?> GetGameSystemEditorAsync(Guid gameSystemId, Guid ownerUserAccountId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -853,6 +987,8 @@ namespace Rollocracy.Infrastructure.Services
                 CriticalFailureValue = system.CriticalFailureValue,
                 IsLockedToSessionCopy = system.LockedToSessionId.HasValue,
                 CanUndoLastChange = hasSnapshot,
+                IsGeneric = system.IsGeneric,
+                CanEditGenericFlag = await CanUserPublishGenericSystemsAsync(context, ownerUserAccountId),
                 ImpactedSessions = impactedSessions.Select(s => new GameSystemImpactSessionDto
                 {
                     SessionId = s.Id,
@@ -861,6 +997,7 @@ namespace Rollocracy.Infrastructure.Services
                 AvailableBaseAttributes = attributes.Select(a => new BaseAttributeReferenceDto
                 {
                     AttributeDefinitionId = a.Id,
+                    TemporaryKey = a.Id.ToString("N"),
                     Name = a.Name
                 }).ToList(),
                 AvailableDerivedStats = derivedStats.Select(d => new EditableDerivedStatDefinitionDto
@@ -900,6 +1037,7 @@ namespace Rollocracy.Infrastructure.Services
                 Attributes = attributes.Select(x => new EditableAttributeDefinitionDto
                 {
                     AttributeDefinitionId = x.Id,
+                    TemporaryKey = x.Id.ToString("N"),
                     Name = x.Name,
                     MinValue = x.MinValue,
                     MaxValue = x.MaxValue,
@@ -923,10 +1061,11 @@ namespace Rollocracy.Infrastructure.Services
                         {
                             DerivedStatComponentId = c.Id,
                             AttributeDefinitionId = c.AttributeDefinitionId,
+                            AttributeTemporaryKey = c.AttributeDefinitionId.ToString("N"),
                             AttributeName = attributes.FirstOrDefault(a => a.Id == c.AttributeDefinitionId)?.Name ?? string.Empty,
                             Weight = c.Weight
                         })
-                        .ToList()
+    .ToList()
                 }).ToList(),
                 Metrics = metricDefinitions.Select(m => new EditableMetricDefinitionDto
                 {
@@ -966,25 +1105,27 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     TraitDefinitionId = t.Id,
                     Name = t.Name,
+                    IsRandomSelectionGroup = t.IsRandomSelectionGroup,
                     Options = options.Where(o => o.TraitDefinitionId == t.Id)
-                        .Select(o => new EditableTraitOptionDto
-                        {
-                            TraitOptionId = o.Id,
-                            Name = o.Name,
-                            Modifiers = choiceOptionModifiers
-                                .Where(m => m.ChoiceOptionDefinitionId == o.Id)
-                                .Select(m => new EditableModifierDefinitionDto
-                                {
-                                    Id = m.Id,
-                                    OperationType = m.OperationType,
-                                    TargetType = m.TargetType,
-                                    TargetId = m.TargetId,
-                                    TargetNameSnapshot = m.TargetNameSnapshot,
-                                    Value = m.Value,
-                                    ValueMode = m.ValueMode,
-                                    SourceMetricId = m.SourceMetricId
-                                })
-                                .ToList()
+                     .Select(o => new EditableTraitOptionDto
+                     {
+                         TraitOptionId = o.Id,
+                         Name = o.Name,
+                         IsLockedForCharacterCreation = o.IsLockedForCharacterCreation,
+                         Modifiers = choiceOptionModifiers
+                            .Where(m => m.ChoiceOptionDefinitionId == o.Id)
+                            .Select(m => new EditableModifierDefinitionDto
+                            {
+                                Id = m.Id,
+                                OperationType = m.OperationType,
+                                TargetType = m.TargetType,
+                                TargetId = m.TargetId,
+                                TargetNameSnapshot = m.TargetNameSnapshot,
+                                Value = m.Value,
+                                ValueMode = m.ValueMode,
+                                SourceMetricId = m.SourceMetricId
+                            })
+                            .ToList()
                         })
                         .ToList()
                 }).ToList(),
@@ -1065,7 +1206,7 @@ namespace Rollocracy.Infrastructure.Services
             ValidateBaseAttributes(request.Attributes);
             ValidateDerivedStats(request.DerivedStats, request.Attributes);
             ValidateMetrics(request.Metrics, request.Attributes, request.Gauges, request.DerivedStats);
-            ValidateModifierDefinitions(request.Traits, request.Talents, request.Items, request.Attributes, request.DerivedStats, request.Metrics);
+            ValidateModifierDefinitions(request.Traits, request.Talents, request.Items, request.Attributes, request.DerivedStats, request.Metrics, request.Gauges);
             ValidateHealthGaugeRule(request.Gauges);
             ValidateCatalogTalents(request.Talents);
             ValidateCatalogItems(request.Items);
@@ -1085,8 +1226,18 @@ namespace Rollocracy.Infrastructure.Services
             system.CriticalSuccessValue = request.CriticalSuccessValue;
             system.CriticalFailureValue = request.CriticalFailureValue;
 
+            if (system.LockedToSessionId.HasValue)
+            {
+                system.IsGeneric = false;
+            }
+            else
+            {
+                var canPublishGeneric = await CanUserPublishGenericSystemsAsync(context, ownerUserAccountId);
+                system.IsGeneric = canPublishGeneric && request.IsGeneric;
+            }
+
             await SyncAttributesAsync(context, system.Id, affectedCharacters, request.Attributes);
-            await SyncDerivedStatsAsync(context, system.Id, request.DerivedStats);
+            await SyncDerivedStatsAsync(context, system.Id, request.DerivedStats, request.Attributes);
             await SyncMetricsAsync(context, system.Id, request.Metrics);
             await SyncTraitsAsync(context, system.Id, request.Traits, affectedCharacters);
             await SyncChoiceOptionModifiersAsync(context, request.Traits);
@@ -1404,6 +1555,10 @@ namespace Rollocracy.Infrastructure.Services
             foreach (var item in requestAttributes.Where(x => x.AttributeDefinitionId.HasValue && !x.IsDeleted))
             {
                 var entity = currentById[item.AttributeDefinitionId!.Value];
+
+                if (string.IsNullOrWhiteSpace(item.TemporaryKey))
+                    item.TemporaryKey = entity.Id.ToString("N");
+
                 entity.Name = item.Name.Trim();
                 entity.MinValue = item.MinValue;
                 entity.MaxValue = item.MaxValue;
@@ -1461,6 +1616,10 @@ namespace Rollocracy.Infrastructure.Services
                 };
 
                 context.AttributeDefinitions.Add(entity);
+
+                item.AttributeDefinitionId = entity.Id;
+                item.TemporaryKey = entity.Id.ToString("N");
+
                 newDefinitions.Add(entity);
             }
 
@@ -1495,9 +1654,10 @@ namespace Rollocracy.Infrastructure.Services
         }
 
         private async Task SyncDerivedStatsAsync(
-    RollocracyDbContext context,
-    Guid gameSystemId,
-    List<EditableDerivedStatDefinitionDto> requestDerivedStats)
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            List<EditableDerivedStatDefinitionDto> requestDerivedStats,
+            List<EditableAttributeDefinitionDto> requestAttributes)
         {
             var currentDefinitions = await context.DerivedStatDefinitions
                 .Where(x => x.GameSystemId == gameSystemId)
@@ -1509,6 +1669,18 @@ namespace Rollocracy.Infrastructure.Services
             var currentComponents = await context.DerivedStatComponents
                 .Where(x => currentDefinitionIds.Contains(x.DerivedStatDefinitionId))
                 .ToListAsync();
+
+            var attributeKeyToId = requestAttributes
+                .Where(x => !x.IsDeleted && x.AttributeDefinitionId.HasValue)
+                .Select(x => new
+                {
+                    Key = !string.IsNullOrWhiteSpace(x.TemporaryKey)
+                        ? x.TemporaryKey
+                        : x.AttributeDefinitionId!.Value.ToString("N"),
+                    Id = x.AttributeDefinitionId!.Value
+                })
+                .GroupBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(x => x.Key, x => x.First().Id, StringComparer.OrdinalIgnoreCase);
 
             var requestExistingIds = requestDerivedStats
                 .Where(x => x.DerivedStatDefinitionId.HasValue)
@@ -1566,17 +1738,24 @@ namespace Rollocracy.Infrastructure.Services
                 foreach (var componentDto in item.Components.Where(x => x.DerivedStatComponentId.HasValue && !x.IsDeleted))
                 {
                     var component = existingComponents.First(x => x.Id == componentDto.DerivedStatComponentId!.Value);
-                    component.AttributeDefinitionId = componentDto.AttributeDefinitionId;
+
+                    if (!attributeKeyToId.TryGetValue(componentDto.AttributeTemporaryKey, out var resolvedAttributeId))
+                        throw new Exception(_localizer["Backend_InvalidDerivedStatComponentAttribute"]);
+
+                    component.AttributeDefinitionId = resolvedAttributeId;
                     component.Weight = componentDto.Weight;
                 }
 
                 foreach (var componentDto in item.Components.Where(x => !x.DerivedStatComponentId.HasValue && !x.IsDeleted))
                 {
+                    if (!attributeKeyToId.TryGetValue(componentDto.AttributeTemporaryKey, out var resolvedAttributeId))
+                        throw new Exception(_localizer["Backend_InvalidDerivedStatComponentAttribute"]);
+
                     context.DerivedStatComponents.Add(new DerivedStatComponent
                     {
                         Id = Guid.NewGuid(),
                         DerivedStatDefinitionId = entity.Id,
-                        AttributeDefinitionId = componentDto.AttributeDefinitionId,
+                        AttributeDefinitionId = resolvedAttributeId,
                         Weight = componentDto.Weight
                     });
                 }
@@ -1613,11 +1792,14 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     foreach (var componentDto in created.Dto.Components.Where(x => !x.IsDeleted))
                     {
+                        if (!attributeKeyToId.TryGetValue(componentDto.AttributeTemporaryKey, out var resolvedAttributeId))
+                            throw new Exception(_localizer["Backend_InvalidDerivedStatComponentAttribute"]);
+
                         context.DerivedStatComponents.Add(new DerivedStatComponent
                         {
                             Id = Guid.NewGuid(),
                             DerivedStatDefinitionId = created.DefinitionId,
-                            AttributeDefinitionId = componentDto.AttributeDefinitionId,
+                            AttributeDefinitionId = resolvedAttributeId,
                             Weight = componentDto.Weight
                         });
                     }
@@ -1626,10 +1808,10 @@ namespace Rollocracy.Infrastructure.Services
         }
 
         private async Task SyncTraitsAsync(
-            RollocracyDbContext context,
-            Guid gameSystemId,
-            List<EditableTraitDefinitionDto> requestTraits,
-            List<Character> affectedCharacters)
+    RollocracyDbContext context,
+    Guid gameSystemId,
+    List<EditableTraitDefinitionDto> requestTraits,
+    List<Character> affectedCharacters)
         {
             var currentTraits = await context.TraitDefinitions
                 .Where(x => x.GameSystemId == gameSystemId)
@@ -1661,6 +1843,7 @@ namespace Rollocracy.Infrastructure.Services
             {
                 var entity = currentTraitById[item.TraitDefinitionId!.Value];
                 entity.Name = item.Name.Trim();
+                entity.IsRandomSelectionGroup = item.IsRandomSelectionGroup;
 
                 var traitCurrentOptions = currentOptions.Where(x => x.TraitDefinitionId == entity.Id).ToList();
                 var requestExistingOptionIds = item.Options
@@ -1694,6 +1877,7 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     var option = currentOptionById[optionDto.TraitOptionId!.Value];
                     option.Name = optionDto.Name.Trim();
+                    option.IsLockedForCharacterCreation = optionDto.IsLockedForCharacterCreation;
                 }
 
                 foreach (var optionDto in item.Options.Where(x => !x.TraitOptionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
@@ -1704,7 +1888,8 @@ namespace Rollocracy.Infrastructure.Services
                     {
                         Id = optionId,
                         TraitDefinitionId = entity.Id,
-                        Name = optionDto.Name.Trim()
+                        Name = optionDto.Name.Trim(),
+                        IsLockedForCharacterCreation = optionDto.IsLockedForCharacterCreation
                     });
 
                     // On remonte l'Id généré dans le DTO pour pouvoir créer
@@ -1739,7 +1924,8 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     Id = traitId,
                     GameSystemId = gameSystemId,
-                    Name = item.Name.Trim()
+                    Name = item.Name.Trim(),
+                    IsRandomSelectionGroup = item.IsRandomSelectionGroup
                 };
 
                 context.TraitDefinitions.Add(trait);
@@ -1753,11 +1939,32 @@ namespace Rollocracy.Infrastructure.Services
                     {
                         Id = optionId,
                         TraitDefinitionId = trait.Id,
-                        Name = optionDto.Name.Trim()
+                        Name = optionDto.Name.Trim(),
+                        IsLockedForCharacterCreation = optionDto.IsLockedForCharacterCreation
                     });
 
                     optionDto.TraitOptionId = optionId;
                 }
+            }
+        }
+
+        private void ValidateTraitCreationRules(List<EditableTraitDefinitionDto> requestTraits)
+        {
+            foreach (var trait in requestTraits.Where(x => !x.IsDeleted))
+            {
+                var activeOptions = trait.Options
+                    .Where(x => !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name))
+                    .ToList();
+
+                if (activeOptions.Count == 0)
+                    continue;
+
+                var unlockedOptions = activeOptions
+                    .Where(x => !x.IsLockedForCharacterCreation)
+                    .ToList();
+
+                if (trait.IsRandomSelectionGroup && unlockedOptions.Count == 0)
+                    throw new Exception(_localizer["Backend_RandomTraitGroupNeedsUnlockedOption"]);
             }
         }
 
@@ -2174,14 +2381,16 @@ namespace Rollocracy.Infrastructure.Services
         {
             Id = x.Id,
             GameSystemId = x.GameSystemId,
-            Name = x.Name
+            Name = x.Name,
+            IsRandomSelectionGroup = x.IsRandomSelectionGroup
         };
 
         private static TraitOption CloneTraitOption(TraitOption x) => new()
         {
             Id = x.Id,
             TraitDefinitionId = x.TraitDefinitionId,
-            Name = x.Name
+            Name = x.Name,
+            IsLockedForCharacterCreation = x.IsLockedForCharacterCreation
         };
 
         private static GaugeDefinition CloneGauge(GaugeDefinition x) => new()
@@ -2399,19 +2608,16 @@ namespace Rollocracy.Infrastructure.Services
         }
 
         private void ValidateDerivedStats(
-            List<EditableDerivedStatDefinitionDto> derivedStats,
-            List<EditableAttributeDefinitionDto> attributes)
+    List<EditableDerivedStatDefinitionDto> derivedStats,
+    List<EditableAttributeDefinitionDto> attributes)
         {
-            var availableAttributeIds = attributes
-                .Where(x => !x.IsDeleted && x.AttributeDefinitionId.HasValue)
-                .Select(x => x.AttributeDefinitionId!.Value)
-                .ToHashSet();
-
-            foreach (var attribute in attributes.Where(x => !x.IsDeleted && !x.AttributeDefinitionId.HasValue))
-            {
-                // Les nouveaux attributs n'ont pas encore d'ID DB à ce stade,
-                // mais ils peuvent être utilisés en UI uniquement après recharge.
-            }
+            var availableAttributeKeys = attributes
+                .Where(x => !x.IsDeleted)
+                .Select(x => !string.IsNullOrWhiteSpace(x.TemporaryKey)
+                    ? x.TemporaryKey
+                    : (x.AttributeDefinitionId?.ToString("N") ?? string.Empty))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             foreach (var derived in derivedStats.Where(x => !x.IsDeleted))
             {
@@ -2431,8 +2637,11 @@ namespace Rollocracy.Infrastructure.Services
                     if (component.Weight < 1 || component.Weight > 500)
                         throw new Exception(_localizer["Backend_InvalidDerivedStatComponentWeight"]);
 
-                    if (component.AttributeDefinitionId == Guid.Empty)
+                    if (string.IsNullOrWhiteSpace(component.AttributeTemporaryKey) ||
+                        !availableAttributeKeys.Contains(component.AttributeTemporaryKey))
+                    {
                         throw new Exception(_localizer["Backend_InvalidDerivedStatComponentAttribute"]);
+                    }
                 }
             }
         }
@@ -2463,6 +2672,18 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => !x.IsDeleted && x.MetricDefinitionId.HasValue)
                 .Select(x => x.MetricDefinitionId!.Value)
                 .ToHashSet();
+
+            var voteWeightMetric = metrics.FirstOrDefault(x =>
+                string.Equals(x.Name?.Trim(), VoteWeightMetricName, StringComparison.CurrentCultureIgnoreCase));
+
+            if (voteWeightMetric == null || voteWeightMetric.IsDeleted)
+                throw new Exception(_localizer["Backend_VoteWeightMetricRequired"]);
+
+            if (string.IsNullOrWhiteSpace(voteWeightMetric.Name) ||
+                !string.Equals(voteWeightMetric.Name.Trim(), VoteWeightMetricName, StringComparison.Ordinal))
+            {
+                throw new Exception(_localizer["Backend_VoteWeightMetricNameLocked"]);
+            }
 
             foreach (var metric in metrics.Where(x => !x.IsDeleted))
             {
@@ -2525,10 +2746,16 @@ namespace Rollocracy.Infrastructure.Services
                 .Select(x => x.MetricDefinitionId!.Value)
                 .ToHashSet();
 
+            var voteWeightMetricIds = currentDefinitions
+                .Where(x => string.Equals(x.Name, VoteWeightMetricName, StringComparison.CurrentCultureIgnoreCase))
+                .Select(x => x.Id)
+                .ToHashSet();
+
             var removedIds = requestMetrics
                 .Where(x => x.MetricDefinitionId.HasValue && x.IsDeleted)
                 .Select(x => x.MetricDefinitionId!.Value)
                 .Union(currentDefinitions.Where(x => !requestExistingIds.Contains(x.Id)).Select(x => x.Id))
+                .Where(x => !voteWeightMetricIds.Contains(x))
                 .Distinct()
                 .ToList();
 
@@ -2710,7 +2937,8 @@ namespace Rollocracy.Infrastructure.Services
             List<EditableItemDefinitionDto> requestItems,
             List<EditableAttributeDefinitionDto> attributes,
             List<EditableDerivedStatDefinitionDto> derivedStats,
-            List<EditableMetricDefinitionDto> metrics)
+            List<EditableMetricDefinitionDto> metrics,
+            List<EditableGaugeDefinitionDto> requestGauges)
         {
             var availableAttributeIds = attributes
                 .Where(x => !x.IsDeleted && x.AttributeDefinitionId.HasValue)
@@ -2737,25 +2965,31 @@ namespace Rollocracy.Infrastructure.Services
                 .Select(x => x.ItemDefinitionId!.Value)
                 .ToHashSet();
 
+            var availableGaugeIds = requestGauges
+                .Where(x => !x.IsDeleted && x.GaugeDefinitionId.HasValue)
+                .Select(x => x.GaugeDefinitionId!.Value)
+                .ToHashSet();
+
             foreach (var option in requestTraits.Where(x => !x.IsDeleted).SelectMany(x => x.Options).Where(x => !x.IsDeleted))
             {
-                ValidateModifierCollection(option.Modifiers, availableAttributeIds, availableDerivedIds, availableMetricIds, availableTalentIds, availableItemIds, true);
+                ValidateModifierCollection(option.Modifiers, availableAttributeIds, availableGaugeIds, availableDerivedIds, availableMetricIds, availableTalentIds, availableItemIds, true);
             }
 
             foreach (var talent in requestTalents.Where(x => !x.IsDeleted))
             {
-                ValidateModifierCollection(talent.Modifiers, availableAttributeIds, availableDerivedIds, availableMetricIds, availableTalentIds, availableItemIds, false);
+                ValidateModifierCollection(talent.Modifiers, availableAttributeIds, availableGaugeIds, availableDerivedIds, availableMetricIds, availableTalentIds, availableItemIds, false);
             }
 
             foreach (var item in requestItems.Where(x => !x.IsDeleted))
             {
-                ValidateModifierCollection(item.Modifiers, availableAttributeIds, availableDerivedIds, availableMetricIds, availableTalentIds, availableItemIds, false);
+                ValidateModifierCollection(item.Modifiers, availableAttributeIds, availableGaugeIds, availableDerivedIds, availableMetricIds, availableTalentIds, availableItemIds, false);
             }
         }
 
         private void ValidateModifierCollection(
             List<EditableModifierDefinitionDto> modifiers,
             HashSet<Guid> availableAttributeIds,
+            HashSet<Guid> availableGaugeIds,
             HashSet<Guid> availableDerivedIds,
             HashSet<Guid> availableMetricIds,
             HashSet<Guid> availableTalentIds,
@@ -2769,6 +3003,7 @@ namespace Rollocracy.Infrastructure.Services
                     var isValidTarget = modifier.TargetType switch
                     {
                         ModifierTargetType.BaseAttribute => availableAttributeIds.Contains(modifier.TargetId),
+                        ModifierTargetType.Gauge => availableGaugeIds.Contains(modifier.TargetId),
                         ModifierTargetType.DerivedStat => availableDerivedIds.Contains(modifier.TargetId),
                         ModifierTargetType.Metric => availableMetricIds.Contains(modifier.TargetId),
                         _ => false
@@ -2866,14 +3101,20 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var item in requestTalents.Where(x => !x.TalentDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
             {
+                var talentId = Guid.NewGuid();
+
                 context.TalentDefinitions.Add(new TalentDefinition
                 {
-                    Id = Guid.NewGuid(),
+                    Id = talentId,
                     GameSystemId = gameSystemId,
                     Name = item.Name.Trim(),
                     Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim(),
                     DisplayOrder = item.DisplayOrder
                 });
+
+                // Important : on remonte l'id généré dans le DTO
+                // pour permettre la synchro des modificateurs dans le même save.
+                item.TalentDefinitionId = talentId;
             }
         }
 
@@ -2924,14 +3165,20 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var item in requestItems.Where(x => !x.ItemDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
             {
+                var itemId = Guid.NewGuid();
+
                 context.ItemDefinitions.Add(new ItemDefinition
                 {
-                    Id = Guid.NewGuid(),
+                    Id = itemId,
                     GameSystemId = gameSystemId,
                     Name = item.Name.Trim(),
                     Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim(),
                     DisplayOrder = item.DisplayOrder
                 });
+
+                // Important : on remonte l'id généré dans le DTO
+                // pour permettre la synchro des modificateurs dans le même save.
+                item.ItemDefinitionId = itemId;
             }
         }
 
@@ -3172,6 +3419,15 @@ namespace Rollocracy.Infrastructure.Services
                 ModifierTargetType.Item when itemMap.ContainsKey(targetId) => itemMap[targetId],
                 _ => targetId
             };
+        }
+
+        private static async Task<bool> CanUserPublishGenericSystemsAsync(
+            RollocracyDbContext context,
+            Guid userAccountId)
+        {
+            return await context.UserAccounts
+                .AsNoTracking()
+                .AnyAsync(x => x.Id == userAccountId && x.IsGameMaster);
         }
 
         private async Task EnsureUserCanManageGameSystemsAsync(

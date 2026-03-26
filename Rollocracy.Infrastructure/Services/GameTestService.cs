@@ -154,6 +154,10 @@ namespace Rollocracy.Infrastructure.Services
                 DifficultyValue = request.DifficultyValue,
                 TargetScope = request.TargetScope,
                 TraitFilterMode = request.TraitFilterMode,
+                GlobalSuccessThreshold1Percent = request.GlobalSuccessThreshold1Percent,
+                GlobalSuccessThreshold2Percent = request.GlobalSuccessThreshold2Percent,
+                GlobalSuccessThreshold3Percent = request.GlobalSuccessThreshold3Percent,
+                GlobalConsequencesApplied = false,
                 IsClosed = false,
                 CreatedAtUtc = DateTime.UtcNow,
                 AutoRollAtUtc = DateTime.UtcNow.AddSeconds(request.AutoRollDelaySeconds)
@@ -427,6 +431,8 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             await TryCloseTestIfCompleteAsync(context, test);
+            await context.Entry(test).ReloadAsync();
+            await ApplyGlobalConsequencesIfNeededAsync(context, test);
 
             await _sessionNotifier.NotifyCharacterStateChangedAsync(test.SessionId);
             await _sessionNotifier.NotifyTestChangedAsync(test.SessionId);
@@ -617,6 +623,16 @@ namespace Rollocracy.Infrastructure.Services
                         gaugeValue.Value = effect.PreviousValue;
                     }
                 }
+                else if (effect.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                {
+                    var sessionGauge = await context.SessionGauges
+                        .FirstOrDefaultAsync(g => g.Id == effect.TargetDefinitionId && g.SessionId == sessionId);
+
+                    if (sessionGauge != null)
+                    {
+                        sessionGauge.CurrentValue = effect.PreviousValue;
+                    }
+                }
                 else
                 {
                     var attributeValue = await context.CharacterAttributeValues
@@ -662,37 +678,12 @@ namespace Rollocracy.Infrastructure.Services
             await _sessionNotifier.NotifyTestChangedAsync(sessionId);
         }
 
-        private async Task ApplyConsequencesAsync(
+        private async Task ApplyResolvedConsequencesAsync(
     RollocracyDbContext context,
     Guid gameTestId,
     Guid characterId,
-    GameTestOutcome outcome)
+    List<GameTestConsequence> consequences)
         {
-            var applyOn = outcome switch
-            {
-                GameTestOutcome.CriticalSuccess => TestConsequenceApplyOn.OnCriticalSuccess,
-                GameTestOutcome.CriticalFailure => TestConsequenceApplyOn.OnCriticalFailure,
-                GameTestOutcome.Success => TestConsequenceApplyOn.OnSuccess,
-                _ => TestConsequenceApplyOn.OnFailure
-            };
-
-            var consequences = await context.GameTestConsequences
-                .Where(c => c.GameTestId == gameTestId && c.ApplyOn == applyOn)
-                .ToListAsync();
-
-            if (consequences.Count == 0 && outcome == GameTestOutcome.CriticalSuccess)
-            {
-                consequences = await context.GameTestConsequences
-                    .Where(c => c.GameTestId == gameTestId && c.ApplyOn == TestConsequenceApplyOn.OnSuccess)
-                    .ToListAsync();
-            }
-            else if (consequences.Count == 0 && outcome == GameTestOutcome.CriticalFailure)
-            {
-                consequences = await context.GameTestConsequences
-                    .Where(c => c.GameTestId == gameTestId && c.ApplyOn == TestConsequenceApplyOn.OnFailure)
-                    .ToListAsync();
-            }
-
             if (consequences.Count == 0)
                 return;
 
@@ -714,9 +705,9 @@ namespace Rollocracy.Infrastructure.Services
                     c.OperationType == TestConsequenceOperationType.AddValue &&
                     c.ValueMode != ModifierValueMode.Metric &&
                     (c.TargetKind == TestConsequenceTargetKind.Attribute ||
-                     c.TargetKind == TestConsequenceTargetKind.Gauge))
+                     c.TargetKind == TestConsequenceTargetKind.Gauge ||
+                     c.TargetKind == TestConsequenceTargetKind.SessionGauge))
                 .ToList();
-
 
             foreach (var consequence in legacyConsequences)
             {
@@ -751,6 +742,42 @@ namespace Rollocracy.Infrastructure.Services
                             OperationType = TestConsequenceOperationType.AddValue,
                             PreviousValue = previousValue,
                             NewValue = gaugeValue.Value,
+                            PreviousHasTargetLink = false,
+                            NewHasTargetLink = false,
+                            PreviousIsAlive = previousCharacterAlive,
+                            NewIsAlive = character.IsAlive,
+                            PreviousDiedAtUtc = previousCharacterDiedAt,
+                            NewDiedAtUtc = character.DiedAtUtc,
+                            AppliedAtUtc = DateTime.UtcNow
+                        });
+                    }
+                }
+                else if (consequence.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                {
+                    var sessionGauge = await context.SessionGauges
+                        .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.SessionId == test.SessionId);
+
+                    if (sessionGauge != null)
+                    {
+                        var previousCharacterAlive = character.IsAlive;
+                        var previousCharacterDiedAt = character.DiedAtUtc;
+                        var previousValue = sessionGauge.CurrentValue;
+
+                        sessionGauge.CurrentValue = Math.Clamp(
+                            sessionGauge.CurrentValue + signedValue,
+                            sessionGauge.MinValue,
+                            sessionGauge.MaxValue);
+
+                        context.GameTestAppliedEffects.Add(new GameTestAppliedEffect
+                        {
+                            Id = Guid.NewGuid(),
+                            GameTestId = gameTestId,
+                            CharacterId = characterId,
+                            TargetKind = TestConsequenceTargetKind.SessionGauge,
+                            TargetDefinitionId = consequence.TargetDefinitionId,
+                            OperationType = TestConsequenceOperationType.AddValue,
+                            PreviousValue = previousValue,
+                            NewValue = sessionGauge.CurrentValue,
                             PreviousHasTargetLink = false,
                             NewHasTargetLink = false,
                             PreviousIsAlive = previousCharacterAlive,
@@ -806,7 +833,8 @@ namespace Rollocracy.Infrastructure.Services
                     c.OperationType == TestConsequenceOperationType.AddValue &&
                     c.ValueMode != ModifierValueMode.Metric &&
                     (c.TargetKind == TestConsequenceTargetKind.Attribute ||
-                     c.TargetKind == TestConsequenceTargetKind.Gauge)))
+                     c.TargetKind == TestConsequenceTargetKind.Gauge ||
+                     c.TargetKind == TestConsequenceTargetKind.SessionGauge)))
                 .ToList();
 
             if (commonEngineConsequences.Count == 0)
@@ -877,7 +905,305 @@ namespace Rollocracy.Infrastructure.Services
                         AppliedAtUtc = DateTime.UtcNow
                     });
                 }
+
+                await context.SaveChangesAsync();
             }
+        }
+
+        //private async Task ApplyConsequencesAsync(
+        //    RollocracyDbContext context,
+        //    Guid gameTestId,
+        //    Guid characterId,
+        //    GameTestOutcome outcome)
+        //{
+        //    var applyOn = outcome switch
+        //    {
+        //        GameTestOutcome.CriticalSuccess => TestConsequenceApplyOn.OnCriticalSuccess,
+        //        GameTestOutcome.CriticalFailure => TestConsequenceApplyOn.OnCriticalFailure,
+        //        GameTestOutcome.Success => TestConsequenceApplyOn.OnSuccess,
+        //        _ => TestConsequenceApplyOn.OnFailure
+        //    };
+
+        //    var consequences = await context.GameTestConsequences
+        //        .Where(c => c.GameTestId == gameTestId && c.ApplyOn == applyOn)
+        //        .ToListAsync();
+
+        //    if (consequences.Count == 0 && outcome == GameTestOutcome.CriticalSuccess)
+        //    {
+        //        consequences = await context.GameTestConsequences
+        //            .Where(c => c.GameTestId == gameTestId && c.ApplyOn == TestConsequenceApplyOn.OnSuccess)
+        //            .ToListAsync();
+        //    }
+        //    else if (consequences.Count == 0 && outcome == GameTestOutcome.CriticalFailure)
+        //    {
+        //        consequences = await context.GameTestConsequences
+        //            .Where(c => c.GameTestId == gameTestId && c.ApplyOn == TestConsequenceApplyOn.OnFailure)
+        //            .ToListAsync();
+        //    }
+
+        //    if (consequences.Count == 0)
+        //        return;
+
+        //    var test = await context.GameTests
+        //        .AsNoTracking()
+        //        .FirstOrDefaultAsync(t => t.Id == gameTestId);
+
+        //    if (test == null)
+        //        return;
+
+        //    var character = await context.Characters.FirstOrDefaultAsync(c => c.Id == characterId);
+        //    if (character == null)
+        //        return;
+
+        //    // 1) Ancien mécanisme conservé pour Attribute / Gauge,
+        //    // afin de garder le rollback actuel entièrement fonctionnel.
+        //    var legacyConsequences = consequences
+        //        .Where(c =>
+        //            c.OperationType == TestConsequenceOperationType.AddValue &&
+        //            c.ValueMode != ModifierValueMode.Metric &&
+        //            (c.TargetKind == TestConsequenceTargetKind.Attribute ||
+        //             c.TargetKind == TestConsequenceTargetKind.Gauge))
+        //        .ToList();
+
+
+        //    foreach (var consequence in legacyConsequences)
+        //    {
+        //        var signedValue = consequence.ModifierMode == TestModifierMode.Bonus
+        //            ? consequence.Value
+        //            : -consequence.Value;
+
+        //        if (consequence.TargetKind == TestConsequenceTargetKind.Gauge)
+        //        {
+        //            var gaugeValue = await context.CharacterGaugeValues
+        //                .FirstOrDefaultAsync(v =>
+        //                    v.CharacterId == characterId &&
+        //                    v.GaugeDefinitionId == consequence.TargetDefinitionId);
+
+        //            if (gaugeValue != null)
+        //            {
+        //                var previousCharacterAlive = character.IsAlive;
+        //                var previousCharacterDiedAt = character.DiedAtUtc;
+        //                var previousValue = gaugeValue.Value;
+
+        //                gaugeValue.Value += signedValue;
+
+        //                await UpdateCharacterAliveStateAsync(context, characterId);
+
+        //                context.GameTestAppliedEffects.Add(new GameTestAppliedEffect
+        //                {
+        //                    Id = Guid.NewGuid(),
+        //                    GameTestId = gameTestId,
+        //                    CharacterId = characterId,
+        //                    TargetKind = TestConsequenceTargetKind.Gauge,
+        //                    TargetDefinitionId = consequence.TargetDefinitionId,
+        //                    OperationType = TestConsequenceOperationType.AddValue,
+        //                    PreviousValue = previousValue,
+        //                    NewValue = gaugeValue.Value,
+        //                    PreviousHasTargetLink = false,
+        //                    NewHasTargetLink = false,
+        //                    PreviousIsAlive = previousCharacterAlive,
+        //                    NewIsAlive = character.IsAlive,
+        //                    PreviousDiedAtUtc = previousCharacterDiedAt,
+        //                    NewDiedAtUtc = character.DiedAtUtc,
+        //                    AppliedAtUtc = DateTime.UtcNow
+        //                });
+        //            }
+        //        }
+        //        else
+        //        {
+        //            var attributeValue = await context.CharacterAttributeValues
+        //                .FirstOrDefaultAsync(v =>
+        //                    v.CharacterId == characterId &&
+        //                    v.AttributeDefinitionId == consequence.TargetDefinitionId);
+
+        //            if (attributeValue != null)
+        //            {
+        //                var previousCharacterAlive = character.IsAlive;
+        //                var previousCharacterDiedAt = character.DiedAtUtc;
+        //                var previousValue = attributeValue.Value;
+
+        //                attributeValue.Value += signedValue;
+
+        //                context.GameTestAppliedEffects.Add(new GameTestAppliedEffect
+        //                {
+        //                    Id = Guid.NewGuid(),
+        //                    GameTestId = gameTestId,
+        //                    CharacterId = characterId,
+        //                    TargetKind = TestConsequenceTargetKind.Attribute,
+        //                    TargetDefinitionId = consequence.TargetDefinitionId,
+        //                    OperationType = TestConsequenceOperationType.AddValue,
+        //                    PreviousValue = previousValue,
+        //                    NewValue = attributeValue.Value,
+        //                    PreviousHasTargetLink = false,
+        //                    NewHasTargetLink = false,
+        //                    PreviousIsAlive = previousCharacterAlive,
+        //                    NewIsAlive = character.IsAlive,
+        //                    PreviousDiedAtUtc = previousCharacterDiedAt,
+        //                    NewDiedAtUtc = character.DiedAtUtc,
+        //                    AppliedAtUtc = DateTime.UtcNow
+        //                });
+        //            }
+        //        }
+        //    }
+
+        //    await context.SaveChangesAsync();
+
+        //    // 2) Nouveau moteur commun pour DerivedStat / Metric / Talent / Item.
+        //    var commonEngineConsequences = consequences
+        //        .Where(c => !(
+        //            c.OperationType == TestConsequenceOperationType.AddValue &&
+        //            c.ValueMode != ModifierValueMode.Metric &&
+        //            (c.TargetKind == TestConsequenceTargetKind.Attribute ||
+        //             c.TargetKind == TestConsequenceTargetKind.Gauge)))
+        //        .ToList();
+
+        //    if (commonEngineConsequences.Count == 0)
+        //        return;
+
+        //    foreach (var consequence in commonEngineConsequences)
+        //    {
+        //        var effectDto = ToCharacterEffectDefinitionDto(consequence);
+
+        //        var previousCharacterAlive = character.IsAlive;
+        //        var previousCharacterDiedAt = character.DiedAtUtc;
+
+        //        var previousHasTargetLink = consequence.TargetKind switch
+        //        {
+        //            TestConsequenceTargetKind.Talent => await context.CharacterTalents.AnyAsync(x =>
+        //                x.CharacterId == characterId &&
+        //                x.TalentDefinitionId == consequence.TargetDefinitionId),
+
+        //            TestConsequenceTargetKind.Item => await context.CharacterItems.AnyAsync(x =>
+        //                x.CharacterId == characterId &&
+        //                x.ItemDefinitionId == consequence.TargetDefinitionId),
+
+        //            _ => false
+        //        };
+
+        //        await _characterEffectService.ApplyEffectsAsync(
+        //            test.SessionId,
+        //            new List<Guid> { characterId },
+        //            new List<CharacterEffectDefinitionDto> { effectDto },
+        //            CharacterEffectSourceType.Test,
+        //            gameTestId,
+        //            $"GameTest:{gameTestId}");
+
+        //        await context.Entry(character).ReloadAsync();
+
+        //        var newHasTargetLink = consequence.TargetKind switch
+        //        {
+        //            TestConsequenceTargetKind.Talent => await context.CharacterTalents.AnyAsync(x =>
+        //                x.CharacterId == characterId &&
+        //                x.TalentDefinitionId == consequence.TargetDefinitionId),
+
+        //            TestConsequenceTargetKind.Item => await context.CharacterItems.AnyAsync(x =>
+        //                x.CharacterId == characterId &&
+        //                x.ItemDefinitionId == consequence.TargetDefinitionId),
+
+        //            _ => false
+        //        };
+
+        //        if (consequence.TargetKind == TestConsequenceTargetKind.Talent ||
+        //            consequence.TargetKind == TestConsequenceTargetKind.Item)
+        //        {
+        //            context.GameTestAppliedEffects.Add(new GameTestAppliedEffect
+        //            {
+        //                Id = Guid.NewGuid(),
+        //                GameTestId = gameTestId,
+        //                CharacterId = characterId,
+        //                TargetKind = consequence.TargetKind,
+        //                TargetDefinitionId = consequence.TargetDefinitionId,
+        //                OperationType = consequence.OperationType,
+        //                PreviousValue = 0,
+        //                NewValue = 0,
+        //                PreviousHasTargetLink = previousHasTargetLink,
+        //                NewHasTargetLink = newHasTargetLink,
+        //                PreviousIsAlive = previousCharacterAlive,
+        //                NewIsAlive = character.IsAlive,
+        //                PreviousDiedAtUtc = previousCharacterDiedAt,
+        //                NewDiedAtUtc = character.DiedAtUtc,
+        //                AppliedAtUtc = DateTime.UtcNow
+        //            });
+        //        }
+        //    }
+        //}
+
+        private async Task ApplyConsequencesAsync(
+            RollocracyDbContext context,
+            Guid gameTestId,
+            Guid characterId,
+            GameTestOutcome outcome)
+        {
+            var applyOn = outcome switch
+            {
+                GameTestOutcome.CriticalSuccess => TestConsequenceApplyOn.OnCriticalSuccess,
+                GameTestOutcome.CriticalFailure => TestConsequenceApplyOn.OnCriticalFailure,
+                GameTestOutcome.Success => TestConsequenceApplyOn.OnSuccess,
+                _ => TestConsequenceApplyOn.OnFailure
+            };
+
+            var consequences = await context.GameTestConsequences
+                .Where(c => c.GameTestId == gameTestId && c.ApplyOn == applyOn)
+                .ToListAsync();
+
+            if (consequences.Count == 0 && outcome == GameTestOutcome.CriticalSuccess)
+            {
+                consequences = await context.GameTestConsequences
+                    .Where(c => c.GameTestId == gameTestId && c.ApplyOn == TestConsequenceApplyOn.OnSuccess)
+                    .ToListAsync();
+            }
+            else if (consequences.Count == 0 && outcome == GameTestOutcome.CriticalFailure)
+            {
+                consequences = await context.GameTestConsequences
+                    .Where(c => c.GameTestId == gameTestId && c.ApplyOn == TestConsequenceApplyOn.OnFailure)
+                    .ToListAsync();
+            }
+
+            await ApplyResolvedConsequencesAsync(context, gameTestId, characterId, consequences);
+        }
+
+        private async Task ApplyGlobalConsequencesIfNeededAsync(RollocracyDbContext context, GameTest test)
+        {
+            if (!test.IsClosed || test.GlobalConsequencesApplied)
+                return;
+
+            var rows = await context.PlayerTestRolls
+                .AsNoTracking()
+                .Where(x => x.GameTestId == test.Id)
+                .ToListAsync();
+
+            if (rows.Count == 0)
+                return;
+
+            var successCount = rows.Count(x =>
+                x.Outcome == GameTestOutcome.Success ||
+                x.Outcome == GameTestOutcome.CriticalSuccess);
+
+            var globalOutcome = ComputeGlobalOutcome(test, successCount, rows.Count);
+            var applyOn = MapGlobalOutcomeToApplyOn(globalOutcome);
+
+            if (!applyOn.HasValue)
+            {
+                test.GlobalConsequencesApplied = true;
+                await context.SaveChangesAsync();
+                return;
+            }
+
+            var globalConsequences = await context.GameTestConsequences
+                .Where(c => c.GameTestId == test.Id && c.ApplyOn == applyOn.Value)
+                .ToListAsync();
+
+            foreach (var row in rows)
+            {
+                await ApplyResolvedConsequencesAsync(
+                    context,
+                    test.Id,
+                    row.CharacterId,
+                    globalConsequences);
+            }
+
+            test.GlobalConsequencesApplied = true;
+            await context.SaveChangesAsync();
         }
 
         private async Task UpdateCharacterAliveStateAsync(RollocracyDbContext context, Guid characterId)
@@ -924,6 +1250,71 @@ namespace Rollocracy.Infrastructure.Services
             }
         }
 
+        private static GameTestGlobalOutcome ComputeGlobalOutcome(GameTest test, int successCount, int targetCount)
+        {
+            if (targetCount <= 0)
+                return GameTestGlobalOutcome.None;
+
+            if (!test.GlobalSuccessThreshold1Percent.HasValue &&
+                !test.GlobalSuccessThreshold2Percent.HasValue &&
+                !test.GlobalSuccessThreshold3Percent.HasValue)
+            {
+                return GameTestGlobalOutcome.None;
+            }
+
+            var successRate = successCount * 100.0 / targetCount;
+
+            var t1 = test.GlobalSuccessThreshold1Percent;
+            var t2 = test.GlobalSuccessThreshold2Percent;
+            var t3 = test.GlobalSuccessThreshold3Percent;
+
+            if (t1.HasValue && !t2.HasValue && !t3.HasValue)
+            {
+                return successRate >= t1.Value
+                    ? GameTestGlobalOutcome.GlobalSuccess
+                    : GameTestGlobalOutcome.GlobalFailure;
+            }
+
+            if (t1.HasValue && t2.HasValue && !t3.HasValue)
+            {
+                if (successRate >= t1.Value)
+                    return GameTestGlobalOutcome.GlobalSuccess;
+
+                if (successRate >= t2.Value)
+                    return GameTestGlobalOutcome.ModerateSuccess;
+
+                return GameTestGlobalOutcome.GlobalFailure;
+            }
+
+            if (t1.HasValue && t2.HasValue && t3.HasValue)
+            {
+                if (successRate >= t1.Value)
+                    return GameTestGlobalOutcome.GlobalSuccess;
+
+                if (successRate >= t2.Value)
+                    return GameTestGlobalOutcome.ModerateSuccess;
+
+                if (successRate >= t3.Value)
+                    return GameTestGlobalOutcome.ModerateFailure;
+
+                return GameTestGlobalOutcome.GlobalFailure;
+            }
+
+            return GameTestGlobalOutcome.None;
+        }
+
+        private static TestConsequenceApplyOn? MapGlobalOutcomeToApplyOn(GameTestGlobalOutcome outcome)
+        {
+            return outcome switch
+            {
+                GameTestGlobalOutcome.GlobalSuccess => TestConsequenceApplyOn.OnGlobalSuccess,
+                GameTestGlobalOutcome.ModerateSuccess => TestConsequenceApplyOn.OnModerateSuccess,
+                GameTestGlobalOutcome.ModerateFailure => TestConsequenceApplyOn.OnModerateFailure,
+                GameTestGlobalOutcome.GlobalFailure => TestConsequenceApplyOn.OnGlobalFailure,
+                _ => null
+            };
+        }
+
         private async Task<GameMasterActiveGameTestDto> BuildGameMasterDtoAsync(RollocracyDbContext context, Guid gameTestId)
         {
             var test = await context.GameTests
@@ -941,6 +1332,9 @@ namespace Rollocracy.Infrastructure.Services
             var allIndividualDice = rolledRows
                 .SelectMany(r => DeserializeDiceResults(r.DiceResultsJson))
                 .ToList();
+
+            var totalCount = rolledRows.Count;
+            var successCount = rolledRows.Count(r => r.Outcome == GameTestOutcome.Success || r.Outcome == GameTestOutcome.CriticalSuccess);
 
             return new GameMasterActiveGameTestDto
             {
@@ -961,12 +1355,16 @@ namespace Rollocracy.Infrastructure.Services
                 IsClosed = test.IsClosed,
                 AutoRollAtUtc = test.AutoRollAtUtc,
                 TargetCount = rows.Count,
-                RolledCount = rolledRows.Count,
-                SuccessCount = rolledRows.Count(r => r.Outcome == GameTestOutcome.Success || r.Outcome == GameTestOutcome.CriticalSuccess),
+                RolledCount = totalCount,
+                SuccessCount = successCount,
                 FailureCount = rolledRows.Count(r => r.Outcome == GameTestOutcome.Failure || r.Outcome == GameTestOutcome.CriticalFailure),
                 CriticalSuccessCount = rolledRows.Count(r => r.Outcome == GameTestOutcome.CriticalSuccess),
                 CriticalFailureCount = rolledRows.Count(r => r.Outcome == GameTestOutcome.CriticalFailure),
                 SuccessRatePercent = rolledRows.Count == 0 ? 0 : (double)rolledRows.Count(r => r.Outcome == GameTestOutcome.Success || r.Outcome == GameTestOutcome.CriticalSuccess) * 100.0 / rolledRows.Count,
+                GlobalSuccessThreshold1Percent = test.GlobalSuccessThreshold1Percent,
+                GlobalSuccessThreshold2Percent = test.GlobalSuccessThreshold2Percent,
+                GlobalSuccessThreshold3Percent = test.GlobalSuccessThreshold3Percent,
+                GlobalOutcome = ComputeGlobalOutcome(test, successCount, totalCount),
                 BestDiceTotal = rolledRows.Count == 0 ? null : rolledRows.Max(r => r.DiceTotal),
                 WorstDiceTotal = rolledRows.Count == 0 ? null : rolledRows.Min(r => r.DiceTotal),
                 AverageDiceTotal = allIndividualDice.Count == 0 ? null : allIndividualDice.Average(),
@@ -1587,15 +1985,50 @@ namespace Rollocracy.Infrastructure.Services
                 throw new Exception(_localizer["Common_Error"]);
             }
 
+            var thresholds = new[]
+            {
+                request.GlobalSuccessThreshold1Percent,
+                request.GlobalSuccessThreshold2Percent,
+                request.GlobalSuccessThreshold3Percent
+            }
+            .Where(x => x.HasValue)
+            .Select(x => x!.Value)
+            .ToList();
+
+            if (thresholds.Count > 3)
+                throw new Exception(_localizer["Backend_InvalidGlobalThresholdConfiguration"]);
+
+            foreach (var threshold in thresholds)
+            {
+                if (threshold <= 0 || threshold >= 100)
+                    throw new Exception(_localizer["Backend_InvalidGlobalThresholdValue"]);
+
+                if (threshold % 5 != 0)
+                    throw new Exception(_localizer["Backend_GlobalThresholdsMustUseFiveStep"]);
+            }
+
+            for (var i = 0; i < thresholds.Count - 1; i++)
+            {
+                if (thresholds[i] <= thresholds[i + 1])
+                    throw new Exception(_localizer["Backend_GlobalThresholdsMustBeDescending"]);
+
+                if (thresholds[i] - thresholds[i + 1] < 5)
+                    throw new Exception(_localizer["Backend_GlobalThresholdsMustHaveGap"]);
+            }
+
             foreach (var consequence in request.Consequences)
             {
-                if (consequence.ApplyOn != TestConsequenceApplyOn.OnSuccess &&
-                    consequence.ApplyOn != TestConsequenceApplyOn.OnFailure &&
-                    consequence.ApplyOn != TestConsequenceApplyOn.OnCriticalSuccess &&
-                    consequence.ApplyOn != TestConsequenceApplyOn.OnCriticalFailure)
-                {
+                var validApplyOn = consequence.ApplyOn == TestConsequenceApplyOn.OnSuccess ||
+                   consequence.ApplyOn == TestConsequenceApplyOn.OnFailure ||
+                   consequence.ApplyOn == TestConsequenceApplyOn.OnCriticalSuccess ||
+                   consequence.ApplyOn == TestConsequenceApplyOn.OnCriticalFailure ||
+                   consequence.ApplyOn == TestConsequenceApplyOn.OnGlobalSuccess ||
+                   consequence.ApplyOn == TestConsequenceApplyOn.OnModerateSuccess ||
+                   consequence.ApplyOn == TestConsequenceApplyOn.OnModerateFailure ||
+                   consequence.ApplyOn == TestConsequenceApplyOn.OnGlobalFailure;
+
+                if (!validApplyOn)
                     throw new Exception(_localizer["Backend_InvalidTestConsequenceApplyOn"]);
-                }
 
                 if (consequence.TargetDefinitionId == Guid.Empty)
                     throw new Exception(_localizer["Backend_InvalidTestConsequenceTarget"]);
