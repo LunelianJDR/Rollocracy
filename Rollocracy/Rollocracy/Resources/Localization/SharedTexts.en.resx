@@ -1940,10 +1940,10 @@
   <value>Outside session</value>
 </data>
 	<data name="Layout_GameSystems" xml:space="preserve">
-  <value>Game systems</value>
+  <value>My game systems</value>
 </data>
 	<data name="Layout_GameSessions" xml:space="preserve">
-  <value>Game sessions</value>
+  <value>My game sessions</value>
 </data>
 	<data name="Layout_CurrentSessionSection" xml:space="preserve">
   <value>Current session</value>
@@ -2631,7 +2631,7 @@
   <value>Global thresholds must be strictly descending.</value>
 </data>
 	<data name="SessionPage_SortBy" xml:space="preserve">
-  <value>Sort by</value>
+  <value>Sort by:</value>
 </data>
 	<data name="SessionPage_Sort_CharacterName" xml:space="preserve">
   <value>Character name</value>
@@ -2647,5 +2647,158 @@
 </data>
 	<data name="GameTest_NoGlobalThresholds" xml:space="preserve">
   <value>No global success threshold defined.</value>
+</data>
+	<data name="Layout_PlayerResumeSessions" xml:space="preserve">
+  <value>Resume a session</value>
+</data>
+	<data name="Layout_PlayerJoinSession" xml:space="preserve">
+  <value>Join a session</value>
+</data>
+	<data name="PlayerResumeSessions_Title" xml:space="preserve">
+  <value>Resume a session</value>
+</data>
+	<data name="PlayerResumeSessions_Subtitle" xml:space="preserve">
+  <value>Quickly find sessions where you already have at least one character.</value>
+</data>
+	<data name="PlayerResumeSessions_None" xml:space="preserve">
+  <value>You do not have any session to resume yet.</value>
+</data>
+	<data name="PlayerResumeSessions_AliveCharacters" xml:space="preserve">
+  <value>Living characters</value>
+</data>
+	<data name="PlayerResumeSessions_DeadCharacters" xml:space="preserve">
+  <value>Dead characters</value>
+</data>
+	<data name="PlayerResumeSessions_TotalCharacters" xml:space="preserve">
+  <value>Total characters</value>
+</data>
+	<data name="PlayerResumeSessions_Status" xml:space="preserve">
+  <value>Session status</value>
+</data>
+	<data name="PlayerResumeSessions_Open" xml:space="preserve">
+  <value>Open session</value>
+</data>
+	<data name="PlayerResumeSessions_OpenJoinPage" xml:space="preserve">
+  <value>Open join page</value>
+</data>
+	<data name="PlayerResumeSessions_InactiveNotice" xml:space="preserve">
+  <value>This session is currently inactive.</value>
+</data>
+	<data name="JoinSession_Subtitle" xml:space="preserve">
+  <value>Enter the GM name and the session slug to join an existing session.</value>
+</data>
+	<data name="JoinSession_GameMasterUsername" xml:space="preserve">
+  <value>GM name</value>
+</data>
+	<data name="JoinSession_SessionSlug" xml:space="preserve">
+  <value>Session name</value>
+</data>
+	<data name="JoinSession_Password" xml:space="preserve">
+  <value>Session password</value>
+</data>
+	<data name="Backend_JoinSessionGameMasterRequired" xml:space="preserve">
+  <value>The GM name is required.</value>
+</data>
+	<data name="Backend_JoinSessionSlugRequired" xml:space="preserve">
+  <value>The session name is required.</value>
+</data>
+	<data name="Backend_JoinSessionNotFound" xml:space="preserve">
+  <value>The requested session could not be found.</value>
+</data>
+	<data name="Backend_JoinSessionInactive" xml:space="preserve">
+  <value>This session is currently inactive.</value>
+</data>
+	<data name="Backend_JoinSessionInvalidPassword" xml:space="preserve">
+  <value>The session password is incorrect.</value>
+</data>
+	<data name="PlayerRoom_CharacterPanelTitle" xml:space="preserve">
+  <value>Character sheet</value>
+</data>
+	<data name="PlayerRoom_EditBiography" xml:space="preserve">
+  <value>Edit biography</value>
+</data>
+	<data name="PlayerRoom_CreateNewCharacter" xml:space="preserve">
+  <value>Create a new character</value>
+</data>
+	<data name="PlayerRoom_RandomTraitGroup" xml:space="preserve">
+  <value>Assigned randomly</value>
+</data>
+	<data name="PlayerRoom_StreamPanelTitle" xml:space="preserve">
+  <value>Stream</value>
+</data>
+	<data name="PlayerRoom_StreamPanelSubtitle" xml:space="preserve">
+  <value>Live Twitch stream and session chat.</value>
+</data>
+	<data name="PlayerRoom_EnableStream" xml:space="preserve">
+  <value>Enable stream</value>
+</data>
+	<data name="PlayerRoom_DisableStream" xml:space="preserve">
+  <value>Disable stream</value>
+</data>
+	<data name="PlayerRoom_StreamDisabled" xml:space="preserve">
+  <value>The stream is disabled to save bandwidth.</value>
+</data>
+	<data name="Backend_CharacterNotFound" xml:space="preserve">
+  <value>The requested character could not be found.</value>
+</data>
+	<data name="PlayerRoom_ViewBiography" xml:space="preserve">
+  <value>View biography</value>
+</data>
+	<data name="PlayerRoom_Statistics" xml:space="preserve">
+  <value>Statistics</value>
+</data>
+	<data name="PlayerRoom_Biography" xml:space="preserve">
+  <value>Biography</value>
+</data>
+	<data name="PlayerRoom_NoBiography" xml:space="preserve">
+  <value>No biography.</value>
+</data>
+	<data name="PlayerRoom_ShowChat" xml:space="preserve">
+  <value>Show chat</value>
+</data>
+	<data name="PlayerRoom_HideChat" xml:space="preserve">
+  <value>Hide chat</value>
+</data>
+	<data name="Common_Close" xml:space="preserve">
+  <value>Close</value>
+</data>
+	<data name="PlayerRoom_CloseViewedCharacter" xml:space="preserve">
+  <value>Close sheet</value>
+</data>
+	<data name="PlayerRoom_ShowStreamPanel" xml:space="preserve">
+  <value>Show stream</value>
+</data>
+	<data name="PlayerRoom_ShowSessionCharactersPanel" xml:space="preserve">
+  <value>Show characters</value>
+</data>
+	<data name="PlayerRoom_SessionCharactersPanelTitle" xml:space="preserve">
+  <value>Session characters</value>
+</data>
+	<data name="PlayerRoom_SessionCharactersPanelSubtitle" xml:space="preserve">
+  <value>Browse the other character sheets in the session.</value>
+</data>
+	<data name="PlayerRoom_NoSessionCharactersVisible" xml:space="preserve">
+  <value>No character is visible with the current filters.</value>
+</data>
+	<data name="PlayerRoom_EditSessionGameSystem" xml:space="preserve">
+  <value>Edit system</value>
+</data>
+	<data name="PlayerRoom_Metrics" xml:space="preserve">
+  <value>Metrics</value>
+</data>
+	<data name="PlayerRoom_EditSystemConfirmMessage" xml:space="preserve">
+  <value>Do you really want to edit this session game system?</value>
+</data>
+	<data name="PlayerRoom_EditSystemConfirmWarning" xml:space="preserve">
+  <value>Warning: if players are currently active in the session, some changes may have immediate effects on their play experience.</value>
+</data>
+	<data name="EditGameSystem_BackToSession" xml:space="preserve">
+  <value>Back to session settings</value>
+</data>
+	<data name="EditGameSystem_BackToPlayerRoom" xml:space="preserve">
+  <value>Back to session</value>
+</data>
+	<data name="PlayerRoom_RollingDice" xml:space="preserve">
+  <value>Rolling dice</value>
 </data>
 </root>

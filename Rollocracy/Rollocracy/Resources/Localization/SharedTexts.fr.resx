@@ -700,19 +700,19 @@
   <value>Afficher le nom du joueur</value>
 </data>
 	<data name="SessionPage_ShowAttributes" xml:space="preserve">
-  <value>Afficher les caractéristiques</value>
+  <value>Caractéristiques</value>
 </data>
 	<data name="SessionPage_ShowTraits" xml:space="preserve">
-  <value>Afficher les attributs</value>
+  <value>Attributs</value>
 </data>
 	<data name="SessionPage_ShowGauges" xml:space="preserve">
-  <value>Afficher les jauges</value>
+  <value>Jauges</value>
 </data>
 	<data name="SessionPage_ShowOfflineCharacters" xml:space="preserve">
-  <value>Afficher les personnages hors-ligne</value>
+  <value>Personnages hors-ligne</value>
 </data>
 	<data name="SessionPage_ShowDeadCharacters" xml:space="preserve">
-  <value>Afficher les personnages morts</value>
+  <value>Personnages morts</value>
 </data>
 	<data name="SessionPage_NoCharactersToDisplay" xml:space="preserve">
   <value>Aucun personnage à afficher.</value>
@@ -1261,9 +1261,6 @@
   </data>
 	<data name="EditGameSystem_DefaultDiceSides" xml:space="preserve">
     <value>Nombre de faces</value>
-  </data>
-	<data name="EditGameSystem_FoundationDeliveryNotice" xml:space="preserve">
-    <value>Cette première livraison active les valeurs par défaut aléatoires sur les caractéristiques de base et prépare les tables des compétences calculées et metrics pour la suite.</value>
   </data>
 	<data name="Backend_GameSystemBaseStatNameRequired" xml:space="preserve">
     <value>Chaque caractéristique de base doit avoir un nom.</value>
@@ -1941,10 +1938,10 @@
   <value>Hors session</value>
 </data>
 	<data name="Layout_GameSystems" xml:space="preserve">
-  <value>Systèmes de jeu</value>
+  <value>Mes systèmes de jeu</value>
 </data>
 	<data name="Layout_GameSessions" xml:space="preserve">
-  <value>Sessions de jeu</value>
+  <value>Mes sessions de jeu</value>
 </data>
 	<data name="Layout_CurrentSessionSection" xml:space="preserve">
   <value>Session en cours</value>
@@ -2550,7 +2547,7 @@
   <value>Ce système est partagé avec des sessions existantes. Confirmez-vous l’application des changements à ce système partagé ?</value>
 </data>
 	<data name="SessionPage_ShowDerivedStats" xml:space="preserve">
-  <value>Afficher les compétences</value>
+  <value>Compétences</value>
 </data>
 	<data name="SessionPage_EditBiography" xml:space="preserve">
   <value>Éditer la biographie</value>
@@ -2631,7 +2628,7 @@
   <value>Les paliers globaux doivent être strictement décroissants.</value>
 </data>
 	<data name="SessionPage_SortBy" xml:space="preserve">
-  <value>Trier par</value>
+  <value>Trier par :</value>
 </data>
 	<data name="SessionPage_Sort_CharacterName" xml:space="preserve">
   <value>Nom du personnage</value>
@@ -2648,5 +2645,157 @@
 	<data name="GameTest_NoGlobalThresholds" xml:space="preserve">
   <value>Aucun palier de réussite global défini.</value>
 </data>
-	
+	<data name="Layout_PlayerResumeSessions" xml:space="preserve">
+  <value>Reprendre une session</value>
+</data>
+	<data name="Layout_PlayerJoinSession" xml:space="preserve">
+  <value>Rejoindre une session</value>
+</data>
+	<data name="PlayerResumeSessions_Title" xml:space="preserve">
+  <value>Reprendre une session</value>
+</data>
+	<data name="PlayerResumeSessions_Subtitle" xml:space="preserve">
+  <value>Retrouvez rapidement les sessions dans lesquelles vous avez déjà au moins un personnage.</value>
+</data>
+	<data name="PlayerResumeSessions_None" xml:space="preserve">
+  <value>Vous n’avez encore aucune session à reprendre.</value>
+</data>
+	<data name="PlayerResumeSessions_AliveCharacters" xml:space="preserve">
+  <value>Personnages vivants</value>
+</data>
+	<data name="PlayerResumeSessions_DeadCharacters" xml:space="preserve">
+  <value>Personnages morts</value>
+</data>
+	<data name="PlayerResumeSessions_TotalCharacters" xml:space="preserve">
+  <value>Total personnages</value>
+</data>
+	<data name="PlayerResumeSessions_Status" xml:space="preserve">
+  <value>Statut session</value>
+</data>
+	<data name="PlayerResumeSessions_Open" xml:space="preserve">
+  <value>Ouvrir la session</value>
+</data>
+	<data name="PlayerResumeSessions_OpenJoinPage" xml:space="preserve">
+  <value>Voir la page de jonction</value>
+</data>
+	<data name="PlayerResumeSessions_InactiveNotice" xml:space="preserve">
+  <value>Cette session est actuellement inactive.</value>
+</data>
+	<data name="JoinSession_Subtitle" xml:space="preserve">
+  <value>Entrez le nom du MJ et le slug de session pour rejoindre une session existante.</value>
+</data>
+	<data name="JoinSession_GameMasterUsername" xml:space="preserve">
+  <value>Nom du MJ</value>
+</data>
+	<data name="JoinSession_SessionSlug" xml:space="preserve">
+  <value>Nom de la session</value>
+</data>
+	<data name="JoinSession_Password" xml:space="preserve">
+  <value>Mot de passe de session</value>
+</data>
+	<data name="Backend_JoinSessionGameMasterRequired" xml:space="preserve">
+  <value>Le nom du MJ est requis.</value>
+</data>
+	<data name="Backend_JoinSessionSlugRequired" xml:space="preserve">
+  <value>Le nom de la session est requis.</value>
+</data>
+	<data name="Backend_JoinSessionNotFound" xml:space="preserve">
+  <value>La session demandée est introuvable.</value>
+</data>
+	<data name="Backend_JoinSessionInactive" xml:space="preserve">
+  <value>Cette session est actuellement inactive.</value>
+</data>
+	<data name="Backend_JoinSessionInvalidPassword" xml:space="preserve">
+  <value>Le mot de passe de session est incorrect.</value>
+</data>
+	<data name="PlayerRoom_CharacterPanelTitle" xml:space="preserve">
+  <value>Fiche personnage</value>
+</data>
+	<data name="PlayerRoom_EditBiography" xml:space="preserve">
+  <value>Éditer la biographie</value>
+</data>
+	<data name="PlayerRoom_CreateNewCharacter" xml:space="preserve">
+  <value>Créer un nouveau personnage</value>
+</data>
+	<data name="PlayerRoom_RandomTraitGroup" xml:space="preserve">
+  <value>Attribué aléatoirement</value>
+</data>
+	<data name="PlayerRoom_StreamPanelTitle" xml:space="preserve">
+  <value>Stream</value>
+</data>
+	<data name="PlayerRoom_StreamPanelSubtitle" xml:space="preserve">
+  <value>Live Twitch et chat de session.</value>
+</data>
+	<data name="PlayerRoom_EnableStream" xml:space="preserve">
+  <value>Activer le stream</value>
+</data>
+	<data name="PlayerRoom_DisableStream" xml:space="preserve">
+  <value>Désactiver le stream</value>
+</data>
+	<data name="PlayerRoom_StreamDisabled" xml:space="preserve">
+  <value>Le stream est désactivé pour économiser la bande passante.</value>
+</data>
+	<data name="Backend_CharacterNotFound" xml:space="preserve">
+  <value>Le personnage demandé est introuvable.</value>
+</data>
+	<data name="PlayerRoom_ViewBiography" xml:space="preserve">
+  <value>Voir la biographie</value>
+</data>
+	<data name="PlayerRoom_Statistics" xml:space="preserve">
+  <value>Statistiques</value>
+</data>
+	<data name="PlayerRoom_Biography" xml:space="preserve">
+  <value>Biographie</value>
+</data>
+	<data name="PlayerRoom_NoBiography" xml:space="preserve">
+  <value>Aucune biographie.</value>
+</data>
+	<data name="PlayerRoom_ShowChat" xml:space="preserve">
+  <value>Afficher le chat</value>
+</data>
+	<data name="PlayerRoom_HideChat" xml:space="preserve">
+  <value>Masquer le chat</value>
+</data>
+	<data name="Common_Close" xml:space="preserve">
+  <value>Fermer</value>
+</data>
+	<data name="PlayerRoom_CloseViewedCharacter" xml:space="preserve">
+  <value>Fermer la fiche</value>
+</data>
+	<data name="PlayerRoom_ShowStreamPanel" xml:space="preserve">
+  <value>Afficher le stream</value>
+</data>
+	<data name="PlayerRoom_ShowSessionCharactersPanel" xml:space="preserve">
+  <value>Afficher les personnages</value>
+</data>
+	<data name="PlayerRoom_SessionCharactersPanelTitle" xml:space="preserve">
+  <value>Personnages de la session</value>
+</data>
+	<data name="PlayerRoom_SessionCharactersPanelSubtitle" xml:space="preserve">
+  <value>Consultez les autres fiches de personnages de la session.</value>
+</data>
+	<data name="PlayerRoom_NoSessionCharactersVisible" xml:space="preserve">
+  <value>Aucun personnage visible avec les filtres actuels.</value>
+</data>
+	<data name="PlayerRoom_EditSessionGameSystem" xml:space="preserve">
+  <value>Éditer le système</value>
+</data>
+	<data name="PlayerRoom_Metrics" xml:space="preserve">
+  <value>Metrics</value>
+</data>
+	<data name="PlayerRoom_EditSystemConfirmMessage" xml:space="preserve">
+  <value>Voulez-vous vraiment éditer le système de jeu de cette session ?</value>
+</data>
+	<data name="PlayerRoom_EditSystemConfirmWarning" xml:space="preserve">
+  <value>Attention : si des joueurs sont actifs dans la session, certaines modifications peuvent avoir des effets immédiats sur leur expérience de jeu.</value>
+</data>
+	<data name="EditGameSystem_BackToSession" xml:space="preserve">
+  <value>Retour aux paramètres de session</value>
+</data>
+	<data name="EditGameSystem_BackToPlayerRoom" xml:space="preserve">
+  <value>Retour à la session</value>
+</data>
+	<data name="PlayerRoom_RollingDice" xml:space="preserve">
+  <value>Lancer de dé en cours</value>
+</data>
 </root>

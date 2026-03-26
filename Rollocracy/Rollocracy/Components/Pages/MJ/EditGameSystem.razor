@@ -13,8 +13,6 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
-<h3>@L["EditGameSystem_Title"]</h3>
-
 @if (!IsLoaded)
 {
     <p>@L["Common_Loading"]</p>
@@ -39,7 +37,7 @@ else
                     </div>
 
                     <div class="rc-tool-actions">
-                        <button type="button" @onclick="BackToGameSystems">@L["EditGameSystem_BackToList"]</button>
+                        <button type="button" @onclick="BackToOrigin">@GetReturnButtonLabel()</button>
                         <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
 
                         @if (CurrentSystem.CanUndoLastChange)
@@ -114,7 +112,6 @@ else
                 </div>
 
                 <div class="rc-inline-warning">
-                    <p>@L["EditGameSystem_FoundationDeliveryNotice"]</p>
                     <p>@L["EditGameSystem_DiceDefaultHelp"]</p>
                 </div>
 
@@ -1332,6 +1329,14 @@ else
 
 @code {
     [Parameter] public Guid GameSystemId { get; set; }
+    [SupplyParameterFromQuery(Name = "returnTo")]
+    public string? ReturnTo { get; set; }
+
+    [SupplyParameterFromQuery(Name = "sessionId")]
+    public Guid? ReturnSessionId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "playerSessionId")]
+    public Guid? ReturnPlayerSessionId { get; set; }
 
     private Guid CurrentUserId;
     private bool IsLoaded;
@@ -1392,6 +1397,45 @@ else
         Message = string.Empty;
         ShowSharedConfirm = false;
         CurrentSystem = await GameSystemService.GetGameSystemEditorAsync(GameSystemId, CurrentUserId);
+    }
+
+    private bool CanReturnToOrigin()
+    {
+        if (string.Equals(ReturnTo, "mj-session", StringComparison.OrdinalIgnoreCase))
+            return ReturnSessionId.HasValue;
+
+        if (string.Equals(ReturnTo, "player-room", StringComparison.OrdinalIgnoreCase))
+            return ReturnPlayerSessionId.HasValue;
+
+        return false;
+    }
+
+    private string GetReturnButtonLabel()
+    {
+        if (string.Equals(ReturnTo, "mj-session", StringComparison.OrdinalIgnoreCase))
+            return L["EditGameSystem_BackToSession"];
+
+        if (string.Equals(ReturnTo, "player-room", StringComparison.OrdinalIgnoreCase))
+            return L["EditGameSystem_BackToPlayerRoom"];
+
+        return L["EditGameSystem_BackToList"];
+    }
+
+    private void BackToOrigin()
+    {
+        if (string.Equals(ReturnTo, "mj-session", StringComparison.OrdinalIgnoreCase) && ReturnSessionId.HasValue)
+        {
+            Navigation.NavigateTo($"/mj/session/{ReturnSessionId.Value}/settings");
+            return;
+        }
+
+        if (string.Equals(ReturnTo, "player-room", StringComparison.OrdinalIgnoreCase) && ReturnPlayerSessionId.HasValue)
+        {
+            Navigation.NavigateTo($"/player/room/{ReturnPlayerSessionId.Value}");
+            return;
+        }
+
+        Navigation.NavigateTo("/mj/gamesystems");
     }
 
     private void BackToGameSystems()

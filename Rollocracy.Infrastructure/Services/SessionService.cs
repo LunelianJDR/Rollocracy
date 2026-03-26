@@ -353,6 +353,154 @@ namespace Rollocracy.Infrastructure.Services
                 .ToListAsync();
         }
 
+        public async Task<List<PlayerResumableSessionDto>> GetResumablePlayerSessionsAsync(Guid userAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var playerSessions = await context.PlayerSessions
+                .AsNoTracking()
+                .Where(ps => ps.UserAccountId == userAccountId && !ps.IsGameMaster)
+                .ToListAsync();
+
+            if (playerSessions.Count == 0)
+                return new List<PlayerResumableSessionDto>();
+
+            var playerSessionIds = playerSessions.Select(x => x.Id).ToList();
+            var sessionIds = playerSessions.Select(x => x.SessionId).Distinct().ToList();
+
+            var sessions = await context.Sessions
+                .AsNoTracking()
+                .Where(s => sessionIds.Contains(s.Id))
+                .ToListAsync();
+
+            var gameMasterIds = sessions.Select(x => x.GameMasterUserAccountId).Distinct().ToList();
+
+            var gameMasters = await context.UserAccounts
+                .AsNoTracking()
+                .Where(u => gameMasterIds.Contains(u.Id))
+                .ToListAsync();
+
+            var characters = await context.Characters
+                .AsNoTracking()
+                .Where(c => playerSessionIds.Contains(c.PlayerSessionId))
+                .ToListAsync();
+
+            var result = new List<PlayerResumableSessionDto>();
+
+            foreach (var playerSession in playerSessions)
+            {
+                var session = sessions.FirstOrDefault(x => x.Id == playerSession.SessionId);
+                if (session == null)
+                    continue;
+
+                var gm = gameMasters.FirstOrDefault(x => x.Id == session.GameMasterUserAccountId);
+                var playerCharacters = characters.Where(c => c.PlayerSessionId == playerSession.Id).ToList();
+
+                var aliveCount = playerCharacters.Count(c => c.IsAlive);
+                var deadCount = playerCharacters.Count(c => !c.IsAlive);
+                var totalCount = playerCharacters.Count;
+
+                if (totalCount == 0)
+                    continue;
+
+                result.Add(new PlayerResumableSessionDto
+                {
+                    PlayerSessionId = playerSession.Id,
+                    SessionId = session.Id,
+                    SessionName = session.SessionName,
+                    SessionSlug = session.SessionSlug,
+                    GameMasterUsername = gm?.Username ?? string.Empty,
+                    SessionIsActive = session.IsActive,
+                    TotalCharactersCount = totalCount,
+                    AliveCharactersCount = aliveCount,
+                    DeadCharactersCount = deadCount,
+                    SpecialRole = playerSession.SpecialRole
+                });
+            }
+
+            return result
+                .OrderByDescending(x => x.AliveCharactersCount)
+                .ThenBy(x => x.GameMasterUsername)
+                .ThenBy(x => x.SessionName)
+                .ToList();
+        }
+
+        public async Task<Guid> JoinSessionAsync(
+    Guid userAccountId,
+    string gameMasterUsername,
+    string sessionSlug,
+    string? sessionPassword)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            if (string.IsNullOrWhiteSpace(gameMasterUsername))
+                throw new Exception(_localizer["Backend_JoinSessionGameMasterRequired"]);
+
+            if (string.IsNullOrWhiteSpace(sessionSlug))
+                throw new Exception(_localizer["Backend_JoinSessionSlugRequired"]);
+
+            var normalizedGameMasterUsername = gameMasterUsername.Trim();
+            var normalizedSessionSlug = sessionSlug.Trim();
+
+            var userAccount = await context.UserAccounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == userAccountId);
+
+            if (userAccount == null)
+                throw new Exception(_localizer["Backend_UserNotFound"]);
+
+            var gameMaster = await context.UserAccounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedGameMasterUsername.ToLower());
+
+            if (gameMaster == null)
+                throw new Exception(_localizer["Backend_JoinSessionNotFound"]);
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s =>
+                    s.GameMasterUserAccountId == gameMaster.Id &&
+                    s.SessionSlug.ToLower() == normalizedSessionSlug.ToLower());
+
+            if (session == null)
+                throw new Exception(_localizer["Backend_JoinSessionNotFound"]);
+
+            if (!session.IsActive)
+                throw new Exception(_localizer["Backend_JoinSessionInactive"]);
+
+            var expectedPassword = session.SessionPassword?.Trim() ?? string.Empty;
+            var providedPassword = sessionPassword?.Trim() ?? string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(expectedPassword) && !string.Equals(expectedPassword, providedPassword, StringComparison.Ordinal))
+                throw new Exception(_localizer["Backend_JoinSessionInvalidPassword"]);
+
+            var existingPlayerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps =>
+                    ps.SessionId == session.Id &&
+                    ps.UserAccountId == userAccountId &&
+                    !ps.IsGameMaster);
+
+            if (existingPlayerSession != null)
+                return existingPlayerSession.Id;
+
+            var playerSession = new PlayerSession
+            {
+                Id = Guid.NewGuid(),
+                SessionId = session.Id,
+                UserAccountId = userAccountId,
+                PlayerName = userAccount.Username,
+                IsGameMaster = false,
+                SpecialRole = SessionSpecialRole.None,
+                JoinedAt = DateTime.UtcNow
+            };
+
+            context.PlayerSessions.Add(playerSession);
+            await context.SaveChangesAsync();
+
+            return playerSession.Id;
+        }
+
         public async Task SetSessionActiveStateAsync(Guid sessionId, Guid gameMasterUserAccountId, bool isActive)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();

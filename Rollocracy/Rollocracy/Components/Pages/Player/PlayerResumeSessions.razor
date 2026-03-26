@@ -1,0 +1,175 @@
+﻿@page "/player/resume-sessions"
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Characters
+@using Rollocracy.Domain.Interfaces
+@using Rollocracy.Localization
+
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ISessionService SessionService
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
+
+
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToLogin)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else
+{
+    <section class="rc-tool-section">
+        <div class="rc-tool-panel">
+            <div class="rc-tool-panel__header">
+                <div class="rc-tool-panel__header-main">
+                    <h4 class="rc-tool-panel__title">@L["PlayerResumeSessions_Title"]</h4>
+                    <p class="rc-tool-panel__subtitle">@L["PlayerResumeSessions_Subtitle"]</p>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Message))
+            {
+                <p>@Message</p>
+            }
+
+            @if (Sessions.Count == 0)
+            {
+                <div class="rc-empty-panel">
+                    <p>@L["PlayerResumeSessions_None"]</p>
+                </div>
+            }
+            else
+            {
+                <div class="rc-session-list-grid">
+                    @foreach (var item in Sessions)
+                    {
+                        <article class="rc-filter-group-card">
+                            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                                <div class="rc-tool-panel__header-main">
+                                    <h5 class="rc-tool-panel__title">@item.SessionName</h5>
+                                    <p class="rc-tool-panel__subtitle">
+                                        @item.GameMasterUsername
+                                        @if (!string.IsNullOrWhiteSpace(item.SessionSlug))
+                                        {
+                                            <span>· @item.SessionSlug</span>
+                                        }
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="rc-tool-form-grid">
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["PlayerResumeSessions_AliveCharacters"]</label>
+                                    <div class="rc-readonly-value">@item.AliveCharactersCount</div>
+                                </div>
+
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["PlayerResumeSessions_DeadCharacters"]</label>
+                                    <div class="rc-readonly-value">@item.DeadCharactersCount</div>
+                                </div>
+
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["PlayerResumeSessions_TotalCharacters"]</label>
+                                    <div class="rc-readonly-value">@item.TotalCharactersCount</div>
+                                </div>
+
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["PlayerResumeSessions_Status"]</label>
+                                    <div class="rc-readonly-value">
+                                        @(item.SessionIsActive? L["ResumeSession_StatusActive"] : L["ResumeSession_StatusInactive"])
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="rc-tool-actions">
+                                <button type="button"
+                                        disabled="@(!item.SessionIsActive)"
+                                        @onclick="() => ResumeSession(item.PlayerSessionId)">
+                                    @L["PlayerResumeSessions_Open"]
+                                </button>
+
+                                <button type="button"
+                                        @onclick="() => OpenJoinPage(item.GameMasterUsername, item.SessionSlug)">
+                                    @L["PlayerResumeSessions_OpenJoinPage"]
+                                </button>
+                            </div>
+
+                            @if (!item.SessionIsActive)
+                            {
+                                <p class="rc-tool-muted">@L["PlayerResumeSessions_InactiveNotice"]</p>
+                            }
+                        </article>
+                    }
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@code {
+    private bool IsLoaded;
+    private bool RedirectToLogin;
+    private Guid CurrentUserId;
+    private string Message = string.Empty;
+    private List<PlayerResumableSessionDto> Sessions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!isAuthenticated || string.IsNullOrWhiteSpace(userIdValue))
+        {
+            RedirectToLogin = true;
+            IsLoaded = true;
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+        await LoadSessions();
+
+        IsLoaded = true;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToLogin)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadSessions()
+    {
+        try
+        {
+            Message = string.Empty;
+            Sessions = await SessionService.GetResumablePlayerSessionsAsync(CurrentUserId);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void ResumeSession(Guid playerSessionId)
+    {
+        Navigation.NavigateTo($"/player/room/{playerSessionId}");
+    }
+
+    private void OpenJoinPage(string gameMasterUsername, string sessionSlug)
+    {
+        Navigation.NavigateTo($"/join?gm={Uri.EscapeDataString(gameMasterUsername)}&slug={Uri.EscapeDataString(sessionSlug)}");
+    }
+}

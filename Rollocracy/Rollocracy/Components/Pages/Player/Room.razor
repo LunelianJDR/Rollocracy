@@ -10,14 +10,16 @@
 @using Rollocracy.Domain.Interfaces
 @using Rollocracy.Localization
 @using Rollocracy.Domain.Polls
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 
 @inject ICharacterService CharacterService
 @inject IGameTestService GameTestService
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 @inject IPollService PollService
-
-<h3>@L["PlayerRoom_Title"]</h3>
+@inject ISessionNotifier SessionNotifier
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 @if (!IsLoaded)
 {
@@ -29,220 +31,944 @@ else if (State is null)
 }
 else
 {
-    <p>@L["PlayerRoom_ConnectedPlayers"] : @State.SessionStats.ConnectedPlayersCount</p>
-    <p>@L["PlayerRoom_AliveCharacters"] : @State.SessionStats.AliveCharactersCount</p>
-    <p>@L["PlayerRoom_TotalCharacters"] : @State.SessionStats.TotalCharactersCount</p>
+    <section class="rc-player-room">
+        <div class="rc-player-room__main">
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["PlayerRoom_CharacterPanelTitle"]</h4>
+                    </div>
 
-    <hr />
-
-    @if (ActiveTest is not null)
-    {
-        <h4>@L["GameTest_PlayerSectionTitle"]</h4>
-
-        @if (ActiveTest.AutoRollAtUtc < DateTime.UtcNow)
-        {
-            <p>@L["GameTest_LastTestPerformed"]</p>
-        }
-
-        <p>@L["GameTest_Attribute"] : @ActiveTest.AttributeName</p>
-        <p>@L["GameTest_Dice"] : @($"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}")</p>
-
-        @if (ActiveTest.ResolutionMode == Rollocracy.Domain.GameRules.TestResolutionMode.SuccessThreshold)
-        {
-            <p>@L["GameTest_SuccessThreshold"] : @ActiveTest.SuccessThreshold</p>
-        }
-
-        <p>
-            @L["GameTest_DifficultySummary"] :
-            @(ActiveTest.ModifierMode == Rollocracy.Domain.GameTests.TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])
-            @(" ")
-            @ActiveTest.DifficultyValue
-        </p>
-
-        @if (!ActiveTest.AlreadyRolled && ActiveTest.AutoRollAtUtc >= DateTime.UtcNow)
-        {
-            <button @onclick="RollCurrentTest">@L["GameTest_RollButton", $"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}"]</button>
-        }
-        else if (ActiveTest.Result is not null)
-        {
-            <p>@L["GameTest_EffectiveAttributeValue"] : @ActiveTest.Result.EffectiveAttributeValue</p>
-            <p>@L["GameTest_DiceResults"] : @string.Join(" - ", ActiveTest.Result.DiceResults)</p>
-            <p>@L["GameTest_DiceTotal"] : @ActiveTest.Result.DiceTotal</p>
-            <p>@L["GameTest_AttributeValue"] : @ActiveTest.Result.AttributeValue</p>
-            <p>@L["GameTest_FinalValue"] : @ActiveTest.Result.FinalValue</p>
-            <p>@L["GameTest_Result"] : @(ActiveTest.Result.IsSuccess? L["GameTest_Success"] : L["GameTest_Failure"])</p>
-
-            @if (ActiveTest.Result.IsAutoRolled)
-            {
-                <p>@L["GameTest_AutoRolledNotice"]</p>
-            }
-        }
-    }
-
-    @if (LatestPoll is not null)
-    {
-        <hr />
-        <h4>@L["Poll_PlayerSectionTitle"]</h4>
-
-        @if (LatestPoll.IsClosed)
-        {
-            <p>@L["Poll_LastPoll"]</p>
-        }
-
-        @if (LatestPoll.IsClosed && RemainingPollSeconds > 0)
-        {
-            <p>@L["Poll_DisappearsIn", RemainingPollSeconds]</p>
-        }
-
-        <p>@L["Poll_Question"] : @LatestPoll.Question</p>
-
-        @if (!LatestPoll.IsClosed && !LatestPoll.HasVoted)
-        {
-            @foreach (var option in LatestPoll.Options)
-            {
-                <button @onclick="() => Vote(option.OptionId)">@option.Label</button>
-            }
-        }
-        else
-        {
-            @if (LatestPoll.HasVoted)
-            {
-                <p>@L["Poll_VoteRegistered"]</p>
-            }
-
-            <ul>
-                @foreach (var option in LatestPoll.Options)
-                {
-                    var isSelected = LatestPoll.SelectedOptionId == option.OptionId;
-
-                    <li>
-                        @option.Label : @option.VoteCount / @option.WeightedVoteTotal.ToString("F2")
-                        @if (isSelected)
+                    <div class="rc-tool-actions">
+                        @if (IsViewingDeadCharacter)
                         {
-                            <span>(@L["Poll_YourVote"])</span>
+                            <button type="button" @onclick="CloseViewedDeadCharacter">@L["PlayerRoom_CloseViewedCharacter"]</button>
                         }
-                    </li>
+                        else if (State.AliveCharacter is not null)
+                        {
+                            @if (IsEditingBiography)
+                            {
+                                <button type="button" @onclick="SaveBiography">@L["Common_Save"]</button>
+                                <button type="button" @onclick="CancelBiographyEdit">@L["Common_Cancel"]</button>
+                            }
+                            else if (ShowBiographyPanel)
+                            {
+                                <button type="button" @onclick="BeginBiographyEdit">@L["PlayerRoom_EditBiography"]</button>
+                                <button type="button" @onclick="ShowStatsView">@L["PlayerRoom_Statistics"]</button>
+                            }
+                            else
+                            {
+                                <button type="button" @onclick="ShowBiographyView">@L["PlayerRoom_ViewBiography"]</button>
+                            }
+                        }
+                    </div>
+                </div>
+
+                @if (ActiveTest is not null && !IsTestDismissed)
+                {
+                    <div class="rc-filter-group-card">
+                        <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                            <div class="rc-tool-panel__header-main">
+                                <h5 class="rc-tool-panel__title">@L["GameTest_PlayerSectionTitle"]</h5>
+                                <p class="rc-tool-panel__subtitle">@ActiveTest.AttributeName · @($"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}")</p>
+                            </div>
+
+                            @if (ActiveTest.AlreadyRolled)
+                            {
+                                <div class="rc-tool-actions">
+                                    <button type="button" class="rc-round-icon-button" @onclick="DismissActiveTest" title="@L["Common_Close"]">✕</button>
+                                </div>
+                            }
+                        </div>
+
+                        @if (!ActiveTest.AlreadyRolled && ActiveTest.AutoRollAtUtc >= DateTime.UtcNow)
+                        {
+                            @if (IsRollingCurrentTest)
+                            {
+                                <div class="rc-player-roll-animation">
+                                    <img src="/images/AnimatedDice_150.gif" alt="@L["PlayerRoom_RollingDice"]" height="70" width="70"/>
+                                </div>
+                            }
+                            else
+                            {
+                                <button type="button" @onclick="RollCurrentTest">@L["GameTest_RollButton", $"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}"]</button>
+                            }
+                        }
+                        else if (ActiveTest.Result is not null)
+                        {
+                            <div class="rc-tool-form-grid">
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["GameTest_EffectiveAttributeValue"]</label>
+                                    <div class="rc-readonly-value">@ActiveTest.Result.EffectiveAttributeValue</div>
+                                </div>
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["GameTest_DiceTotal"]</label>
+                                    <div class="rc-readonly-value">@ActiveTest.Result.DiceTotal</div>
+                                </div>
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["GameTest_FinalValue"]</label>
+                                    <div class="rc-readonly-value">@ActiveTest.Result.FinalValue</div>
+                                </div>
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["GameTest_Result"]</label>
+                                    <div class="rc-player-test-outcome @(ActiveTest.Result.IsSuccess ? "success" : "failure")">
+                                        @(ActiveTest.Result.IsSuccess? L["GameTest_Success"] : L["GameTest_Failure"])
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p>@L["GameTest_DiceResults"] : @string.Join(" - ", ActiveTest.Result.DiceResults)</p>
+                        }
+                    </div>
                 }
-            </ul>
 
-            @if (LatestPoll.HasVoted && LatestPoll.VoteWeight.HasValue)
-            {
-                <p>@L["Poll_YourVoteWeight", LatestPoll.VoteWeight.Value.ToString("F2")]</p>
-            }
-        }
-    }
+                @if (LatestPoll is not null && !IsPollDismissed)
+                {
+                    <div class="rc-filter-group-card">
+                        <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                            <div class="rc-tool-panel__header-main">
+                                <h5 class="rc-tool-panel__title">@L["Poll_PlayerSectionTitle"]</h5>
+                                <p class="rc-tool-panel__subtitle">@LatestPoll.Question</p>
+                            </div>
 
-    <hr />
+                            @if (LatestPoll.IsClosed || LatestPoll.HasVoted)
+                            {
+                                <div class="rc-tool-actions">
+                                    <button type="button" class="rc-round-icon-button" @onclick="DismissLatestPoll" title="@L["Common_Close"]">✕</button>
+                                </div>
+                            }
+                        </div>
 
-    @if (!State.HasAssignedGameSystem)
-    {
-        <p>@L["PlayerRoom_NoGameSystem"]</p>
-    }
-    else if (State.AliveCharacter is not null)
-    {
-        <h4>@L["PlayerRoom_YourCharacter"]</h4>
-        @RenderCharacterSheet(State.AliveCharacter, false)
-    }
-    else if (State.DeadCharacters.Count == 0)
-    {
-        <p>@L["PlayerRoom_NoCharacterYet"]</p>
-        <button @onclick="GoToCreateCharacter">@L["PlayerRoom_CreateCharacter"]</button>
-    }
-    else
-    {
-        <p>@L["PlayerRoom_OnlyDeadCharacters"]</p>
+                        @if (!LatestPoll.IsClosed && !LatestPoll.HasVoted)
+                        {
+                            <div class="rc-tool-actions">
+                                @foreach (var option in LatestPoll.Options)
+                                {
+                                    <button type="button" @onclick="() => Vote(option.OptionId)">@option.Label</button>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            @if (LatestPoll.HasVoted)
+                            {
+                                <p>@L["Poll_VoteRegistered"]</p>
+                            }
 
-        @if (State.CanCreateNewCharacter)
-        {
-            <button @onclick="GoToCreateCharacter">@L["PlayerRoom_CreateNewCharacter"]</button>
-        }
-        else if (State.CanCreateNewCharacterAtUtc.HasValue)
-        {
-            <p>@L["PlayerRoom_CreateCharacterCountdown", RemainingCreationSeconds]</p>
-        }
+                            <ul class="rc-detail-list">
+                                @foreach (var option in LatestPoll.Options)
+                                {
+                                    var isSelected = LatestPoll.SelectedOptionId == option.OptionId;
 
-        <h4>@L["PlayerRoom_DeadCharacters"]</h4>
+                                    <li>
+                                        @option.Label : @option.VoteCount / @option.WeightedVoteTotal.ToString("F2")
+                                        @if (isSelected)
+                                        {
+                                            <span>(@L["Poll_YourVote"])</span>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                }
 
-        <ul>
-            @foreach (var deadCharacter in State.DeadCharacters)
-            {
-                <li>
-                    @deadCharacter.Name
-                    <button @onclick="() => LoadDeadCharacter(deadCharacter.CharacterId)">@L["PlayerRoom_ViewDeadCharacter"]</button>
-                </li>
-            }
-        </ul>
+                @if (!State.HasAssignedGameSystem)
+                {
+                    <div class="rc-empty-panel">
+                        <p>@L["PlayerRoom_NoGameSystem"]</p>
+                    </div>
+                }
+                else if (IsViewingDeadCharacter && ViewedDeadCharacter is not null)
+                {
+                    @RenderCharacterSheet(ViewedDeadCharacter, true)
+                }
+                else if (State.AliveCharacter is not null)
+                {
+                    @if (IsEditingBiography)
+                    {
+                        <div class="rc-player-character-sheet">
+                            <div class="rc-player-character-sheet__hero">
+                                <div class="rc-player-character-sheet__name">@State.AliveCharacter.Name</div>
+                                <div class="rc-player-character-sheet__status @(State.AliveCharacter.IsAlive ? "alive" : "dead")">
+                                    @(State.AliveCharacter.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
+                                </div>
+                            </div>
 
-        @if (ViewedDeadCharacter is not null)
-        {
-            <hr />
-            <h4>@L["PlayerRoom_ViewedDeadCharacter"]</h4>
-            @RenderCharacterSheet(ViewedDeadCharacter, true)
-        }
-    }
+                            <div class="rc-filter-group-card">
+                                <div class="rc-form-field rc-form-field--full">
+                                    <label>@L["EditCharacter_Biography"]</label>
+                                    <textarea rows="12" @bind="BiographyDraft"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else if (ShowBiographyPanel)
+                    {
+                        <div class="rc-player-character-sheet">
+                            <div class="rc-player-character-sheet__hero">
+                                <div class="rc-player-character-sheet__name">@State.AliveCharacter.Name</div>
+                                <div class="rc-player-character-sheet__status @(State.AliveCharacter.IsAlive ? "alive" : "dead")">
+                                    @(State.AliveCharacter.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
+                                </div>
+                            </div>
 
-    @if (State.CanViewSessionCharacters)
-    {
-        <hr />
-        <h4>@L["SessionPage_CharactersSection"]</h4>
+                            <div class="rc-filter-group-card">
+                                <div class="rc-detail-block__title">@L["PlayerRoom_Biography"]</div>
+                                @if (string.IsNullOrWhiteSpace(State.AliveCharacter.Biography))
+                                {
+                                    <p>@L["PlayerRoom_NoBiography"]</p>
+                                }
+                                else
+                                {
+                                    <div class="rc-player-character-sheet__biography">@State.AliveCharacter.Biography</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        @RenderCharacterSheet(State.AliveCharacter, false)
+                    }
+                }
+                else
+                {
+                    @if (IsCreatingCharacterInline && CreationTemplate is not null)
+                    {
+                        <div class="rc-filter-group-card">
+                            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                                <div class="rc-tool-panel__header-main">
+                                    <h5 class="rc-tool-panel__title">@L["PlayerRoom_CreateCharacter"]</h5>
+                                    <p class="rc-tool-panel__subtitle">@CreationTemplate.GameSystemName</p>
+                                </div>
+                            </div>
 
-        <div>
-            <label>
-                <input type="checkbox" @bind="SpecialIncludeOffline" @bind:after="LoadSpecialRoleCharacters" />
-                @L["SessionPage_ShowOfflineCharacters"]
-            </label>
+                            <div class="rc-tool-form-grid">
+                                <div class="rc-form-field">
+                                    <label>@L["EditCharacter_Name"]</label>
+                                    <input @bind="NewCharacterName" />
+                                </div>
+
+                                <div class="rc-form-field rc-form-field--full">
+                                    <label>@L["EditCharacter_Biography"]</label>
+                                    <textarea rows="4" @bind="NewCharacterBiography"></textarea>
+                                </div>
+                            </div>
+
+                            @if (CreationTemplate.Attributes.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["PlayerRoom_Attributes"]</div>
+                                    <div class="rc-player-creation-attribute-grid">
+                                        @foreach (var typeattribute in CreationTemplate.Attributes)
+                                        {
+                                            <div class="rc-player-stat-card">
+                                                <div class="rc-player-stat-card__label">@typeattribute.Name</div>
+                                                <div class="rc-player-stat-card__value">@CreationAttributeValues[typeattribute.AttributeDefinitionId]</div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (CreationTemplate.Traits.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["PlayerRoom_Traits"]</div>
+                                    <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                        @foreach (var trait in CreationTemplate.Traits)
+                                        {
+                                            <div class="rc-form-field">
+                                                <label>@trait.Name</label>
+
+                                                @if (trait.IsRandomSelectionGroup)
+                                                {
+                                                    <div class="rc-readonly-value">@L["PlayerRoom_RandomTraitGroup"]</div>
+                                                }
+                                                else
+                                                {
+                                                    <select @bind="CreationTraitSelections[trait.TraitDefinitionId]">
+                                                        @foreach (var option in GetSelectableCreationOptions(trait))
+                                                        {
+                                                            <option value="@option.TraitOptionId">@option.Name</option>
+                                                        }
+                                                    </select>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="rc-tool-actions">
+                                <button type="button" @onclick="HandleCreateCharacterInline">@L["PlayerRoom_CreateCharacter"]</button>
+                                <button type="button" @onclick="CancelInlineCharacterCreation">@L["Common_Cancel"]</button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="rc-filter-group-card">
+                            @if (State.DeadCharacters.Count == 0)
+                            {
+                                <p>@L["PlayerRoom_NoCharacterYet"]</p>
+                            }
+                            else
+                            {
+                                <p>@L["PlayerRoom_OnlyDeadCharacters"]</p>
+                            }
+
+                            @if (State.CanCreateNewCharacter)
+                            {
+                                <button type="button" @onclick="GoToCreateCharacter">@L["PlayerRoom_CreateNewCharacter"]</button>
+                            }
+                            else if (State.CanCreateNewCharacterAtUtc.HasValue)
+                            {
+                                <p>@L["PlayerRoom_CreateCharacterCountdown", RemainingCreationSeconds]</p>
+                            }
+                        </div>
+                    }
+                }
+
+                @if (State.DeadCharacters.Count > 0)
+                {
+                    <div class="rc-filter-group-card">
+                        <div class="rc-detail-block__title">@L["PlayerRoom_DeadCharacters"]</div>
+
+                        <div class="rc-character-inline-list">
+                            @foreach (var deadCharacter in State.DeadCharacters)
+                            {
+                                <button type="button" @onclick="() => ViewDeadCharacter(deadCharacter.CharacterId)">
+                                    @deadCharacter.Name
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(Message))
+                {
+                    <div class="rc-inline-error">@Message</div>
+                }
+            </div>
         </div>
 
-        <div>
-            <label>
-                <input type="checkbox" @bind="SpecialIncludeDead" @bind:after="LoadSpecialRoleCharacters" />
-                @L["SessionPage_ShowDeadCharacters"]
-            </label>
+        <aside class="rc-player-room__side">
+    <div class="rc-tool-panel">
+        <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+            <div class="rc-tool-panel__header-main">
+                <h4 class="rc-tool-panel__title">
+                    @(ShowSessionCharactersPanel && State.CanViewSessionCharacters
+                        ? L["PlayerRoom_SessionCharactersPanelTitle"]
+                        : L["PlayerRoom_StreamPanelTitle"])
+                </h4>
+                <p class="rc-tool-panel__subtitle">
+                    @(ShowSessionCharactersPanel && State.CanViewSessionCharacters
+                        ? L["PlayerRoom_SessionCharactersPanelSubtitle"]
+                        : L["PlayerRoom_StreamPanelSubtitle"])
+                </p>
+            </div>
+
+            <div class="rc-tool-actions">
+                @if (State.CanViewSessionCharacters)
+                {
+                    @if (ShowSessionCharactersPanel)
+                    {
+                        <button type="button" @onclick="() => ShowSessionCharactersPanel = false">
+                            @L["PlayerRoom_ShowStreamPanel"]
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button" @onclick="() => ShowSessionCharactersPanel = true">
+                            @L["PlayerRoom_ShowSessionCharactersPanel"]
+                        </button>
+                    }
+                }
+
+                        @if (ShowEditSystemConfirm)
+                        {
+                            <div class="rc-filter-group-card">
+                                <p>@L["PlayerRoom_EditSystemConfirmMessage"]</p>
+                                <p class="rc-tool-muted">@L["PlayerRoom_EditSystemConfirmWarning"]</p>
+
+                                <div class="rc-tool-actions">
+                                    <button type="button" @onclick="ConfirmEditSessionGameSystem">@L["Common_Yes"]</button>
+                                    <button type="button" @onclick="CancelEditSessionGameSystem">@L["Common_No"]</button>
+                                </div>
+                            </div>
+                        }
+
+                @if (ShowSessionCharactersPanel && State.CanEditSessionCharacters)
+                {
+                    <button type="button" @onclick="CreateNpcFromAssistantPanel">
+                        @L["SessionPage_CreateNpc"]
+                    </button>
+                }
+
+                @if (!ShowSessionCharactersPanel)
+                {
+                    <button type="button" @onclick="() => IsTwitchEnabled = !IsTwitchEnabled">
+                        @(IsTwitchEnabled? L["PlayerRoom_DisableStream"] : L["PlayerRoom_EnableStream"])
+                    </button>
+                }
+
+                        @if (ShowSessionCharactersPanel && State.SessionGameSystemId.HasValue && State.CanEditSessionGameSystem && !ShowEditSystemConfirm)
+                {
+                    <button type="button" @onclick="EditSessionGameSystem">
+                        @L["PlayerRoom_EditSessionGameSystem"]
+                    </button>
+                }
+            </div>
         </div>
 
-        @if (State.CanEditSessionGameSystem && State.SessionGameSystemId.HasValue)
+        @if (ShowSessionCharactersPanel && State.CanViewSessionCharacters)
         {
-            <button @onclick="EditSessionGameSystem">@L["SessionPage_EditSessionGameSystem"]</button>
-        }
+            <section class="rc-character-view">
+                <div class="rc-character-view__filters">
+                    <label class="rc-filter-toggle">
+                        <input type="checkbox" @bind="ShowObservedAttributes" />
+                        <span>@L["SessionPage_ShowAttributes"]</span>
+                    </label>
 
-        @if (SpecialRoleCharacters.Count == 0)
-        {
-            <p>@L["SessionPage_NoCharactersToDisplay"]</p>
+                    <label class="rc-filter-toggle">
+                        <input type="checkbox" @bind="ShowObservedDerivedStats" />
+                        <span>@L["SessionPage_ShowDerivedStats"]</span>
+                    </label>
+
+                    <label class="rc-filter-toggle">
+                        <input type="checkbox" @bind="ShowObservedTraits" />
+                        <span>@L["SessionPage_ShowTraits"]</span>
+                    </label>
+
+                    <label class="rc-filter-toggle">
+                        <input type="checkbox" @bind="ShowObservedGauges" />
+                        <span>@L["SessionPage_ShowGauges"]</span>
+                    </label>
+
+                    <label class="rc-filter-toggle">
+                        <input type="checkbox" @bind="SpecialIncludeOffline" @bind:after="LoadSpecialRoleCharacters" />
+                        <span>@L["SessionPage_ShowOfflineCharacters"]</span>
+                    </label>
+
+                    <label class="rc-filter-toggle">
+                        <input type="checkbox" @bind="SpecialIncludeDead" @bind:after="LoadSpecialRoleCharacters" />
+                        <span>@L["SessionPage_ShowDeadCharacters"]</span>
+                    </label>
+                    <label class="rc-filter-toggle">
+                        <input type="checkbox" @bind="SpecialIncludeNpcs" @bind:after="LoadSpecialRoleCharacters" />
+                        <span>@L["SessionPage_ShowNpcs"]</span>
+                    </label>
+
+                    <div class="rc-filter-toggle">
+                        <label>@L["SessionPage_SortBy"]</label>
+                        <select @bind="ObservedCharacterSortMode">
+                            @foreach (var option in GetObservedCharacterSortOptions())
+                            {
+                                <option value="@option.Value">@option.Label</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div class="rc-character-view__layout @(ObservedCharacterSheet is not null ? "has-selection" : string.Empty)">
+                    <div class="rc-character-view__grid">
+                        @if (SpecialRoleCharacters.Count == 0)
+                        {
+                            <div class="rc-empty-panel">
+                                <p>@L["PlayerRoom_NoSessionCharactersVisible"]</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var character in GetSortedObservedCharacters())
+                            {
+                                var healthGauges = character.Gauges.Where(g => g.IsHealthGauge).ToList();
+                                var regularGauges = character.Gauges.Where(g => !g.IsHealthGauge).ToList();
+                                var isSelected = ObservedCharacterSheet?.CharacterId == character.CharacterId;
+
+                                <button type="button"
+                                        class="rc-character-card @(isSelected ? "selected" : string.Empty)"
+                                        @onclick="() => ToggleObservedCharacterDetails(character.CharacterId)">
+
+                                    <div class="rc-character-card__header">
+                                        <div class="rc-character-card__title-wrap">
+                                            <div class="rc-character-card__title">@character.CharacterName</div>
+
+                                            <div class="rc-character-card__player">
+                                                <span class="rc-character-card__player-name">@character.PlayerName</span>
+                                            </div>
+
+                                            <div class="rc-character-card__meta-row">
+                                                <span class="rc-character-chip @(character.IsAlive ? "alive" : "dead")">
+                                                    @(character.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
+                                                </span>
+
+                                                <span class="rc-character-chip @(character.IsOnline ? "online" : "offline")">
+                                                    @(character.IsOnline ? L["Common_Online"] : L["Common_Offline"])
+                                                </span>
+
+                                                @if (character.IsNpc)
+                                                {
+                                                    <span class="rc-character-chip npc">@L["Common_Npc"]</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @if (ShowObservedAttributes && character.Attributes.Count > 0)
+                                    {
+                                        <div class="rc-character-card__section">
+                                            <div class="rc-character-card__section-title">@L["PlayerRoom_Attributes"]</div>
+                                            <div class="rc-character-inline-list">
+                                                @foreach (var attributeItem in character.Attributes)
+                                                {
+                                                    <span class="rc-inline-pill">@attributeItem.Name: @attributeItem.Value</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
+                                    @if (ShowObservedDerivedStats && character.DerivedStats.Count > 0)
+                                    {
+                                        <div class="rc-character-card__section">
+                                            <div class="rc-character-card__section-title">@L["PlayerRoom_DerivedStats"]</div>
+                                            <div class="rc-character-inline-list">
+                                                @foreach (var derivedItem in character.DerivedStats)
+                                                {
+                                                    <span class="rc-inline-pill">@derivedItem.Name: @derivedItem.Value</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
+                                    @if (ShowObservedTraits && character.Traits.Count > 0)
+                                    {
+                                        <div class="rc-character-card__section">
+                                            <div class="rc-character-card__section-title">@L["PlayerRoom_Traits"]</div>
+                                            <div class="rc-character-inline-list">
+                                                @foreach (var traitItem in character.Traits)
+                                                {
+                                                    <span class="rc-inline-pill">@traitItem.TraitName: @traitItem.OptionName</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
+                                    @if (healthGauges.Count > 0 || (ShowObservedGauges && regularGauges.Count > 0))
+                                    {
+                                        <div class="rc-character-card__section">
+                                            <div class="rc-character-card__section-title">@L["PlayerRoom_Gauges"]</div>
+
+                                            @if (healthGauges.Count > 0)
+                                            {
+                                                <div class="rc-character-gauges">
+                                                    @foreach (var gauge in healthGauges)
+                                                    {
+                                                        var percent = gauge.MaxValue <= gauge.MinValue
+                                                            ? 0
+                                                            : Math.Clamp((int)Math.Round((double)(gauge.Value - gauge.MinValue) * 100 / (gauge.MaxValue - gauge.MinValue)), 0, 100);
+
+                                                        <div class="rc-health-gauge">
+                                                            <div class="rc-health-gauge__header">
+                                                                <span>@gauge.Name</span>
+                                                                <strong>@gauge.Value / @gauge.MaxValue</strong>
+                                                            </div>
+                                                            <div class="rc-health-gauge__track">
+                                                                <div class="rc-health-gauge__fill" style="@($"width:{percent}%")"></div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+
+                                            @if (ShowObservedGauges && regularGauges.Count > 0)
+                                            {
+                                                <div class="rc-character-gauges">
+                                                    @foreach (var gauge in regularGauges)
+                                                    {
+                                                        <div class="rc-character-gauge-line">
+                                                            <span class="rc-character-gauge-line__name">@gauge.Name</span>
+                                                            <span class="rc-character-gauge-line__value">@gauge.Value / @gauge.MaxValue</span>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </button>
+                            }
+                        }
+                    </div>
+
+                    @if (ObservedCharacterSheet is not null)
+                    {
+                        <aside class="rc-character-detail-panel">
+                            <div class="rc-character-detail-panel__header">
+                                <div>
+                                    <h5 class="rc-character-detail-panel__title">@ObservedCharacterSheet.Name</h5>
+                                    <div class="rc-character-detail-panel__meta">
+                                        <span class="rc-character-chip @(ObservedCharacterSheet.IsAlive ? "alive" : "dead")">
+                                            @(ObservedCharacterSheet.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="rc-character-detail-panel__actions">
+                                    @if (State.CanEditSessionCharacters)
+                                    {
+                                        @if (IsObservedCharacterEditMode || IsObservedBiographyEditMode)
+                                        {
+                                            <button type="button" @onclick="CancelObservedCharacterPanelEdition">@L["Common_Cancel"]</button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" @onclick="BeginObservedCharacterEdit">@L["EditCharacter_EditCharacter"]</button>
+                                        }
+                                    }
+
+                                    @if (!IsObservedCharacterEditMode && !IsObservedBiographyEditMode)
+                                    {
+                                        @if (ShowObservedCharacterBioPanel)
+                                        {
+                                            @if (State.CanEditSessionCharacters)
+                                            {
+                                                <button type="button" @onclick="BeginObservedBiographyEdit">@L["PlayerRoom_EditBiography"]</button>
+                                            }
+                                            <button type="button" @onclick="HideObservedBiography">@L["PlayerRoom_Statistics"]</button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" @onclick="ShowObservedBiography">@L["PlayerRoom_ViewBiography"]</button>
+                                        }
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="rc-character-detail-panel__body">
+                                @if (IsObservedCharacterEditMode && ObservedEditableCharacter is not null)
+                                {
+                                    @* <div class="rc-tool-form-grid">
+                                        <div class="rc-form-field">
+                                            <label>@L["EditCharacter_Name"]</label>
+                                            <input @bind="ObservedEditableCharacter.Name" />
+                                        </div>
+
+                                        @foreach (var typeattribute in ObservedEditableCharacter.Attributes)
+                                        {
+                                            <div class="rc-form-field">
+                                                        <label>@typeattribute.Name</label>
+                                                        <input type="number" @bind="typeattribute.Value" />
+                                            </div>
+                                        }
+
+                                        @foreach (var gauge in ObservedEditableCharacter.Gauges)
+                                        {
+                                            <div class="rc-form-field">
+                                                <label>@gauge.Name</label>
+                                                <input type="number" @bind="gauge.Value" />
+                                            </div>
+                                        }
+
+                                        @foreach (var trait in ObservedEditableCharacter.Traits)
+                                        {
+                                            <div class="rc-form-field">
+                                                <label>@trait.TraitName</label>
+                                                <select @bind="trait.SelectedOptionId">
+                                                    @foreach (var option in trait.Options)
+                                                    {
+                                                        <option value="@option.TraitOptionId">@option.Name</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                        }
+                                    </div> *@
+                                    <div class="rc-detail-block">
+                                        <div class="rc-detail-block__title">@L["EditCharacter_PlayerName"]</div>
+                                                <div>@ObservedEditableCharacter.PlayerName</div>
+                                    </div>
+
+                                    <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                        <div class="rc-form-field">
+                                            <label>@L["EditCharacter_Name"]</label>
+                                                    <input @bind="ObservedEditableCharacter.Name" />
+                                        </div>
+                                    </div>
+
+                                    <div class="rc-detail-block">
+                                        <div class="rc-detail-block__title">@L["PlayerRoom_Attributes"]</div>
+                                        <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                                    @foreach (var attributeItem in ObservedEditableCharacter.Attributes)
+                                            {
+                                                <div class="rc-form-field">
+                                                    <label>@attributeItem.Name (@attributeItem.MinValue - @attributeItem.MaxValue)</label>
+                                                    <input type="number"
+                                                            min="@attributeItem.MinValue"
+                                                            max="@attributeItem.MaxValue"
+                                                            @bind="attributeItem.Value" />
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    @if (ObservedEditableCharacter.DerivedStats.Count > 0)
+                                    {
+                                        <div class="rc-detail-block">
+                                            <div class="rc-detail-block__title">@L["PlayerRoom_DerivedStats"]</div>
+                                            <ul class="rc-detail-list">
+                                                @foreach (var derived in ObservedEditableCharacter.DerivedStats)
+                                                {
+                                                    <li>@derived.Name : @derived.Value</li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
+
+                                    @if (ObservedEditableCharacter.Metrics.Count > 0)
+                                    {
+                                        <div class="rc-detail-block">
+                                            <div class="rc-detail-block__title">@L["PlayerRoom_Metrics"]</div>
+                                            <ul class="rc-detail-list">
+                                                @foreach (var metric in ObservedEditableCharacter.Metrics)
+                                                {
+                                                    <li>@metric.Name : @metric.Value</li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
+
+                                    <div class="rc-detail-block">
+                                        <div class="rc-detail-block__title">@L["PlayerRoom_Traits"]</div>
+                                        <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                                    @foreach (var traitItem in ObservedEditableCharacter.Traits)
+                                            {
+                                                <div class="rc-form-field">
+                                                    <label>@traitItem.TraitName</label>
+                                                    <select @bind="traitItem.SelectedOptionId">
+                                                        <option value="">--</option>
+                                                        @foreach (var optionItem in traitItem.Options)
+                                                        {
+                                                            <option value="@optionItem.TraitOptionId">@optionItem.Name</option>
+                                                        }
+                                                    </select>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+
+                                    <div class="rc-detail-block">
+                                        <div class="rc-detail-block__title">@L["PlayerRoom_Gauges"]</div>
+                                        <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                                    @foreach (var gaugeItem in ObservedEditableCharacter.Gauges)
+                                            {
+                                                <div class="rc-form-field">
+                                                    <label>
+                                                        @gaugeItem.Name (@gaugeItem.MinValue - @gaugeItem.MaxValue)
+                                                        @if (gaugeItem.IsHealthGauge)
+                                                        {
+                                                            <span>- @L["EditCharacter_HealthGauge"]</span>
+                                                        }
+                                                    </label>
+                                                    <input type="number"
+                                                            min="@gaugeItem.MinValue"
+                                                            max="@gaugeItem.MaxValue"
+                                                            @bind="gaugeItem.Value" />
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+
+                                            <div class="rc-detail-block">
+                                                <div class="rc-detail-block__title">@L["EditCharacter_Talents"]</div>
+                                                @if (ObservedEditableCharacter.Talents.Count == 0)
+                                                {
+                                                    <p>@L["EditCharacter_NoTalentsDefined"]</p>
+                                                }
+                                                else
+                                                {
+                                                    <div class="rc-character-inline-list">
+                                                        @foreach (var talentItem in ObservedEditableCharacter.Talents)
+                                                        {
+                                                            <label class="rc-filter-toggle">
+                                                                <input type="checkbox" @bind="talentItem.IsSelected" />
+                                                                <span>@talentItem.Name</span>
+                                                            </label>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+
+                                            <div class="rc-detail-block">
+                                                <div class="rc-detail-block__title">@L["EditCharacter_Items"]</div>
+                                                @if (ObservedEditableCharacter.Items.Count == 0)
+                                                {
+                                                    <p>@L["EditCharacter_NoItemsDefined"]</p>
+                                                }
+                                                else
+                                                {
+                                                    <div class="rc-character-inline-list">
+                                                        @foreach (var item in ObservedEditableCharacter.Items)
+                                                        {
+                                                            <label class="rc-filter-toggle">
+                                                                <input type="checkbox" @bind="item.IsSelected" />
+                                                                <span>@item.Name</span>
+                                                            </label>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+
+
+                                    <div class="rc-tool-actions">
+                                        <button type="button" @onclick="SaveObservedCharacterEdits">@L["Common_Save"]</button>
+                                    </div>
+                                }
+                                else if (IsObservedBiographyEditMode && ObservedEditableCharacter is not null)
+                                {
+                                    <div class="rc-form-field rc-form-field--full">
+                                        <label>@L["EditCharacter_Biography"]</label>
+                                        <textarea rows="12" @bind="ObservedEditableCharacter.Biography"></textarea>
+                                    </div>
+
+                                    <div class="rc-tool-actions">
+                                        <button type="button" @onclick="SaveObservedBiography">@L["Common_Save"]</button>
+                                    </div>
+                                }
+                                else if (ShowObservedCharacterBioPanel)
+                                {
+                                    <div class="rc-character-bio">
+                                        @if (string.IsNullOrWhiteSpace(ObservedCharacterSheet.Biography))
+                                        {
+                                            <span>@L["PlayerRoom_NoBiography"]</span>
+                                        }
+                                        else
+                                        {
+                                            @ObservedCharacterSheet.Biography
+                                        }
+                                    </div>
+                                }
+                                        else
+                                        {
+                                            <div class="rc-detail-block">
+                                                <div class="rc-detail-block__title">@L["PlayerRoom_Attributes"]</div>
+                                                <ul class="rc-detail-list">
+                                                    @foreach (var item in ObservedCharacterSheet.Attributes)
+                                                    {
+                                                        <li>@item.Name : @item.Value</li>
+                                                    }
+                                                </ul>
+                                            </div>
+
+                                            @if (ObservedCharacterSheet.DerivedStats.Count > 0)
+                                            {
+                                                <div class="rc-detail-block">
+                                                    <div class="rc-detail-block__title">@L["PlayerRoom_DerivedStats"]</div>
+                                                    <ul class="rc-detail-list">
+                                                        @foreach (var item in ObservedCharacterSheet.DerivedStats)
+                                                        {
+                                                            <li>@item.Name : @item.Value</li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            }
+
+                                            @if (ObservedCharacterSheet.Traits.Count > 0)
+                                            {
+                                                <div class="rc-detail-block">
+                                                    <div class="rc-detail-block__title">@L["PlayerRoom_Traits"]</div>
+                                                    <ul class="rc-detail-list">
+                                                        @foreach (var item in ObservedCharacterSheet.Traits)
+                                                        {
+                                                            <li>@item.TraitName : @item.OptionName</li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            }
+
+                                            @if (ObservedCharacterSheet.Talents.Count > 0)
+                                            {
+                                                <div class="rc-detail-block">
+                                                    <div class="rc-detail-block__title">@L["EditCharacter_Talents"]</div>
+                                                    <ul class="rc-detail-list">
+                                                        @foreach (var item in ObservedCharacterSheet.Talents)
+                                                        {
+                                                            <li>@item.Name</li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            }
+
+                                            @if (ObservedCharacterSheet.Items.Count > 0)
+                                            {
+                                                <div class="rc-detail-block">
+                                                    <div class="rc-detail-block__title">@L["EditCharacter_Items"]</div>
+                                                    <ul class="rc-detail-list">
+                                                        @foreach (var item in ObservedCharacterSheet.Items)
+                                                        {
+                                                            <li>@item.Name</li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            }
+
+                                            @if (ObservedCharacterSheet.Gauges.Count > 0)
+                                            {
+                                                <div class="rc-detail-block">
+                                                    <div class="rc-detail-block__title">@L["PlayerRoom_Gauges"]</div>
+                                                    <ul class="rc-detail-list">
+                                                        @foreach (var gauge in ObservedCharacterSheet.Gauges)
+                                                        {
+                                                            <li>@gauge.Name : @gauge.Value / @gauge.MaxValue</li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            }
+                                        }
+
+                                @if (!string.IsNullOrWhiteSpace(ObservedCharacterPanelMessage))
+                                {
+                                    <div class="rc-inline-error">@ObservedCharacterPanelMessage</div>
+                                }
+                            </div>
+                        </aside>
+                    }
+                </div>
+            </section>
         }
         else
         {
-            <ul>
-                @foreach (var character in SpecialRoleCharacters)
-                {
-                    <li>
-                        <button @onclick="() => LoadObservedCharacter(character.CharacterId)">@character.CharacterName</button>
-                        <span>
-                            - @(character.IsAlive? L["Common_Alive"] : L["Common_Dead"])
-                            - @(character.IsOnline? L["Common_Online"] : L["Common_Offline"])
-                            - @character.PlayerName
-                        </span>
-                    </li>
-                }
-            </ul>
-        }
-
-        @if (ObservedCharacterSheet is not null)
-        {
-            <hr />
-            <h4>@L["SessionPage_SelectedCharacterSheet"]</h4>
-            @RenderCharacterSheet(ObservedCharacterSheet, true)
-
-            @if (State.CanEditSessionCharacters)
+            @if (!IsTwitchEnabled)
             {
-                <button @onclick="EditObservedCharacter">@L["EditCharacter_Title"]</button>
+                <div class="rc-empty-panel rc-empty-panel--small">
+                    <p>@L["PlayerRoom_StreamDisabled"]</p>
+                </div>
+            }
+            else
+            {
+                <div class="rc-player-stream">
+                    @if (ShowTwitchChat)
+                    {
+                        <iframe class="rc-player-stream__chat"
+                                src="@($"https://www.twitch.tv/embed/{TwitchChannelName}/chat?parent={TwitchParentHost}")">
+                        </iframe>
+                    }
+
+                    <iframe class="rc-player-stream__video"
+                            src="@($"https://player.twitch.tv/?channel={TwitchChannelName}&parent={TwitchParentHost}")"
+                            allow="fullscreen">
+                    </iframe>
+                </div>
+
+                <div class="rc-tool-actions" style="margin-top: 0.75rem;">
+                    <button type="button" @onclick="() => ShowTwitchChat = !ShowTwitchChat">
+                        @(ShowTwitchChat ? L["PlayerRoom_HideChat"] : L["PlayerRoom_ShowChat"])
+                    </button>
+                </div>
             }
         }
-    }
-
-    @if (!string.IsNullOrWhiteSpace(Message))
-    {
-        <p>@Message</p>
-    }
+    </div>
+</aside>
+    </section>
 }
 
 @code {
@@ -260,9 +986,61 @@ else
     private bool SpecialIncludeDead;
     private HubConnection? hubConnection;
     private bool PresenceJoined;
+    private Guid CurrentUserId;
+    private bool RedirectToLogin;
+
+    private bool ShowSessionCharactersPanel;
+    private bool ShowObservedAttributes = false;
+    private bool ShowObservedDerivedStats = false;
+    private bool ShowObservedTraits = true;
+    private bool ShowObservedGauges = false;
+    private bool SpecialIncludeNpcs;
+    private string ObservedCharacterSortMode = "character-name";
+
+    private EditableCharacterDto? ObservedEditableCharacter;
+    private bool IsObservedCharacterEditMode;
+    private bool IsObservedBiographyEditMode;
+    private bool ShowObservedCharacterBioPanel;
+    private string ObservedCharacterPanelMessage = string.Empty;
+    private bool ShowEditSystemConfirm;
+    private bool IsRollingCurrentTest;
+    private CharacterCreationTemplateDto? CreationTemplate;
+    private string NewCharacterName = string.Empty;
+    private string NewCharacterBiography = string.Empty;
+    private Dictionary<Guid, int> CreationAttributeValues = new();
+    private Dictionary<Guid, Guid> CreationTraitSelections = new();
+
+    private bool IsCreatingCharacterInline;
+    private bool IsEditingBiography;
+    private string BiographyDraft = string.Empty;
+    private bool ShowBiographyPanel;
+    private bool IsViewingDeadCharacter => ViewedDeadCharacter is not null;
+
+    private bool IsTwitchEnabled = false;
+    private bool ShowTwitchChat = true;
+    private bool IsTestDismissed;
+    private bool IsPollDismissed;
+
+    private const string TwitchChannelName = "silkinaeltv";
+    private string TwitchParentHost => new Uri(Navigation.BaseUri).Host;
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!isAuthenticated || string.IsNullOrWhiteSpace(userIdValue))
+        {
+            RedirectToLogin = true;
+            IsLoaded = true;
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+
         await LoadState();
         await LoadActiveTest();
         await LoadLatestPoll();
@@ -277,23 +1055,50 @@ else
         IsLoaded = true;
     }
 
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToLogin)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+
+        return Task.CompletedTask;
+    }
+
     private async Task LoadState()
     {
         try
         {
             Message = string.Empty;
             State = await CharacterService.GetPlayerRoomStateAsync(PlayerSessionId);
+
+            if (State?.AliveCharacter is null)
+            {
+                IsEditingBiography = false;
+                ShowBiographyPanel = false;
+            }
+
             ViewedDeadCharacter = null;
-            ObservedCharacterSheet = null;
             StartCreationCountdownIfNeeded();
 
-            if (State.CanViewSessionCharacters)
+            if (State is not null && !State.CanCreateNewCharacter)
+            {
+                IsCreatingCharacterInline = false;
+                CreationTemplate = null;
+            }
+
+            if (State?.CanViewSessionCharacters == true)
             {
                 await LoadSpecialRoleCharacters();
             }
             else
             {
                 SpecialRoleCharacters.Clear();
+                ObservedCharacterSheet = null;
+                ObservedEditableCharacter = null;
+                IsObservedCharacterEditMode = false;
+                IsObservedBiographyEditMode = false;
+                ShowObservedCharacterBioPanel = false;
             }
         }
         catch (Exception ex)
@@ -307,6 +1112,7 @@ else
         try
         {
             ActiveTest = await GameTestService.GetActiveGameTestForPlayerAsync(PlayerSessionId);
+            IsTestDismissed = false;
         }
         catch (Exception ex)
         {
@@ -334,18 +1140,21 @@ else
         });
 
         hubConnection.On("CharacterStateChanged", async () =>
-        {
-            await InvokeAsync(async () =>
-            {
-                await LoadState();
-                StateHasChanged();
-            });
-        });
+{
+    await InvokeAsync(async () =>
+    {
+        await LoadState();
+        await LoadActiveTest();
+        await LoadLatestPoll();
+        StateHasChanged();
+    });
+});
 
         hubConnection.On("TestChanged", async () =>
         {
             await InvokeAsync(async () =>
             {
+                await LoadState();
                 await LoadActiveTest();
                 StateHasChanged();
             });
@@ -355,6 +1164,7 @@ else
         {
             await InvokeAsync(async () =>
             {
+                await LoadState();
                 await LoadLatestPoll();
                 StateHasChanged();
             });
@@ -379,8 +1189,14 @@ else
     {
         try
         {
-            if (ActiveTest is null)
+            if (ActiveTest is null || IsRollingCurrentTest)
                 return;
+
+            Message = string.Empty;
+            IsRollingCurrentTest = true;
+
+            StateHasChanged();
+            await Task.Delay(1000);
 
             await GameTestService.RollForPlayerAsync(PlayerSessionId, ActiveTest.GameTestId, false);
             await LoadActiveTest();
@@ -389,11 +1205,85 @@ else
         {
             Message = $"{L["Common_Error"]} : {ex.Message}";
         }
+        finally
+        {
+            IsRollingCurrentTest = false;
+        }
     }
 
-    private void GoToCreateCharacter()
+    private async Task GoToCreateCharacter()
     {
-        Navigation.NavigateTo($"/player/create-character/{PlayerSessionId}");
+        try
+        {
+            Message = string.Empty;
+
+            CreationTemplate = await CharacterService.GetCharacterCreationTemplateAsync(PlayerSessionId);
+            CreationAttributeValues.Clear();
+            CreationTraitSelections.Clear();
+
+            foreach (var attribute in CreationTemplate.Attributes)
+            {
+                CreationAttributeValues[attribute.AttributeDefinitionId] = attribute.DefaultValue;
+            }
+
+            foreach (var trait in CreationTemplate.Traits)
+            {
+                if (trait.IsRandomSelectionGroup)
+                    continue;
+
+                var firstUnlockedOption = trait.Options.FirstOrDefault(x => !x.IsLockedForCharacterCreation);
+                if (firstUnlockedOption is not null)
+                {
+                    CreationTraitSelections[trait.TraitDefinitionId] = firstUnlockedOption.TraitOptionId;
+                }
+            }
+
+            NewCharacterName = string.Empty;
+            NewCharacterBiography = string.Empty;
+            IsCreatingCharacterInline = true;
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private Task CancelInlineCharacterCreation()
+    {
+        IsCreatingCharacterInline = false;
+        CreationTemplate = null;
+        NewCharacterName = string.Empty;
+        NewCharacterBiography = string.Empty;
+        CreationAttributeValues.Clear();
+        CreationTraitSelections.Clear();
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleCreateCharacterInline()
+    {
+        try
+        {
+            if (CreationTemplate is null)
+                return;
+
+            Message = string.Empty;
+
+            await CharacterService.CreateCharacterAsync(
+                PlayerSessionId,
+                NewCharacterName,
+                NewCharacterBiography,
+                CreationAttributeValues,
+                CreationTraitSelections);
+
+            await SessionNotifier.NotifyCharacterStateChangedAsync(CreationTemplate.SessionId);
+
+            IsCreatingCharacterInline = false;
+            await LoadState();
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
     }
 
     private async Task LoadDeadCharacter(Guid characterId)
@@ -401,6 +1291,74 @@ else
         try
         {
             ViewedDeadCharacter = await CharacterService.GetCharacterSheetAsync(PlayerSessionId, characterId);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ViewDeadCharacter(Guid characterId)
+    {
+        await LoadDeadCharacter(characterId);
+        ShowBiographyPanel = false;
+        IsEditingBiography = false;
+    }
+
+    private Task CloseViewedDeadCharacter()
+    {
+        ViewedDeadCharacter = null;
+        return Task.CompletedTask;
+    }
+
+    private void BeginBiographyEdit()
+    {
+        if (State?.AliveCharacter is null)
+            return;
+
+        ShowBiographyPanel = true;
+        BiographyDraft = State.AliveCharacter.Biography ?? string.Empty;
+        IsEditingBiography = true;
+        Message = string.Empty;
+    }
+
+    private void ShowBiographyView()
+    {
+        ShowBiographyPanel = true;
+        IsEditingBiography = false;
+        BiographyDraft = State?.AliveCharacter?.Biography ?? string.Empty;
+    }
+
+    private void ShowStatsView()
+    {
+        ShowBiographyPanel = false;
+        IsEditingBiography = false;
+    }
+
+    private Task CancelBiographyEdit()
+    {
+        IsEditingBiography = false;
+        ShowBiographyPanel = true;
+        BiographyDraft = State?.AliveCharacter?.Biography ?? string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveBiography()
+    {
+        try
+        {
+            if (State?.AliveCharacter is null)
+                return;
+
+            Message = string.Empty;
+
+            await CharacterService.UpdateCharacterBiographyForPlayerAsync(
+                PlayerSessionId,
+                State.AliveCharacter.CharacterId,
+                BiographyDraft);
+
+            IsEditingBiography = false;
+            await LoadState();
         }
         catch (Exception ex)
         {
@@ -422,7 +1380,8 @@ else
             SpecialRoleCharacters = await CharacterService.GetSessionCharacterSummariesForPlayerAsync(
                 PlayerSessionId,
                 SpecialIncludeOffline,
-                SpecialIncludeDead);
+                SpecialIncludeDead,
+                SpecialIncludeNpcs);
 
             if (ObservedCharacterSheet is not null)
             {
@@ -435,11 +1394,27 @@ else
         }
     }
 
-    private async Task LoadObservedCharacter(Guid characterId)
+    private async Task ToggleObservedCharacterDetails(Guid characterId)
     {
         try
         {
+            if (ObservedCharacterSheet?.CharacterId == characterId)
+            {
+                ObservedCharacterSheet = null;
+                ObservedEditableCharacter = null;
+                IsObservedCharacterEditMode = false;
+                IsObservedBiographyEditMode = false;
+                ShowObservedCharacterBioPanel = false;
+                ObservedCharacterPanelMessage = string.Empty;
+                return;
+            }
+
             ObservedCharacterSheet = await CharacterService.GetCharacterSheetForPlayerAsync(PlayerSessionId, characterId);
+            ObservedEditableCharacter = null;
+            IsObservedCharacterEditMode = false;
+            IsObservedBiographyEditMode = false;
+            ShowObservedCharacterBioPanel = false;
+            ObservedCharacterPanelMessage = string.Empty;
         }
         catch (Exception ex)
         {
@@ -447,137 +1422,515 @@ else
         }
     }
 
-    private void EditObservedCharacter()
+    private async Task BeginObservedCharacterEdit()
     {
         if (State is null || ObservedCharacterSheet is null || !State.CanEditSessionCharacters)
             return;
 
-        Navigation.NavigateTo($"/mj/session/{State.SessionId}/characters/{ObservedCharacterSheet.CharacterId}/edit?room={PlayerSessionId}");
+        ObservedEditableCharacter = await CharacterService.GetEditableCharacterForSessionAsync(
+            State.SessionId,
+            ObservedCharacterSheet.CharacterId,
+            CurrentUserId);
+
+        IsObservedCharacterEditMode = ObservedEditableCharacter is not null;
+        IsObservedBiographyEditMode = false;
+        ShowObservedCharacterBioPanel = false;
+        ObservedCharacterPanelMessage = string.Empty;
     }
 
-    private void EditSessionGameSystem()
+    private async Task BeginObservedBiographyEdit()
     {
-        if (State?.SessionGameSystemId is null || !State.CanEditSessionGameSystem)
+        if (State is null || ObservedCharacterSheet is null || !State.CanEditSessionCharacters)
             return;
 
-        Navigation.NavigateTo($"/mj/gamesystems/{State.SessionGameSystemId.Value}");
+        ObservedEditableCharacter = await CharacterService.GetEditableCharacterForSessionAsync(
+            State.SessionId,
+            ObservedCharacterSheet.CharacterId,
+            CurrentUserId);
+
+        ShowObservedCharacterBioPanel = true;
+        IsObservedBiographyEditMode = ObservedEditableCharacter is not null;
+        IsObservedCharacterEditMode = false;
+        ObservedCharacterPanelMessage = string.Empty;
     }
 
-    private RenderFragment RenderCharacterSheet(CharacterSheetDto sheet, bool readOnly) => builder =>
+    private Task ShowObservedBiography()
     {
-        var seq = 0;
+        ShowObservedCharacterBioPanel = true;
+        IsObservedBiographyEditMode = false;
+        IsObservedCharacterEditMode = false;
+        ObservedCharacterPanelMessage = string.Empty;
+        return Task.CompletedTask;
+    }
 
-        builder.OpenElement(seq++, "p");
-        builder.AddContent(seq++, $"{L["PlayerRoom_CharacterName"]} : {sheet.Name}");
-        builder.CloseElement();
+    private Task HideObservedBiography()
+    {
+        ShowObservedCharacterBioPanel = false;
+        IsObservedBiographyEditMode = false;
+        ObservedCharacterPanelMessage = string.Empty;
+        return Task.CompletedTask;
+    }
 
-        builder.OpenElement(seq++, "p");
-        builder.AddContent(seq++, $"{L["PlayerRoom_CharacterStatus"]} : {(sheet.IsAlive ? L["Common_Alive"] : L["Common_Dead"])}");
-        builder.CloseElement();
+    private Task CancelObservedCharacterPanelEdition()
+    {
+        IsObservedCharacterEditMode = false;
+        IsObservedBiographyEditMode = false;
+        ObservedCharacterPanelMessage = string.Empty;
+        return Task.CompletedTask;
+    }
 
-        if (!string.IsNullOrWhiteSpace(sheet.Biography))
+    private async Task SaveObservedCharacterEdits()
+    {
+        if (State is null || ObservedEditableCharacter is null)
+            return;
+
+        try
         {
-            builder.OpenElement(seq++, "p");
-            builder.AddContent(seq++, $"{L["PlayerRoom_CharacterBiography"]} : {sheet.Biography}");
-            builder.CloseElement();
-        }
+            ObservedCharacterPanelMessage = string.Empty;
 
-        builder.OpenElement(seq++, "h5");
-        builder.AddContent(seq++, L["EditCharacter_Talents"]);
-        builder.CloseElement();
+            var result = await CharacterService.UpdateCharacterForSessionAsync(
+                State.SessionId,
+                ObservedEditableCharacter.CharacterId,
+                CurrentUserId,
+                new UpdateCharacterRequestDto
+                {
+                    Name = ObservedEditableCharacter.Name,
+                    Biography = ObservedEditableCharacter.Biography,
+                    Attributes = ObservedEditableCharacter.Attributes,
+                    Traits = ObservedEditableCharacter.Traits,
+                    Gauges = ObservedEditableCharacter.Gauges,
+                    SelectedTalentIds = ObservedEditableCharacter.Talents
+                        .Where(x => x.IsSelected)
+                        .Select(x => x.DefinitionId)
+                        .ToList(),
+                    SelectedItemIds = ObservedEditableCharacter.Items
+                        .Where(x => x.IsSelected)
+                        .Select(x => x.DefinitionId)
+                        .ToList()
+                });
 
-        builder.OpenElement(seq++, "ul");
-        foreach (var talentLine in sheet.Talents)
-        {
-            builder.OpenElement(seq++, "li");
-            builder.AddContent(seq++, talentLine.Name);
-            builder.CloseElement();
-        }
-        builder.CloseElement();
+            await LoadSpecialRoleCharacters();
 
-        builder.OpenElement(seq++, "h5");
-        builder.AddContent(seq++, L["EditCharacter_Items"]);
-        builder.CloseElement();
-
-        builder.OpenElement(seq++, "ul");
-        foreach (var itemLine in sheet.Items)
-        {
-            builder.OpenElement(seq++, "li");
-            builder.AddContent(seq++, itemLine.Name);
-            builder.CloseElement();
-        }
-        builder.CloseElement();
-
-        builder.OpenElement(seq++, "h5");
-        builder.AddContent(seq++, L["PlayerRoom_Attributes"]);
-        builder.CloseElement();
-
-        builder.OpenElement(seq++, "ul");
-        foreach (var attributeLine in sheet.Attributes)
-        {
-            builder.OpenElement(seq++, "li");
-            builder.AddContent(seq++, $"{attributeLine.Name} : {attributeLine.Value}");
-            builder.CloseElement();
-        }
-        builder.CloseElement();
-
-        if (sheet.DerivedStats.Count > 0)
-        {
-            builder.OpenElement(seq++, "h5");
-            builder.AddContent(seq++, L["PlayerRoom_DerivedStats"]);
-            builder.CloseElement();
-
-            builder.OpenElement(seq++, "ul");
-            foreach (var derivedLine in sheet.DerivedStats)
+            if (ObservedCharacterSheet is not null)
             {
-                builder.OpenElement(seq++, "li");
-                builder.AddContent(seq++, $"{derivedLine.Name} : {derivedLine.Value}");
-                builder.CloseElement();
+                ObservedCharacterSheet = await CharacterService.GetCharacterSheetForPlayerAsync(
+                    PlayerSessionId,
+                    ObservedCharacterSheet.CharacterId);
             }
-            builder.CloseElement();
-        }
 
-        builder.OpenElement(seq++, "h5");
-        builder.AddContent(seq++, L["PlayerRoom_Traits"]);
-        builder.CloseElement();
+            ObservedEditableCharacter = await CharacterService.GetEditableCharacterForSessionAsync(
+                State.SessionId,
+                ObservedEditableCharacter.CharacterId,
+                CurrentUserId);
 
-        builder.OpenElement(seq++, "ul");
-        foreach (var traitLine in sheet.Traits)
-        {
-            builder.OpenElement(seq++, "li");
-            builder.AddContent(seq++, $"{traitLine.TraitName} : {traitLine.OptionName}");
-            builder.CloseElement();
-        }
-        builder.CloseElement();
+            IsObservedCharacterEditMode = false;
+            ObservedCharacterPanelMessage = L["EditCharacter_Saved"];
 
-        builder.OpenElement(seq++, "h5");
-        builder.AddContent(seq++, L["PlayerRoom_Gauges"]);
-        builder.CloseElement();
-
-        builder.OpenElement(seq++, "ul");
-        foreach (var gaugeLine in sheet.Gauges)
-        {
-            builder.OpenElement(seq++, "li");
-            builder.AddContent(seq++, $"{gaugeLine.Name} : {gaugeLine.Value} / {gaugeLine.MaxValue}");
-            builder.CloseElement();
-        }
-        builder.CloseElement();
-
-        if (readOnly)
-        {
-            @if (!sheet.IsAlive)
+            if (result.ResurrectionBlocked)
             {
-                builder.OpenElement(seq++, "p");
-                builder.AddContent(seq++, L["PlayerRoom_ReadOnlyDeadCharacter"]);
-                builder.CloseElement();
+                ObservedCharacterPanelMessage = $"{ObservedCharacterPanelMessage} {L["EditCharacter_ResurrectionBlocked"]}";
             }
         }
-    };
+        catch (Exception ex)
+        {
+            ObservedCharacterPanelMessage = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task SaveObservedBiography()
+    {
+        if (State is null || ObservedEditableCharacter is null)
+            return;
+
+        try
+        {
+            ObservedCharacterPanelMessage = string.Empty;
+
+            await CharacterService.UpdateCharacterForSessionAsync(
+                State.SessionId,
+                ObservedEditableCharacter.CharacterId,
+                CurrentUserId,
+                new UpdateCharacterRequestDto
+                {
+                    Name = ObservedEditableCharacter.Name,
+                    Biography = ObservedEditableCharacter.Biography,
+                    Attributes = ObservedEditableCharacter.Attributes,
+                    Traits = ObservedEditableCharacter.Traits,
+                    Gauges = ObservedEditableCharacter.Gauges,
+                    SelectedTalentIds = ObservedEditableCharacter.Talents
+                        .Where(x => x.IsSelected)
+                        .Select(x => x.DefinitionId)
+                        .ToList(),
+                    SelectedItemIds = ObservedEditableCharacter.Items
+                        .Where(x => x.IsSelected)
+                        .Select(x => x.DefinitionId)
+                        .ToList()
+                });
+
+            await LoadSpecialRoleCharacters();
+
+            if (ObservedCharacterSheet is not null)
+            {
+                ObservedCharacterSheet = await CharacterService.GetCharacterSheetForPlayerAsync(
+                    PlayerSessionId,
+                    ObservedCharacterSheet.CharacterId);
+            }
+
+            ObservedEditableCharacter = await CharacterService.GetEditableCharacterForSessionAsync(
+                State.SessionId,
+                ObservedEditableCharacter.CharacterId,
+                CurrentUserId);
+
+            IsObservedBiographyEditMode = false;
+            ShowObservedCharacterBioPanel = true;
+            ObservedCharacterPanelMessage = L["SessionPage_BiographySaved"];
+        }
+        catch (Exception ex)
+        {
+            ObservedCharacterPanelMessage = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private Task EditSessionGameSystem()
+    {
+        if (State?.SessionGameSystemId is null || !State.CanEditSessionGameSystem)
+            return Task.CompletedTask;
+
+        ShowEditSystemConfirm = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelEditSessionGameSystem()
+    {
+        ShowEditSystemConfirm = false;
+        return Task.CompletedTask;
+    }
+
+    private Task ConfirmEditSessionGameSystem()
+    {
+        if (State?.SessionGameSystemId is null || !State.CanEditSessionGameSystem)
+            return Task.CompletedTask;
+
+        ShowEditSystemConfirm = false;
+
+        Navigation.NavigateTo(
+            $"/mj/gamesystems/{State.SessionGameSystemId.Value}?returnTo=player-room&playerSessionId={PlayerSessionId}&sessionId={State.SessionId}");
+
+        return Task.CompletedTask;
+    }
+
+    private void CreateNpcFromAssistantPanel()
+    {
+        if (State is null || !State.CanEditSessionCharacters)
+            return;
+
+        Navigation.NavigateTo($"/mj/session/{State.SessionId}");
+    }
+
+    private IEnumerable<CharacterCreationTraitOptionDto> GetSelectableCreationOptions(CharacterCreationTraitDto trait)
+    {
+        return trait.Options.Where(x => !x.IsLockedForCharacterCreation);
+    }
+
+    private IEnumerable<(string Value, string Label)> GetObservedCharacterSortOptions()
+    {
+        yield return ("character-name", L["SessionPage_Sort_CharacterName"]);
+        yield return ("player-name", L["SessionPage_Sort_PlayerName"]);
+
+        var healthGaugeNames = SpecialRoleCharacters
+            .SelectMany(x => x.Gauges)
+            .Where(x => x.IsHealthGauge)
+            .Select(x => x.Name)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        foreach (var gaugeName in healthGaugeNames)
+        {
+            yield return ($"gauge:{gaugeName}", $"{L["SessionPage_Sort_HealthGauge"]} - {gaugeName}");
+        }
+
+        var traitNames = SpecialRoleCharacters
+            .SelectMany(x => x.Traits)
+            .Select(x => x.TraitName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.CurrentCultureIgnoreCase)
+            .OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        foreach (var traitName in traitNames)
+        {
+            yield return ($"trait:{traitName}", $"{L["SessionPage_Sort_Trait"]} - {traitName}");
+        }
+    }
+
+    private IEnumerable<SessionCharacterSummaryDto> GetSortedObservedCharacters()
+    {
+        var query = SpecialRoleCharacters.AsEnumerable();
+
+        query = ObservedCharacterSortMode switch
+        {
+            "player-name" => query
+                .OrderBy(x => x.PlayerName, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(x => x.CharacterName, StringComparer.CurrentCultureIgnoreCase),
+
+            _ when ObservedCharacterSortMode.StartsWith("gauge:", StringComparison.OrdinalIgnoreCase) => query
+                .OrderBy(x => GetObservedGaugeSortValue(x, ObservedCharacterSortMode["gauge:".Length..]))
+                .ThenBy(x => x.CharacterName, StringComparer.CurrentCultureIgnoreCase),
+
+            _ when ObservedCharacterSortMode.StartsWith("trait:", StringComparison.OrdinalIgnoreCase) => query
+                .OrderBy(x => GetObservedTraitSortValue(x, ObservedCharacterSortMode["trait:".Length..]), StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(x => x.CharacterName, StringComparer.CurrentCultureIgnoreCase),
+
+            _ => query
+                .OrderBy(x => x.CharacterName, StringComparer.CurrentCultureIgnoreCase)
+                .ThenBy(x => x.PlayerName, StringComparer.CurrentCultureIgnoreCase)
+        };
+
+        return query;
+    }
+
+    private int GetObservedGaugeSortValue(SessionCharacterSummaryDto character, string gaugeName)
+    {
+        return character.Gauges
+            .FirstOrDefault(x => string.Equals(x.Name, gaugeName, StringComparison.CurrentCultureIgnoreCase))
+            ?.Value ?? int.MaxValue;
+    }
+
+    private string GetObservedTraitSortValue(SessionCharacterSummaryDto character, string traitName)
+    {
+        return character.Traits
+            .FirstOrDefault(x => string.Equals(x.TraitName, traitName, StringComparison.CurrentCultureIgnoreCase))
+            ?.OptionName ?? string.Empty;
+    }
+
+    private RenderFragment RenderCharacterSheet(CharacterSheetDto sheet, bool isDeadView) => builder =>
+{
+    var seq = 0;
+
+    void Open(string tag) => builder.OpenElement(seq++, tag);
+    void Close() => builder.CloseElement();
+    void Text(string value) => builder.AddContent(seq++, value);
+
+    Open("div");
+    builder.AddAttribute(seq++, "class", "rc-player-character-sheet");
+
+    Open("div");
+    builder.AddAttribute(seq++, "class", "rc-player-character-sheet__hero");
+
+    Open("div");
+    builder.AddAttribute(seq++, "class", "rc-player-character-sheet__name");
+    Text(sheet.Name);
+    Close();
+
+    Open("div");
+    builder.AddAttribute(seq++, "class", $"rc-player-character-sheet__status {(sheet.IsAlive ? "alive" : "dead")}");
+    Text(sheet.IsAlive ? L["Common_Alive"] : L["Common_Dead"]);
+    Close();
+
+    Close();
+
+    if (sheet.Attributes.Count > 0)
+    {
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-filter-group-card");
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-detail-block__title");
+        Text(L["PlayerRoom_Attributes"]);
+        Close();
+
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-player-stat-grid");
+        foreach (var item in sheet.Attributes)
+        {
+            Open("div");
+            builder.AddAttribute(seq++, "class", "rc-player-stat-card");
+            Open("div");
+            builder.AddAttribute(seq++, "class", "rc-player-stat-card__label");
+            Text(item.Name);
+            Close();
+            Open("div");
+            builder.AddAttribute(seq++, "class", "rc-player-stat-card__value");
+            Text(item.Value.ToString());
+            Close();
+            Close();
+        }
+        Close();
+        Close();
+    }
+
+    if (sheet.DerivedStats.Count > 0)
+    {
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-filter-group-card");
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-detail-block__title");
+        Text(L["PlayerRoom_DerivedStats"]);
+        Close();
+
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-player-stat-grid");
+        foreach (var item in sheet.DerivedStats)
+        {
+            Open("div");
+            builder.AddAttribute(seq++, "class", "rc-player-stat-card");
+            Open("div");
+            builder.AddAttribute(seq++, "class", "rc-player-stat-card__label");
+            Text(item.Name);
+            Close();
+            Open("div");
+            builder.AddAttribute(seq++, "class", "rc-player-stat-card__value");
+            Text(item.Value.ToString());
+            Close();
+            Close();
+        }
+        Close();
+        Close();
+    }
+
+    if (sheet.Traits.Count > 0)
+    {
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-filter-group-card");
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-detail-block__title");
+        Text(L["PlayerRoom_Traits"]);
+        Close();
+
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-player-pill-list");
+        foreach (var item in sheet.Traits)
+        {
+            Open("div");
+            builder.AddAttribute(seq++, "class", "rc-player-pill");
+            Text($"{item.TraitName} : {item.OptionName}");
+            Close();
+        }
+        Close();
+        Close();
+    }
+
+    if (sheet.Talents.Count > 0)
+    {
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-filter-group-card");
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-detail-block__title");
+        Text(L["EditCharacter_Talents"]);
+        Close();
+
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-player-pill-list");
+        foreach (var item in sheet.Talents)
+        {
+            Open("div");
+            builder.AddAttribute(seq++, "class", "rc-player-pill");
+            Text(item.Name);
+            Close();
+        }
+        Close();
+        Close();
+    }
+
+    if (sheet.Items.Count > 0)
+    {
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-filter-group-card");
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-detail-block__title");
+        Text(L["EditCharacter_Items"]);
+        Close();
+
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-player-pill-list");
+        foreach (var item in sheet.Items)
+        {
+            Open("div");
+            builder.AddAttribute(seq++, "class", "rc-player-pill");
+            Text(item.Name);
+            Close();
+        }
+        Close();
+        Close();
+    }
+
+    if (sheet.Gauges.Count > 0)
+    {
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-filter-group-card");
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-detail-block__title");
+        Text(L["PlayerRoom_Gauges"]);
+        Close();
+
+        foreach (var gauge in sheet.Gauges)
+        {
+            var percent = gauge.MaxValue <= gauge.MinValue
+                ? 0
+                : Math.Clamp((int)Math.Round((double)(gauge.Value - gauge.MinValue) * 100 / (gauge.MaxValue - gauge.MinValue)), 0, 100);
+
+            Open("div");
+            builder.AddAttribute(seq++, "class", $"rc-player-gauge {(gauge.IsHealthGauge ? "rc-player-gauge--health" : string.Empty)}");
+
+            Open("div");
+            builder.AddAttribute(seq++, "class", "rc-player-gauge__header");
+            Open("span");
+            builder.AddAttribute(seq++, "class", "rc-player-gauge__name");
+            Text(gauge.Name);
+            Close();
+            Open("span");
+            builder.AddAttribute(seq++, "class", "rc-player-gauge__value");
+            Text($"{gauge.Value} / {gauge.MaxValue}");
+            Close();
+            Close();
+
+            Open("div");
+            builder.AddAttribute(seq++, "class", "rc-player-gauge__track");
+            Open("div");
+            builder.AddAttribute(seq++, "class", "rc-player-gauge__fill");
+            builder.AddAttribute(seq++, "style", $"width:{percent}%");
+            Close();
+            Close();
+
+            Close();
+        }
+
+        Close();
+    }
+
+    if (isDeadView)
+    {
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-filter-group-card");
+        Open("div");
+        builder.AddAttribute(seq++, "class", "rc-detail-block__title");
+        Text(L["PlayerRoom_Biography"]);
+        Close();
+
+        if (string.IsNullOrWhiteSpace(sheet.Biography))
+        {
+            Open("p");
+            Text(L["PlayerRoom_NoBiography"]);
+            Close();
+        }
+        else
+        {
+            Open("div");
+            builder.AddAttribute(seq++, "class", "rc-player-character-sheet__biography");
+            Text(sheet.Biography);
+            Close();
+        }
+
+        Close();
+    }
+
+    Close();
+};
 
     public async ValueTask DisposeAsync()
     {
         creationCountdownTimer?.Dispose();
-        pollVisibilityTimer?.Dispose();
 
         if (hubConnection is not null)
         {
@@ -654,15 +2007,13 @@ else
     }
 
     private PollForPlayerDto? LatestPoll;
-    private System.Threading.Timer? pollVisibilityTimer;
-    private int RemainingPollSeconds;
 
     private async Task LoadLatestPoll()
     {
         try
         {
             LatestPoll = await PollService.GetLatestPollForPlayerAsync(PlayerSessionId);
-            StartPollVisibilityTimerIfNeeded();
+            IsPollDismissed = false;
         }
         catch (Exception ex)
         {
@@ -688,46 +2039,16 @@ else
         }
     }
 
-    private void StartPollVisibilityTimerIfNeeded()
+    private Task DismissActiveTest()
     {
-        pollVisibilityTimer?.Dispose();
-        pollVisibilityTimer = null;
-
-        if (LatestPoll is null || !LatestPoll.IsClosed || !LatestPoll.ClosedAtUtc.HasValue)
-        {
-            RemainingPollSeconds = 0;
-            return;
-        }
-
-        void UpdateRemaining()
-        {
-            if (LatestPoll?.ClosedAtUtc is null)
-            {
-                RemainingPollSeconds = 0;
-                return;
-            }
-
-            var remaining = LatestPoll.ClosedAtUtc.Value.AddSeconds(30) - DateTime.UtcNow;
-            RemainingPollSeconds = Math.Max(0, (int)Math.Ceiling(remaining.TotalSeconds));
-        }
-
-        UpdateRemaining();
-
-        pollVisibilityTimer = new System.Threading.Timer(async _ =>
-        {
-            await InvokeAsync(async () =>
-            {
-                UpdateRemaining();
-
-                if (RemainingPollSeconds <= 0)
-                {
-                    pollVisibilityTimer?.Dispose();
-                    pollVisibilityTimer = null;
-                    await LoadLatestPoll();
-                }
-
-                StateHasChanged();
-            });
-        }, null, 1000, 1000);
+        IsTestDismissed = true;
+        return Task.CompletedTask;
     }
+
+    private Task DismissLatestPoll()
+    {
+        IsPollDismissed = true;
+        return Task.CompletedTask;
+    }
+
 }

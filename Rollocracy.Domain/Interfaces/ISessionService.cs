@@ -28,6 +28,10 @@ namespace Rollocracy.Domain.Interfaces
 
         Task<List<Session>> GetSessionsByGameMasterAsync(Guid gameMasterUserAccountId);
 
+        Task<List<PlayerResumableSessionDto>> GetResumablePlayerSessionsAsync(Guid userAccountId);
+
+        Task<Guid> JoinSessionAsync(Guid userAccountId, string gameMasterUsername, string sessionSlug, string? sessionPassword);
+
         Task SetSessionActiveStateAsync(Guid sessionId, Guid gameMasterUserAccountId, bool isActive);
 
         Task DeleteSessionAsync(Guid sessionId, Guid gameMasterUserAccountId);

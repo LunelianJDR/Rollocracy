@@ -27,11 +27,6 @@ else
 
     <section class="rc-character-view">
         <div class="rc-character-view__top">
-            <div class="rc-character-view__heading">
-                <h4>@L["SessionPage_CharactersSection"]</h4>
-                <p class="rc-character-view__subtitle">@L["SessionPage_NoCharactersToDisplay"]</p>
-            </div>
-
             <div class="rc-character-view__actions">
                 <button @onclick="CreateNpc">@L["SessionPage_CreateNpc"]</button>
             </div>
@@ -72,7 +67,7 @@ else
                 <input type="checkbox" @bind="IncludeNpcs" @bind:after="RefreshCharacterSection" />
                 <span>@L["SessionPage_ShowNpcs"]</span>
             </label>
-            <div class="rc-form-field">
+            <div class="rc-filter-toggle">
                 <label>@L["SessionPage_SortBy"]</label>
                 <select @bind="CharacterSortMode">
                     @foreach (var option in GetCharacterSortOptions())

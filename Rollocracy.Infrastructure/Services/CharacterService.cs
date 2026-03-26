@@ -527,6 +527,32 @@ namespace Rollocracy.Infrastructure.Services
             return await BuildCharacterSheetAsync(context, playerSessionId, characterId);
         }
 
+        public async Task UpdateCharacterBiographyForPlayerAsync(
+            Guid playerSessionId,
+            Guid characterId,
+            string biography)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps => ps.Id == playerSessionId);
+
+            if (playerSession == null)
+                throw new Exception(_localizer["Backend_PlayerSessionNotFound"]);
+
+            var character = await context.Characters
+                .FirstOrDefaultAsync(c => c.Id == characterId && c.PlayerSessionId == playerSessionId);
+
+            if (character == null)
+                throw new Exception(_localizer["Backend_CharacterNotFound"]);
+
+            character.Biography = biography?.Trim() ?? string.Empty;
+
+            await context.SaveChangesAsync();
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(playerSession.SessionId);
+        }
+
         public async Task<SessionPublicStatsDto> GetSessionPublicStatsAsync(Guid sessionId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();

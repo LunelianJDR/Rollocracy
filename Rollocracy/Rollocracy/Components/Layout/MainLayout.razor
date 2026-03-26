@@ -35,7 +35,7 @@
             </div>
 
             <div class="rc-topbar__right">
-                @if (CurrentSession is not null)
+                @if (CurrentSession is not null && CanViewSessionHeaderInfo)
                 {
                     <div class="rc-session-strip">
                         <h5 class="rc-tool-panel__title">@L["SessionPage_JoinUrl"]</h5>
@@ -159,6 +159,7 @@
     private bool IsSidebarCollapsed;
     private bool CanShowMjMenus;
     private bool ShowSessionPassword;
+    private bool CanViewSessionHeaderInfo;
     private bool CanViewSessionGauges;
     private bool CanEditSessionGauges;
 
@@ -233,6 +234,7 @@
         EditingSessionGaugeId = null;
         JoinUrl = string.Empty;
         ShowSessionPassword = false;
+        CanViewSessionHeaderInfo = false;
         CanViewSessionGauges = false;
         CanEditSessionGauges = false;
         SessionGaugeMessage = string.Empty;
@@ -245,6 +247,10 @@
             return;
 
         CurrentSessionStats = await CharacterService.GetSessionPublicStatsAsync(CurrentSessionId.Value);
+        if (CurrentUserId.HasValue)
+        {
+            CanViewSessionHeaderInfo = CurrentSession.GameMasterUserAccountId == CurrentUserId.Value;
+        }
 
         if (!string.IsNullOrWhiteSpace(CurrentUserDisplayName))
         {

@@ -25,6 +25,8 @@ namespace Rollocracy.Domain.Interfaces
 
         Task<CharacterSheetDto?> GetCharacterSheetAsync(Guid playerSessionId, Guid characterId);
 
+        Task UpdateCharacterBiographyForPlayerAsync(Guid playerSessionId, Guid characterId, string biography);
+
         Task<SessionPublicStatsDto> GetSessionPublicStatsAsync(Guid sessionId);
 
         Task<List<SessionCharacterSummaryDto>> GetSessionCharacterSummariesAsync(
