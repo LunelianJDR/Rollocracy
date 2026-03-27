@@ -16,6 +16,8 @@ namespace Rollocracy.Infrastructure.Persistence
         }
 
         public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
+        public DbSet<AccountSecurityToken> AccountSecurityTokens => Set<AccountSecurityToken>();
+        public DbSet<TwitchPendingAuthSession> TwitchPendingAuthSessions => Set<TwitchPendingAuthSession>();
         public DbSet<GameSystem> GameSystems => Set<GameSystem>();
         public DbSet<GameSystemSnapshot> GameSystemSnapshots => Set<GameSystemSnapshot>();
 
@@ -81,8 +83,20 @@ namespace Rollocracy.Infrastructure.Persistence
                 entity.HasIndex(u => u.Username)
                     .IsUnique();
 
+                entity.HasIndex(u => u.Email)
+                    .IsUnique();
+
                 entity.Property(u => u.MaxPlayersPerSession)
                     .HasDefaultValue(0);
+
+                entity.Property(u => u.Language)
+                    .HasDefaultValue("fr");
+
+                entity.Property(u => u.IsEmailVerified)
+                    .HasDefaultValue(false);
+
+                entity.Property(u => u.WantsToBeGameMaster)
+                    .HasDefaultValue(false);
 
                 entity.ToTable(table =>
                 {
@@ -90,6 +104,55 @@ namespace Rollocracy.Infrastructure.Persistence
                         "CK_UserAccounts_MaxPlayersPerSession_Range",
                         "\"MaxPlayersPerSession\" >= 0 AND \"MaxPlayersPerSession\" <= 5000");
                 });
+            });
+
+            modelBuilder.Entity<AccountSecurityToken>(entity =>
+            {
+                entity.HasIndex(x => x.UserAccountId);
+                entity.HasIndex(x => x.TokenHash).IsUnique();
+                entity.HasIndex(x => new { x.UserAccountId, x.Purpose });
+
+                entity.Property(x => x.Purpose)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.TokenHash)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.EmailSnapshot)
+                    .HasColumnType("text");
+            });
+
+            modelBuilder.Entity<TwitchPendingAuthSession>(entity =>
+            {
+                entity.HasIndex(x => x.PublicToken).IsUnique();
+                entity.HasIndex(x => x.OAuthState).IsUnique();
+                entity.HasIndex(x => x.ExpiresAtUtc);
+                entity.HasIndex(x => x.CurrentUserAccountId);
+                entity.HasIndex(x => x.MatchedUserAccountId);
+
+                entity.Property(x => x.PublicToken)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.OAuthState)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.FlowType)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.TwitchUserId)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.TwitchLogin)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.TwitchDisplayName)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.TwitchEmail)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.Language)
+                    .HasColumnType("text");
             });
 
             modelBuilder.Entity<Session>()

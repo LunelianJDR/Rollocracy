@@ -2798,4 +2798,533 @@
 	<data name="PlayerRoom_RollingDice" xml:space="preserve">
   <value>Lancer de dé en cours</value>
 </data>
+	<data name="Backend_UsernameRequired" xml:space="preserve">
+    <value>Le nom de compte est obligatoire.</value>
+  </data>
+	<data name="Backend_PasswordRequired" xml:space="preserve">
+    <value>Le mot de passe est obligatoire.</value>
+  </data>
+	<data name="Backend_PasswordTooShort" xml:space="preserve">
+    <value>Le mot de passe doit contenir au moins 6 caractères.</value>
+  </data>
+	<data name="Backend_EmailAlreadyExists" xml:space="preserve">
+    <value>Cette adresse email est déjà utilisée.</value>
+  </data>
+	<data name="Backend_UsernameChangeRequiresEmail" xml:space="preserve">
+    <value>Vous devez d’abord associer une adresse email à votre compte pour changer de nom de compte.</value>
+  </data>
+	<data name="Backend_GameMasterModeRequiresEmail" xml:space="preserve">
+    <value>Vous devez renseigner une adresse email avant d’activer le mode MJ.</value>
+  </data>
+
+	<data name="SecurityHistory_AccountCreated" xml:space="preserve">
+    <value>Création du compte</value>
+  </data>
+	<data name="SecurityHistory_EmailChanged" xml:space="preserve">
+    <value>Modification de l’adresse email</value>
+  </data>
+	<data name="SecurityHistory_UsernameChanged" xml:space="preserve">
+    <value>Modification du nom de compte</value>
+  </data>
+
+	<data name="Login_Subtitle" xml:space="preserve">
+    <value>Connectez-vous à votre compte Rollocracy ou préparez la liaison Twitch.</value>
+  </data>
+	<data name="Login_RememberMe" xml:space="preserve">
+    <value>Se souvenir de moi</value>
+  </data>
+	<data name="Login_AlternativeTitle" xml:space="preserve">
+    <value>Autres entrées</value>
+  </data>
+	<data name="Login_AlternativeSubtitle" xml:space="preserve">
+    <value>U-1 pose la structure complète, mais Twitch sera branché dans une livraison dédiée.</value>
+  </data>
+	<data name="Login_WithTwitch" xml:space="preserve">
+    <value>Se connecter avec Twitch</value>
+  </data>
+	<data name="Login_TwitchSoonTooltip" xml:space="preserve">
+    <value>Connexion Twitch bientôt disponible.</value>
+  </data>
+	<data name="Login_TwitchSoonDescription" xml:space="preserve">
+    <value>Le bouton est déjà présent dans l’UI, mais le flux OAuth Twitch sera implémenté dans U-3.</value>
+  </data>
+	<data name="Login_CreateAccount" xml:space="preserve">
+    <value>Créer un compte</value>
+  </data>
+	<data name="Login_RegisteredSuccess" xml:space="preserve">
+    <value>Compte créé avec succès. Vous pouvez maintenant vous connecter.</value>
+  </data>
+
+	<data name="Register_Subtitle" xml:space="preserve">
+    <value>Créez un compte local Rollocracy. L’adresse email reste facultative dans U-1.</value>
+  </data>
+	<data name="Register_EmailOptional" xml:space="preserve">
+    <value>Adresse email (optionnelle)</value>
+  </data>
+	<data name="Register_BackToLogin" xml:space="preserve">
+    <value>Retour à la connexion</value>
+  </data>
+	<data name="Register_EmailWarningTitle" xml:space="preserve">
+    <value>Sans adresse email</value>
+  </data>
+	<data name="Register_EmailWarningBody" xml:space="preserve">
+    <value>la récupération de mot de passe sera impossible, la sécurité du compte sera réduite, et le mode MJ restera indisponible tant qu’une adresse email ne sera pas renseignée.</value>
+  </data>
+	<data name="Register_WhyEmailTitle" xml:space="preserve">
+    <value>Pourquoi renseigner un email ?</value>
+  </data>
+	<data name="Register_WhyEmailSubtitle" xml:space="preserve">
+    <value>U-1 pose déjà les dépendances produit du futur chantier sécurité.</value>
+  </data>
+	<data name="Register_WhyEmailLine1" xml:space="preserve">
+    <value>Récupération de mot de passe à venir</value>
+  </data>
+	<data name="Register_WhyEmailLine2" xml:space="preserve">
+    <value>Activation du mode MJ</value>
+  </data>
+	<data name="Register_WhyEmailLine3" xml:space="preserve">
+    <value>Préparation de la liaison Twitch et des vérifications de sécurité</value>
+  </data>
+
+	<data name="AccountSettings_Title" xml:space="preserve">
+    <value>Paramètres du compte</value>
+  </data>
+	<data name="AccountSettings_Subtitle" xml:space="preserve">
+    <value>Gérez vos informations générales, votre identité de connexion, la langue, la sécurité, Twitch, le mode MJ et l’abonnement.</value>
+  </data>
+	<data name="AccountSettings_LoadError" xml:space="preserve">
+    <value>Impossible de charger les paramètres du compte.</value>
+  </data>
+	<data name="AccountSettings_GeneralSection" xml:space="preserve">
+    <value>Informations générales</value>
+  </data>
+	<data name="AccountSettings_GeneralSubtitle" xml:space="preserve">
+    <value>Email et langue du compte.</value>
+  </data>
+	<data name="AccountSettings_IdentitySection" xml:space="preserve">
+    <value>Identité de connexion</value>
+  </data>
+	<data name="AccountSettings_IdentitySubtitle" xml:space="preserve">
+    <value>Nom de compte local Rollocracy.</value>
+  </data>
+	<data name="AccountSettings_SecuritySection" xml:space="preserve">
+    <value>Sécurité</value>
+  </data>
+	<data name="AccountSettings_SecuritySubtitle" xml:space="preserve">
+    <value>Fondations de sécurité livrées dans U-1. Les actions sensibles complètes arriveront en U-2.</value>
+  </data>
+	<data name="AccountSettings_TwitchSection" xml:space="preserve">
+    <value>Twitch</value>
+  </data>
+	<data name="AccountSettings_TwitchSubtitle" xml:space="preserve">
+    <value>Préparation de la connexion et de la liaison Twitch.</value>
+  </data>
+	<data name="AccountSettings_GameMasterSection" xml:space="preserve">
+    <value>Statut MJ</value>
+  </data>
+	<data name="AccountSettings_GameMasterSubtitle" xml:space="preserve">
+    <value>Le souhait produit MJ est séparé du champ historique IsGameMaster.</value>
+  </data>
+	<data name="AccountSettings_SubscriptionSection" xml:space="preserve">
+    <value>Abonnement</value>
+  </data>
+	<data name="AccountSettings_SubscriptionSubtitle" xml:space="preserve">
+    <value>Structure prête pour les futures formules d’abonnement.</value>
+  </data>
+	<data name="AccountSettings_Username" xml:space="preserve">
+    <value>Nom de compte</value>
+  </data>
+	<data name="AccountSettings_CurrentUsername" xml:space="preserve">
+    <value>Nom de compte actuel</value>
+  </data>
+	<data name="AccountSettings_NewUsername" xml:space="preserve">
+    <value>Nouveau nom de compte</value>
+  </data>
+	<data name="AccountSettings_SaveUsername" xml:space="preserve">
+    <value>Enregistrer le nom de compte</value>
+  </data>
+	<data name="AccountSettings_Email" xml:space="preserve">
+    <value>Adresse email</value>
+  </data>
+	<data name="AccountSettings_NoEmail" xml:space="preserve">
+    <value>Aucune</value>
+  </data>
+	<data name="AccountSettings_NoEmailWarning" xml:space="preserve">
+    <value>Ce compte n’a pas encore d’adresse email. La récupération de mot de passe et le mode MJ restent limités.</value>
+  </data>
+	<data name="AccountSettings_EmailVerificationStatus" xml:space="preserve">
+    <value>Vérification email</value>
+  </data>
+	<data name="AccountSettings_EmailVerified" xml:space="preserve">
+    <value>Adresse email vérifiée</value>
+  </data>
+	<data name="AccountSettings_EmailNotVerifiedYet" xml:space="preserve">
+    <value>Adresse email non vérifiée pour le moment</value>
+  </data>
+	<data name="AccountSettings_LanguageSection" xml:space="preserve">
+    <value>Langue</value>
+  </data>
+	<data name="AccountSettings_GeneralSaved" xml:space="preserve">
+    <value>Informations générales enregistrées.</value>
+  </data>
+	<data name="AccountSettings_UsernameSaved" xml:space="preserve">
+    <value>Nom de compte mis à jour.</value>
+  </data>
+	<data name="AccountSettings_UsernameChangeRequiresEmail" xml:space="preserve">
+    <value>Le changement de nom de compte nécessite d’abord une adresse email.</value>
+  </data>
+	<data name="AccountSettings_LastSensitiveChange" xml:space="preserve">
+    <value>Dernière modification sensible</value>
+  </data>
+	<data name="AccountSettings_NoSensitiveChange" xml:space="preserve">
+    <value>Aucune modification sensible enregistrée.</value>
+  </data>
+	<data name="AccountSettings_SensitiveChangeUnknown" xml:space="preserve">
+    <value>Modification sensible</value>
+  </data>
+	<data name="AccountSettings_ChangePasswordSoon" xml:space="preserve">
+    <value>Changer le mot de passe (U-2)</value>
+  </data>
+	<data name="AccountSettings_SignOutEverywhereSoon" xml:space="preserve">
+    <value>Déconnecter tous les appareils (plus tard)</value>
+  </data>
+	<data name="AccountSettings_TwitchLinkStatus" xml:space="preserve">
+    <value>État de la liaison Twitch</value>
+  </data>
+	<data name="AccountSettings_TwitchLinkedAs" xml:space="preserve">
+    <value>Compte Twitch lié : {0}</value>
+  </data>
+	<data name="AccountSettings_TwitchNotLinked" xml:space="preserve">
+    <value>Aucun compte Twitch lié</value>
+  </data>
+	<data name="AccountSettings_TwitchOAuthNoticeLabel" xml:space="preserve">
+    <value>Mention OAuth</value>
+  </data>
+	<data name="AccountSettings_TwitchOAuthNotice" xml:space="preserve">
+    <value>La liaison Twitch utilisera un flux OAuth dédié dans une prochaine livraison.</value>
+  </data>
+	<data name="AccountSettings_LinkTwitchSoon" xml:space="preserve">
+    <value>Lier Twitch (U-3)</value>
+  </data>
+	<data name="AccountSettings_EnableGameMasterMode" xml:space="preserve">
+    <value>Je souhaite utiliser Rollocracy comme MJ</value>
+  </data>
+	<data name="AccountSettings_GameMasterNeedsEmail" xml:space="preserve">
+    <value>Vous devez renseigner une adresse email avant d’activer le mode MJ.</value>
+  </data>
+	<data name="AccountSettings_MaxPlayersPerSession" xml:space="preserve">
+    <value>Nombre de joueurs max par session</value>
+  </data>
+	<data name="AccountSettings_GameMasterModeStatus" xml:space="preserve">
+    <value>État du mode MJ</value>
+  </data>
+	<data name="AccountSettings_GameMasterModeEnabled" xml:space="preserve">
+    <value>Mode MJ activé</value>
+  </data>
+	<data name="AccountSettings_GameMasterModeEnabledMessage" xml:space="preserve">
+    <value>Mode MJ activé. La capacité par défaut a été fixée à 15 joueurs max par session.</value>
+  </data>
+	<data name="AccountSettings_GameMasterModeDisabledMessage" xml:space="preserve">
+    <value>Mode MJ désactivé.</value>
+  </data>
+	<data name="AccountSettings_SubscriptionRequiresGameMasterMode" xml:space="preserve">
+    <value>Activez d’abord le mode MJ pour afficher les informations d’abonnement.</value>
+  </data>
+	<data name="AccountSettings_SubscriptionStatus" xml:space="preserve">
+    <value>État de l’abonnement</value>
+  </data>
+	<data name="AccountSettings_SubscriptionComingSoon" xml:space="preserve">
+    <value>Gestion des offres prévue dans une prochaine livraison.</value>
+  </data>
+	<data name="AccountSettings_SubscriptionButtonSoon" xml:space="preserve">
+    <value>Abonnement (prochainement)</value>
+  </data>
+	<data name="Backend_CurrentPasswordRequired" xml:space="preserve">
+    <value>Le mot de passe actuel est obligatoire.</value>
+  </data>
+	<data name="Backend_CurrentPasswordInvalid" xml:space="preserve">
+    <value>Le mot de passe actuel est incorrect.</value>
+  </data>
+	<data name="Backend_PasswordChangeRequiresEmail" xml:space="preserve">
+    <value>Vous devez d’abord associer une adresse email à votre compte pour changer votre mot de passe.</value>
+  </data>
+	<data name="Backend_NewPasswordsDoNotMatch" xml:space="preserve">
+    <value>Les deux nouveaux mots de passe ne correspondent pas.</value>
+  </data>
+	<data name="Backend_ResetTokenInvalidOrExpired" xml:space="preserve">
+    <value>Le lien de réinitialisation est invalide ou expiré.</value>
+  </data>
+	<data name="Backend_VerificationTokenInvalidOrExpired" xml:space="preserve">
+    <value>Le lien de vérification email est invalide ou expiré.</value>
+  </data>
+	<data name="Backend_EmailRequired" xml:space="preserve">
+    <value>Une adresse email est requise.</value>
+  </data>
+
+	<data name="SecurityHistory_PasswordChanged" xml:space="preserve">
+    <value>Changement de mot de passe</value>
+  </data>
+	<data name="SecurityHistory_PasswordReset" xml:space="preserve">
+    <value>Réinitialisation du mot de passe</value>
+  </data>
+	<data name="SecurityHistory_EmailVerified" xml:space="preserve">
+    <value>Adresse email vérifiée</value>
+  </data>
+
+	<data name="Email_ResetPassword_Subject" xml:space="preserve">
+    <value>Rollocracy — Réinitialisation du mot de passe</value>
+  </data>
+	<data name="Email_ResetPassword_BodyLine1" xml:space="preserve">
+    <value>Vous avez demandé la réinitialisation du mot de passe de votre compte Rollocracy. Utilisez le lien ci-dessous :</value>
+  </data>
+	<data name="Email_ResetPassword_BodyLine2" xml:space="preserve">
+    <value>Si vous n’êtes pas à l’origine de cette demande, vous pouvez ignorer cet email.</value>
+  </data>
+	<data name="Email_VerifyEmail_Subject" xml:space="preserve">
+    <value>Rollocracy — Vérification de votre adresse email</value>
+  </data>
+	<data name="Email_VerifyEmail_BodyLine1" xml:space="preserve">
+    <value>Merci de confirmer votre adresse email pour votre compte Rollocracy en utilisant le lien ci-dessous :</value>
+  </data>
+	<data name="Email_VerifyEmail_BodyLine2" xml:space="preserve">
+    <value>Si vous n’avez pas demandé cette vérification, vous pouvez ignorer cet email.</value>
+  </data>
+
+	<data name="Login_ForgotPassword" xml:space="preserve">
+    <value>Mot de passe oublié ?</value>
+  </data>
+
+	<data name="ForgotPassword_Title" xml:space="preserve">
+    <value>Mot de passe oublié</value>
+  </data>
+	<data name="ForgotPassword_Subtitle" xml:space="preserve">
+    <value>Entrez votre adresse email ou votre nom de compte. Si un compte compatible existe, un email de réinitialisation sera envoyé.</value>
+  </data>
+	<data name="ForgotPassword_EmailOrUsername" xml:space="preserve">
+    <value>Adresse email ou nom de compte</value>
+  </data>
+	<data name="ForgotPassword_Submit" xml:space="preserve">
+    <value>Envoyer le lien de réinitialisation</value>
+  </data>
+	<data name="ForgotPassword_BackToLogin" xml:space="preserve">
+    <value>Retour à la connexion</value>
+  </data>
+	<data name="ForgotPassword_InfoTitle" xml:space="preserve">
+    <value>Information de sécurité</value>
+  </data>
+	<data name="ForgotPassword_InfoSubtitle" xml:space="preserve">
+    <value>Pour éviter l’énumération de comptes, le message de confirmation reste générique.</value>
+  </data>
+	<data name="ForgotPassword_InfoLine1" xml:space="preserve">
+    <value>Si le compte n’a pas d’email, aucun reset ne pourra être envoyé.</value>
+  </data>
+	<data name="ForgotPassword_InfoLine2" xml:space="preserve">
+    <value>Le lien de réinitialisation expire automatiquement.</value>
+  </data>
+	<data name="ForgotPassword_GenericSuccess" xml:space="preserve">
+    <value>Si un compte compatible existe, un email de réinitialisation vient d’être envoyé.</value>
+  </data>
+
+	<data name="ResetPassword_Title" xml:space="preserve">
+    <value>Réinitialiser le mot de passe</value>
+  </data>
+	<data name="ResetPassword_Subtitle" xml:space="preserve">
+    <value>Définissez un nouveau mot de passe pour votre compte Rollocracy.</value>
+  </data>
+	<data name="ResetPassword_MissingToken" xml:space="preserve">
+    <value>Le jeton de réinitialisation est manquant.</value>
+  </data>
+	<data name="ResetPassword_NewPassword" xml:space="preserve">
+    <value>Nouveau mot de passe</value>
+  </data>
+	<data name="ResetPassword_ConfirmNewPassword" xml:space="preserve">
+    <value>Confirmer le nouveau mot de passe</value>
+  </data>
+	<data name="ResetPassword_Submit" xml:space="preserve">
+    <value>Valider le nouveau mot de passe</value>
+  </data>
+	<data name="ResetPassword_BackToLogin" xml:space="preserve">
+    <value>Retour à la connexion</value>
+  </data>
+	<data name="ResetPassword_Success" xml:space="preserve">
+    <value>Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter.</value>
+  </data>
+
+	<data name="VerifyEmail_Title" xml:space="preserve">
+    <value>Vérification email</value>
+  </data>
+	<data name="VerifyEmail_Subtitle" xml:space="preserve">
+    <value>Validation du lien de vérification en cours.</value>
+  </data>
+	<data name="VerifyEmail_MissingToken" xml:space="preserve">
+    <value>Le jeton de vérification est manquant.</value>
+  </data>
+	<data name="VerifyEmail_InvalidOrExpired" xml:space="preserve">
+    <value>Le lien de vérification est invalide ou expiré.</value>
+  </data>
+	<data name="VerifyEmail_Success" xml:space="preserve">
+    <value>Votre adresse email a bien été vérifiée.</value>
+  </data>
+	<data name="VerifyEmail_GoToLogin" xml:space="preserve">
+    <value>Aller à la connexion</value>
+  </data>
+
+	<data name="AccountSettings_SendVerificationEmailLabel" xml:space="preserve">
+    <value>Envoyer un email de vérification</value>
+  </data>
+	<data name="AccountSettings_SendVerificationEmail" xml:space="preserve">
+    <value>Envoyer l’email de vérification</value>
+  </data>
+	<data name="AccountSettings_VerificationEmailSent" xml:space="preserve">
+    <value>Email de vérification envoyé.</value>
+  </data>
+	<data name="AccountSettings_CurrentPassword" xml:space="preserve">
+    <value>Mot de passe actuel</value>
+  </data>
+	<data name="AccountSettings_NewPassword" xml:space="preserve">
+    <value>Nouveau mot de passe</value>
+  </data>
+	<data name="AccountSettings_ConfirmNewPassword" xml:space="preserve">
+    <value>Confirmer le nouveau mot de passe</value>
+  </data>
+	<data name="AccountSettings_ChangePassword" xml:space="preserve">
+    <value>Changer le mot de passe</value>
+  </data>
+	<data name="AccountSettings_PasswordChanged" xml:space="preserve">
+    <value>Mot de passe mis à jour.</value>
+  </data>
+	<data name="AccountSettings_PasswordChangeRequiresEmail" xml:space="preserve">
+    <value>Le changement de mot de passe nécessite d’abord une adresse email.</value>
+  </data>
+	<data name="Backend_TwitchStateInvalidOrExpired" xml:space="preserve">
+    <value>La session Twitch est invalide ou expirée.</value>
+  </data>
+	<data name="Backend_TwitchPendingSessionInvalidOrExpired" xml:space="preserve">
+    <value>La session Twitch en attente est invalide ou expirée.</value>
+  </data>
+	<data name="Backend_TwitchAuthorizationCodeMissing" xml:space="preserve">
+    <value>Le code d’autorisation Twitch est manquant.</value>
+  </data>
+	<data name="Backend_TwitchTokenExchangeFailed" xml:space="preserve">
+    <value>Impossible d’échanger le code Twitch contre un jeton d’accès.</value>
+  </data>
+	<data name="Backend_TwitchUserFetchFailed" xml:space="preserve">
+    <value>Impossible de récupérer le profil Twitch.</value>
+  </data>
+	<data name="Backend_TwitchAlreadyLinkedToAnotherAccount" xml:space="preserve">
+    <value>Ce compte Twitch est déjà lié à un autre compte Rollocracy.</value>
+  </data>
+	<data name="Backend_TwitchNotLinked" xml:space="preserve">
+    <value>Aucun compte Twitch n’est actuellement lié.</value>
+  </data>
+	<data name="Backend_TwitchUsernameUnavailable" xml:space="preserve">
+    <value>Le pseudo Twitch ne peut pas être utilisé comme nom de compte Rollocracy.</value>
+  </data>
+
+	<data name="SecurityHistory_TwitchLinked" xml:space="preserve">
+    <value>Liaison du compte Twitch</value>
+  </data>
+	<data name="SecurityHistory_TwitchUnlinked" xml:space="preserve">
+    <value>Déliaison du compte Twitch</value>
+  </data>
+	<data name="SecurityHistory_TwitchAccountCreated" xml:space="preserve">
+    <value>Création du compte via Twitch</value>
+  </data>
+	<data name="SecurityHistory_UsernameChangedFromTwitch" xml:space="preserve">
+    <value>Nom de compte aligné sur le pseudo Twitch</value>
+  </data>
+
+	<data name="Login_TwitchDescription" xml:space="preserve">
+    <value>Connectez-vous directement avec Twitch. Si nécessaire, Rollocracy vous proposera une fusion ou une complétion de compte.</value>
+  </data>
+	<data name="Login_TwitchError" xml:space="preserve">
+    <value>La connexion Twitch a échoué ou a été interrompue.</value>
+  </data>
+
+	<data name="AccountSettings_LinkTwitch" xml:space="preserve">
+    <value>Lier Twitch</value>
+  </data>
+	<data name="AccountSettings_UnlinkTwitch" xml:space="preserve">
+    <value>Délier Twitch</value>
+  </data>
+	<data name="AccountSettings_RenameToTwitchLogin" xml:space="preserve">
+    <value>Utiliser le pseudo Twitch comme nom de compte</value>
+  </data>
+	<data name="AccountSettings_TwitchLinkedMessage" xml:space="preserve">
+    <value>Compte Twitch lié avec succès.</value>
+  </data>
+	<data name="AccountSettings_TwitchUnlinkedMessage" xml:space="preserve">
+    <value>Compte Twitch délié.</value>
+  </data>
+	<data name="AccountSettings_TwitchRenameSuccess" xml:space="preserve">
+    <value>Nom de compte mis à jour à partir du pseudo Twitch.</value>
+  </data>
+	<data name="AccountSettings_TwitchRenameSuggestion" xml:space="preserve">
+    <value>Votre pseudo Twitch actuel est « {0} ». Vous pouvez l’utiliser comme nom de compte Rollocracy si vous le souhaitez.</value>
+  </data>
+
+	<data name="TwitchComplete_Title" xml:space="preserve">
+    <value>Compléter le compte Twitch</value>
+  </data>
+	<data name="TwitchComplete_Subtitle" xml:space="preserve">
+    <value>Votre compte Twitch a bien été authentifié, mais Rollocracy a besoin d’informations complémentaires pour finaliser votre compte.</value>
+  </data>
+	<data name="TwitchComplete_LoadError" xml:space="preserve">
+    <value>Impossible de charger la session Twitch en attente.</value>
+  </data>
+	<data name="TwitchComplete_TwitchLogin" xml:space="preserve">
+    <value>Login Twitch</value>
+  </data>
+	<data name="TwitchComplete_TwitchEmail" xml:space="preserve">
+    <value>Email Twitch</value>
+  </data>
+	<data name="TwitchComplete_NoTwitchEmail" xml:space="preserve">
+    <value>Aucun email exploitable fourni par Twitch</value>
+  </data>
+	<data name="TwitchComplete_Username" xml:space="preserve">
+    <value>Nom de compte Rollocracy</value>
+  </data>
+	<data name="TwitchComplete_EmailOptional" xml:space="preserve">
+    <value>Email Rollocracy (optionnel si absent côté Twitch)</value>
+  </data>
+	<data name="TwitchComplete_Language" xml:space="preserve">
+    <value>Langue</value>
+  </data>
+	<data name="TwitchComplete_Submit" xml:space="preserve">
+    <value>Finaliser le compte</value>
+  </data>
+	<data name="TwitchComplete_BackToLogin" xml:space="preserve">
+    <value>Retour à la connexion</value>
+  </data>
+
+	<data name="TwitchMerge_Title" xml:space="preserve">
+    <value>Confirmer la fusion Twitch</value>
+  </data>
+	<data name="TwitchMerge_Subtitle" xml:space="preserve">
+    <value>Un compte Rollocracy existant utilise déjà cet email. Confirmez si vous souhaitez lui lier votre compte Twitch.</value>
+  </data>
+	<data name="TwitchMerge_LoadError" xml:space="preserve">
+    <value>Impossible de charger la fusion Twitch en attente.</value>
+  </data>
+	<data name="TwitchMerge_MatchedLocalUsername" xml:space="preserve">
+    <value>Compte local trouvé</value>
+  </data>
+	<data name="TwitchMerge_TwitchLogin" xml:space="preserve">
+    <value>Login Twitch</value>
+  </data>
+	<data name="TwitchMerge_Email" xml:space="preserve">
+    <value>Email Twitch</value>
+  </data>
+	<data name="TwitchMerge_NoEmail" xml:space="preserve">
+    <value>Aucun email Twitch</value>
+  </data>
+	<data name="TwitchMerge_RenameToTwitchLogin" xml:space="preserve">
+    <value>Renommer le compte local avec le pseudo Twitch « {0} » si disponible</value>
+  </data>
+	<data name="TwitchMerge_Confirm" xml:space="preserve">
+    <value>Confirmer la fusion</value>
+  </data>
+	<data name="TwitchMerge_Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
 </root>

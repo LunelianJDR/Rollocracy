@@ -7,48 +7,57 @@ using Rollocracy.Components;
 using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Hubs;
+using Rollocracy.Infrastructure.Options;
 using Rollocracy.Infrastructure.Persistence;
 using Rollocracy.Infrastructure.Services;
 using Rollocracy.Localization;
 using Rollocracy.Services;
 using System.Globalization;
-using System.Security.Claims;
-
-
-//////////////////////////////
-/////// VAR BUILDER //////////
-//////////////////////////////
-
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
 
 builder.Services.AddControllers();
 
+// HttpClient pour les composants Razor existants
 builder.Services.AddScoped(sp => new HttpClient
 {
     BaseAddress = new Uri("https://localhost:7252/")
 });
+
+// HttpClientFactory pour les appels serveur -> Twitch
+builder.Services.AddHttpClient();
+
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
+builder.Services.Configure<TwitchOptions>(builder.Configuration.GetSection("Twitch"));
 
 builder.Services.AddDbContextFactory<RollocracyDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("RollocracyDb")));
 
 builder.Services.AddScoped<ISessionService, SessionService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAccountService, AccountService>();
+builder.Services.AddScoped<IAccountSecurityService, AccountSecurityService>();
+builder.Services.AddScoped<ITwitchAuthService, TwitchAuthService>();
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IGameSystemService, GameSystemService>();
+builder.Services.AddScoped<ICharacterService, CharacterService>();
+builder.Services.AddScoped<ICharacterEffectService, CharacterEffectService>();
+builder.Services.AddScoped<IGameTestService, GameTestService>();
+builder.Services.AddScoped<ISessionNotifier, SignalRSessionNotifier>();
+builder.Services.AddScoped<IPollService, PollService>();
+builder.Services.AddScoped<IMassDistributionService, MassDistributionService>();
+
+builder.Services.AddSingleton<IPresenceTracker, PresenceTracker>();
+builder.Services.AddSingleton<GameTestAutoRollScheduler>();
 
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
-
 builder.Services.AddSignalR();
 
-builder.Services.AddScoped<ICharacterEffectService, CharacterEffectService>();
-
-// Authentification par cookie
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -60,38 +69,15 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.SlidingExpiration = true;
     });
 
-// Permet aux composants Blazor d'accéder à l'utilisateur connecté
+builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
-
-// Active le système de localisation .NET
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
-
-builder.Services.AddScoped<ICharacterService, CharacterService>();
-
-builder.Services.AddSingleton<IPresenceTracker, PresenceTracker>();
-
-builder.Services.AddScoped<IGameTestService, GameTestService>();
-builder.Services.AddSingleton<GameTestAutoRollScheduler>();
-
-builder.Services.AddScoped<ISessionNotifier, SignalRSessionNotifier>();
-
-builder.Services.AddScoped<IPollService, PollService>();
-
-builder.Services.AddScoped<IMassDistributionService, MassDistributionService>();
-
-
-//////////////////////////
 
 var supportedCultures = new[]
 {
     new CultureInfo("fr"),
     new CultureInfo("en")
 };
-
-//////////////////////////
-/////// VAR APP //////////
-//////////////////////////
-
 
 var app = builder.Build();
 
@@ -102,7 +88,6 @@ var localizationOptions = new RequestLocalizationOptions
     SupportedUICultures = supportedCultures
 };
 
-// Priorité 1 : langue du compte utilisateur stockée dans le cookie d'auth
 localizationOptions.RequestCultureProviders.Insert(0, new CustomRequestCultureProvider(context =>
 {
     var languageClaim = context.User?.FindFirst("Language")?.Value;
@@ -116,7 +101,6 @@ localizationOptions.RequestCultureProviders.Insert(0, new CustomRequestCulturePr
     return Task.FromResult<ProviderCultureResult?>(null);
 }));
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
@@ -132,11 +116,8 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
-// Le cookie doit être lu avant de choisir la culture
 app.UseAuthentication();
 app.UseAuthorization();
-
-// Maintenant la culture peut lire le claim Language
 app.UseRequestLocalization(localizationOptions);
 
 app.MapControllers();

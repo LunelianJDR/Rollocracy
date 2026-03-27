@@ -4,37 +4,111 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
-<h3>@L["Login_Title"]</h3>
+<PageTitle>@L["Login_Title"]</PageTitle>
 
-@if (HasError)
-{
-    <p>@L["Login_InvalidCredentials"]</p>
-}
+<section class="rc-auth-shell">
+    <div class="rc-auth-grid">
+        <article class="rc-auth-panel">
+            <div class="rc-tool-panel__header-main">
+                <h1 class="rc-tool-panel__title">@L["Login_Title"]</h1>
+                <p class="rc-tool-panel__subtitle">@L["Login_Subtitle"]</p>
+            </div>
 
-<form method="post" action="/auth/login">
-    <div>
-        <label for="username">@L["Login_Username"]</label><br />
-        <input id="username" name="Username" />
+            @if (HasError)
+            {
+                <div class="rc-inline-error">@L["Login_InvalidCredentials"]</div>
+            }
+
+            @if (HasRegistered)
+            {
+                <div class="rc-inline-warning">@L["Login_RegisteredSuccess"]</div>
+            }
+
+            @if (HasResetSuccess)
+            {
+                <div class="rc-inline-warning">@L["ResetPassword_Success"]</div>
+            }
+
+            @if (HasVerifiedEmail)
+            {
+                <div class="rc-inline-warning">@L["VerifyEmail_Success"]</div>
+            }
+
+            @if (HasTwitchError)
+            {
+                <div class="rc-inline-error">@L["Login_TwitchError"]</div>
+            }
+
+            <form method="post" action="/auth/login" class="rc-auth-form">
+                <div class="rc-form-field">
+                    <label for="username">@L["Login_Username"]</label>
+                    <input id="username" name="Username" autocomplete="username" />
+                </div>
+
+                <div class="rc-form-field">
+                    <label for="password">@L["Login_Password"]</label>
+                    <input id="password" name="Password" type="password" autocomplete="current-password" />
+                </div>
+
+                <label class="rc-filter-toggle">
+                    <input id="remember-me" name="RememberMe" type="checkbox" value="true" />
+                    <span>@L["Login_RememberMe"]</span>
+                </label>
+
+                <div class="rc-tool-actions">
+                    <button type="submit">@L["Login_Submit"]</button>
+                </div>
+
+                <a class="rc-auth-text-link" href="/forgot-password">@L["Login_ForgotPassword"]</a>
+            </form>
+        </article>
+
+        <article class="rc-auth-panel">
+            <div class="rc-tool-panel__header-main">
+                <h2 class="rc-tool-panel__title">@L["Login_AlternativeTitle"]</h2>
+                <p class="rc-tool-panel__subtitle">@L["Login_AlternativeSubtitle"]</p>
+            </div>
+
+            <div class="rc-auth-stack">
+                <!-- Connexion directe Twitch -->
+                <a class="rc-auth-link-button" href="/auth/twitch/login?language=fr">
+                    @L["Login_WithTwitch"]
+                </a>
+
+                <p class="rc-tool-muted">@L["Login_TwitchDescription"]</p>
+
+                <div class="rc-auth-divider"></div>
+
+                <a class="rc-auth-link-button" href="/register">@L["Login_CreateAccount"]</a>
+            </div>
+        </article>
     </div>
-
-    <div>
-        <label for="password">@L["Login_Password"]</label><br />
-        <input id="password" name="Password" type="password" />
-    </div>
-
-    <button type="submit">@L["Login_Submit"]</button>
-</form>
+</section>
 
 @code {
     private bool HasError;
+    private bool HasRegistered;
+    private bool HasResetSuccess;
+    private bool HasVerifiedEmail;
+    private bool HasTwitchError;
 
     protected override void OnInitialized()
     {
         var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
 
         if (!string.IsNullOrWhiteSpace(uri.Query) && uri.Query.Contains("error=1"))
-        {
             HasError = true;
-        }
+
+        if (!string.IsNullOrWhiteSpace(uri.Query) && uri.Query.Contains("registered=1"))
+            HasRegistered = true;
+
+        if (!string.IsNullOrWhiteSpace(uri.Query) && uri.Query.Contains("reset=1"))
+            HasResetSuccess = true;
+
+        if (!string.IsNullOrWhiteSpace(uri.Query) && uri.Query.Contains("verified=1"))
+            HasVerifiedEmail = true;
+
+        if (!string.IsNullOrWhiteSpace(uri.Query) && uri.Query.Contains("twitch_error=1"))
+            HasTwitchError = true;
     }
 }

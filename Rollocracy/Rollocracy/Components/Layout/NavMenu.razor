@@ -7,7 +7,7 @@
 <div class="rc-nav @(IsCollapsed ? "collapsed" : string.Empty)">
     <div class="rc-nav__header">
         <div class="rc-nav__header-actions">
-            
+
             @if (IsCollapsed)
             {
                 <button type="button"
@@ -32,7 +32,7 @@
                 ❤
             </button>
 
-            @if(!IsCollapsed)
+            @if (!IsCollapsed)
             {
                 <button type="button"
                         class="icon-button"
@@ -55,8 +55,6 @@
 
     <nav class="rc-nav__sections">
         <div class="rc-nav__section">
-            @* <div class="rc-nav__section-title">@L["Layout_UserSection"]</div> *@
-
             <AuthorizeView>
                 <Authorizing>
                     <span class="rc-nav__loading">@L["Common_Loading"]</span>
@@ -75,15 +73,15 @@
                 </NotAuthorized>
 
                 <Authorized>
-                    <NavLink class="rc-nav__link" @onclick="HandleLogout" href="/auth/logout" title="@L["Home_Logout"]">
-                        <span class="rc-nav__icon">⇤</span>
-                    <span class="rc-nav__label">@L["Home_Logout"]</span>
-                    </NavLink>
-
-                    <button type="button" class="rc-nav__link rc-nav__link--disabled" disabled title="@L["Layout_AccountSettings"]">
+                    <NavLink class="rc-nav__link" href="/account/settings" title="@L["Layout_AccountSettings"]">
                         <span class="rc-nav__icon">⚙</span>
                         <span class="rc-nav__label">@L["Layout_AccountSettings"]</span>
-                    </button>
+                    </NavLink>
+
+                    <NavLink class="rc-nav__link" @onclick="HandleLogout" href="/auth/logout" title="@L["Home_Logout"]">
+                        <span class="rc-nav__icon">⇤</span>
+                        <span class="rc-nav__label">@L["Home_Logout"]</span>
+                    </NavLink>
 
                     <NavLink class="rc-nav__link" href="/player/resume-sessions" title="@L["Layout_PlayerResumeSessions"]">
                         <span class="rc-nav__icon">↺</span>
@@ -101,8 +99,6 @@
         @if (CanShowMjMenus)
         {
             <div class="rc-nav__section">
-                @* <div class="rc-nav__section-title">@L["Layout_OutsideSessionSection"]</div> *@
-
                 <NavLink class="rc-nav__link" href="/mj/gamesystems" title="@L["Layout_GameSystems"]">
                     <span class="rc-nav__icon">◫</span>
                     <span class="rc-nav__label">@L["Layout_GameSystems"]</span>
@@ -118,8 +114,6 @@
         @if (CanShowMjMenus && CurrentSessionId.HasValue)
         {
             <div class="rc-nav__section">
-                @* <div class="rc-nav__section-title">@L["Layout_CurrentSessionSection"]</div> *@
-
                 <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}")" Match="NavLinkMatch.All" title="@L["Layout_ViewCharacters"]">
                     <span class="rc-nav__icon">▣</span>
                     <span class="rc-nav__label">@L["Layout_ViewCharacters"]</span>

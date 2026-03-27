@@ -2801,4 +2801,533 @@
 	<data name="PlayerRoom_RollingDice" xml:space="preserve">
   <value>Rolling dice</value>
 </data>
+	<data name="Backend_UsernameRequired" xml:space="preserve">
+    <value>Username is required.</value>
+  </data>
+	<data name="Backend_PasswordRequired" xml:space="preserve">
+    <value>Password is required.</value>
+  </data>
+	<data name="Backend_PasswordTooShort" xml:space="preserve">
+    <value>Password must be at least 6 characters long.</value>
+  </data>
+	<data name="Backend_EmailAlreadyExists" xml:space="preserve">
+    <value>This email address is already in use.</value>
+  </data>
+	<data name="Backend_UsernameChangeRequiresEmail" xml:space="preserve">
+    <value>You must first add an email address to your account before changing your username.</value>
+  </data>
+	<data name="Backend_GameMasterModeRequiresEmail" xml:space="preserve">
+    <value>You must provide an email address before enabling Game Master mode.</value>
+  </data>
+
+	<data name="SecurityHistory_AccountCreated" xml:space="preserve">
+    <value>Account created</value>
+  </data>
+	<data name="SecurityHistory_EmailChanged" xml:space="preserve">
+    <value>Email address changed</value>
+  </data>
+	<data name="SecurityHistory_UsernameChanged" xml:space="preserve">
+    <value>Username changed</value>
+  </data>
+
+	<data name="Login_Subtitle" xml:space="preserve">
+    <value>Sign in to your Rollocracy account or prepare Twitch linking.</value>
+  </data>
+	<data name="Login_RememberMe" xml:space="preserve">
+    <value>Remember me</value>
+  </data>
+	<data name="Login_AlternativeTitle" xml:space="preserve">
+    <value>Other entry points</value>
+  </data>
+	<data name="Login_AlternativeSubtitle" xml:space="preserve">
+    <value>U-1 provides the full structure, but Twitch will be connected in a dedicated delivery.</value>
+  </data>
+	<data name="Login_WithTwitch" xml:space="preserve">
+    <value>Sign in with Twitch</value>
+  </data>
+	<data name="Login_TwitchSoonTooltip" xml:space="preserve">
+    <value>Twitch sign-in coming soon.</value>
+  </data>
+	<data name="Login_TwitchSoonDescription" xml:space="preserve">
+    <value>The button is already present in the UI, but the Twitch OAuth flow will be implemented in U-3.</value>
+  </data>
+	<data name="Login_CreateAccount" xml:space="preserve">
+    <value>Create an account</value>
+  </data>
+	<data name="Login_RegisteredSuccess" xml:space="preserve">
+    <value>Account created successfully. You can now sign in.</value>
+  </data>
+
+	<data name="Register_Subtitle" xml:space="preserve">
+    <value>Create a local Rollocracy account. Email remains optional in U-1.</value>
+  </data>
+	<data name="Register_EmailOptional" xml:space="preserve">
+    <value>Email address (optional)</value>
+  </data>
+	<data name="Register_BackToLogin" xml:space="preserve">
+    <value>Back to sign in</value>
+  </data>
+	<data name="Register_EmailWarningTitle" xml:space="preserve">
+    <value>Without an email address</value>
+  </data>
+	<data name="Register_EmailWarningBody" xml:space="preserve">
+    <value>password recovery will be unavailable, account security will be weaker, and Game Master mode will remain unavailable until an email address is provided.</value>
+  </data>
+	<data name="Register_WhyEmailTitle" xml:space="preserve">
+    <value>Why provide an email?</value>
+  </data>
+	<data name="Register_WhyEmailSubtitle" xml:space="preserve">
+    <value>U-1 already lays the product dependencies for the future security workstream.</value>
+  </data>
+	<data name="Register_WhyEmailLine1" xml:space="preserve">
+    <value>Upcoming password recovery</value>
+  </data>
+	<data name="Register_WhyEmailLine2" xml:space="preserve">
+    <value>Game Master mode activation</value>
+  </data>
+	<data name="Register_WhyEmailLine3" xml:space="preserve">
+    <value>Preparation for Twitch linking and security verification flows</value>
+  </data>
+
+	<data name="AccountSettings_Title" xml:space="preserve">
+    <value>Account settings</value>
+  </data>
+	<data name="AccountSettings_Subtitle" xml:space="preserve">
+    <value>Manage your general information, sign-in identity, language, security, Twitch, Game Master mode and subscription.</value>
+  </data>
+	<data name="AccountSettings_LoadError" xml:space="preserve">
+    <value>Unable to load account settings.</value>
+  </data>
+	<data name="AccountSettings_GeneralSection" xml:space="preserve">
+    <value>General information</value>
+  </data>
+	<data name="AccountSettings_GeneralSubtitle" xml:space="preserve">
+    <value>Account email and language.</value>
+  </data>
+	<data name="AccountSettings_IdentitySection" xml:space="preserve">
+    <value>Sign-in identity</value>
+  </data>
+	<data name="AccountSettings_IdentitySubtitle" xml:space="preserve">
+    <value>Local Rollocracy username.</value>
+  </data>
+	<data name="AccountSettings_SecuritySection" xml:space="preserve">
+    <value>Security</value>
+  </data>
+	<data name="AccountSettings_SecuritySubtitle" xml:space="preserve">
+    <value>Security foundations are included in U-1. Full sensitive actions will arrive in U-2.</value>
+  </data>
+	<data name="AccountSettings_TwitchSection" xml:space="preserve">
+    <value>Twitch</value>
+  </data>
+	<data name="AccountSettings_TwitchSubtitle" xml:space="preserve">
+    <value>Preparation for Twitch sign-in and account linking.</value>
+  </data>
+	<data name="AccountSettings_GameMasterSection" xml:space="preserve">
+    <value>Game Master status</value>
+  </data>
+	<data name="AccountSettings_GameMasterSubtitle" xml:space="preserve">
+    <value>The product-level Game Master intent is separated from the legacy IsGameMaster field.</value>
+  </data>
+	<data name="AccountSettings_SubscriptionSection" xml:space="preserve">
+    <value>Subscription</value>
+  </data>
+	<data name="AccountSettings_SubscriptionSubtitle" xml:space="preserve">
+    <value>Structure is ready for future subscription plans.</value>
+  </data>
+	<data name="AccountSettings_Username" xml:space="preserve">
+    <value>Username</value>
+  </data>
+	<data name="AccountSettings_CurrentUsername" xml:space="preserve">
+    <value>Current username</value>
+  </data>
+	<data name="AccountSettings_NewUsername" xml:space="preserve">
+    <value>New username</value>
+  </data>
+	<data name="AccountSettings_SaveUsername" xml:space="preserve">
+    <value>Save username</value>
+  </data>
+	<data name="AccountSettings_Email" xml:space="preserve">
+    <value>Email address</value>
+  </data>
+	<data name="AccountSettings_NoEmail" xml:space="preserve">
+    <value>None</value>
+  </data>
+	<data name="AccountSettings_NoEmailWarning" xml:space="preserve">
+    <value>This account does not yet have an email address. Password recovery and Game Master mode remain limited.</value>
+  </data>
+	<data name="AccountSettings_EmailVerificationStatus" xml:space="preserve">
+    <value>Email verification</value>
+  </data>
+	<data name="AccountSettings_EmailVerified" xml:space="preserve">
+    <value>Email address verified</value>
+  </data>
+	<data name="AccountSettings_EmailNotVerifiedYet" xml:space="preserve">
+    <value>Email address not yet verified</value>
+  </data>
+	<data name="AccountSettings_LanguageSection" xml:space="preserve">
+    <value>Language</value>
+  </data>
+	<data name="AccountSettings_GeneralSaved" xml:space="preserve">
+    <value>General information saved.</value>
+  </data>
+	<data name="AccountSettings_UsernameSaved" xml:space="preserve">
+    <value>Username updated.</value>
+  </data>
+	<data name="AccountSettings_UsernameChangeRequiresEmail" xml:space="preserve">
+    <value>Changing the username first requires an email address.</value>
+  </data>
+	<data name="AccountSettings_LastSensitiveChange" xml:space="preserve">
+    <value>Last sensitive change</value>
+  </data>
+	<data name="AccountSettings_NoSensitiveChange" xml:space="preserve">
+    <value>No sensitive change recorded.</value>
+  </data>
+	<data name="AccountSettings_SensitiveChangeUnknown" xml:space="preserve">
+    <value>Sensitive change</value>
+  </data>
+	<data name="AccountSettings_ChangePasswordSoon" xml:space="preserve">
+    <value>Change password (U-2)</value>
+  </data>
+	<data name="AccountSettings_SignOutEverywhereSoon" xml:space="preserve">
+    <value>Sign out everywhere (later)</value>
+  </data>
+	<data name="AccountSettings_TwitchLinkStatus" xml:space="preserve">
+    <value>Twitch link status</value>
+  </data>
+	<data name="AccountSettings_TwitchLinkedAs" xml:space="preserve">
+    <value>Twitch account linked: {0}</value>
+  </data>
+	<data name="AccountSettings_TwitchNotLinked" xml:space="preserve">
+    <value>No Twitch account linked</value>
+  </data>
+	<data name="AccountSettings_TwitchOAuthNoticeLabel" xml:space="preserve">
+    <value>OAuth notice</value>
+  </data>
+	<data name="AccountSettings_TwitchOAuthNotice" xml:space="preserve">
+    <value>Twitch linking will use a dedicated OAuth flow in a later delivery.</value>
+  </data>
+	<data name="AccountSettings_LinkTwitchSoon" xml:space="preserve">
+    <value>Link Twitch (U-3)</value>
+  </data>
+	<data name="AccountSettings_EnableGameMasterMode" xml:space="preserve">
+    <value>I want to use Rollocracy as a Game Master</value>
+  </data>
+	<data name="AccountSettings_GameMasterNeedsEmail" xml:space="preserve">
+    <value>You must provide an email address before enabling Game Master mode.</value>
+  </data>
+	<data name="AccountSettings_MaxPlayersPerSession" xml:space="preserve">
+    <value>Maximum players per session</value>
+  </data>
+	<data name="AccountSettings_GameMasterModeStatus" xml:space="preserve">
+    <value>Game Master mode status</value>
+  </data>
+	<data name="AccountSettings_GameMasterModeEnabled" xml:space="preserve">
+    <value>Game Master mode enabled</value>
+  </data>
+	<data name="AccountSettings_GameMasterModeEnabledMessage" xml:space="preserve">
+    <value>Game Master mode enabled. Default capacity has been set to 15 max players per session.</value>
+  </data>
+	<data name="AccountSettings_GameMasterModeDisabledMessage" xml:space="preserve">
+    <value>Game Master mode disabled.</value>
+  </data>
+	<data name="AccountSettings_SubscriptionRequiresGameMasterMode" xml:space="preserve">
+    <value>Enable Game Master mode first to display subscription information.</value>
+  </data>
+	<data name="AccountSettings_SubscriptionStatus" xml:space="preserve">
+    <value>Subscription status</value>
+  </data>
+	<data name="AccountSettings_SubscriptionComingSoon" xml:space="preserve">
+    <value>Plan management is scheduled for a future delivery.</value>
+  </data>
+	<data name="AccountSettings_SubscriptionButtonSoon" xml:space="preserve">
+    <value>Subscription (coming soon)</value>
+  </data>
+	<data name="Backend_CurrentPasswordRequired" xml:space="preserve">
+    <value>Current password is required.</value>
+  </data>
+	<data name="Backend_CurrentPasswordInvalid" xml:space="preserve">
+    <value>Current password is invalid.</value>
+  </data>
+	<data name="Backend_PasswordChangeRequiresEmail" xml:space="preserve">
+    <value>You must first add an email address to your account before changing your password.</value>
+  </data>
+	<data name="Backend_NewPasswordsDoNotMatch" xml:space="preserve">
+    <value>The two new passwords do not match.</value>
+  </data>
+	<data name="Backend_ResetTokenInvalidOrExpired" xml:space="preserve">
+    <value>The password reset link is invalid or expired.</value>
+  </data>
+	<data name="Backend_VerificationTokenInvalidOrExpired" xml:space="preserve">
+    <value>The email verification link is invalid or expired.</value>
+  </data>
+	<data name="Backend_EmailRequired" xml:space="preserve">
+    <value>An email address is required.</value>
+  </data>
+
+	<data name="SecurityHistory_PasswordChanged" xml:space="preserve">
+    <value>Password changed</value>
+  </data>
+	<data name="SecurityHistory_PasswordReset" xml:space="preserve">
+    <value>Password reset</value>
+  </data>
+	<data name="SecurityHistory_EmailVerified" xml:space="preserve">
+    <value>Email address verified</value>
+  </data>
+
+	<data name="Email_ResetPassword_Subject" xml:space="preserve">
+    <value>Rollocracy — Password reset</value>
+  </data>
+	<data name="Email_ResetPassword_BodyLine1" xml:space="preserve">
+    <value>You requested a password reset for your Rollocracy account. Use the link below:</value>
+  </data>
+	<data name="Email_ResetPassword_BodyLine2" xml:space="preserve">
+    <value>If you did not make this request, you can ignore this email.</value>
+  </data>
+	<data name="Email_VerifyEmail_Subject" xml:space="preserve">
+    <value>Rollocracy — Verify your email address</value>
+  </data>
+	<data name="Email_VerifyEmail_BodyLine1" xml:space="preserve">
+    <value>Please confirm your email address for your Rollocracy account using the link below:</value>
+  </data>
+	<data name="Email_VerifyEmail_BodyLine2" xml:space="preserve">
+    <value>If you did not request this verification, you can ignore this email.</value>
+  </data>
+
+	<data name="Login_ForgotPassword" xml:space="preserve">
+    <value>Forgot password?</value>
+  </data>
+
+	<data name="ForgotPassword_Title" xml:space="preserve">
+    <value>Forgot password</value>
+  </data>
+	<data name="ForgotPassword_Subtitle" xml:space="preserve">
+    <value>Enter your email address or username. If a compatible account exists, a reset email will be sent.</value>
+  </data>
+	<data name="ForgotPassword_EmailOrUsername" xml:space="preserve">
+    <value>Email address or username</value>
+  </data>
+	<data name="ForgotPassword_Submit" xml:space="preserve">
+    <value>Send reset link</value>
+  </data>
+	<data name="ForgotPassword_BackToLogin" xml:space="preserve">
+    <value>Back to sign in</value>
+  </data>
+	<data name="ForgotPassword_InfoTitle" xml:space="preserve">
+    <value>Security notice</value>
+  </data>
+	<data name="ForgotPassword_InfoSubtitle" xml:space="preserve">
+    <value>To avoid account enumeration, the confirmation message stays generic.</value>
+  </data>
+	<data name="ForgotPassword_InfoLine1" xml:space="preserve">
+    <value>If the account has no email address, no reset email can be sent.</value>
+  </data>
+	<data name="ForgotPassword_InfoLine2" xml:space="preserve">
+    <value>The reset link expires automatically.</value>
+  </data>
+	<data name="ForgotPassword_GenericSuccess" xml:space="preserve">
+    <value>If a compatible account exists, a reset email has just been sent.</value>
+  </data>
+
+	<data name="ResetPassword_Title" xml:space="preserve">
+    <value>Reset password</value>
+  </data>
+	<data name="ResetPassword_Subtitle" xml:space="preserve">
+    <value>Choose a new password for your Rollocracy account.</value>
+  </data>
+	<data name="ResetPassword_MissingToken" xml:space="preserve">
+    <value>The reset token is missing.</value>
+  </data>
+	<data name="ResetPassword_NewPassword" xml:space="preserve">
+    <value>New password</value>
+  </data>
+	<data name="ResetPassword_ConfirmNewPassword" xml:space="preserve">
+    <value>Confirm new password</value>
+  </data>
+	<data name="ResetPassword_Submit" xml:space="preserve">
+    <value>Save new password</value>
+  </data>
+	<data name="ResetPassword_BackToLogin" xml:space="preserve">
+    <value>Back to sign in</value>
+  </data>
+	<data name="ResetPassword_Success" xml:space="preserve">
+    <value>Password reset successfully. You can now sign in.</value>
+  </data>
+
+	<data name="VerifyEmail_Title" xml:space="preserve">
+    <value>Email verification</value>
+  </data>
+	<data name="VerifyEmail_Subtitle" xml:space="preserve">
+    <value>Validating your verification link.</value>
+  </data>
+	<data name="VerifyEmail_MissingToken" xml:space="preserve">
+    <value>The verification token is missing.</value>
+  </data>
+	<data name="VerifyEmail_InvalidOrExpired" xml:space="preserve">
+    <value>The verification link is invalid or expired.</value>
+  </data>
+	<data name="VerifyEmail_Success" xml:space="preserve">
+    <value>Your email address has been verified successfully.</value>
+  </data>
+	<data name="VerifyEmail_GoToLogin" xml:space="preserve">
+    <value>Go to sign in</value>
+  </data>
+
+	<data name="AccountSettings_SendVerificationEmailLabel" xml:space="preserve">
+    <value>Send verification email</value>
+  </data>
+	<data name="AccountSettings_SendVerificationEmail" xml:space="preserve">
+    <value>Send verification email</value>
+  </data>
+	<data name="AccountSettings_VerificationEmailSent" xml:space="preserve">
+    <value>Verification email sent.</value>
+  </data>
+	<data name="AccountSettings_CurrentPassword" xml:space="preserve">
+    <value>Current password</value>
+  </data>
+	<data name="AccountSettings_NewPassword" xml:space="preserve">
+    <value>New password</value>
+  </data>
+	<data name="AccountSettings_ConfirmNewPassword" xml:space="preserve">
+    <value>Confirm new password</value>
+  </data>
+	<data name="AccountSettings_ChangePassword" xml:space="preserve">
+    <value>Change password</value>
+  </data>
+	<data name="AccountSettings_PasswordChanged" xml:space="preserve">
+    <value>Password updated.</value>
+  </data>
+	<data name="AccountSettings_PasswordChangeRequiresEmail" xml:space="preserve">
+    <value>Changing the password first requires an email address.</value>
+  </data>
+	<data name="Backend_TwitchStateInvalidOrExpired" xml:space="preserve">
+    <value>The Twitch session is invalid or expired.</value>
+  </data>
+	<data name="Backend_TwitchPendingSessionInvalidOrExpired" xml:space="preserve">
+    <value>The pending Twitch session is invalid or expired.</value>
+  </data>
+	<data name="Backend_TwitchAuthorizationCodeMissing" xml:space="preserve">
+    <value>The Twitch authorization code is missing.</value>
+  </data>
+	<data name="Backend_TwitchTokenExchangeFailed" xml:space="preserve">
+    <value>Unable to exchange the Twitch code for an access token.</value>
+  </data>
+	<data name="Backend_TwitchUserFetchFailed" xml:space="preserve">
+    <value>Unable to fetch the Twitch profile.</value>
+  </data>
+	<data name="Backend_TwitchAlreadyLinkedToAnotherAccount" xml:space="preserve">
+    <value>This Twitch account is already linked to another Rollocracy account.</value>
+  </data>
+	<data name="Backend_TwitchNotLinked" xml:space="preserve">
+    <value>No Twitch account is currently linked.</value>
+  </data>
+	<data name="Backend_TwitchUsernameUnavailable" xml:space="preserve">
+    <value>The Twitch username cannot be used as a Rollocracy username.</value>
+  </data>
+
+	<data name="SecurityHistory_TwitchLinked" xml:space="preserve">
+    <value>Twitch account linked</value>
+  </data>
+	<data name="SecurityHistory_TwitchUnlinked" xml:space="preserve">
+    <value>Twitch account unlinked</value>
+  </data>
+	<data name="SecurityHistory_TwitchAccountCreated" xml:space="preserve">
+    <value>Account created through Twitch</value>
+  </data>
+	<data name="SecurityHistory_UsernameChangedFromTwitch" xml:space="preserve">
+    <value>Username aligned with Twitch login</value>
+  </data>
+
+	<data name="Login_TwitchDescription" xml:space="preserve">
+    <value>Sign in directly with Twitch. If needed, Rollocracy will guide you through account merge or completion.</value>
+  </data>
+	<data name="Login_TwitchError" xml:space="preserve">
+    <value>The Twitch sign-in flow failed or was interrupted.</value>
+  </data>
+
+	<data name="AccountSettings_LinkTwitch" xml:space="preserve">
+    <value>Link Twitch</value>
+  </data>
+	<data name="AccountSettings_UnlinkTwitch" xml:space="preserve">
+    <value>Unlink Twitch</value>
+  </data>
+	<data name="AccountSettings_RenameToTwitchLogin" xml:space="preserve">
+    <value>Use Twitch login as username</value>
+  </data>
+	<data name="AccountSettings_TwitchLinkedMessage" xml:space="preserve">
+    <value>Twitch account linked successfully.</value>
+  </data>
+	<data name="AccountSettings_TwitchUnlinkedMessage" xml:space="preserve">
+    <value>Twitch account unlinked.</value>
+  </data>
+	<data name="AccountSettings_TwitchRenameSuccess" xml:space="preserve">
+    <value>Username updated from Twitch login.</value>
+  </data>
+	<data name="AccountSettings_TwitchRenameSuggestion" xml:space="preserve">
+    <value>Your current Twitch login is “{0}”. You may use it as your Rollocracy username if you want.</value>
+  </data>
+
+	<data name="TwitchComplete_Title" xml:space="preserve">
+    <value>Complete Twitch account</value>
+  </data>
+	<data name="TwitchComplete_Subtitle" xml:space="preserve">
+    <value>Your Twitch account was authenticated successfully, but Rollocracy needs a bit more information to finish creating your account.</value>
+  </data>
+	<data name="TwitchComplete_LoadError" xml:space="preserve">
+    <value>Unable to load the pending Twitch session.</value>
+  </data>
+	<data name="TwitchComplete_TwitchLogin" xml:space="preserve">
+    <value>Twitch login</value>
+  </data>
+	<data name="TwitchComplete_TwitchEmail" xml:space="preserve">
+    <value>Twitch email</value>
+  </data>
+	<data name="TwitchComplete_NoTwitchEmail" xml:space="preserve">
+    <value>No usable email provided by Twitch</value>
+  </data>
+	<data name="TwitchComplete_Username" xml:space="preserve">
+    <value>Rollocracy username</value>
+  </data>
+	<data name="TwitchComplete_EmailOptional" xml:space="preserve">
+    <value>Rollocracy email (optional if missing on Twitch)</value>
+  </data>
+	<data name="TwitchComplete_Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+	<data name="TwitchComplete_Submit" xml:space="preserve">
+    <value>Finalize account</value>
+  </data>
+	<data name="TwitchComplete_BackToLogin" xml:space="preserve">
+    <value>Back to sign in</value>
+  </data>
+
+	<data name="TwitchMerge_Title" xml:space="preserve">
+    <value>Confirm Twitch merge</value>
+  </data>
+	<data name="TwitchMerge_Subtitle" xml:space="preserve">
+    <value>An existing Rollocracy account already uses this email. Confirm whether you want to link your Twitch account to it.</value>
+  </data>
+	<data name="TwitchMerge_LoadError" xml:space="preserve">
+    <value>Unable to load the pending Twitch merge.</value>
+  </data>
+	<data name="TwitchMerge_MatchedLocalUsername" xml:space="preserve">
+    <value>Matched local account</value>
+  </data>
+	<data name="TwitchMerge_TwitchLogin" xml:space="preserve">
+    <value>Twitch login</value>
+  </data>
+	<data name="TwitchMerge_Email" xml:space="preserve">
+    <value>Twitch email</value>
+  </data>
+	<data name="TwitchMerge_NoEmail" xml:space="preserve">
+    <value>No Twitch email</value>
+  </data>
+	<data name="TwitchMerge_RenameToTwitchLogin" xml:space="preserve">
+    <value>Rename the local account to the Twitch login “{0}” if available</value>
+  </data>
+	<data name="TwitchMerge_Confirm" xml:space="preserve">
+    <value>Confirm merge</value>
+  </data>
+	<data name="TwitchMerge_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
 </root>

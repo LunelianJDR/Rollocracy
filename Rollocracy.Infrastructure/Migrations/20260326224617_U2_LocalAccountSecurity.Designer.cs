@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Rollocracy.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Rollocracy.Infrastructure.Persistence;
 namespace Rollocracy.Infrastructure.Migrations
 {
     [DbContext(typeof(RollocracyDbContext))]
-    partial class RollocracyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260326224617_U2_LocalAccountSecurity")]
+    partial class U2_LocalAccountSecurity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -431,72 +434,6 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.ToTable("SessionRandomDraws");
                 });
 
-            modelBuilder.Entity("Rollocracy.Domain.Entities.TwitchPendingAuthSession", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("ConsumedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("CurrentUserAccountId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("ExpiresAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("FlowType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Language")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid?>("MatchedUserAccountId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("OAuthState")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("PublicToken")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("TwitchDisplayName")
-                        .HasColumnType("text");
-
-                    b.Property<string>("TwitchEmail")
-                        .HasColumnType("text");
-
-                    b.Property<string>("TwitchLogin")
-                        .HasColumnType("text");
-
-                    b.Property<string>("TwitchUserId")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CurrentUserAccountId");
-
-                    b.HasIndex("ExpiresAtUtc");
-
-                    b.HasIndex("MatchedUserAccountId");
-
-                    b.HasIndex("OAuthState")
-                        .IsUnique();
-
-                    b.HasIndex("PublicToken")
-                        .IsUnique();
-
-                    b.ToTable("TwitchPendingAuthSessions");
-                });
-
             modelBuilder.Entity("Rollocracy.Domain.Entities.UserAccount", b =>
                 {
                     b.Property<Guid>("Id")
@@ -541,13 +478,7 @@ namespace Rollocracy.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("TwitchDisplayName")
-                        .HasColumnType("text");
-
                     b.Property<string>("TwitchLogin")
-                        .HasColumnType("text");
-
-                    b.Property<string>("TwitchUserId")
                         .HasColumnType("text");
 
                     b.Property<string>("Username")

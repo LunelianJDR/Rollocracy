@@ -1,0 +1,573 @@
+﻿@page "/account/settings"
+@attribute [Authorize]
+@rendermode InteractiveServer
+@using System.Security.Claims
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Account
+@using Rollocracy.Domain.Interfaces
+@using Rollocracy.Localization
+@inject IAccountService AccountService
+@inject IAccountSecurityService AccountSecurityService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@inject IStringLocalizer<SharedTexts> L
+
+<PageTitle>@L["AccountSettings_Title"]</PageTitle>
+
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToLogin)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (Settings is null)
+{
+    <div class="rc-inline-error">@L["AccountSettings_LoadError"]</div>
+}
+else
+{
+    <section class="rc-tool-section">
+        <div class="rc-tool-layout">
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["AccountSettings_Title"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["AccountSettings_Subtitle"]</p>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Message))
+                {
+                    <div class="rc-inline-warning">@Message</div>
+                }
+
+                <div class="rc-test-stats-grid">
+                    <div class="rc-stat-card">
+                        <span class="rc-stat-card__label">@L["AccountSettings_Username"]</span>
+                        <span class="rc-stat-card__value rc-stat-card__value--small">@Settings.Username</span>
+                    </div>
+
+                    <div class="rc-stat-card">
+                        <span class="rc-stat-card__label">@L["AccountSettings_Email"]</span>
+                        <span class="rc-stat-card__value rc-stat-card__value--small">
+                            @(string.IsNullOrWhiteSpace(Settings.Email) ? L["AccountSettings_NoEmail"] : Settings.Email)
+                        </span>
+                    </div>
+
+                    <div class="rc-stat-card">
+                        <span class="rc-stat-card__label">@L["AccountSettings_LanguageSection"]</span>
+                        <span class="rc-stat-card__value rc-stat-card__value--small">@Settings.Language.ToUpperInvariant()</span>
+                    </div>
+
+                    <div class="rc-stat-card">
+                        <span class="rc-stat-card__label">@L["AccountSettings_MaxPlayersPerSession"]</span>
+                        <span class="rc-stat-card__value">@Settings.MaxPlayersPerSession</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["AccountSettings_GeneralSection"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["AccountSettings_GeneralSubtitle"]</p>
+                    </div>
+                </div>
+
+                <div class="rc-tool-form-grid">
+                    <div class="rc-form-field rc-form-field--full">
+                        <label>@L["AccountSettings_Email"]</label>
+                        <input @bind="EditableEmail" type="email" />
+                    </div>
+
+                    <div class="rc-form-field">
+                        <label>@L["AccountSettings_EmailVerificationStatus"]</label>
+                        <div class="rc-readonly-value">
+                            @(Settings.IsEmailVerified? L["AccountSettings_EmailVerified"] : L["AccountSettings_EmailNotVerifiedYet"])
+                        </div>
+                    </div>
+
+                    <div class="rc-form-field">
+                        <label>@L["AccountSettings_LanguageSection"]</label>
+                        <select @bind="EditableLanguage">
+                            <option value="fr">@L["Language_French"]</option>
+                            <option value="en">@L["Language_English"]</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="rc-tool-actions">
+                    <button type="button" @onclick="SaveGeneralInfo">@L["Common_Save"]</button>
+                </div>
+
+                @if (string.IsNullOrWhiteSpace(Settings.Email))
+                {
+                    <div class="rc-inline-warning">@L["AccountSettings_NoEmailWarning"]</div>
+                }
+            </div>
+
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["AccountSettings_IdentitySection"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["AccountSettings_IdentitySubtitle"]</p>
+                    </div>
+                </div>
+
+                <div class="rc-tool-form-grid">
+                    <div class="rc-form-field">
+                        <label>@L["AccountSettings_CurrentUsername"]</label>
+                        <div class="rc-readonly-value">@Settings.Username</div>
+                    </div>
+
+                    <div class="rc-form-field">
+                        <label>@L["AccountSettings_NewUsername"]</label>
+                        <input @bind="NewUsername" disabled="@(!Settings.HasEmail)" />
+                    </div>
+                </div>
+
+                @if (!Settings.HasEmail)
+                {
+                    <div class="rc-inline-warning">@L["AccountSettings_UsernameChangeRequiresEmail"]</div>
+                }
+
+                <div class="rc-tool-actions">
+                    <button type="button" @onclick="SaveUsername" disabled="@(!Settings.HasEmail)">
+                        @L["AccountSettings_SaveUsername"]
+                    </button>
+                </div>
+            </div>
+
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["AccountSettings_SecuritySection"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["AccountSettings_SecuritySubtitle"]</p>
+                    </div>
+                </div>
+
+                <div class="rc-tool-form-grid">
+                    <div class="rc-form-field rc-form-field--full">
+                        <label>@L["AccountSettings_LastSensitiveChange"]</label>
+                        <div class="rc-readonly-value">
+                            @GetLastSensitiveChangeLabel()
+                        </div>
+                    </div>
+
+                    <div class="rc-form-field">
+                        <label>@L["AccountSettings_EmailVerificationStatus"]</label>
+                        <div class="rc-readonly-value">
+                            @(Settings.IsEmailVerified? L["AccountSettings_EmailVerified"] : L["AccountSettings_EmailNotVerifiedYet"])
+                        </div>
+                    </div>
+
+                    <div class="rc-form-field">
+                        <label>@L["AccountSettings_SendVerificationEmailLabel"]</label>
+                        <div class="rc-tool-actions">
+                            <button type="button"
+                                    @onclick="SendVerificationEmail"
+                                    disabled="@(!Settings.HasEmail || Settings.IsEmailVerified)">
+                                @L["AccountSettings_SendVerificationEmail"]
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rc-auth-form">
+                    <div class="rc-form-field">
+                        <label>@L["AccountSettings_CurrentPassword"]</label>
+                        <input @bind="CurrentPassword" type="password" disabled="@(!Settings.HasEmail)" />
+                    </div>
+
+                    <div class="rc-form-field">
+                        <label>@L["AccountSettings_NewPassword"]</label>
+                        <input @bind="NewPassword" type="password" disabled="@(!Settings.HasEmail)" />
+                    </div>
+
+                    <div class="rc-form-field">
+                        <label>@L["AccountSettings_ConfirmNewPassword"]</label>
+                        <input @bind="ConfirmNewPassword" type="password" disabled="@(!Settings.HasEmail)" />
+                    </div>
+                </div>
+
+                @if (!Settings.HasEmail)
+                {
+                    <div class="rc-inline-warning">@L["AccountSettings_PasswordChangeRequiresEmail"]</div>
+                }
+
+                <div class="rc-tool-actions">
+                    <button type="button" @onclick="ChangePassword" disabled="@(!Settings.HasEmail)">
+                        @L["AccountSettings_ChangePassword"]
+                    </button>
+                </div>
+            </div>
+
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["AccountSettings_TwitchSection"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["AccountSettings_TwitchSubtitle"]</p>
+                    </div>
+                </div>
+
+                <div class="rc-tool-form-grid">
+                    <div class="rc-form-field">
+                        <label>@L["AccountSettings_TwitchLinkStatus"]</label>
+                        <div class="rc-readonly-value">
+                            @(Settings.IsTwitchLinked
+                                ? string.Format(L["AccountSettings_TwitchLinkedAs"], Settings.TwitchLogin)
+                                : L["AccountSettings_TwitchNotLinked"])
+                        </div>
+                    </div>
+
+                    <div class="rc-form-field">
+                        <label>@L["AccountSettings_TwitchOAuthNoticeLabel"]</label>
+                        <div class="rc-readonly-value">@L["AccountSettings_TwitchOAuthNotice"]</div>
+                    </div>
+                </div>
+
+                @if (Settings.IsTwitchLinked &&
+                                     !string.IsNullOrWhiteSpace(Settings.TwitchLogin) &&
+                                     !string.Equals(Settings.Username, Settings.TwitchLogin, StringComparison.Ordinal))
+                {
+                    <div class="rc-inline-warning">
+                        @string.Format(L["AccountSettings_TwitchRenameSuggestion"], Settings.TwitchLogin)
+                    </div>
+                }
+
+                <div class="rc-tool-actions">
+                    @if (!Settings.IsTwitchLinked)
+                    {
+                        <a class="rc-auth-link-button" href="/auth/twitch/link">@L["AccountSettings_LinkTwitch"]</a>
+                    }
+                    else
+                    {
+                        <button type="button" @onclick="RenameToTwitchLogin">@L["AccountSettings_RenameToTwitchLogin"]</button>
+                        <button type="button" @onclick="UnlinkTwitch">@L["AccountSettings_UnlinkTwitch"]</button>
+                    }
+                </div>
+            </div>
+
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["AccountSettings_GameMasterSection"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["AccountSettings_GameMasterSubtitle"]</p>
+                    </div>
+                </div>
+
+                <label class="rc-filter-toggle">
+                    <input type="checkbox"
+                           checked="@Settings.WantsToBeGameMaster"
+                           @onchange="OnGameMasterModeChanged"
+                           disabled="@(!Settings.CanActivateGameMasterMode && !Settings.WantsToBeGameMaster)" />
+                    <span>@L["AccountSettings_EnableGameMasterMode"]</span>
+                </label>
+
+                @if (!Settings.CanActivateGameMasterMode)
+                {
+                    <div class="rc-inline-warning">@L["AccountSettings_GameMasterNeedsEmail"]</div>
+                }
+
+                @if (Settings.WantsToBeGameMaster)
+                {
+                    <div class="rc-tool-form-grid">
+                        <div class="rc-form-field">
+                            <label>@L["AccountSettings_MaxPlayersPerSession"]</label>
+                            <div class="rc-readonly-value">@Settings.MaxPlayersPerSession</div>
+                        </div>
+
+                        <div class="rc-form-field">
+                            <label>@L["AccountSettings_GameMasterModeStatus"]</label>
+                            <div class="rc-readonly-value">@L["AccountSettings_GameMasterModeEnabled"]</div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["AccountSettings_SubscriptionSection"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["AccountSettings_SubscriptionSubtitle"]</p>
+                    </div>
+                </div>
+
+                @if (!Settings.WantsToBeGameMaster)
+                {
+                    <div class="rc-inline-warning">@L["AccountSettings_SubscriptionRequiresGameMasterMode"]</div>
+                }
+                else
+                {
+                    <div class="rc-tool-form-grid">
+                        <div class="rc-form-field">
+                            <label>@L["AccountSettings_MaxPlayersPerSession"]</label>
+                            <div class="rc-readonly-value">@Settings.MaxPlayersPerSession</div>
+                        </div>
+
+                        <div class="rc-form-field">
+                            <label>@L["AccountSettings_SubscriptionStatus"]</label>
+                            <div class="rc-readonly-value">@L["AccountSettings_SubscriptionComingSoon"]</div>
+                        </div>
+                    </div>
+
+                    <div class="rc-tool-actions">
+                        <button type="button" disabled>@L["AccountSettings_SubscriptionButtonSoon"]</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    private bool IsLoaded;
+    private bool RedirectToLogin;
+    private Guid CurrentUserId;
+    private AccountSettingsDto? Settings;
+    private string Message = string.Empty;
+
+    private string EditableEmail = string.Empty;
+    private string EditableLanguage = "fr";
+    private string NewUsername = string.Empty;
+
+    private string CurrentPassword = string.Empty;
+    private string NewPassword = string.Empty;
+    private string ConfirmNewPassword = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var isAuthenticated = user.Identity?.IsAuthenticated == true;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (!isAuthenticated || string.IsNullOrWhiteSpace(userIdValue))
+        {
+            RedirectToLogin = true;
+            IsLoaded = true;
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+        await LoadSettingsAsync();
+
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        if (!string.IsNullOrWhiteSpace(uri.Query) && uri.Query.Contains("twitch_linked=1"))
+        {
+            Message = L["AccountSettings_TwitchLinkedMessage"];
+        }
+
+        IsLoaded = true;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToLogin)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        Message = string.Empty;
+
+        try
+        {
+            Settings = await AccountService.GetAccountSettingsAsync(CurrentUserId);
+
+            EditableEmail = Settings.Email ?? string.Empty;
+            EditableLanguage = Settings.Language;
+            NewUsername = Settings.Username;
+        }
+        catch
+        {
+            Settings = null;
+        }
+    }
+
+    private async Task SaveGeneralInfo()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            await AccountService.UpdateGeneralInfoAsync(
+                CurrentUserId,
+                string.IsNullOrWhiteSpace(EditableEmail) ? null : EditableEmail,
+                EditableLanguage);
+
+            await LoadSettingsAsync();
+            Message = L["AccountSettings_GeneralSaved"];
+            Navigation.NavigateTo("/account/settings", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task SaveUsername()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            await AccountService.UpdateUsernameAsync(CurrentUserId, NewUsername);
+
+            await LoadSettingsAsync();
+            Message = L["AccountSettings_UsernameSaved"];
+            Navigation.NavigateTo("/account/settings", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            if (NewPassword != ConfirmNewPassword)
+            {
+                Message = $"{L["Common_Error"]} : {L["Backend_NewPasswordsDoNotMatch"]}";
+                return;
+            }
+
+            await AccountSecurityService.ChangePasswordAsync(
+                CurrentUserId,
+                CurrentPassword,
+                NewPassword);
+
+            CurrentPassword = string.Empty;
+            NewPassword = string.Empty;
+            ConfirmNewPassword = string.Empty;
+
+            await LoadSettingsAsync();
+            Message = L["AccountSettings_PasswordChanged"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task SendVerificationEmail()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            await AccountSecurityService.SendEmailVerificationAsync(CurrentUserId);
+
+            await LoadSettingsAsync();
+            Message = L["AccountSettings_VerificationEmailSent"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task RenameToTwitchLogin()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            var response = await Http.PostAsync("api/twitch/rename-current-to-twitch", null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Message = $"{L["Common_Error"]} : {error}";
+                return;
+            }
+
+            await LoadSettingsAsync();
+            Message = L["AccountSettings_TwitchRenameSuccess"];
+            Navigation.NavigateTo("/account/settings", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task UnlinkTwitch()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            var response = await Http.PostAsync("api/twitch/unlink-current", null);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Message = $"{L["Common_Error"]} : {error}";
+                return;
+            }
+
+            await LoadSettingsAsync();
+            Message = L["AccountSettings_TwitchUnlinkedMessage"];
+            Navigation.NavigateTo("/account/settings", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task OnGameMasterModeChanged(ChangeEventArgs args)
+    {
+        try
+        {
+            Message = string.Empty;
+
+            var enabled = args.Value is bool boolValue && boolValue;
+
+            await AccountService.SetGameMasterModeAsync(CurrentUserId, enabled);
+
+            await LoadSettingsAsync();
+            Message = enabled
+                ? L["AccountSettings_GameMasterModeEnabledMessage"]
+                : L["AccountSettings_GameMasterModeDisabledMessage"];
+
+            Navigation.NavigateTo("/account/settings", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+            await LoadSettingsAsync();
+        }
+    }
+
+    private string GetLastSensitiveChangeLabel()
+    {
+        if (Settings is null)
+            return string.Empty;
+
+        if (!Settings.LastSensitiveChangeAtUtc.HasValue)
+            return L["AccountSettings_NoSensitiveChange"];
+
+        var typeLabel = string.IsNullOrWhiteSpace(Settings.LastSensitiveChangeType)
+            ? L["AccountSettings_SensitiveChangeUnknown"]
+            : L[Settings.LastSensitiveChangeType];
+
+        return $"{typeLabel} — {Settings.LastSensitiveChangeAtUtc.Value.ToLocalTime():g}";
+    }
+}

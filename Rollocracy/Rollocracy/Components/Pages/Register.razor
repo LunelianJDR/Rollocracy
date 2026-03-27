@@ -7,44 +7,76 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
-<h3>@L["Register_Title"]</h3>
+<PageTitle>@L["Register_Title"]</PageTitle>
 
-<div>
-    <label>@L["Register_Username"]</label><br />
-    <input @bind="Username" />
-</div>
+<section class="rc-auth-shell">
+    <div class="rc-auth-grid">
+        <article class="rc-auth-panel">
+            <div class="rc-tool-panel__header-main">
+                <h1 class="rc-tool-panel__title">@L["Register_Title"]</h1>
+                <p class="rc-tool-panel__subtitle">@L["Register_Subtitle"]</p>
+            </div>
 
-<div>
-    <label>@L["Register_Password"]</label><br />
-    <input @bind="Password" type="password" />
-</div>
+            @if (!string.IsNullOrWhiteSpace(Message))
+            {
+                <div class="rc-inline-warning">@Message</div>
+            }
 
-<div>
-    <label>
-        <input type="checkbox" @bind="IsGameMaster" />
-        @L["Register_IsGameMaster"]
-    </label>
-</div>
+            <div class="rc-auth-form">
+                <div class="rc-form-field">
+                    <label>@L["Register_Username"]</label>
+                    <input @bind="Username" autocomplete="username" />
+                </div>
 
-<div>
-    <label>@L["Register_Language"]</label><br />
-    <select @bind="SelectedLanguage">
-        <option value="fr">@L["Language_French"]</option>
-        <option value="en">@L["Language_English"]</option>
-    </select>
-</div>
+                <div class="rc-form-field">
+                    <label>@L["Register_EmailOptional"]</label>
+                    <input @bind="Email" type="email" autocomplete="email" />
+                </div>
 
-<button @onclick="HandleRegister">@L["Register_Submit"]</button>
+                <div class="rc-form-field">
+                    <label>@L["Register_Password"]</label>
+                    <input @bind="Password" type="password" autocomplete="new-password" />
+                </div>
 
-@if (!string.IsNullOrWhiteSpace(Message))
-{
-    <p>@Message</p>
-}
+                <div class="rc-form-field">
+                    <label>@L["Register_Language"]</label>
+                    <select @bind="SelectedLanguage">
+                        <option value="fr">@L["Language_French"]</option>
+                        <option value="en">@L["Language_English"]</option>
+                    </select>
+                </div>
+
+                <div class="rc-inline-warning">
+                    <strong>@L["Register_EmailWarningTitle"]</strong><br />
+                    @L["Register_EmailWarningBody"]
+                </div>
+
+                <div class="rc-tool-actions">
+                    <button @onclick="HandleRegister">@L["Register_Submit"]</button>
+                    <a class="rc-auth-link-button" href="/login">@L["Register_BackToLogin"]</a>
+                </div>
+            </div>
+        </article>
+
+        <article class="rc-auth-panel">
+            <div class="rc-tool-panel__header-main">
+                <h2 class="rc-tool-panel__title">@L["Register_WhyEmailTitle"]</h2>
+                <p class="rc-tool-panel__subtitle">@L["Register_WhyEmailSubtitle"]</p>
+            </div>
+
+            <div class="rc-auth-stack">
+                <div class="rc-readonly-value">@L["Register_WhyEmailLine1"]</div>
+                <div class="rc-readonly-value">@L["Register_WhyEmailLine2"]</div>
+                <div class="rc-readonly-value">@L["Register_WhyEmailLine3"]</div>
+            </div>
+        </article>
+    </div>
+</section>
 
 @code {
     private string Username = string.Empty;
+    private string Email = string.Empty;
     private string Password = string.Empty;
-    private bool IsGameMaster;
     private string SelectedLanguage = "fr";
     private string Message = string.Empty;
 
@@ -52,11 +84,13 @@
     {
         try
         {
+            Message = string.Empty;
+
             var request = new
             {
                 Username,
+                Email = string.IsNullOrWhiteSpace(Email) ? null : Email,
                 Password,
-                IsGameMaster,
                 Language = SelectedLanguage
             };
 
@@ -64,14 +98,12 @@
 
             if (response.IsSuccessStatusCode)
             {
-                Message = L["Register_Success"];
-                Navigation.NavigateTo("/login");
+                Navigation.NavigateTo("/login?registered=1", forceLoad: true);
+                return;
             }
-            else
-            {
-                var error = await response.Content.ReadAsStringAsync();
-                Message = $"{L["Common_Error"]} : {error}";
-            }
+
+            var error = await response.Content.ReadAsStringAsync();
+            Message = $"{L["Common_Error"]} : {error}";
         }
         catch (Exception ex)
         {
