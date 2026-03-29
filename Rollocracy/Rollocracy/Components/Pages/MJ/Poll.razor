@@ -34,7 +34,7 @@ else if (RedirectToHome)
 }
 else if (CurrentSession is null)
 {
-    <p>@L["SessionPage_NotFound"]</p>
+    <p>@L["Session_NotFound"]</p>
 }
 else
 {
@@ -43,7 +43,7 @@ else
             <div class="rc-tool-panel">
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
-                        <h5 class="rc-tool-panel__title">@L["Poll_GameMasterSectionTitle"]</h5>
+                        <h5 class="rc-tool-panel__title">@L["Poll_Title"]</h5>
                         <p class="rc-tool-panel__subtitle">@L["Poll_Question"] / @L["Poll_Options"] / @L["Poll_OptionConsequences"]</p>
                     </div>
 
@@ -148,11 +148,11 @@ else
                                                     @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
                                                     {
                                                         <div class="rc-form-field">
-                                                            <label>@L["GameTest_ConsequenceTargetKind"]</label>
+                                                            <label>@L["Test_ConsequenceTargetKind"]</label>
                                                             <select @bind="consequence.TargetKind" @bind:after="() => OnPollConsequenceTargetKindChanged(consequence)">
-                                                                <option value="@TestConsequenceTargetKind.Gauge">@L["GameTest_TargetGauge"]</option>
-                                                                <option value="@TestConsequenceTargetKind.SessionGauge">@L["SessionPage_TargetSessionGauge"]</option>
-                                                                <option value="@TestConsequenceTargetKind.Attribute">@L["GameTest_TargetAttribute"]</option>
+                                                                <option value="@TestConsequenceTargetKind.Gauge">@L["Test_TargetGauge"]</option>
+                                                                <option value="@TestConsequenceTargetKind.SessionGauge">@L["Session_Manage_TargetSessionGauge"]</option>
+                                                                <option value="@TestConsequenceTargetKind.Attribute">@L["Test_TargetAttribute"]</option>
                                                                 <option value="@TestConsequenceTargetKind.DerivedStat">@L["TestConsequence_Target_DerivedStat"]</option>
                                                                 <option value="@TestConsequenceTargetKind.Metric">@L["TestConsequence_Target_Metric"]</option>
                                                             </select>
@@ -161,20 +161,20 @@ else
                                                     else if (consequence.OperationType == TestConsequenceOperationType.GrantTalent || consequence.OperationType == TestConsequenceOperationType.RevokeTalent)
                                                     {
                                                         <div class="rc-form-field rc-form-field--readonly">
-                                                            <label>@L["GameTest_ConsequenceTargetKind"]</label>
+                                                            <label>@L["Test_ConsequenceTargetKind"]</label>
                                                             <div class="rc-readonly-value">@L["TestConsequence_Target_Talent"]</div>
                                                         </div>
                                                     }
                                                     else
                                                     {
                                                         <div class="rc-form-field rc-form-field--readonly">
-                                                            <label>@L["GameTest_ConsequenceTargetKind"]</label>
+                                                            <label>@L["Test_ConsequenceTargetKind"]</label>
                                                             <div class="rc-readonly-value">@L["TestConsequence_Target_Item"]</div>
                                                         </div>
                                                     }
 
                                                     <div class="rc-form-field">
-                                                        <label>@L["GameTest_TargetDefinition"]</label>
+                                                        <label>@L["Test_TargetDefinition"]</label>
 
                                                         @if (consequence.TargetKind == TestConsequenceTargetKind.Gauge)
                                                         {
@@ -244,18 +244,18 @@ else
                                                     @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
                                                     {
                                                         <div class="rc-form-field">
-                                                            <label>@L["GameTest_DifficultyMode"]</label>
+                                                            <label>@L["Test_DifficultyMode"]</label>
                                                             <select @bind="consequence.ModifierMode">
-                                                                <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
-                                                                <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
+                                                                <option value="@TestModifierMode.Bonus">@L["Test_Bonus"]</option>
+                                                                <option value="@TestModifierMode.Malus">@L["Test_Malus"]</option>
                                                             </select>
                                                         </div>
 
                                                         <div class="rc-form-field">
-                                                            <label>@L["GameTest_ConsequenceValueMode"]</label>
+                                                            <label>@L["Test_ConsequenceValueMode"]</label>
                                                             <select @bind="consequence.ValueMode">
-                                                                <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
-                                                                <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                                                                <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
+                                                                <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
                                                             </select>
                                                         </div>
 
@@ -274,7 +274,7 @@ else
                                                         else
                                                         {
                                                             <div class="rc-form-field">
-                                                                <label>@L["GameTest_DifficultyValue"]</label>
+                                                                <label>@L["Test_DifficultyValue"]</label>
                                                                 <input type="number" @bind="consequence.Value" />
                                                             </div>
                                                         }
@@ -445,7 +445,7 @@ else
 
                                         @if (votesForOption.Count == 0)
                                         {
-                                            <p class="rc-tool-muted">@L["SessionPage_NoCharactersToDisplay"]</p>
+                                            <p class="rc-tool-muted">@L["Session_Manage_NoCharactersToDisplay"]</p>
                                         }
                                         else
                                         {
@@ -491,16 +491,16 @@ else
                                         @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
                                         {
                                             <div class="rc-test-result-line">
-                                                <span>@L["GameTest_DifficultyMode"]</span>
+                                                <span>@L["Test_DifficultyMode"]</span>
                                                 <strong>
                                                     @if (consequence.ValueMode == ModifierValueMode.Metric)
                                                     {
-                                                        @(consequence.ModifierMode == TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])
+                                                        @(consequence.ModifierMode == TestModifierMode.Bonus ? L["Test_Bonus"] : L["Test_Malus"])
                                                         @($" · {L["Common_SourceMetric"]} : {consequence.SourceMetricName}")
                                                     }
                                                     else
                                                     {
-                                                        @(consequence.ModifierMode == TestModifierMode.Bonus ? L["GameTest_Bonus"] : L["GameTest_Malus"])
+                                                        @(consequence.ModifierMode == TestModifierMode.Bonus ? L["Test_Bonus"] : L["Test_Malus"])
                                                         @($" {consequence.Value}")
                                                     }
                                                 </strong>

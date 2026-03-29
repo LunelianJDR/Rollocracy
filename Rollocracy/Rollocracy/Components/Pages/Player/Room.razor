@@ -1,4 +1,4 @@
-@page "/player/room/{PlayerSessionId:guid}"
+﻿@page "/player/room/{PlayerSessionId:guid}"
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 
@@ -19,6 +19,7 @@
 @inject IStringLocalizer<SharedTexts> L
 @inject IPollService PollService
 @inject ISessionNotifier SessionNotifier
+@inject IConfiguration Configuration
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
 @if (!IsLoaded)
@@ -27,7 +28,7 @@
 }
 else if (State is null)
 {
-    <p>@L["PlayerRoom_NotFound"]</p>
+    <p>@L["Session_Player_NotFound"]</p>
 }
 else
 {
@@ -36,13 +37,13 @@ else
             <div class="rc-tool-panel">
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
-                        <h4 class="rc-tool-panel__title">@L["PlayerRoom_CharacterPanelTitle"]</h4>
+                        <h4 class="rc-tool-panel__title">@L["Session_Player_CharacterPanelTitle"]</h4>
                     </div>
 
                     <div class="rc-tool-actions">
                         @if (IsViewingDeadCharacter)
                         {
-                            <button type="button" @onclick="CloseViewedDeadCharacter">@L["PlayerRoom_CloseViewedCharacter"]</button>
+                            <button type="button" @onclick="CloseViewedDeadCharacter">@L["Session_Player_CloseViewedCharacter"]</button>
                         }
                         else if (State.AliveCharacter is not null)
                         {
@@ -53,12 +54,12 @@ else
                             }
                             else if (ShowBiographyPanel)
                             {
-                                <button type="button" @onclick="BeginBiographyEdit">@L["PlayerRoom_EditBiography"]</button>
-                                <button type="button" @onclick="ShowStatsView">@L["PlayerRoom_Statistics"]</button>
+                                <button type="button" @onclick="BeginBiographyEdit">@L["Session_Player_EditBiography"]</button>
+                                <button type="button" @onclick="ShowStatsView">@L["Session_Player_Statistics"]</button>
                             }
                             else
                             {
-                                <button type="button" @onclick="ShowBiographyView">@L["PlayerRoom_ViewBiography"]</button>
+                                <button type="button" @onclick="ShowBiographyView">@L["Session_Player_ViewBiography"]</button>
                             }
                         }
                     </div>
@@ -69,14 +70,14 @@ else
                     <div class="rc-filter-group-card">
                         <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                             <div class="rc-tool-panel__header-main">
-                                <h5 class="rc-tool-panel__title">@L["GameTest_PlayerSectionTitle"]</h5>
+                                <h5 class="rc-tool-panel__title">@L["Test_PlayerSectionTitle"]</h5>
                                 <p class="rc-tool-panel__subtitle">@ActiveTest.AttributeName · @($"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}")</p>
                             </div>
 
                             @if (ActiveTest.AlreadyRolled)
                             {
                                 <div class="rc-tool-actions">
-                                    <button type="button" class="rc-round-icon-button" @onclick="DismissActiveTest" title="@L["Common_Close"]">✕</button>
+                                    <button type="button" class="rc-round-icon-button" @onclick="DismissActiveTest" title="@L["Common_Close"]">X</button>
                                 </div>
                             }
                         </div>
@@ -86,38 +87,38 @@ else
                             @if (IsRollingCurrentTest)
                             {
                                 <div class="rc-player-roll-animation">
-                                    <img src="/images/AnimatedDice_150.gif" alt="@L["PlayerRoom_RollingDice"]" height="70" width="70"/>
+                                    <img src="/images/AnimatedDice_150.gif" alt="@L["Session_Player_RollingDice"]" height="70" width="70"/>
                                 </div>
                             }
                             else
                             {
-                                <button type="button" @onclick="RollCurrentTest">@L["GameTest_RollButton", $"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}"]</button>
+                                <button type="button" @onclick="RollCurrentTest">@L["Test_RollButton", $"{ActiveTest.DiceCount}d{ActiveTest.DiceSides}"]</button>
                             }
                         }
                         else if (ActiveTest.Result is not null)
                         {
                             <div class="rc-tool-form-grid">
                                 <div class="rc-form-field rc-form-field--readonly">
-                                    <label>@L["GameTest_EffectiveAttributeValue"]</label>
+                                    <label>@L["Test_EffectiveAttributeValue"]</label>
                                     <div class="rc-readonly-value">@ActiveTest.Result.EffectiveAttributeValue</div>
                                 </div>
                                 <div class="rc-form-field rc-form-field--readonly">
-                                    <label>@L["GameTest_DiceTotal"]</label>
+                                    <label>@L["Test_DiceTotal"]</label>
                                     <div class="rc-readonly-value">@ActiveTest.Result.DiceTotal</div>
                                 </div>
                                 <div class="rc-form-field rc-form-field--readonly">
-                                    <label>@L["GameTest_FinalValue"]</label>
+                                    <label>@L["Test_FinalValue"]</label>
                                     <div class="rc-readonly-value">@ActiveTest.Result.FinalValue</div>
                                 </div>
                                 <div class="rc-form-field rc-form-field--readonly">
-                                    <label>@L["GameTest_Result"]</label>
+                                    <label>@L["Test_Result"]</label>
                                     <div class="rc-player-test-outcome @(ActiveTest.Result.IsSuccess ? "success" : "failure")">
-                                        @(ActiveTest.Result.IsSuccess? L["GameTest_Success"] : L["GameTest_Failure"])
+                                        @(ActiveTest.Result.IsSuccess? L["Test_Success"] : L["Test_Failure"])
                                     </div>
                                 </div>
                             </div>
 
-                            <p>@L["GameTest_DiceResults"] : @string.Join(" - ", ActiveTest.Result.DiceResults)</p>
+                            <p>@L["Test_DiceResults"] : @string.Join(" - ", ActiveTest.Result.DiceResults)</p>
                         }
                     </div>
                 }
@@ -134,7 +135,7 @@ else
                             @if (LatestPoll.IsClosed || LatestPoll.HasVoted)
                             {
                                 <div class="rc-tool-actions">
-                                    <button type="button" class="rc-round-icon-button" @onclick="DismissLatestPoll" title="@L["Common_Close"]">✕</button>
+                                    <button type="button" class="rc-round-icon-button" @onclick="DismissLatestPoll" title="@L["Common_Close"]">X</button>
                                 </div>
                             }
                         </div>
@@ -176,7 +177,7 @@ else
                 @if (!State.HasAssignedGameSystem)
                 {
                     <div class="rc-empty-panel">
-                        <p>@L["PlayerRoom_NoGameSystem"]</p>
+                        <p>@L["Session_Player_NoGameSystem"]</p>
                     </div>
                 }
                 else if (IsViewingDeadCharacter && ViewedDeadCharacter is not null)
@@ -197,7 +198,7 @@ else
 
                             <div class="rc-filter-group-card">
                                 <div class="rc-form-field rc-form-field--full">
-                                    <label>@L["EditCharacter_Biography"]</label>
+                                    <label>@L["Common_Biography"]</label>
                                     <textarea rows="12" @bind="BiographyDraft"></textarea>
                                 </div>
                             </div>
@@ -214,10 +215,10 @@ else
                             </div>
 
                             <div class="rc-filter-group-card">
-                                <div class="rc-detail-block__title">@L["PlayerRoom_Biography"]</div>
+                                <div class="rc-detail-block__title">@L["Common_Biography"]</div>
                                 @if (string.IsNullOrWhiteSpace(State.AliveCharacter.Biography))
                                 {
-                                    <p>@L["PlayerRoom_NoBiography"]</p>
+                                    <p>@L["Session_Player_NoBiography"]</p>
                                 }
                                 else
                                 {
@@ -238,19 +239,19 @@ else
                         <div class="rc-filter-group-card">
                             <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                                 <div class="rc-tool-panel__header-main">
-                                    <h5 class="rc-tool-panel__title">@L["PlayerRoom_CreateCharacter"]</h5>
+                                    <h5 class="rc-tool-panel__title">@L["Session_Player_CreateCharacter"]</h5>
                                     <p class="rc-tool-panel__subtitle">@CreationTemplate.GameSystemName</p>
                                 </div>
                             </div>
 
                             <div class="rc-tool-form-grid">
                                 <div class="rc-form-field">
-                                    <label>@L["EditCharacter_Name"]</label>
+                                    <label>@L["Character_Edit_Name"]</label>
                                     <input @bind="NewCharacterName" />
                                 </div>
 
                                 <div class="rc-form-field rc-form-field--full">
-                                    <label>@L["EditCharacter_Biography"]</label>
+                                    <label>@L["Common_Biography"]</label>
                                     <textarea rows="4" @bind="NewCharacterBiography"></textarea>
                                 </div>
                             </div>
@@ -258,7 +259,7 @@ else
                             @if (CreationTemplate.Attributes.Count > 0)
                             {
                                 <div class="rc-detail-block">
-                                    <div class="rc-detail-block__title">@L["PlayerRoom_Attributes"]</div>
+                                    <div class="rc-detail-block__title">@L["Session_Player_Attributes"]</div>
                                     <div class="rc-player-creation-attribute-grid">
                                         @foreach (var typeattribute in CreationTemplate.Attributes)
                                         {
@@ -274,7 +275,7 @@ else
                             @if (CreationTemplate.Traits.Count > 0)
                             {
                                 <div class="rc-detail-block">
-                                    <div class="rc-detail-block__title">@L["PlayerRoom_Traits"]</div>
+                                    <div class="rc-detail-block__title">@L["Session_Player_Traits"]</div>
                                     <div class="rc-tool-form-grid rc-tool-form-grid--dense">
                                         @foreach (var trait in CreationTemplate.Traits)
                                         {
@@ -283,7 +284,7 @@ else
 
                                                 @if (trait.IsRandomSelectionGroup)
                                                 {
-                                                    <div class="rc-readonly-value">@L["PlayerRoom_RandomTraitGroup"]</div>
+                                                    <div class="rc-readonly-value">@L["Session_Player_RandomTraitGroup"]</div>
                                                 }
                                                 else
                                                 {
@@ -301,7 +302,7 @@ else
                             }
 
                             <div class="rc-tool-actions">
-                                <button type="button" @onclick="HandleCreateCharacterInline">@L["PlayerRoom_CreateCharacter"]</button>
+                                <button type="button" @onclick="HandleCreateCharacterInline">@L["Session_Player_CreateCharacter"]</button>
                                 <button type="button" @onclick="CancelInlineCharacterCreation">@L["Common_Cancel"]</button>
                             </div>
                         </div>
@@ -311,20 +312,20 @@ else
                         <div class="rc-filter-group-card">
                             @if (State.DeadCharacters.Count == 0)
                             {
-                                <p>@L["PlayerRoom_NoCharacterYet"]</p>
+                                <p>@L["Session_Player_NoCharacterYet"]</p>
                             }
                             else
                             {
-                                <p>@L["PlayerRoom_OnlyDeadCharacters"]</p>
+                                <p>@L["Session_Player_OnlyDeadCharacters"]</p>
                             }
 
                             @if (State.CanCreateNewCharacter)
                             {
-                                <button type="button" @onclick="GoToCreateCharacter">@L["PlayerRoom_CreateNewCharacter"]</button>
+                                <button type="button" @onclick="GoToCreateCharacter">@L["Session_Player_CreateNewCharacter"]</button>
                             }
                             else if (State.CanCreateNewCharacterAtUtc.HasValue)
                             {
-                                <p>@L["PlayerRoom_CreateCharacterCountdown", RemainingCreationSeconds]</p>
+                                <p>@L["Session_Player_CreateCharacterCountdown", RemainingCreationSeconds]</p>
                             }
                         </div>
                     }
@@ -333,7 +334,7 @@ else
                 @if (State.DeadCharacters.Count > 0)
                 {
                     <div class="rc-filter-group-card">
-                        <div class="rc-detail-block__title">@L["PlayerRoom_DeadCharacters"]</div>
+                        <div class="rc-detail-block__title">@L["Session_Player_DeadCharacters"]</div>
 
                         <div class="rc-character-inline-list">
                             @foreach (var deadCharacter in State.DeadCharacters)
@@ -359,13 +360,13 @@ else
             <div class="rc-tool-panel__header-main">
                 <h4 class="rc-tool-panel__title">
                     @(ShowSessionCharactersPanel && State.CanViewSessionCharacters
-                        ? L["PlayerRoom_SessionCharactersPanelTitle"]
-                        : L["PlayerRoom_StreamPanelTitle"])
+                        ? L["Session_Player_SessionCharactersPanelTitle"]
+                        : L["Session_Player_StreamPanelTitle"])
                 </h4>
                 <p class="rc-tool-panel__subtitle">
                     @(ShowSessionCharactersPanel && State.CanViewSessionCharacters
-                        ? L["PlayerRoom_SessionCharactersPanelSubtitle"]
-                        : L["PlayerRoom_StreamPanelSubtitle"])
+                        ? L["Session_Player_SessionCharactersPanelSubtitle"]
+                        : L["Session_Player_StreamPanelSubtitle"])
                 </p>
             </div>
 
@@ -375,13 +376,13 @@ else
                     @if (ShowSessionCharactersPanel)
                     {
                         <button type="button" @onclick="() => ShowSessionCharactersPanel = false">
-                            @L["PlayerRoom_ShowStreamPanel"]
+                            @L["Session_Player_ShowStreamPanel"]
                         </button>
                     }
                     else
                     {
                         <button type="button" @onclick="() => ShowSessionCharactersPanel = true">
-                            @L["PlayerRoom_ShowSessionCharactersPanel"]
+                            @L["Session_Player_ShowSessionCharactersPanel"]
                         </button>
                     }
                 }
@@ -389,8 +390,8 @@ else
                         @if (ShowEditSystemConfirm)
                         {
                             <div class="rc-filter-group-card">
-                                <p>@L["PlayerRoom_EditSystemConfirmMessage"]</p>
-                                <p class="rc-tool-muted">@L["PlayerRoom_EditSystemConfirmWarning"]</p>
+                                <p>@L["Session_Player_EditSystemConfirmMessage"]</p>
+                                <p class="rc-tool-muted">@L["Session_Player_EditSystemConfirmWarning"]</p>
 
                                 <div class="rc-tool-actions">
                                     <button type="button" @onclick="ConfirmEditSessionGameSystem">@L["Common_Yes"]</button>
@@ -402,21 +403,21 @@ else
                 @if (ShowSessionCharactersPanel && State.CanEditSessionCharacters)
                 {
                     <button type="button" @onclick="CreateNpcFromAssistantPanel">
-                        @L["SessionPage_CreateNpc"]
+                        @L["Session_Manage_CreateNpc"]
                     </button>
                 }
 
                 @if (!ShowSessionCharactersPanel)
                 {
                     <button type="button" @onclick="() => IsTwitchEnabled = !IsTwitchEnabled">
-                        @(IsTwitchEnabled? L["PlayerRoom_DisableStream"] : L["PlayerRoom_EnableStream"])
+                        @(IsTwitchEnabled? L["Session_Player_DisableStream"] : L["Session_Player_EnableStream"])
                     </button>
                 }
 
                         @if (ShowSessionCharactersPanel && State.SessionGameSystemId.HasValue && State.CanEditSessionGameSystem && !ShowEditSystemConfirm)
                 {
                     <button type="button" @onclick="EditSessionGameSystem">
-                        @L["PlayerRoom_EditSessionGameSystem"]
+                        @L["Session_Player_EditSessionGameSystem"]
                     </button>
                 }
             </div>
@@ -428,40 +429,40 @@ else
                 <div class="rc-character-view__filters">
                     <label class="rc-filter-toggle">
                         <input type="checkbox" @bind="ShowObservedAttributes" />
-                        <span>@L["SessionPage_ShowAttributes"]</span>
+                        <span>@L["Session_Manage_ShowAttributes"]</span>
                     </label>
 
                     <label class="rc-filter-toggle">
                         <input type="checkbox" @bind="ShowObservedDerivedStats" />
-                        <span>@L["SessionPage_ShowDerivedStats"]</span>
+                        <span>@L["Session_Manage_ShowDerivedStats"]</span>
                     </label>
 
                     <label class="rc-filter-toggle">
                         <input type="checkbox" @bind="ShowObservedTraits" />
-                        <span>@L["SessionPage_ShowTraits"]</span>
+                        <span>@L["Session_Manage_ShowTraits"]</span>
                     </label>
 
                     <label class="rc-filter-toggle">
                         <input type="checkbox" @bind="ShowObservedGauges" />
-                        <span>@L["SessionPage_ShowGauges"]</span>
+                        <span>@L["Session_Manage_ShowGauges"]</span>
                     </label>
 
                     <label class="rc-filter-toggle">
                         <input type="checkbox" @bind="SpecialIncludeOffline" @bind:after="LoadSpecialRoleCharacters" />
-                        <span>@L["SessionPage_ShowOfflineCharacters"]</span>
+                        <span>@L["Session_Manage_ShowOfflineCharacters"]</span>
                     </label>
 
                     <label class="rc-filter-toggle">
                         <input type="checkbox" @bind="SpecialIncludeDead" @bind:after="LoadSpecialRoleCharacters" />
-                        <span>@L["SessionPage_ShowDeadCharacters"]</span>
+                        <span>@L["Session_Manage_ShowDeadCharacters"]</span>
                     </label>
                     <label class="rc-filter-toggle">
                         <input type="checkbox" @bind="SpecialIncludeNpcs" @bind:after="LoadSpecialRoleCharacters" />
-                        <span>@L["SessionPage_ShowNpcs"]</span>
+                        <span>@L["Session_Manage_ShowNpcs"]</span>
                     </label>
 
                     <div class="rc-filter-toggle">
-                        <label>@L["SessionPage_SortBy"]</label>
+                        <label>@L["Session_Manage_SortBy"]</label>
                         <select @bind="ObservedCharacterSortMode">
                             @foreach (var option in GetObservedCharacterSortOptions())
                             {
@@ -476,7 +477,7 @@ else
                         @if (SpecialRoleCharacters.Count == 0)
                         {
                             <div class="rc-empty-panel">
-                                <p>@L["PlayerRoom_NoSessionCharactersVisible"]</p>
+                                <p>@L["Session_Player_NoSessionCharactersVisible"]</p>
                             </div>
                         }
                         else
@@ -519,7 +520,7 @@ else
                                     @if (ShowObservedAttributes && character.Attributes.Count > 0)
                                     {
                                         <div class="rc-character-card__section">
-                                            <div class="rc-character-card__section-title">@L["PlayerRoom_Attributes"]</div>
+                                            <div class="rc-character-card__section-title">@L["Session_Player_Attributes"]</div>
                                             <div class="rc-character-inline-list">
                                                 @foreach (var attributeItem in character.Attributes)
                                                 {
@@ -532,7 +533,7 @@ else
                                     @if (ShowObservedDerivedStats && character.DerivedStats.Count > 0)
                                     {
                                         <div class="rc-character-card__section">
-                                            <div class="rc-character-card__section-title">@L["PlayerRoom_DerivedStats"]</div>
+                                            <div class="rc-character-card__section-title">@L["Session_Player_DerivedStats"]</div>
                                             <div class="rc-character-inline-list">
                                                 @foreach (var derivedItem in character.DerivedStats)
                                                 {
@@ -545,7 +546,7 @@ else
                                     @if (ShowObservedTraits && character.Traits.Count > 0)
                                     {
                                         <div class="rc-character-card__section">
-                                            <div class="rc-character-card__section-title">@L["PlayerRoom_Traits"]</div>
+                                            <div class="rc-character-card__section-title">@L["Session_Player_Traits"]</div>
                                             <div class="rc-character-inline-list">
                                                 @foreach (var traitItem in character.Traits)
                                                 {
@@ -558,7 +559,7 @@ else
                                     @if (healthGauges.Count > 0 || (ShowObservedGauges && regularGauges.Count > 0))
                                     {
                                         <div class="rc-character-card__section">
-                                            <div class="rc-character-card__section-title">@L["PlayerRoom_Gauges"]</div>
+                                            <div class="rc-character-card__section-title">@L["Session_Player_Gauges"]</div>
 
                                             @if (healthGauges.Count > 0)
                                             {
@@ -633,13 +634,13 @@ else
                                         {
                                             @if (State.CanEditSessionCharacters)
                                             {
-                                                <button type="button" @onclick="BeginObservedBiographyEdit">@L["PlayerRoom_EditBiography"]</button>
+                                                <button type="button" @onclick="BeginObservedBiographyEdit">@L["Session_Player_EditBiography"]</button>
                                             }
-                                            <button type="button" @onclick="HideObservedBiography">@L["PlayerRoom_Statistics"]</button>
+                                            <button type="button" @onclick="HideObservedBiography">@L["Session_Player_Statistics"]</button>
                                         }
                                         else
                                         {
-                                            <button type="button" @onclick="ShowObservedBiography">@L["PlayerRoom_ViewBiography"]</button>
+                                            <button type="button" @onclick="ShowObservedBiography">@L["Session_Player_ViewBiography"]</button>
                                         }
                                     }
                                 </div>
@@ -650,7 +651,7 @@ else
                                 {
                                     @* <div class="rc-tool-form-grid">
                                         <div class="rc-form-field">
-                                            <label>@L["EditCharacter_Name"]</label>
+                                            <label>@L["Character_Edit_Name"]</label>
                                             <input @bind="ObservedEditableCharacter.Name" />
                                         </div>
 
@@ -684,19 +685,19 @@ else
                                         }
                                     </div> *@
                                     <div class="rc-detail-block">
-                                        <div class="rc-detail-block__title">@L["EditCharacter_PlayerName"]</div>
+                                        <div class="rc-detail-block__title">@L["Character_Edit_PlayerName"]</div>
                                                 <div>@ObservedEditableCharacter.PlayerName</div>
                                     </div>
 
                                     <div class="rc-tool-form-grid rc-tool-form-grid--dense">
                                         <div class="rc-form-field">
-                                            <label>@L["EditCharacter_Name"]</label>
+                                            <label>@L["Character_Edit_Name"]</label>
                                                     <input @bind="ObservedEditableCharacter.Name" />
                                         </div>
                                     </div>
 
                                     <div class="rc-detail-block">
-                                        <div class="rc-detail-block__title">@L["PlayerRoom_Attributes"]</div>
+                                        <div class="rc-detail-block__title">@L["Session_Player_Attributes"]</div>
                                         <div class="rc-tool-form-grid rc-tool-form-grid--dense">
                                                     @foreach (var attributeItem in ObservedEditableCharacter.Attributes)
                                             {
@@ -714,7 +715,7 @@ else
                                     @if (ObservedEditableCharacter.DerivedStats.Count > 0)
                                     {
                                         <div class="rc-detail-block">
-                                            <div class="rc-detail-block__title">@L["PlayerRoom_DerivedStats"]</div>
+                                            <div class="rc-detail-block__title">@L["Session_Player_DerivedStats"]</div>
                                             <ul class="rc-detail-list">
                                                 @foreach (var derived in ObservedEditableCharacter.DerivedStats)
                                                 {
@@ -727,7 +728,7 @@ else
                                     @if (ObservedEditableCharacter.Metrics.Count > 0)
                                     {
                                         <div class="rc-detail-block">
-                                            <div class="rc-detail-block__title">@L["PlayerRoom_Metrics"]</div>
+                                            <div class="rc-detail-block__title">@L["Session_Player_Metrics"]</div>
                                             <ul class="rc-detail-list">
                                                 @foreach (var metric in ObservedEditableCharacter.Metrics)
                                                 {
@@ -738,7 +739,7 @@ else
                                     }
 
                                     <div class="rc-detail-block">
-                                        <div class="rc-detail-block__title">@L["PlayerRoom_Traits"]</div>
+                                        <div class="rc-detail-block__title">@L["Session_Player_Traits"]</div>
                                         <div class="rc-tool-form-grid rc-tool-form-grid--dense">
                                                     @foreach (var traitItem in ObservedEditableCharacter.Traits)
                                             {
@@ -757,7 +758,7 @@ else
                                     </div>
 
                                     <div class="rc-detail-block">
-                                        <div class="rc-detail-block__title">@L["PlayerRoom_Gauges"]</div>
+                                        <div class="rc-detail-block__title">@L["Session_Player_Gauges"]</div>
                                         <div class="rc-tool-form-grid rc-tool-form-grid--dense">
                                                     @foreach (var gaugeItem in ObservedEditableCharacter.Gauges)
                                             {
@@ -766,7 +767,7 @@ else
                                                         @gaugeItem.Name (@gaugeItem.MinValue - @gaugeItem.MaxValue)
                                                         @if (gaugeItem.IsHealthGauge)
                                                         {
-                                                            <span>- @L["EditCharacter_HealthGauge"]</span>
+                                                            <span>- @L["Character_Edit_HealthGauge"]</span>
                                                         }
                                                     </label>
                                                     <input type="number"
@@ -779,10 +780,10 @@ else
                                     </div>
 
                                             <div class="rc-detail-block">
-                                                <div class="rc-detail-block__title">@L["EditCharacter_Talents"]</div>
+                                                <div class="rc-detail-block__title">@L["Character_Edit_Talents"]</div>
                                                 @if (ObservedEditableCharacter.Talents.Count == 0)
                                                 {
-                                                    <p>@L["EditCharacter_NoTalentsDefined"]</p>
+                                                    <p>@L["Character_Edit_NoTalentsDefined"]</p>
                                                 }
                                                 else
                                                 {
@@ -799,10 +800,10 @@ else
                                             </div>
 
                                             <div class="rc-detail-block">
-                                                <div class="rc-detail-block__title">@L["EditCharacter_Items"]</div>
+                                                <div class="rc-detail-block__title">@L["Character_Edit_Items"]</div>
                                                 @if (ObservedEditableCharacter.Items.Count == 0)
                                                 {
-                                                    <p>@L["EditCharacter_NoItemsDefined"]</p>
+                                                    <p>@L["Character_Edit_NoItemsDefined"]</p>
                                                 }
                                                 else
                                                 {
@@ -826,7 +827,7 @@ else
                                 else if (IsObservedBiographyEditMode && ObservedEditableCharacter is not null)
                                 {
                                     <div class="rc-form-field rc-form-field--full">
-                                        <label>@L["EditCharacter_Biography"]</label>
+                                        <label>@L["Common_Biography"]</label>
                                         <textarea rows="12" @bind="ObservedEditableCharacter.Biography"></textarea>
                                     </div>
 
@@ -839,7 +840,7 @@ else
                                     <div class="rc-character-bio">
                                         @if (string.IsNullOrWhiteSpace(ObservedCharacterSheet.Biography))
                                         {
-                                            <span>@L["PlayerRoom_NoBiography"]</span>
+                                            <span>@L["Session_Player_NoBiography"]</span>
                                         }
                                         else
                                         {
@@ -850,7 +851,7 @@ else
                                         else
                                         {
                                             <div class="rc-detail-block">
-                                                <div class="rc-detail-block__title">@L["PlayerRoom_Attributes"]</div>
+                                                <div class="rc-detail-block__title">@L["Session_Player_Attributes"]</div>
                                                 <ul class="rc-detail-list">
                                                     @foreach (var item in ObservedCharacterSheet.Attributes)
                                                     {
@@ -862,7 +863,7 @@ else
                                             @if (ObservedCharacterSheet.DerivedStats.Count > 0)
                                             {
                                                 <div class="rc-detail-block">
-                                                    <div class="rc-detail-block__title">@L["PlayerRoom_DerivedStats"]</div>
+                                                    <div class="rc-detail-block__title">@L["Session_Player_DerivedStats"]</div>
                                                     <ul class="rc-detail-list">
                                                         @foreach (var item in ObservedCharacterSheet.DerivedStats)
                                                         {
@@ -875,7 +876,7 @@ else
                                             @if (ObservedCharacterSheet.Traits.Count > 0)
                                             {
                                                 <div class="rc-detail-block">
-                                                    <div class="rc-detail-block__title">@L["PlayerRoom_Traits"]</div>
+                                                    <div class="rc-detail-block__title">@L["Session_Player_Traits"]</div>
                                                     <ul class="rc-detail-list">
                                                         @foreach (var item in ObservedCharacterSheet.Traits)
                                                         {
@@ -888,7 +889,7 @@ else
                                             @if (ObservedCharacterSheet.Talents.Count > 0)
                                             {
                                                 <div class="rc-detail-block">
-                                                    <div class="rc-detail-block__title">@L["EditCharacter_Talents"]</div>
+                                                    <div class="rc-detail-block__title">@L["Character_Edit_Talents"]</div>
                                                     <ul class="rc-detail-list">
                                                         @foreach (var item in ObservedCharacterSheet.Talents)
                                                         {
@@ -901,7 +902,7 @@ else
                                             @if (ObservedCharacterSheet.Items.Count > 0)
                                             {
                                                 <div class="rc-detail-block">
-                                                    <div class="rc-detail-block__title">@L["EditCharacter_Items"]</div>
+                                                    <div class="rc-detail-block__title">@L["Character_Edit_Items"]</div>
                                                     <ul class="rc-detail-list">
                                                         @foreach (var item in ObservedCharacterSheet.Items)
                                                         {
@@ -914,7 +915,7 @@ else
                                             @if (ObservedCharacterSheet.Gauges.Count > 0)
                                             {
                                                 <div class="rc-detail-block">
-                                                    <div class="rc-detail-block__title">@L["PlayerRoom_Gauges"]</div>
+                                                    <div class="rc-detail-block__title">@L["Session_Player_Gauges"]</div>
                                                     <ul class="rc-detail-list">
                                                         @foreach (var gauge in ObservedCharacterSheet.Gauges)
                                                         {
@@ -940,31 +941,46 @@ else
             @if (!IsTwitchEnabled)
             {
                 <div class="rc-empty-panel rc-empty-panel--small">
-                    <p>@L["PlayerRoom_StreamDisabled"]</p>
+                    <p>@L["Session_Player_StreamDisabled"]</p>
                 </div>
             }
-            else
-            {
-                <div class="rc-player-stream">
-                    @if (ShowTwitchChat)
+                    else
                     {
-                        <iframe class="rc-player-stream__chat"
-                                src="@($"https://www.twitch.tv/embed/{TwitchChannelName}/chat?parent={TwitchParentHost}")">
-                        </iframe>
+                        @if (!IsTwitchEnabled)
+                        {
+                            <div class="rc-empty-panel rc-empty-panel--small">
+                                <p>@L["Session_Player_StreamDisabled"]</p>
+                            </div>
+                        }
+                        else if (string.IsNullOrWhiteSpace(TwitchChannelName))
+                        {
+                            <div class="rc-empty-panel rc-empty-panel--small">
+                                <p>@L["Session_Player_NoTwitchStreamConfigured"]</p>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="rc-player-stream">
+                                @if (ShowTwitchChat)
+                                {
+                                    <iframe class="rc-player-stream__chat"
+                                            src="@($"https://www.twitch.tv/embed/{TwitchChannelName}/chat?parent={TwitchParentHost}")">
+                                    </iframe>
+                                }
+
+                                <iframe class="rc-player-stream__video"
+                                        src="@($"https://player.twitch.tv/?channel={TwitchChannelName}&parent={TwitchParentHost}")"
+                                        allow="fullscreen">
+                                </iframe>
+                            </div>
+
+                            <div class="rc-tool-actions" style="margin-top: 0.75rem;">
+                                <button type="button" @onclick="() => ShowTwitchChat = !ShowTwitchChat">
+                                    @(ShowTwitchChat? L["Session_Player_HideChat"] : L["Session_Player_ShowChat"])
+                                </button>
+                            </div>
+                        }
                     }
-
-                    <iframe class="rc-player-stream__video"
-                            src="@($"https://player.twitch.tv/?channel={TwitchChannelName}&parent={TwitchParentHost}")"
-                            allow="fullscreen">
-                    </iframe>
-                </div>
-
-                <div class="rc-tool-actions" style="margin-top: 0.75rem;">
-                    <button type="button" @onclick="() => ShowTwitchChat = !ShowTwitchChat">
-                        @(ShowTwitchChat ? L["PlayerRoom_HideChat"] : L["PlayerRoom_ShowChat"])
-                    </button>
-                </div>
-            }
         }
     </div>
 </aside>
@@ -1021,7 +1037,13 @@ else
     private bool IsTestDismissed;
     private bool IsPollDismissed;
 
-    private const string TwitchChannelName = "silkinaeltv";
+    // Le live Twitch affiché côté joueur découle du compte Twitch du MJ.
+    // Si le MJ n'a pas lié Twitch, on n'affiche pas l'embed.
+    private string? TwitchChannelName
+        => string.IsNullOrWhiteSpace(State?.GameMasterTwitchLogin)
+            ? null
+            : State.GameMasterTwitchLogin;
+
     private string TwitchParentHost => new Uri(Navigation.BaseUri).Host;
 
     protected override async Task OnInitializedAsync()
@@ -1049,7 +1071,7 @@ else
 
         if (RestoredFlag == "1")
         {
-            Message = L["PlayerRoom_OldCharacterRestored"];
+            Message = L["Session_Player_OldCharacterRestored"];
         }
 
         IsLoaded = true;
@@ -1125,8 +1147,17 @@ else
         if (State is null)
             return;
 
+        // En préprod/prod, ce composant s’exécute côté serveur.
+        // On utilise donc une URL interne configurable pour SignalR.
+        var internalBaseUrl = Configuration["InternalUrls:AppBaseUrl"];
+
+        if (string.IsNullOrWhiteSpace(internalBaseUrl))
+        {
+            internalBaseUrl = Navigation.BaseUri.TrimEnd('/');
+        }
+
         hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri("/sessionhub"))
+            .WithUrl($"{internalBaseUrl.TrimEnd('/')}/sessionhub")
             .WithAutomaticReconnect()
             .Build();
 
@@ -1524,11 +1555,11 @@ else
                 CurrentUserId);
 
             IsObservedCharacterEditMode = false;
-            ObservedCharacterPanelMessage = L["EditCharacter_Saved"];
+            ObservedCharacterPanelMessage = L["Character_Edit_Saved"];
 
             if (result.ResurrectionBlocked)
             {
-                ObservedCharacterPanelMessage = $"{ObservedCharacterPanelMessage} {L["EditCharacter_ResurrectionBlocked"]}";
+                ObservedCharacterPanelMessage = $"{ObservedCharacterPanelMessage} {L["Character_Edit_ResurrectionBlocked"]}";
             }
         }
         catch (Exception ex)
@@ -1583,7 +1614,7 @@ else
 
             IsObservedBiographyEditMode = false;
             ShowObservedCharacterBioPanel = true;
-            ObservedCharacterPanelMessage = L["SessionPage_BiographySaved"];
+            ObservedCharacterPanelMessage = L["Session_Manage_BiographySaved"];
         }
         catch (Exception ex)
         {
@@ -1634,8 +1665,8 @@ else
 
     private IEnumerable<(string Value, string Label)> GetObservedCharacterSortOptions()
     {
-        yield return ("character-name", L["SessionPage_Sort_CharacterName"]);
-        yield return ("player-name", L["SessionPage_Sort_PlayerName"]);
+        yield return ("character-name", L["Session_Manage_Sort_CharacterName"]);
+        yield return ("player-name", L["Session_Manage_Sort_PlayerName"]);
 
         var healthGaugeNames = SpecialRoleCharacters
             .SelectMany(x => x.Gauges)
@@ -1648,7 +1679,7 @@ else
 
         foreach (var gaugeName in healthGaugeNames)
         {
-            yield return ($"gauge:{gaugeName}", $"{L["SessionPage_Sort_HealthGauge"]} - {gaugeName}");
+            yield return ($"gauge:{gaugeName}", $"{L["Session_Manage_Sort_HealthGauge"]} - {gaugeName}");
         }
 
         var traitNames = SpecialRoleCharacters
@@ -1661,7 +1692,7 @@ else
 
         foreach (var traitName in traitNames)
         {
-            yield return ($"trait:{traitName}", $"{L["SessionPage_Sort_Trait"]} - {traitName}");
+            yield return ($"trait:{traitName}", $"{L["Session_Manage_Sort_Trait"]} - {traitName}");
         }
     }
 
@@ -1737,7 +1768,7 @@ else
         builder.AddAttribute(seq++, "class", "rc-filter-group-card");
         Open("div");
         builder.AddAttribute(seq++, "class", "rc-detail-block__title");
-        Text(L["PlayerRoom_Attributes"]);
+        Text(L["Session_Player_Attributes"]);
         Close();
 
         Open("div");
@@ -1766,7 +1797,7 @@ else
         builder.AddAttribute(seq++, "class", "rc-filter-group-card");
         Open("div");
         builder.AddAttribute(seq++, "class", "rc-detail-block__title");
-        Text(L["PlayerRoom_DerivedStats"]);
+        Text(L["Session_Player_DerivedStats"]);
         Close();
 
         Open("div");
@@ -1795,7 +1826,7 @@ else
         builder.AddAttribute(seq++, "class", "rc-filter-group-card");
         Open("div");
         builder.AddAttribute(seq++, "class", "rc-detail-block__title");
-        Text(L["PlayerRoom_Traits"]);
+        Text(L["Session_Player_Traits"]);
         Close();
 
         Open("div");
@@ -1817,7 +1848,7 @@ else
         builder.AddAttribute(seq++, "class", "rc-filter-group-card");
         Open("div");
         builder.AddAttribute(seq++, "class", "rc-detail-block__title");
-        Text(L["EditCharacter_Talents"]);
+        Text(L["Character_Edit_Talents"]);
         Close();
 
         Open("div");
@@ -1839,7 +1870,7 @@ else
         builder.AddAttribute(seq++, "class", "rc-filter-group-card");
         Open("div");
         builder.AddAttribute(seq++, "class", "rc-detail-block__title");
-        Text(L["EditCharacter_Items"]);
+        Text(L["Character_Edit_Items"]);
         Close();
 
         Open("div");
@@ -1861,7 +1892,7 @@ else
         builder.AddAttribute(seq++, "class", "rc-filter-group-card");
         Open("div");
         builder.AddAttribute(seq++, "class", "rc-detail-block__title");
-        Text(L["PlayerRoom_Gauges"]);
+        Text(L["Session_Player_Gauges"]);
         Close();
 
         foreach (var gauge in sheet.Gauges)
@@ -1905,13 +1936,13 @@ else
         builder.AddAttribute(seq++, "class", "rc-filter-group-card");
         Open("div");
         builder.AddAttribute(seq++, "class", "rc-detail-block__title");
-        Text(L["PlayerRoom_Biography"]);
+        Text(L["Common_Biography"]);
         Close();
 
         if (string.IsNullOrWhiteSpace(sheet.Biography))
         {
             Open("p");
-            Text(L["PlayerRoom_NoBiography"]);
+            Text(L["Session_Player_NoBiography"]);
             Close();
         }
         else
@@ -2052,3 +2083,4 @@ else
     }
 
 }
+

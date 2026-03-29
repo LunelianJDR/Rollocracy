@@ -6,7 +6,7 @@
         public string ClientSecret { get; set; } = string.Empty;
 
         // URL publique de l’application
-        public string PublicBaseUrl { get; set; } = "https://localhost:7252";
+        public string PublicBaseUrl { get; set; } = string.Empty;
 
         // Callback unique Twitch
         public string CallbackPath { get; set; } = "/auth/twitch/callback";

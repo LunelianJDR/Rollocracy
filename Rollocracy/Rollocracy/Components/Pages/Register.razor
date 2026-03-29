@@ -7,14 +7,14 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
-<PageTitle>@L["Register_Title"]</PageTitle>
+<PageTitle>@L["Auth_Register_Title"]</PageTitle>
 
 <section class="rc-auth-shell">
     <div class="rc-auth-grid">
         <article class="rc-auth-panel">
             <div class="rc-tool-panel__header-main">
-                <h1 class="rc-tool-panel__title">@L["Register_Title"]</h1>
-                <p class="rc-tool-panel__subtitle">@L["Register_Subtitle"]</p>
+                <h1 class="rc-tool-panel__title">@L["Auth_Register_Title"]</h1>
+                <p class="rc-tool-panel__subtitle">@L["Auth_Register_Subtitle"]</p>
             </div>
 
             @if (!string.IsNullOrWhiteSpace(Message))
@@ -24,22 +24,22 @@
 
             <div class="rc-auth-form">
                 <div class="rc-form-field">
-                    <label>@L["Register_Username"]</label>
+                    <label>@L["Common_Username"]</label>
                     <input @bind="Username" autocomplete="username" />
                 </div>
 
                 <div class="rc-form-field">
-                    <label>@L["Register_EmailOptional"]</label>
+                    <label>@L["Auth_Register_EmailOptional"]</label>
                     <input @bind="Email" type="email" autocomplete="email" />
                 </div>
 
                 <div class="rc-form-field">
-                    <label>@L["Register_Password"]</label>
+                    <label>@L["Common_Password"]</label>
                     <input @bind="Password" type="password" autocomplete="new-password" />
                 </div>
 
                 <div class="rc-form-field">
-                    <label>@L["Register_Language"]</label>
+                    <label>@L["Common_Language"]</label>
                     <select @bind="SelectedLanguage">
                         <option value="fr">@L["Language_French"]</option>
                         <option value="en">@L["Language_English"]</option>
@@ -47,27 +47,27 @@
                 </div>
 
                 <div class="rc-inline-warning">
-                    <strong>@L["Register_EmailWarningTitle"]</strong><br />
-                    @L["Register_EmailWarningBody"]
+                    <strong>@L["Auth_Register_EmailWarningTitle"]</strong><br />
+                    @L["Auth_Register_EmailWarningBody"]
                 </div>
 
                 <div class="rc-tool-actions">
-                    <button @onclick="HandleRegister">@L["Register_Submit"]</button>
-                    <a class="rc-auth-link-button" href="/login">@L["Register_BackToLogin"]</a>
+                    <button @onclick="HandleRegister">@L["Auth_Register_Submit"]</button>
+                    <a class="rc-auth-link-button" href="/login">@L["Auth_BackToLogin"]</a>
                 </div>
             </div>
         </article>
 
         <article class="rc-auth-panel">
             <div class="rc-tool-panel__header-main">
-                <h2 class="rc-tool-panel__title">@L["Register_WhyEmailTitle"]</h2>
-                <p class="rc-tool-panel__subtitle">@L["Register_WhyEmailSubtitle"]</p>
+                <h2 class="rc-tool-panel__title">@L["Auth_Register_WhyEmailTitle"]</h2>
+                <p class="rc-tool-panel__subtitle">@L["Auth_Register_WhyEmailSubtitle"]</p>
             </div>
 
             <div class="rc-auth-stack">
-                <div class="rc-readonly-value">@L["Register_WhyEmailLine1"]</div>
-                <div class="rc-readonly-value">@L["Register_WhyEmailLine2"]</div>
-                <div class="rc-readonly-value">@L["Register_WhyEmailLine3"]</div>
+                <div class="rc-readonly-value">@L["Auth_Register_WhyEmailLine1"]</div>
+                <div class="rc-readonly-value">@L["Auth_Register_WhyEmailLine2"]</div>
+                <div class="rc-readonly-value">@L["Auth_Register_WhyEmailLine3"]</div>
             </div>
         </article>
     </div>

@@ -28,8 +28,8 @@ else
         <div class="rc-tool-panel">
             <div class="rc-tool-panel__header">
                 <div class="rc-tool-panel__header-main">
-                    <h4 class="rc-tool-panel__title">@L["PlayerResumeSessions_Title"]</h4>
-                    <p class="rc-tool-panel__subtitle">@L["PlayerResumeSessions_Subtitle"]</p>
+                    <h4 class="rc-tool-panel__title">@L["Session_PlayerList_Title"]</h4>
+                    <p class="rc-tool-panel__subtitle">@L["Session_PlayerList_Subtitle"]</p>
                 </div>
             </div>
 
@@ -41,7 +41,7 @@ else
             @if (Sessions.Count == 0)
             {
                 <div class="rc-empty-panel">
-                    <p>@L["PlayerResumeSessions_None"]</p>
+                    <p>@L["Session_PlayerList_None"]</p>
                 </div>
             }
             else
@@ -65,24 +65,24 @@ else
 
                             <div class="rc-tool-form-grid">
                                 <div class="rc-form-field rc-form-field--readonly">
-                                    <label>@L["PlayerResumeSessions_AliveCharacters"]</label>
+                                    <label>@L["Session_AliveCharacters"]</label>
                                     <div class="rc-readonly-value">@item.AliveCharactersCount</div>
                                 </div>
 
                                 <div class="rc-form-field rc-form-field--readonly">
-                                    <label>@L["PlayerResumeSessions_DeadCharacters"]</label>
+                                    <label>@L["Session_PlayerList_DeadCharacters"]</label>
                                     <div class="rc-readonly-value">@item.DeadCharactersCount</div>
                                 </div>
 
                                 <div class="rc-form-field rc-form-field--readonly">
-                                    <label>@L["PlayerResumeSessions_TotalCharacters"]</label>
+                                    <label>@L["Session_PlayerList_TotalCharacters"]</label>
                                     <div class="rc-readonly-value">@item.TotalCharactersCount</div>
                                 </div>
 
                                 <div class="rc-form-field rc-form-field--readonly">
-                                    <label>@L["PlayerResumeSessions_Status"]</label>
+                                    <label>@L["Session_PlayerList_Status"]</label>
                                     <div class="rc-readonly-value">
-                                        @(item.SessionIsActive? L["ResumeSession_StatusActive"] : L["ResumeSession_StatusInactive"])
+                                        @(item.SessionIsActive? L["Session_IsActive"] : L["Session_List_StatusInactive"])
                                     </div>
                                 </div>
                             </div>
@@ -91,18 +91,18 @@ else
                                 <button type="button"
                                         disabled="@(!item.SessionIsActive)"
                                         @onclick="() => ResumeSession(item.PlayerSessionId)">
-                                    @L["PlayerResumeSessions_Open"]
+                                    @L["Session_PlayerList_Open"]
                                 </button>
 
                                 <button type="button"
                                         @onclick="() => OpenJoinPage(item.GameMasterUsername, item.SessionSlug)">
-                                    @L["PlayerResumeSessions_OpenJoinPage"]
+                                    @L["Session_PlayerList_OpenJoinPage"]
                                 </button>
                             </div>
 
                             @if (!item.SessionIsActive)
                             {
-                                <p class="rc-tool-muted">@L["PlayerResumeSessions_InactiveNotice"]</p>
+                                <p class="rc-tool-muted">@L["Session_Inactive"]</p>
                             }
                         </article>
                     }

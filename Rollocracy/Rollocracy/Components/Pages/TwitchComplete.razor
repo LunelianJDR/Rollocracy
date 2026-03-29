@@ -8,14 +8,14 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
-<PageTitle>@L["TwitchComplete_Title"]</PageTitle>
+<PageTitle>@L["Auth_TwitchComplete_Title"]</PageTitle>
 
 <section class="rc-auth-shell">
     <div class="rc-auth-grid">
         <article class="rc-auth-panel">
             <div class="rc-tool-panel__header-main">
-                <h1 class="rc-tool-panel__title">@L["TwitchComplete_Title"]</h1>
-                <p class="rc-tool-panel__subtitle">@L["TwitchComplete_Subtitle"]</p>
+                <h1 class="rc-tool-panel__title">@L["Auth_TwitchComplete_Title"]</h1>
+                <p class="rc-tool-panel__subtitle">@L["Auth_TwitchComplete_Subtitle"]</p>
             </div>
 
             @if (!string.IsNullOrWhiteSpace(Message))
@@ -25,37 +25,37 @@
 
             @if (Pending is null)
             {
-                <div class="rc-inline-error">@L["TwitchComplete_LoadError"]</div>
+                <div class="rc-inline-error">@L["Auth_TwitchComplete_LoadError"]</div>
             }
             else
             {
                 <div class="rc-tool-form-grid">
                     <div class="rc-form-field">
-                        <label>@L["TwitchComplete_TwitchLogin"]</label>
+                        <label>@L["Auth_TwitchComplete_TwitchLogin"]</label>
                         <div class="rc-readonly-value">@Pending.TwitchLogin</div>
                     </div>
 
                     <div class="rc-form-field">
-                        <label>@L["TwitchComplete_TwitchEmail"]</label>
+                        <label>@L["Auth_TwitchComplete_TwitchEmail"]</label>
                         <div class="rc-readonly-value">
-                            @(string.IsNullOrWhiteSpace(Pending.TwitchEmail) ? L["TwitchComplete_NoTwitchEmail"] : Pending.TwitchEmail)
+                            @(string.IsNullOrWhiteSpace(Pending.TwitchEmail) ? L["Auth_TwitchComplete_NoTwitchEmail"] : Pending.TwitchEmail)
                         </div>
                     </div>
                 </div>
 
                 <div class="rc-auth-form">
                     <div class="rc-form-field">
-                        <label>@L["TwitchComplete_Username"]</label>
+                        <label>@L["Auth_TwitchComplete_Username"]</label>
                         <input @bind="Username" />
                     </div>
 
                     <div class="rc-form-field">
-                        <label>@L["TwitchComplete_EmailOptional"]</label>
+                        <label>@L["Auth_TwitchComplete_EmailOptional"]</label>
                         <input @bind="Email" type="email" />
                     </div>
 
                     <div class="rc-form-field">
-                        <label>@L["TwitchComplete_Language"]</label>
+                        <label>@L["Common_Language"]</label>
                         <select @bind="Language">
                             <option value="fr">@L["Language_French"]</option>
                             <option value="en">@L["Language_English"]</option>
@@ -64,8 +64,8 @@
                 </div>
 
                 <div class="rc-tool-actions">
-                    <button type="button" @onclick="CompleteAsync">@L["TwitchComplete_Submit"]</button>
-                    <a class="rc-auth-link-button" href="/login">@L["TwitchComplete_BackToLogin"]</a>
+                    <button type="button" @onclick="CompleteAsync">@L["Auth_TwitchComplete_Submit"]</button>
+                    <a class="rc-auth-link-button" href="/login">@L["Auth_BackToLogin"]</a>
                 </div>
             }
         </article>

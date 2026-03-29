@@ -9,7 +9,7 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
-<h3>@(IsNpc? L["CreateCharacter_TitleNpc"] : L["CreateCharacter_Title"])</h3>
+<h3>@(IsNpc? L["Character_Create_TitleNpc"] : L["Character_Create_Title"])</h3>
 
 @if (!IsLoaded)
 {
@@ -17,23 +17,23 @@
 }
 else if (Template is null)
 {
-    <p>@L["CreateCharacter_TemplateNotFound"]</p>
+    <p>@L["Character_Create_TemplateNotFound"]</p>
 }
 else
 {
-    <p><strong>@L["CreateCharacter_GameSystem"] :</strong> @Template.GameSystemName</p>
+    <p><strong>@L["GameSystem_Label"] :</strong> @Template.GameSystemName</p>
 
     <div>
-        <label>@L["CreateCharacter_Name"]</label><br />
+        <label>@L["Character_Create_Name"]</label><br />
         <input @bind="CharacterName" />
     </div>
 
     <div>
-        <label>@L["CreateCharacter_Biography"]</label><br />
+        <label>@L["Common_Biography"]</label><br />
         <textarea @bind="Biography"></textarea>
     </div>
 
-    <h4>@L["CreateCharacter_Attributes"]</h4>
+    <h4>@L["Character_Create_Attributes"]</h4>
 
     @foreach (var attributeDefinition in Template.Attributes)
     {
@@ -43,7 +43,7 @@ else
         </div>
     }
 
-    <h4>@L["CreateCharacter_Traits"]</h4>
+    <h4>@L["Character_Create_Traits"]</h4>
 
     @foreach (var traitDefinition in Template.Traits)
     {
@@ -61,7 +61,7 @@ else
         {
             <div style="margin-top:8px;">
                 <label>@traitDefinition.Name</label><br />
-                <input value="@L["CreateCharacter_RandomTraitGroup"]" readonly />
+                <input value="@L["Character_Create_RandomTraitGroup"]" readonly />
             </div>
         }
         else
@@ -81,7 +81,7 @@ else
     }
 
     <button @onclick="HandleCreateCharacter">
-        @(IsNpc? L["CreateCharacter_SubmitNpc"] : L["CreateCharacter_Submit"])
+        @(IsNpc? L["Character_Create_SubmitNpc"] : L["Character_Create_Submit"])
     </button>
 
     @if (!string.IsNullOrWhiteSpace(Message))

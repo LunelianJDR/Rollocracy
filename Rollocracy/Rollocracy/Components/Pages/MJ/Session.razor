@@ -8,6 +8,7 @@
 @using Rollocracy.Localization
 @using DomainSession = Rollocracy.Domain.Entities.Session
 @inject NavigationManager Navigation
+@inject IConfiguration Configuration
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
 @inject Rollocracy.Domain.Interfaces.ICharacterService CharacterService
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -19,7 +20,7 @@
 }
 else if (CurrentSession is null)
 {
-    <p>@L["SessionPage_NotFound"]</p>
+    <p>@L["Session_NotFound"]</p>
 }
 else
 {
@@ -28,47 +29,47 @@ else
     <section class="rc-character-view">
         <div class="rc-character-view__top">
             <div class="rc-character-view__actions">
-                <button @onclick="CreateNpc">@L["SessionPage_CreateNpc"]</button>
+                <button @onclick="CreateNpc">@L["Session_Manage_CreateNpc"]</button>
             </div>
         </div>
 
         <div class="rc-character-view__filters">
             <label class="rc-filter-toggle">
                 <input type="checkbox" @bind="ShowAttributes" />
-                <span>@L["SessionPage_ShowAttributes"]</span>
+                <span>@L["Session_Manage_ShowAttributes"]</span>
             </label>
 
             <label class="rc-filter-toggle">
                 <input type="checkbox" @bind="ShowDerivedStats" />
-                <span>@L["SessionPage_ShowDerivedStats"]</span>
+                <span>@L["Session_Manage_ShowDerivedStats"]</span>
             </label>
 
             <label class="rc-filter-toggle">
                 <input type="checkbox" @bind="ShowTraits" />
-                <span>@L["SessionPage_ShowTraits"]</span>
+                <span>@L["Session_Manage_ShowTraits"]</span>
             </label>
 
             <label class="rc-filter-toggle">
                 <input type="checkbox" @bind="ShowGauges" />
-                <span>@L["SessionPage_ShowGauges"]</span>
+                <span>@L["Session_Manage_ShowGauges"]</span>
             </label>
 
             <label class="rc-filter-toggle">
                 <input type="checkbox" @bind="IncludeOffline" @bind:after="RefreshCharacterSection" />
-                <span>@L["SessionPage_ShowOfflineCharacters"]</span>
+                <span>@L["Session_Manage_ShowOfflineCharacters"]</span>
             </label>
 
             <label class="rc-filter-toggle">
                 <input type="checkbox" @bind="IncludeDead" @bind:after="RefreshCharacterSection" />
-                <span>@L["SessionPage_ShowDeadCharacters"]</span>
+                <span>@L["Session_Manage_ShowDeadCharacters"]</span>
             </label>
 
             <label class="rc-filter-toggle">
                 <input type="checkbox" @bind="IncludeNpcs" @bind:after="RefreshCharacterSection" />
-                <span>@L["SessionPage_ShowNpcs"]</span>
+                <span>@L["Session_Manage_ShowNpcs"]</span>
             </label>
             <div class="rc-filter-toggle">
-                <label>@L["SessionPage_SortBy"]</label>
+                <label>@L["Session_Manage_SortBy"]</label>
                 <select @bind="CharacterSortMode">
                     @foreach (var option in GetCharacterSortOptions())
                     {
@@ -83,7 +84,7 @@ else
                 @if (Characters.Count == 0)
                 {
                     <div class="rc-empty-panel">
-                        <p>@L["SessionPage_NoCharactersToDisplay"]</p>
+                        <p>@L["Session_Manage_NoCharactersToDisplay"]</p>
                     </div>
                 }
                 else
@@ -126,7 +127,7 @@ else
                             @if (ShowAttributes && character.Attributes.Count > 0)
                             {
                                 <div class="rc-character-card__section">
-                                    <div class="rc-character-card__section-title">@L["PlayerRoom_Attributes"]</div>
+                                    <div class="rc-character-card__section-title">@L["Session_Player_Attributes"]</div>
                                     <div class="rc-character-inline-list">
                                         @foreach (var attributeItem in character.Attributes)
                                         {
@@ -139,7 +140,7 @@ else
                             @if (ShowDerivedStats && character.DerivedStats.Count > 0)
                             {
                                 <div class="rc-character-card__section">
-                                    <div class="rc-character-card__section-title">@L["PlayerRoom_DerivedStats"]</div>
+                                    <div class="rc-character-card__section-title">@L["Session_Player_DerivedStats"]</div>
                                     <div class="rc-character-inline-list">
                                         @foreach (var derived in character.DerivedStats)
                                         {
@@ -152,7 +153,7 @@ else
                             @if (ShowTraits && character.Traits.Count > 0)
                             {
                                 <div class="rc-character-card__section">
-                                    <div class="rc-character-card__section-title">@L["PlayerRoom_Traits"]</div>
+                                    <div class="rc-character-card__section-title">@L["Session_Player_Traits"]</div>
                                     <div class="rc-character-inline-list">
                                         @foreach (var trait in character.Traits)
                                         {
@@ -165,7 +166,7 @@ else
                             @if (ShowGauges && regularGauges.Count > 0)
                             {
                                 <div class="rc-character-card__section">
-                                    <div class="rc-character-card__section-title">@L["PlayerRoom_Gauges"]</div>
+                                    <div class="rc-character-card__section-title">@L["Session_Player_Gauges"]</div>
                                     <div class="rc-character-gauges">
                                         @foreach (var gauge in regularGauges)
                                         {
@@ -236,14 +237,14 @@ else
                                 }
                                 else
                                 {
-                                    <button @onclick="BeginBiographyEdit">@L["SessionPage_EditBiography"]</button>
-                                    <button @onclick="HideCharacterBio">@L["SessionPage_ShowStats"]</button>
+                                    <button @onclick="BeginBiographyEdit">@L["Session_Manage_EditBiography"]</button>
+                                    <button @onclick="HideCharacterBio">@L["Session_Manage_ShowStats"]</button>
                                 }
                             }
                             else
                             {
-                                <button @onclick="BeginCharacterEdit">@L["SessionPage_EditCharacter"]</button>
-                                <button @onclick="ShowCharacterBio">@L["PlayerRoom_CharacterBiography"]</button>
+                                <button @onclick="BeginCharacterEdit">@L["Session_Manage_EditCharacter"]</button>
+                                <button @onclick="ShowCharacterBio">@L["Common_Biography"]</button>
                             }
                         </div>
                     </div>
@@ -261,18 +262,18 @@ else
                             @if (IsBiographyEditMode && SelectedEditableCharacter is not null)
                             {
                                 <div class="rc-detail-block">
-                                    <div class="rc-detail-block__title">@L["EditCharacter_Biography"]</div>
+                                    <div class="rc-detail-block__title">@L["Common_Biography"]</div>
                                     <textarea rows="10" @bind="SelectedEditableCharacter.Biography"></textarea>
                                 </div>
                             }
                             else
                             {
                                 <div class="rc-detail-block">
-                                    <div class="rc-detail-block__title">@L["PlayerRoom_CharacterBiography"]</div>
+                                    <div class="rc-detail-block__title">@L["Common_Biography"]</div>
 
                                     @if (string.IsNullOrWhiteSpace(SelectedCharacterSheet.Biography))
                                     {
-                                        <p>@L["SessionPage_NoBiography"]</p>
+                                        <p>@L["Session_Manage_NoBiography"]</p>
                                     }
                                     else
                                     {
@@ -284,19 +285,19 @@ else
                         else if (IsCharacterEditMode && SelectedEditableCharacter is not null)
                         {
                             <div class="rc-detail-block">
-                                <div class="rc-detail-block__title">@L["EditCharacter_PlayerName"]</div>
+                                <div class="rc-detail-block__title">@L["Character_Edit_PlayerName"]</div>
                                 <div>@SelectedEditableCharacter.PlayerName</div>
                             </div>
 
                             <div class="rc-tool-form-grid rc-tool-form-grid--dense">
                                 <div class="rc-form-field">
-                                    <label>@L["EditCharacter_Name"]</label>
+                                    <label>@L["Character_Edit_Name"]</label>
                                     <input @bind="SelectedEditableCharacter.Name" />
                                 </div>
                             </div>
 
                             <div class="rc-detail-block">
-                                <div class="rc-detail-block__title">@L["PlayerRoom_Attributes"]</div>
+                                <div class="rc-detail-block__title">@L["Session_Player_Attributes"]</div>
                                 <div class="rc-tool-form-grid rc-tool-form-grid--dense">
                                     @foreach (var attributeItem in SelectedEditableCharacter.Attributes)
                                     {
@@ -314,7 +315,7 @@ else
                             @if (SelectedEditableCharacter.DerivedStats.Count > 0)
                             {
                                 <div class="rc-detail-block">
-                                    <div class="rc-detail-block__title">@L["PlayerRoom_DerivedStats"]</div>
+                                    <div class="rc-detail-block__title">@L["Session_Player_DerivedStats"]</div>
                                     <ul class="rc-detail-list">
                                         @foreach (var derivedItem in SelectedEditableCharacter.DerivedStats)
                                         {
@@ -327,7 +328,7 @@ else
                             @if (SelectedEditableCharacter.Metrics.Count > 0)
                             {
                                 <div class="rc-detail-block">
-                                    <div class="rc-detail-block__title">@L["EditCharacter_Metrics"]</div>
+                                    <div class="rc-detail-block__title">@L["Character_Edit_Metrics"]</div>
                                     <ul class="rc-detail-list">
                                         @foreach (var metricItem in SelectedEditableCharacter.Metrics)
                                         {
@@ -338,7 +339,7 @@ else
                             }
 
                             <div class="rc-detail-block">
-                                <div class="rc-detail-block__title">@L["PlayerRoom_Traits"]</div>
+                                <div class="rc-detail-block__title">@L["Session_Player_Traits"]</div>
                                 <div class="rc-tool-form-grid rc-tool-form-grid--dense">
                                     @foreach (var traitItem in SelectedEditableCharacter.Traits)
                                     {
@@ -357,7 +358,7 @@ else
                             </div>
 
                             <div class="rc-detail-block">
-                                <div class="rc-detail-block__title">@L["PlayerRoom_Gauges"]</div>
+                                <div class="rc-detail-block__title">@L["Session_Player_Gauges"]</div>
                                 <div class="rc-tool-form-grid rc-tool-form-grid--dense">
                                     @foreach (var gaugeItem in SelectedEditableCharacter.Gauges)
                                     {
@@ -366,7 +367,7 @@ else
                                                 @gaugeItem.Name (@gaugeItem.MinValue - @gaugeItem.MaxValue)
                                                 @if (gaugeItem.IsHealthGauge)
                                                 {
-                                                    <span>- @L["EditCharacter_HealthGauge"]</span>
+                                                    <span>- @L["Character_Edit_HealthGauge"]</span>
                                                 }
                                             </label>
                                             <input type="number"
@@ -379,10 +380,10 @@ else
                             </div>
 
                             <div class="rc-detail-block">
-                                <div class="rc-detail-block__title">@L["EditCharacter_Talents"]</div>
+                                <div class="rc-detail-block__title">@L["Character_Edit_Talents"]</div>
                                 @if (SelectedEditableCharacter.Talents.Count == 0)
                                 {
-                                    <p>@L["EditCharacter_NoTalentsDefined"]</p>
+                                    <p>@L["Character_Edit_NoTalentsDefined"]</p>
                                 }
                                 else
                                 {
@@ -399,10 +400,10 @@ else
                             </div>
 
                             <div class="rc-detail-block">
-                                <div class="rc-detail-block__title">@L["EditCharacter_Items"]</div>
+                                <div class="rc-detail-block__title">@L["Character_Edit_Items"]</div>
                                 @if (SelectedEditableCharacter.Items.Count == 0)
                                 {
-                                    <p>@L["EditCharacter_NoItemsDefined"]</p>
+                                    <p>@L["Character_Edit_NoItemsDefined"]</p>
                                 }
                                 else
                                 {
@@ -421,12 +422,12 @@ else
                         else
                         {
                             <div class="rc-detail-block">
-                                <div class="rc-detail-block__title">@L["SessionPage_PlayerName"]</div>
+                                <div class="rc-detail-block__title">@L["Session_Manage_PlayerName"]</div>
                                 <div>@(SelectedCharacterSummary?.PlayerName ?? "-")</div>
                             </div>
 
                             <div class="rc-detail-block">
-                                <div class="rc-detail-block__title">@L["PlayerRoom_Attributes"]</div>
+                                <div class="rc-detail-block__title">@L["Session_Player_Attributes"]</div>
                                 <ul class="rc-detail-list">
                                     @foreach (var attributeLine in SelectedCharacterSheet.Attributes)
                                     {
@@ -438,7 +439,7 @@ else
                             @if (SelectedCharacterSheet.DerivedStats.Count > 0)
                             {
                                 <div class="rc-detail-block">
-                                    <div class="rc-detail-block__title">@L["PlayerRoom_DerivedStats"]</div>
+                                    <div class="rc-detail-block__title">@L["Session_Player_DerivedStats"]</div>
                                     <ul class="rc-detail-list">
                                         @foreach (var derivedLine in SelectedCharacterSheet.DerivedStats)
                                         {
@@ -449,7 +450,7 @@ else
                             }
 
                             <div class="rc-detail-block">
-                                <div class="rc-detail-block__title">@L["PlayerRoom_Traits"]</div>
+                                <div class="rc-detail-block__title">@L["Session_Player_Traits"]</div>
                                 <ul class="rc-detail-list">
                                     @foreach (var traitLine in SelectedCharacterSheet.Traits)
                                     {
@@ -461,7 +462,7 @@ else
                             @if (SelectedCharacterSheet.Talents?.Count > 0)
                             {
                                 <div class="rc-detail-block">
-                                    <div class="rc-detail-block__title">@L["EditCharacter_Talents"]</div>
+                                    <div class="rc-detail-block__title">@L["Character_Edit_Talents"]</div>
                                     <ul class="rc-detail-list">
                                         @foreach (var talentLine in SelectedCharacterSheet.Talents)
                                         {
@@ -474,7 +475,7 @@ else
                             @if (SelectedCharacterSheet.Items?.Count > 0)
                             {
                                 <div class="rc-detail-block">
-                                    <div class="rc-detail-block__title">@L["EditCharacter_Items"]</div>
+                                    <div class="rc-detail-block__title">@L["Character_Edit_Items"]</div>
                                     <ul class="rc-detail-list">
                                         @foreach (var itemLine in SelectedCharacterSheet.Items)
                                         {
@@ -485,7 +486,7 @@ else
                             }
 
                             <div class="rc-detail-block">
-                                <div class="rc-detail-block__title">@L["PlayerRoom_Gauges"]</div>
+                                <div class="rc-detail-block__title">@L["Session_Player_Gauges"]</div>
                                 <ul class="rc-detail-list">
                                     @foreach (var gaugeLine in SelectedCharacterSheet.Gauges)
                                     {
@@ -499,10 +500,6 @@ else
             }
         </div>
     </section>
-
-    <hr />
-
-    <p><strong>@L["SessionPage_SessionId"] :</strong> @SessionId</p>
 }
 
 @code {
@@ -560,8 +557,19 @@ else
             JoinUrl = $"{Navigation.BaseUri}{CurrentUsername}/{CurrentSession.SessionSlug}";
         }
 
+        // En préprod/prod, ce composant s’exécute côté serveur.
+        // On évite donc de passer par l’URL publique + Nginx pour rejoindre SignalR,
+        // et on utilise une URL interne configurable.
+        var internalBaseUrl = Configuration["InternalUrls:AppBaseUrl"];
+
+        // Fallback utile si la config n’est pas encore renseignée.
+        if (string.IsNullOrWhiteSpace(internalBaseUrl))
+        {
+            internalBaseUrl = Navigation.BaseUri.TrimEnd('/');
+        }
+
         hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri("/sessionhub"))
+            .WithUrl($"{internalBaseUrl.TrimEnd('/')}/sessionhub")
             .WithAutomaticReconnect()
             .Build();
 
@@ -629,8 +637,8 @@ else
 
     private IEnumerable<(string Value, string Label)> GetCharacterSortOptions()
     {
-        yield return ("character-name", L["SessionPage_Sort_CharacterName"]);
-        yield return ("player-name", L["SessionPage_Sort_PlayerName"]);
+        yield return ("character-name", L["Session_Manage_Sort_CharacterName"]);
+        yield return ("player-name", L["Session_Manage_Sort_PlayerName"]);
 
         var healthGaugeNames = Characters
             .SelectMany(x => x.Gauges)
@@ -643,7 +651,7 @@ else
 
         foreach (var gaugeName in healthGaugeNames)
         {
-            yield return ($"gauge:{gaugeName}", $"{L["SessionPage_Sort_HealthGauge"]} - {gaugeName}");
+            yield return ($"gauge:{gaugeName}", $"{L["Session_Manage_Sort_HealthGauge"]} - {gaugeName}");
         }
 
         var traitNames = Characters
@@ -656,7 +664,7 @@ else
 
         foreach (var traitName in traitNames)
         {
-            yield return ($"trait:{traitName}", $"{L["SessionPage_Sort_Trait"]} - {traitName}");
+            yield return ($"trait:{traitName}", $"{L["Session_Manage_Sort_Trait"]} - {traitName}");
         }
     }
 
@@ -834,11 +842,11 @@ else
                 CurrentUserId);
 
             IsCharacterEditMode = false;
-            CharacterPanelMessage = L["EditCharacter_Saved"];
+            CharacterPanelMessage = L["Character_Edit_Saved"];
 
             if (result.ResurrectionBlocked)
             {
-                CharacterPanelMessage = $"{CharacterPanelMessage} {L["EditCharacter_ResurrectionBlocked"]}";
+                CharacterPanelMessage = $"{CharacterPanelMessage} {L["Character_Edit_ResurrectionBlocked"]}";
             }
         }
         catch (Exception ex)
@@ -893,7 +901,7 @@ else
 
             IsBiographyEditMode = false;
             ShowCharacterBioPanel = true;
-            CharacterPanelMessage = L["SessionPage_BiographySaved"];
+            CharacterPanelMessage = L["Session_Manage_BiographySaved"];
         }
         catch (Exception ex)
         {
@@ -915,3 +923,4 @@ else
         }
     }
 }
+

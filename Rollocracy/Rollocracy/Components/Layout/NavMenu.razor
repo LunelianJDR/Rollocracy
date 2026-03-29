@@ -12,7 +12,7 @@
             {
                 <button type="button"
                         class="icon-button"
-                        title="@L["Layout_ToggleSidebar"]"
+                        title="@L["Navigation_ToggleSidebar"]"
                         @onclick="async () => await OnToggleSidebar.InvokeAsync()">
                     @(IsCollapsed ? "»" : "«")
                 </button>
@@ -20,14 +20,14 @@
 
             <button type="button"
                     class="icon-button"
-                    title="@L["Layout_CycleTheme"]"
+                    title="@L["Navigation_CycleTheme"]"
                     @onclick="async () => await OnCycleTheme.InvokeAsync()">
                 @ThemeGlyph
             </button>
 
             <button type="button"
                     class="icon-button"
-                    title="@L["Layout_SupportSoon"]"
+                    title="@L["Navigation_SupportSoon"]"
                     disabled>
                 ❤
             </button>
@@ -36,7 +36,7 @@
             {
                 <button type="button"
                         class="icon-button"
-                        title="@L["Layout_ToggleSidebar"]"
+                        title="@L["Navigation_ToggleSidebar"]"
                         @onclick="async () => await OnToggleSidebar.InvokeAsync()">
                     @(IsCollapsed ? "»" : "«")
                 </button>
@@ -44,10 +44,10 @@
         </div>
 
         <div class="rc-nav__welcome">
-            <div class="rc-nav__welcome-label">@L["Layout_Welcome"]</div>
+            <div class="rc-nav__welcome-label">@L["Navigation_Welcome"]</div>
             <div class="rc-nav__welcome-name">
                 @(string.IsNullOrWhiteSpace(CurrentUserDisplayName)
-                    ? L["Layout_Guest"]
+                    ? L["Navigation_Guest"]
                     : CurrentUserDisplayName)
             </div>
         </div>
@@ -61,36 +61,36 @@
                 </Authorizing>
 
                 <NotAuthorized>
-                    <NavLink class="rc-nav__link" href="/login" title="@L["Home_Login"]">
+                    <NavLink class="rc-nav__link" href="/login" title="@L["Auth_Login_Action"]">
                         <span class="rc-nav__icon">⇥</span>
-                        <span class="rc-nav__label">@L["Home_Login"]</span>
+                        <span class="rc-nav__label">@L["Auth_Login_Action"]</span>
                     </NavLink>
 
-                    <NavLink class="rc-nav__link" href="/register" title="@L["Home_Register"]">
+                    <NavLink class="rc-nav__link" href="/register" title="@L["Auth_Register_Title"]">
                         <span class="rc-nav__icon">＋</span>
-                        <span class="rc-nav__label">@L["Home_Register"]</span>
+                        <span class="rc-nav__label">@L["Auth_Register_Title"]</span>
                     </NavLink>
                 </NotAuthorized>
 
                 <Authorized>
-                    <NavLink class="rc-nav__link" href="/account/settings" title="@L["Layout_AccountSettings"]">
+                    <NavLink class="rc-nav__link" href="/account/settings" title="@L["Account_Settings_Title"]">
                         <span class="rc-nav__icon">⚙</span>
-                        <span class="rc-nav__label">@L["Layout_AccountSettings"]</span>
+                        <span class="rc-nav__label">@L["Account_Settings_Title"]</span>
                     </NavLink>
 
-                    <NavLink class="rc-nav__link" @onclick="HandleLogout" href="/auth/logout" title="@L["Home_Logout"]">
+                    <NavLink class="rc-nav__link" @onclick="HandleLogout" href="/auth/logout" title="@L["Auth_Logout_Action"]">
                         <span class="rc-nav__icon">⇤</span>
-                        <span class="rc-nav__label">@L["Home_Logout"]</span>
+                        <span class="rc-nav__label">@L["Auth_Logout_Action"]</span>
                     </NavLink>
 
-                    <NavLink class="rc-nav__link" href="/player/resume-sessions" title="@L["Layout_PlayerResumeSessions"]">
+                    <NavLink class="rc-nav__link" href="/player/resume-sessions" title="@L["Navigation_PlayerResumeSessions"]">
                         <span class="rc-nav__icon">↺</span>
-                        <span class="rc-nav__label">@L["Layout_PlayerResumeSessions"]</span>
+                        <span class="rc-nav__label">@L["Navigation_PlayerResumeSessions"]</span>
                     </NavLink>
 
-                    <NavLink class="rc-nav__link" href="/join" title="@L["Layout_PlayerJoinSession"]">
+                    <NavLink class="rc-nav__link" href="/join" title="@L["Session_Join_Title"]">
                         <span class="rc-nav__icon">⇢</span>
-                        <span class="rc-nav__label">@L["Layout_PlayerJoinSession"]</span>
+                        <span class="rc-nav__label">@L["Session_Join_Title"]</span>
                     </NavLink>
                 </Authorized>
             </AuthorizeView>
@@ -99,14 +99,14 @@
         @if (CanShowMjMenus)
         {
             <div class="rc-nav__section">
-                <NavLink class="rc-nav__link" href="/mj/gamesystems" title="@L["Layout_GameSystems"]">
+                <NavLink class="rc-nav__link" href="/mj/gamesystems" title="@L["GameSystem_List_Title"]">
                     <span class="rc-nav__icon">◫</span>
-                    <span class="rc-nav__label">@L["Layout_GameSystems"]</span>
+                    <span class="rc-nav__label">@L["GameSystem_List_Title"]</span>
                 </NavLink>
 
-                <NavLink class="rc-nav__link" href="/mj/sessions" title="@L["Layout_GameSessions"]">
+                <NavLink class="rc-nav__link" href="/mj/sessions" title="@L["Navigation_GameSessions"]">
                     <span class="rc-nav__icon">◎</span>
-                    <span class="rc-nav__label">@L["Layout_GameSessions"]</span>
+                    <span class="rc-nav__label">@L["Navigation_GameSessions"]</span>
                 </NavLink>
             </div>
         }
@@ -114,19 +114,19 @@
         @if (CanShowMjMenus && CurrentSessionId.HasValue)
         {
             <div class="rc-nav__section">
-                <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}")" Match="NavLinkMatch.All" title="@L["Layout_ViewCharacters"]">
+                <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}")" Match="NavLinkMatch.All" title="@L["Navigation_ViewCharacters"]">
                     <span class="rc-nav__icon">▣</span>
-                    <span class="rc-nav__label">@L["Layout_ViewCharacters"]</span>
+                    <span class="rc-nav__label">@L["Navigation_ViewCharacters"]</span>
                 </NavLink>
 
-                <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}/test")" title="@L["Layout_Test"]">
+                <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}/test")" title="@L["Navigation_Test"]">
                     <span class="rc-nav__icon">⚄</span>
-                    <span class="rc-nav__label">@L["Layout_Test"]</span>
+                    <span class="rc-nav__label">@L["Navigation_Test"]</span>
                 </NavLink>
 
-                <a class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}/poll")" title="@L["Layout_Poll"]">
+                <a class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}/poll")" title="@L["Poll_Title"]">
                     <span class="rc-nav__icon">☰</span>
-                    <span class="rc-nav__label">@L["Layout_Poll"]</span>
+                    <span class="rc-nav__label">@L["Poll_Title"]</span>
                 </a>
 
                 <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}/mass-distribution")" title="@L["MassDistribution_Title"]">
@@ -139,9 +139,9 @@
                     <span class="rc-nav__label">@L["RandomDraw_Title"]</span>
                 </NavLink>
 
-                <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}/settings")" title="@L["Layout_SessionSettings"]">
+                <NavLink class="rc-nav__link" href="@($"/mj/session/{CurrentSessionId.Value}/settings")" title="@L["Session_Settings_Title"]">
                     <span class="rc-nav__icon">⚙</span>
-                    <span class="rc-nav__label">@L["Layout_SessionSettings"]</span>
+                    <span class="rc-nav__label">@L["Session_Settings_Title"]</span>
                 </NavLink>
             </div>
         }

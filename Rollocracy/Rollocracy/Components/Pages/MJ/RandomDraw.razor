@@ -64,27 +64,22 @@ else
                 </div>
 
                 <div class="rc-tool-subsection">
-                    <div class="rc-tool-subsection__title">@L["MassDistribution_FilterSection"]</div>
-
-                    <div class="rc-filter-groups">
-                        <CharacterAudienceFilters Title="@L["GameTest_TargetScope"]"
-                                                    OnlyOnline="Request.Filter.OnlyOnline"
-                                                    OnlyAlive="Request.Filter.OnlyAlive"
-                                                    IncludeNpcs="Request.Filter.IncludeNpcs"
-                                                    OnlyOnlineChanged="@(value => { Request.Filter.OnlyOnline = value; if (value) Request.Filter.OnlyAlive = false; })"
-                                                    OnlyAliveChanged="@(value => { Request.Filter.OnlyAlive = value; if (value) Request.Filter.OnlyOnline = false; })"
-                                                    IncludeNpcsChanged="@(value => Request.Filter.IncludeNpcs = value)" />
+                    <CharacterAudienceFilters Title="@L["Test_TargetScope"]"
+                                                OnlyOnline="Request.Filter.OnlyOnline"
+                                                OnlyAlive="Request.Filter.OnlyAlive"
+                                                IncludeNpcs="Request.Filter.IncludeNpcs"
+                                                OnlyOnlineChanged="@(value => { Request.Filter.OnlyOnline = value; if (value) Request.Filter.OnlyAlive = false; })"
+                                                OnlyAliveChanged="@(value => { Request.Filter.OnlyAlive = value; if (value) Request.Filter.OnlyOnline = false; })"
+                                                IncludeNpcsChanged="@(value => Request.Filter.IncludeNpcs = value)" />
                         
-                        <CharacterAdvancedFilters Filter="Request.Filter"
-                                                  TraitOptionGroups="AdvancedTraitOptionGroups"
-                                                  TalentOptions="AdvancedTalentOptions"
-                                                  ItemOptions="AdvancedItemOptions"
-                                                  AttributeTargets="AdvancedAttributeTargets"
-                                                  GaugeTargets="AdvancedGaugeTargets"
-                                                  DerivedStatTargets="AdvancedDerivedTargets"
-                                                  MetricTargets="AdvancedMetricTargets" />
-                    </div>
-
+                    <CharacterAdvancedFilters Filter="Request.Filter"
+                                                TraitOptionGroups="AdvancedTraitOptionGroups"
+                                                TalentOptions="AdvancedTalentOptions"
+                                                ItemOptions="AdvancedItemOptions"
+                                                AttributeTargets="AdvancedAttributeTargets"
+                                                GaugeTargets="AdvancedGaugeTargets"
+                                                DerivedStatTargets="AdvancedDerivedTargets"
+                                                MetricTargets="AdvancedMetricTargets" />
                 </div>
 
                 <div class="rc-tool-actions rc-tool-actions--right">

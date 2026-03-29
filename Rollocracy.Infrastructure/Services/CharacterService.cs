@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.Entities;
@@ -48,7 +48,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == playerSession.SessionId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             var stats = await BuildSessionStatsAsync(context, session.Id);
 
@@ -64,6 +64,12 @@ namespace Rollocracy.Infrastructure.Services
                 ? await context.GameSystems.AsNoTracking().FirstOrDefaultAsync(gs => gs.Id == session.GameSystemId.Value)
                 : null;
 
+            // On charge le compte du MJ pour récupérer son pseudo Rollocracy
+            // et, si disponible, son login Twitch à afficher côté room joueur.
+            var gameMasterAccount = await context.UserAccounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == session.GameMasterUserAccountId);
+
             var result = new PlayerRoomStateDto
             {
                 PlayerSessionId = playerSessionId,
@@ -71,6 +77,8 @@ namespace Rollocracy.Infrastructure.Services
                 HasAssignedGameSystem = session.GameSystemId.HasValue,
                 SessionGameSystemId = session.GameSystemId,
                 SessionStats = stats,
+                GameMasterUsername = gameMasterAccount?.Username ?? string.Empty,
+                GameMasterTwitchLogin = gameMasterAccount?.TwitchLogin,
                 SpecialRole = playerSession.SpecialRole,
                 CanViewSessionCharacters = playerSession.SpecialRole == SessionSpecialRole.Observer || playerSession.SpecialRole == SessionSpecialRole.Assistant,
                 CanEditSessionCharacters = playerSession.SpecialRole == SessionSpecialRole.Assistant,
@@ -135,7 +143,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == playerSession.SessionId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             if (!session.GameSystemId.HasValue)
                 throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
@@ -145,7 +153,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(gs => gs.Id == session.GameSystemId.Value);
 
             if (gameSystem == null)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             var attributes = await context.AttributeDefinitions
                 .AsNoTracking()
@@ -234,7 +242,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == playerSession.SessionId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             if (!session.GameSystemId.HasValue)
                 throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
@@ -285,8 +293,8 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var attributeDefinition in attributeDefinitions)
             {
-                // Les Attributes ne sont plus choisis par le joueur à la création :
-                // on génère toujours la valeur depuis la définition du système.
+                // Les Attributes ne sont plus choisis par le joueur Ã  la crÃ©ation :
+                // on gÃ©nÃ¨re toujours la valeur depuis la dÃ©finition du systÃ¨me.
                 var value = GenerateAttributeDefaultValue(attributeDefinition);
                 value = Math.Clamp(value, attributeDefinition.MinValue, attributeDefinition.MaxValue);
 
@@ -391,7 +399,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == playerSession.SessionId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             if (!session.GameSystemId.HasValue)
                 throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
@@ -436,8 +444,8 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var attributeDefinition in attributeDefinitions)
             {
-                // Les Attributes ne sont plus saisis à la création :
-                // on génère toujours leur valeur depuis la définition du système.
+                // Les Attributes ne sont plus saisis Ã  la crÃ©ation :
+                // on gÃ©nÃ¨re toujours leur valeur depuis la dÃ©finition du systÃ¨me.
                 var value = GenerateAttributeDefaultValue(attributeDefinition);
                 value = Math.Clamp(value, attributeDefinition.MinValue, attributeDefinition.MaxValue);
 
@@ -944,7 +952,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             var canEditCharacter = await CanUserEditCharacterInSessionAsync(context, sessionId, gameMasterUserAccountId);
             if (!canEditCharacter)
@@ -2288,3 +2296,4 @@ namespace Rollocracy.Infrastructure.Services
         }
     }
 }
+

@@ -25,7 +25,7 @@ else if (RedirectToHome)
 }
 else if (Settings is null)
 {
-    <p>@L["SessionSettings_NotFound"]</p>
+    <p>@L["Session_NotFound"]</p>
 }
 else
 {
@@ -34,12 +34,12 @@ else
             <div class="rc-tool-panel">
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
-                        <h4 class="rc-tool-panel__title">@L["SessionSettings_Title"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["SessionSettings_Subtitle"]</p>
+                        <h4 class="rc-tool-panel__title">@L["Session_Settings_Title"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["Session_Settings_Subtitle"]</p>
                     </div>
 
                     <div class="rc-tool-actions">
-                        <button type="button" @onclick="BackToSession">@L["SessionSettings_BackToSession"]</button>
+                        <button type="button" @onclick="BackToSession">@L["Session_BackToSession"]</button>
                     </div>
                 </div>
 
@@ -50,35 +50,35 @@ else
 
                 <div class="rc-tool-form-grid">
                     <div class="rc-form-field">
-                        <label for="session-name">@L["SessionSettings_Name"]</label>
+                        <label for="session-name">@L["Session_Name"]</label>
                         <input id="session-name" maxlength="16" @bind="SessionName" />
                     </div>
 
                     <div class="rc-form-field">
-                        <label for="session-password">@L["SessionSettings_Password"]</label>
+                        <label for="session-password">@L["Session_Settings_Password"]</label>
                         <input id="session-password" @bind="SessionPassword" />
                     </div>
 
                     <div class="rc-form-field rc-form-field--readonly">
-                        <label>@L["SessionSettings_CurrentSlug"]</label>
+                        <label>@L["Session_Settings_CurrentSlug"]</label>
                         <div class="rc-readonly-value">@Settings.SessionSlug</div>
                     </div>
 
                     <div class="rc-form-field rc-form-field--readonly">
-                        <label>@L["SessionSettings_CurrentJoinUrl"]</label>
+                        <label>@L["Session_Settings_CurrentJoinUrl"]</label>
                         <div class="rc-readonly-value"><code>@Settings.JoinUrl</code></div>
                     </div>
 
                     <div class="rc-form-field">
-                        <label>@L["SessionSettings_UpdateJoinUrlText"]</label>
+                        <label>@L["Session_Settings_UpdateJoinUrlText"]</label>
                         <label class="rc-filter-toggle">
                             <input type="checkbox" @bind="UpdateJoinUrlSlug" />
-                            <span>@L["SessionSettings_UpdateJoinUrl"]</span>
+                            <span>@L["Session_Settings_UpdateJoinUrl"]</span>
                         </label>
                     </div>
 
                     <div class="rc-form-field rc-form-field--readonly">
-                        <label>@L["SessionSettings_NewJoinUrl"]</label>
+                        <label>@L["Session_Settings_NewJoinUrl"]</label>
                         <div class="rc-readonly-value">
                             <code>@PreviewJoinUrl</code>
                         </div>
@@ -86,7 +86,7 @@ else
                 </div>
 
                 <div class="rc-form-field rc-form-field--readonly">
-                        <label>@L["SessionSettings_IsActive"]</label>
+                        <label>@L["Session_IsActive"]</label>
                         <div class="rc-inline-info">
                             <div class="rc-readonly-value">@(Settings.IsActive? L["Common_Yes"] : L["Common_No"])</div>
 
@@ -94,13 +94,13 @@ else
                                 @if (Settings.IsActive)
                                 {
                                     <button type="button" @onclick="DeactivateSession">
-                                        @L["ResumeSession_Deactivate"]
+                                        @L["Session_List_Deactivate"]
                                     </button>
                                 }
                                 else
                                 {
                                     <button type="button" @onclick="ActivateSession">
-                                        @L["ResumeSession_Activate"]
+                                        @L["Session_List_Activate"]
                                     </button>
                                 }
                             </div>
@@ -115,15 +115,15 @@ else
             <div class="rc-tool-panel">
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
-                        <h4 class="rc-tool-panel__title">@L["SessionSettings_GameSystemSection"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["SessionSettings_GameSystemSectionSubtitle"]</p>
+                        <h4 class="rc-tool-panel__title">@L["Session_Settings_GameSystemSection"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["Session_Settings_GameSystemSectionSubtitle"]</p>
                     </div>
                 </div>
 
                 @if (CurrentSession?.GameSystemId is null)
                 {
                     <div class="rc-empty-panel">
-                        <p>@L["SessionSettings_NoAssignedGameSystem"]</p>
+                        <p>@L["Session_Settings_NoAssignedGameSystem"]</p>
                     </div>
                 }
                 else
@@ -131,24 +131,24 @@ else
                     @if (AssignedGameSystem is null)
                     {
                         <div class="rc-empty-panel">
-                            <p>@L["SessionSettings_NoAssignedGameSystem"]</p>
+                            <p>@L["Session_Settings_NoAssignedGameSystem"]</p>
                         </div>
                     }
                     else
                     {
                         <div class="rc-tool-form-grid">
                             <div class="rc-form-field rc-form-field--readonly">
-                                <label>@L["GameSystems_Name"]</label>
+                                <label>@L["Common_Name"]</label>
                                 <div class="rc-readonly-value">@AssignedGameSystem.Name</div>
                             </div>
 
                             <div class="rc-form-field rc-form-field--readonly">
-                                <label>@L["GameSystems_ResolutionMode"]</label>
+                                <label>@L["GameSystem_ResolutionMode"]</label>
                                 <div class="rc-readonly-value">@GetResolutionLabel(AssignedGameSystem.TestResolutionMode)</div>
                             </div>
 
                             <div class="rc-form-field rc-form-field--readonly" style="grid-column: 1 / -1;">
-                                <label>@L["GameSystems_Description"]</label>
+                                <label>@L["Common_Description"]</label>
                                 <div class="rc-readonly-value">
                                     @if (string.IsNullOrWhiteSpace(AssignedGameSystem.Description))
                                     {
@@ -161,14 +161,14 @@ else
                                 </div>
                                 @if (AssignedGameSystem is not null && !AssignedGameSystem.LockedToSessionId.HasValue)
                                 {
-                                    <p class="rc-tool-muted">@L["SessionSettings_EditAssignedGameSystemCreatesCopy"]</p>
+                                    <p class="rc-tool-muted">@L["Session_Settings_EditAssignedGameSystemCreatesCopy"]</p>
                                 }
                             </div>
                         </div>
 
                         <div class="rc-tool-actions">
                             <button type="button" @onclick="EditAssignedGameSystem">
-                                @L["SessionSettings_EditAssignedGameSystem"]
+                                @L["Session_Settings_EditAssignedGameSystem"]
                             </button>
                         </div>
                     }
@@ -180,13 +180,13 @@ else
             <div class="rc-tool-panel">
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
-                        <h4 class="rc-tool-panel__title">@L["SessionSettings_SessionGaugesSection"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["SessionSettings_SessionGaugesSectionSubtitle"]</p>
+                        <h4 class="rc-tool-panel__title">@L["Session_Gauges_Title"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["Session_Settings_SessionGaugesSectionSubtitle"]</p>
                     </div>
 
                     <div class="rc-tool-actions">
                         <button type="button" @onclick="OpenCreateSessionGaugeEditor">
-                            @L["SessionSettings_AddGaugeTitle"]
+                            @L["Session_Settings_AddGaugeTitle"]
                         </button>
                     </div>
                 </div>
@@ -194,7 +194,7 @@ else
                 @if (SessionGauges.Count == 0)
                 {
                     <div class="rc-empty-panel">
-                        <p>@L["SessionPage_NoSessionGauges"]</p>
+                        <p>@L["Session_Manage_NoSessionGauges"]</p>
                     </div>
                 }
                 else
@@ -210,7 +210,7 @@ else
                                     <div class="rc-tool-panel__header-main">
                                         <h5 class="rc-tool-panel__title">@gauge.Name</h5>
                                         <p class="rc-tool-panel__subtitle">
-                                            @L["SessionSettings_CurrentValueLabel"] : @gauge.CurrentValue
+                                            @L["Session_Settings_CurrentValueLabel"] : @gauge.CurrentValue
                                             · min @gauge.MinValue
                                             · max @gauge.MaxValue
                                         </p>
@@ -221,22 +221,22 @@ else
                                 {
                                     <div class="rc-tool-form-grid">
                                         <div class="rc-form-field">
-                                            <label>@L["SessionPage_SessionGaugeName"]</label>
+                                            <label>@L["Common_Name"]</label>
                                             <input @bind="EditingSessionGaugeName" />
                                         </div>
 
                                         <div class="rc-form-field">
-                                            <label>@L["SessionPage_SessionGaugeMinValue"]</label>
+                                            <label>@L["Session_Manage_SessionGaugeMinValue"]</label>
                                             <input type="number" @bind="EditingSessionGaugeMinValue" />
                                         </div>
 
                                         <div class="rc-form-field">
-                                            <label>@L["SessionPage_SessionGaugeMaxValue"]</label>
+                                            <label>@L["Session_Manage_SessionGaugeMaxValue"]</label>
                                             <input type="number" @bind="EditingSessionGaugeMaxValue" />
                                         </div>
 
                                         <div class="rc-form-field">
-                                            <label>@L["SessionPage_SessionGaugeCurrentValue"]</label>
+                                            <label>@L["Session_Manage_SessionGaugeCurrentValue"]</label>
                                             <input type="number" @bind="EditingSessionGaugeCurrentValue" />
                                         </div>
                                     </div>
@@ -250,32 +250,32 @@ else
                                 {
                                     <div class="rc-tool-form-grid">
                                         <div class="rc-form-field rc-form-field--readonly">
-                                            <label>@L["SessionPage_SessionGaugeName"]</label>
+                                            <label>@L["Common_Name"]</label>
                                             <div class="rc-readonly-value">@gauge.Name</div>
                                         </div>
 
                                         <div class="rc-form-field rc-form-field--readonly">
-                                            <label>@L["SessionPage_SessionGaugeMinValue"]</label>
+                                            <label>@L["Session_Manage_SessionGaugeMinValue"]</label>
                                             <div class="rc-readonly-value">@gauge.MinValue</div>
                                         </div>
 
                                         <div class="rc-form-field rc-form-field--readonly">
-                                            <label>@L["SessionPage_SessionGaugeMaxValue"]</label>
+                                            <label>@L["Session_Manage_SessionGaugeMaxValue"]</label>
                                             <div class="rc-readonly-value">@gauge.MaxValue</div>
                                         </div>
 
                                         <div class="rc-form-field rc-form-field--readonly">
-                                            <label>@L["SessionPage_SessionGaugeCurrentValue"]</label>
+                                            <label>@L["Session_Manage_SessionGaugeCurrentValue"]</label>
                                             <div class="rc-readonly-value">@gauge.CurrentValue</div>
                                         </div>
                                     </div>
 
                                     <div class="rc-tool-actions">
                                         <button type="button" @onclick="() => StartEditSessionGauge(gauge)">
-                                            @L["SessionSettings_EditGauge"]
+                                            @L["Session_Settings_EditGauge"]
                                         </button>
                                         <button type="button" @onclick="() => AskDeleteSessionGauge(gauge.SessionGaugeId)">
-                                            @L["EditGameSystem_Delete"]
+                                            @L["GameSystem_Editor_Delete"]
                                         </button>
                                     </div>
                                 }
@@ -283,10 +283,10 @@ else
                                 @if (isDeleteConfirm)
                                 {
                                     <div class="rc-filter-group-card">
-                                        <p>@L["SessionPage_ConfirmDeleteSessionGauge"]</p>
+                                        <p>@L["Session_Manage_ConfirmDeleteSessionGauge"]</p>
 
                                         <div class="rc-tool-actions">
-                                            <button type="button" @onclick="ConfirmDeleteSessionGauge">@L["Common_Confirm"]</button>
+                                            <button type="button" @onclick="ConfirmDeleteSessionGauge">@L["Common_Yes"]</button>
                                             <button type="button" @onclick="CancelDeleteSessionGauge">@L["Common_Cancel"]</button>
                                         </div>
                                     </div>
@@ -300,29 +300,29 @@ else
                     <div class="rc-filter-group-card">
                         <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                             <div class="rc-tool-panel__header-main">
-                                <h5 class="rc-tool-panel__title">@L["SessionSettings_AddGaugeTitle"]</h5>
-                                <p class="rc-tool-panel__subtitle">@L["SessionSettings_AddGaugeSubtitle"]</p>
+                                <h5 class="rc-tool-panel__title">@L["Session_Settings_AddGaugeTitle"]</h5>
+                                <p class="rc-tool-panel__subtitle">@L["Session_Settings_AddGaugeSubtitle"]</p>
                             </div>
                         </div>
 
                         <div class="rc-tool-form-grid">
                             <div class="rc-form-field">
-                                <label>@L["SessionPage_SessionGaugeName"]</label>
+                                <label>@L["Common_Name"]</label>
                                 <input @bind="NewSessionGaugeName" />
                             </div>
 
                             <div class="rc-form-field">
-                                <label>@L["SessionPage_SessionGaugeMinValue"]</label>
+                                <label>@L["Session_Manage_SessionGaugeMinValue"]</label>
                                 <input type="number" @bind="NewSessionGaugeMinValue" />
                             </div>
 
                             <div class="rc-form-field">
-                                <label>@L["SessionPage_SessionGaugeMaxValue"]</label>
+                                <label>@L["Session_Manage_SessionGaugeMaxValue"]</label>
                                 <input type="number" @bind="NewSessionGaugeMaxValue" />
                             </div>
 
                             <div class="rc-form-field">
-                                <label>@L["SessionPage_SessionGaugeCurrentValue"]</label>
+                                <label>@L["Session_Manage_SessionGaugeCurrentValue"]</label>
                                 <input type="number" @bind="NewSessionGaugeCurrentValue" />
                             </div>
                         </div>
@@ -338,21 +338,21 @@ else
             <div class="rc-tool-panel">
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
-                        <h4 class="rc-tool-panel__title">@L["SessionSettings_SpecialRolesSection"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["SessionSettings_SpecialRolesSectionSubtitle"]</p>
+                        <h4 class="rc-tool-panel__title">@L["Session_Settings_SpecialRolesSection"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["Session_Settings_SpecialRolesSectionSubtitle"]</p>
                     </div>
 
                     <div class="rc-tool-actions">
                         <button type="button" @onclick="OpenSpecialRoleEditor">
-                            @L["SessionPage_AddSpecialRole"]
+                            @L["Session_Manage_AddSpecialRole"]
                         </button>
                     </div>
                 </div>
                 <div class="rc-tool-muted" style="margin-top: 0.5rem;">
-                    <p>@L["SessionSettings_SpecialRoles_Description"]</p>
+                    <p>@L["Session_Settings_SpecialRoles_Description"]</p>
                     <ul>
-                        <li>@L["SessionSettings_SpecialRoles_Observer"]</li>
-                        <li>@L["SessionSettings_SpecialRoles_Assistant"]</li>
+                        <li>@L["Session_Settings_SpecialRoles_Observer"]</li>
+                        <li>@L["Session_Settings_SpecialRoles_Assistant"]</li>
                     </ul>
                 </div>
 
@@ -361,9 +361,9 @@ else
                     <div class="rc-filter-group-card">
                         <div class="rc-tool-form-grid">
                             <div class="rc-form-field">
-                                <label>@L["SessionPage_SelectPlayer"]</label>
+                                <label>@L["Session_Manage_SelectPlayer"]</label>
                                 <select @bind="SelectedSpecialRolePlayerSessionId">
-                                    <option value="">@L["SessionPage_SelectPlayer"]</option>
+                                    <option value="">@L["Session_Manage_SelectPlayer"]</option>
                                     @foreach (var player in SpecialRoleEligiblePlayers)
                                     {
                                         <option value="@player.Id">@player.PlayerName</option>
@@ -372,7 +372,7 @@ else
                             </div>
 
                             <div class="rc-form-field">
-                                <label>@L["SessionSettings_SpecialRole"]</label>
+                                <label>@L["Session_Settings_SpecialRole"]</label>
                                 <select @bind="SelectedSpecialRole">
                                     <option value="@SessionSpecialRole.Observer">@L["SessionSpecialRole_Observer"]</option>
                                     @* <option value="@SessionSpecialRole.Assistant">@L["SessionSpecialRole_Assistant"]</option> *@
@@ -390,7 +390,7 @@ else
                 @if (SpecialRoleAssignments.Count == 0)
                 {
                     <div class="rc-empty-panel">
-                        <p>@L["SessionPage_NoSpecialRoles"]</p>
+                        <p>@L["Session_Manage_NoSpecialRoles"]</p>
                     </div>
                 }
                 else
@@ -408,7 +408,7 @@ else
 
                                 <div class="rc-tool-actions">
                                     <button type="button" @onclick="() => RemoveSpecialRole(player.Id)">
-                                        @L["EditGameSystem_Delete"]
+                                        @L["GameSystem_Editor_Delete"]
                                     </button>
                                 </div>
                             </article>
@@ -539,7 +539,7 @@ else
 
             if (string.IsNullOrWhiteSpace(SessionName))
             {
-                Message = L["SessionSettings_NameRequired"];
+                Message = L["Session_Settings_NameRequired"];
                 return;
             }
 
@@ -559,8 +559,8 @@ else
             await LoadAll();
 
             Message = UpdateJoinUrlSlug
-                ? L["SessionSettings_SavedWithUrlChange"]
-                : L["SessionSettings_Saved"];
+                ? L["Session_Settings_SavedWithUrlChange"]
+                : L["Session_Settings_Saved"];
         }
         catch (Exception ex)
         {
@@ -614,7 +614,7 @@ else
 
             if (string.IsNullOrWhiteSpace(SelectedSpecialRolePlayerSessionId))
             {
-                Message = L["SessionPage_SelectPlayer"];
+                Message = L["Session_Manage_SelectPlayer"];
                 return;
             }
 

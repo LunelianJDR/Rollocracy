@@ -27,35 +27,35 @@ else
         <div class="rc-tool-panel">
             <div class="rc-tool-panel__header">
                 <div class="rc-tool-panel__header-main">
-                    <h4 class="rc-tool-panel__title">@L["ResumeSession_Title"]</h4>
-                    <p class="rc-tool-panel__subtitle">@L["ResumeSession_Subtitle"]</p>
+                    <h4 class="rc-tool-panel__title">@L["Session_List_Title"]</h4>
+                    <p class="rc-tool-panel__subtitle">@L["Session_List_Subtitle"]</p>
                 </div>
 
                 <div class="rc-tool-actions">
                     <button type="button" @onclick="GoToCreateSession">
-                        @L["CreateSession_Title"]
+                        @L["Session_Create_Title"]
                     </button>
                 </div>
             </div>
 
             <div class="rc-test-stats-grid">
                 <div class="rc-stat-card">
-                    <span class="rc-stat-card__label">@L["ResumeSession_TotalSessions"]</span>
+                    <span class="rc-stat-card__label">@L["Session_List_TotalSessions"]</span>
                     <span class="rc-stat-card__value">@SessionSummaries.Count</span>
                 </div>
 
                 <div class="rc-stat-card">
-                    <span class="rc-stat-card__label">@L["ResumeSession_ActiveSessions"]</span>
+                    <span class="rc-stat-card__label">@L["Session_List_ActiveSessions"]</span>
                     <span class="rc-stat-card__value">@SessionSummaries.Count(x => x.Session.IsActive)</span>
                 </div>
 
                 <div class="rc-stat-card">
-                    <span class="rc-stat-card__label">@L["ResumeSession_InactiveSessions"]</span>
+                    <span class="rc-stat-card__label">@L["Session_List_InactiveSessions"]</span>
                     <span class="rc-stat-card__value">@SessionSummaries.Count(x => !x.Session.IsActive)</span>
                 </div>
 
                 <div class="rc-stat-card">
-                    <span class="rc-stat-card__label">@L["ResumeSession_TotalAliveCharacters"]</span>
+                    <span class="rc-stat-card__label">@L["Session_AliveCharacters"]</span>
                     <span class="rc-stat-card__value">@SessionSummaries.Sum(x => x.AliveCharacterCount)</span>
                 </div>
             </div>
@@ -64,8 +64,8 @@ else
         <div class="rc-tool-panel">
             <div class="rc-tool-panel__header">
                 <div class="rc-tool-panel__header-main">
-                    <h4 class="rc-tool-panel__title">@L["ResumeSession_ListTitle"]</h4>
-                    <p class="rc-tool-panel__subtitle">@L["ResumeSession_ListSubtitle"]</p>
+                    <h4 class="rc-tool-panel__title">@L["Session_List_ListTitle"]</h4>
+                    <p class="rc-tool-panel__subtitle">@L["Session_List_ListSubtitle"]</p>
                 </div>
             </div>
 
@@ -77,7 +77,7 @@ else
             @if (SessionSummaries.Count == 0)
             {
                 <div class="rc-empty-panel">
-                    <p>@L["ResumeSession_None"]</p>
+                    <p>@L["Session_List_None"]</p>
                 </div>
             }
             else
@@ -92,31 +92,31 @@ else
                                 <div class="rc-tool-panel__header-main">
                                     <h5 class="rc-tool-panel__title">@item.Session.SessionName</h5>
                                     <p class="rc-tool-panel__subtitle">
-                                        @(item.Session.IsActive? L["ResumeSession_StatusActive"] : L["ResumeSession_StatusInactive"])
+                                        @(item.Session.IsActive? L["Session_IsActive"] : L["Session_List_StatusInactive"])
                                     </p>
                                 </div>
                             </div>
 
                             <div class="rc-tool-form-grid">
                                 <div class="rc-form-field rc-form-field--readonly">
-                                    <label>@L["ResumeSession_Name"]</label>
+                                    <label>@L["Common_Name"]</label>
                                     <div class="rc-readonly-value">@item.Session.SessionName</div>
                                 </div>
 
                                 <div class="rc-form-field rc-form-field--readonly">
-                                    <label>@L["ResumeSession_AliveCharacters"]</label>
+                                    <label>@L["Session_AliveCharacters"]</label>
                                     <div class="rc-readonly-value">@item.AliveCharacterCount</div>
                                 </div>
 
                                 <div class="rc-form-field rc-form-field--readonly">
-                                    <label>@L["ResumeSession_IsActive"]</label>
+                                    <label>@L["Session_IsActive"]</label>
                                     <div class="rc-readonly-value">
                                         @(item.Session.IsActive? L["Common_Yes"] : L["Common_No"])
                                     </div>
                                 </div>
 
                                 <div class="rc-form-field rc-form-field--readonly">
-                                    <label>@L["ResumeSession_Url"]</label>
+                                    <label>@L["Common_Url"]</label>
                                     <div class="rc-readonly-value">
                                         @if (item.Session.IsActive)
                                         {
@@ -124,7 +124,7 @@ else
                                         }
                                         else
                                         {
-                                            <span>@L["ResumeSession_InactiveUrl"]</span>
+                                            <span>@L["Session_List_InactiveUrl"]</span>
                                         }
                                     </div>
                                 </div>
@@ -132,50 +132,50 @@ else
 
                             <div class="rc-tool-actions">
                                 <button type="button" @onclick="() => OpenSession(item.Session.Id)">
-                                    @L["ResumeSession_Open"]
+                                    @L["Session_List_Open"]
                                 </button>
 
                                 <button type="button" @onclick="() => OpenSessionSettings(item.Session.Id)">
-                                    @L["ResumeSession_EditSettings"]
+                                    @L["Session_List_EditSettings"]
                                 </button>
 
                                 @if (item.Session.IsActive)
                                 {
                                     <button type="button" @onclick="() => ToggleSessionState(item.Session.Id, false)">
-                                        @L["ResumeSession_Deactivate"]
+                                        @L["Session_List_Deactivate"]
                                     </button>
                                 }
                                 else
                                 {
                                     <button type="button" @onclick="() => ToggleSessionState(item.Session.Id, true)">
-                                        @L["ResumeSession_Activate"]
+                                        @L["Session_List_Activate"]
                                     </button>
                                 }
 
                                 <button type="button"
                                         disabled="@item.Session.IsActive"
                                         @onclick="() => AskDeleteSession(item.Session.Id)">
-                                    @L["EditGameSystem_Delete"]
+                                    @L["GameSystem_Editor_Delete"]
                                 </button>
                             </div>
 
                             @if (item.Session.IsActive)
                             {
-                                <p class="rc-tool-muted">@L["ResumeSession_DeleteDisabledBecauseActive"]</p>
+                                <p class="rc-tool-muted">@L["Session_List_DeleteDisabledBecauseActive"]</p>
                             }
                             else
                             {
-                                <p class="rc-tool-muted">@L["ResumeSession_PlayerCanJoin"]</p>
+                                <p class="rc-tool-muted">@L["Session_List_PlayerCanJoin"]</p>
                             }
 
                             @if (isDeleteConfirmationOpen)
                             {
                                 <div class="rc-filter-group-card">
-                                    <p>@L["ResumeSession_DeleteConfirmation"]</p>
+                                    <p>@L["Session_List_DeleteConfirmation"]</p>
 
                                     <div class="rc-tool-actions">
                                         <button type="button" @onclick="ConfirmDeleteSession">
-                                            @L["Common_Confirm"]
+                                            @L["Common_Yes"]
                                         </button>
 
                                         <button type="button" @onclick="CancelDeleteSession">

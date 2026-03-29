@@ -47,7 +47,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             if (!session.GameSystemId.HasValue)
                 throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
@@ -226,7 +226,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             if (!session.GameSystemId.HasValue)
                 throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);

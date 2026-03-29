@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,7 @@ using Rollocracy.Infrastructure.Services;
 using Rollocracy.Localization;
 using Rollocracy.Services;
 using System.Globalization;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,10 +25,22 @@ builder.Services.AddRazorComponents()
 builder.Services.AddControllers();
 
 // HttpClient pour les composants Razor existants
-builder.Services.AddScoped(sp => new HttpClient
+builder.Services.AddScoped(sp =>
 {
-    BaseAddress = new Uri("https://localhost:7252/")
+    var navigationManager = sp.GetRequiredService<NavigationManager>();
+
+    return new HttpClient
+    {
+        // Utilise automatiquement l’URL courante :
+        // - en local : https://localhost:7252/
+        // - en préprod/prod : https://rollocracy.com/
+        BaseAddress = new Uri(navigationManager.BaseUri)
+    };
 });
+
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo("/var/www/rollocracy/dataprotection-keys"))
+    .SetApplicationName("Rollocracy");
 
 // HttpClientFactory pour les appels serveur -> Twitch
 builder.Services.AddHttpClient();

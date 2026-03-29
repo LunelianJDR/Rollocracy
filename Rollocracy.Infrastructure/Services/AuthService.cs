@@ -68,7 +68,7 @@ namespace Rollocracy.Infrastructure.Services
                 WantsToBeGameMaster = false,
                 MaxPlayersPerSession = 0,
                 LastSensitiveChangeAtUtc = DateTime.UtcNow,
-                LastSensitiveChangeType = "SecurityHistory_AccountCreated"
+                LastSensitiveChangeType = "Account_SecurityHistory_AccountCreated"
             };
 
             user.PasswordHash = _passwordHasher.HashPassword(user, password);
@@ -200,7 +200,7 @@ namespace Rollocracy.Infrastructure.Services
                 PasswordHash = string.Empty,
 
                 LastSensitiveChangeAtUtc = DateTime.UtcNow,
-                LastSensitiveChangeType = "SecurityHistory_TwitchAccountCreated"
+                LastSensitiveChangeType = "Account_SecurityHistory_TwitchAccountCreated"
             };
 
             context.UserAccounts.Add(user);
@@ -251,7 +251,7 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             user.LastSensitiveChangeAtUtc = DateTime.UtcNow;
-            user.LastSensitiveChangeType = "SecurityHistory_TwitchLinked";
+            user.LastSensitiveChangeType = "Account_SecurityHistory_TwitchLinked";
 
             await context.SaveChangesAsync();
         }

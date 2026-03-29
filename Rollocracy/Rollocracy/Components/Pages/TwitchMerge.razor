@@ -8,14 +8,14 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
-<PageTitle>@L["TwitchMerge_Title"]</PageTitle>
+<PageTitle>@L["Auth_TwitchMerge_Title"]</PageTitle>
 
 <section class="rc-auth-shell">
     <div class="rc-auth-grid">
         <article class="rc-auth-panel">
             <div class="rc-tool-panel__header-main">
-                <h1 class="rc-tool-panel__title">@L["TwitchMerge_Title"]</h1>
-                <p class="rc-tool-panel__subtitle">@L["TwitchMerge_Subtitle"]</p>
+                <h1 class="rc-tool-panel__title">@L["Auth_TwitchMerge_Title"]</h1>
+                <p class="rc-tool-panel__subtitle">@L["Auth_TwitchMerge_Subtitle"]</p>
             </div>
 
             @if (!string.IsNullOrWhiteSpace(Message))
@@ -25,25 +25,25 @@
 
             @if (Pending is null)
             {
-                <div class="rc-inline-error">@L["TwitchMerge_LoadError"]</div>
+                <div class="rc-inline-error">@L["Auth_TwitchMerge_LoadError"]</div>
             }
             else
             {
                 <div class="rc-tool-form-grid">
                     <div class="rc-form-field">
-                        <label>@L["TwitchMerge_MatchedLocalUsername"]</label>
+                        <label>@L["Auth_TwitchMerge_MatchedLocalUsername"]</label>
                         <div class="rc-readonly-value">@Pending.MatchedUsername</div>
                     </div>
 
                     <div class="rc-form-field">
-                        <label>@L["TwitchMerge_TwitchLogin"]</label>
+                        <label>@L["Auth_TwitchMerge_TwitchLogin"]</label>
                         <div class="rc-readonly-value">@Pending.TwitchLogin</div>
                     </div>
 
                     <div class="rc-form-field rc-form-field--full">
-                        <label>@L["TwitchMerge_Email"]</label>
+                        <label>@L["Auth_TwitchMerge_Email"]</label>
                         <div class="rc-readonly-value">
-                            @(string.IsNullOrWhiteSpace(Pending.TwitchEmail) ? L["TwitchMerge_NoEmail"] : Pending.TwitchEmail)
+                            @(string.IsNullOrWhiteSpace(Pending.TwitchEmail) ? L["Auth_TwitchMerge_NoEmail"] : Pending.TwitchEmail)
                         </div>
                     </div>
                 </div>
@@ -54,13 +54,13 @@
                 {
                     <label class="rc-filter-toggle">
                         <input type="checkbox" @bind="RenameUsernameToTwitch" />
-                        <span>@string.Format(L["TwitchMerge_RenameToTwitchLogin"], Pending.TwitchLogin)</span>
+                        <span>@string.Format(L["Auth_TwitchMerge_RenameToTwitchLogin"], Pending.TwitchLogin)</span>
                     </label>
                 }
 
                 <div class="rc-tool-actions">
-                    <button type="button" @onclick="MergeAsync">@L["TwitchMerge_Confirm"]</button>
-                    <a class="rc-auth-link-button" href="/login">@L["TwitchMerge_Cancel"]</a>
+                    <button type="button" @onclick="MergeAsync">@L["Auth_TwitchMerge_Confirm"]</button>
+                    <a class="rc-auth-link-button" href="/login">@L["Auth_TwitchMerge_Cancel"]</a>
                 </div>
             }
         </article>

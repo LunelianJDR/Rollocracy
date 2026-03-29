@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Entities;
@@ -131,7 +131,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (system == null)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             system.Name = name.Trim();
             system.Description = description.Trim();
@@ -150,16 +150,16 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (system == null)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             if (system.LockedToSessionId.HasValue)
                 throw new Exception(_localizer["Backend_CannotDeleteLockedSessionGameSystem"]);
 
             var impactedSessions = await GetSessionsUsingSystemAsync(context, system.Id);
 
-            // Si des sessions utilisent encore ce système partagé,
-            // on leur crée automatiquement une copie verrouillée dédiée,
-            // puis on réassigne chaque session vers sa copie.
+            // Si des sessions utilisent encore ce systÃ¨me partagÃ©,
+            // on leur crÃ©e automatiquement une copie verrouillÃ©e dÃ©diÃ©e,
+            // puis on rÃ©assigne chaque session vers sa copie.
             foreach (var session in impactedSessions)
             {
                 var clonedSystem = await CloneGameSystemForSessionAsync(system.Id, ownerUserAccountId, session.Id);
@@ -170,20 +170,20 @@ namespace Rollocracy.Infrastructure.Services
                     .FirstOrDefaultAsync(s => s.Id == session.Id && s.GameMasterUserAccountId == ownerUserAccountId);
 
                 if (sessionToUpdate == null)
-                    throw new Exception(_localizer["Backend_SessionNotFound"]);
+                    throw new Exception(_localizer["Session_NotFound"]);
 
                 sessionToUpdate.GameSystemId = clonedSystem.Id;
                 await assignContext.SaveChangesAsync();
             }
 
-            // On recharge le système dans un contexte propre après les éventuelles duplications.
+            // On recharge le systÃ¨me dans un contexte propre aprÃ¨s les Ã©ventuelles duplications.
             await using var deleteContext = await _contextFactory.CreateDbContextAsync();
 
             var systemToDelete = await deleteContext.GameSystems
                 .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (systemToDelete == null)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             var snapshots = await deleteContext.GameSystemSnapshots
                 .Where(x => x.GameSystemId == gameSystemId)
@@ -215,7 +215,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (system == null)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             var attribute = new AttributeDefinition
             {
@@ -242,7 +242,7 @@ namespace Rollocracy.Infrastructure.Services
                 .AnyAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             return await context.AttributeDefinitions
                 .AsNoTracking()
@@ -260,7 +260,7 @@ namespace Rollocracy.Infrastructure.Services
                 .AnyAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             return await context.MetricDefinitions
                 .AsNoTracking()
@@ -284,7 +284,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (system == null)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             var traitDefinition = new TraitDefinition
             {
@@ -308,7 +308,7 @@ namespace Rollocracy.Infrastructure.Services
                 .AnyAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             return await context.TraitDefinitions
                 .AsNoTracking()
@@ -387,7 +387,7 @@ namespace Rollocracy.Infrastructure.Services
                 .AnyAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (!ownsSystem)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             return await context.GaugeDefinitions
                 .AsNoTracking()
@@ -414,7 +414,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(gs => gs.Id == gameSystemId && gs.OwnerUserAccountId == ownerUserAccountId);
 
             if (system == null)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             var gauge = new GaugeDefinition
             {
@@ -453,7 +453,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == ownerUserAccountId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             var clonedSystem = new GameSystem
             {
@@ -473,8 +473,8 @@ namespace Rollocracy.Infrastructure.Services
 
             context.GameSystems.Add(clonedSystem);
 
-            // On persiste d'abord le système cloné pour garantir l'existence
-            // du parent avant l'insertion des définitions enfants.
+            // On persiste d'abord le systÃ¨me clonÃ© pour garantir l'existence
+            // du parent avant l'insertion des dÃ©finitions enfants.
             await context.SaveChangesAsync();
 
             var attributeMap = new Dictionary<Guid, Guid>();
@@ -838,7 +838,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == requestingUserAccountId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             if (!session.GameSystemId.HasValue)
                 throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
@@ -848,7 +848,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(gs => gs.Id == session.GameSystemId.Value);
 
             if (currentSystem == null)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             if (currentSystem.LockedToSessionId == session.Id)
                 return currentSystem;
@@ -864,7 +864,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == requestingUserAccountId);
 
             if (sessionToUpdate == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             sessionToUpdate.GameSystemId = clonedSystem.Id;
             await assignContext.SaveChangesAsync();
@@ -933,7 +933,7 @@ namespace Rollocracy.Infrastructure.Services
                 .OrderBy(x => x.Name)
                 .ToListAsync();
 
-            // Modificateurs portés directement par les options de traits
+            // Modificateurs portÃ©s directement par les options de traits
             var choiceOptionModifiers = await context.Set<ChoiceOptionModifierDefinition>()
                 .AsNoTracking()
                 .Where(x => options.Select(o => o.Id).Contains(x.ChoiceOptionDefinitionId))
@@ -1191,7 +1191,7 @@ namespace Rollocracy.Infrastructure.Services
             var system = await GetEditableGameSystemForUpdateAsync(context, gameSystemId, ownerUserAccountId);
 
             if (system == null)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             var impactedSessions = await GetSessionsUsingSystemAsync(context, system.Id);
 
@@ -1258,7 +1258,7 @@ namespace Rollocracy.Infrastructure.Services
             var system = await GetEditableGameSystemForUpdateAsync(context, gameSystemId, ownerUserAccountId);
 
             if (system == null)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             var snapshot = await context.GameSystemSnapshots
                 .Where(x => x.GameSystemId == gameSystemId)
@@ -1703,7 +1703,7 @@ namespace Rollocracy.Infrastructure.Services
                     currentDefinitions.Where(x => removedIds.Contains(x.Id)));
             }
 
-            // Mise à jour des compétences existantes et de leurs composants
+            // Mise Ã  jour des compÃ©tences existantes et de leurs composants
             foreach (var item in requestDerivedStats.Where(x => x.DerivedStatDefinitionId.HasValue && !x.IsDeleted))
             {
                 var entity = currentDefinitionById[item.DerivedStatDefinitionId!.Value];
@@ -1761,7 +1761,7 @@ namespace Rollocracy.Infrastructure.Services
                 }
             }
 
-            // On crée d'abord les nouvelles compétences calculées...
+            // On crÃ©e d'abord les nouvelles compÃ©tences calculÃ©es...
             var newlyCreatedDefinitions = new List<(Guid DefinitionId, EditableDerivedStatDefinitionDto Dto)>();
 
             foreach (var item in requestDerivedStats.Where(x => !x.DerivedStatDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
@@ -1892,8 +1892,8 @@ namespace Rollocracy.Infrastructure.Services
                         IsLockedForCharacterCreation = optionDto.IsLockedForCharacterCreation
                     });
 
-                    // On remonte l'Id généré dans le DTO pour pouvoir créer
-                    // les modificateurs de l'option dans la même application.
+                    // On remonte l'Id gÃ©nÃ©rÃ© dans le DTO pour pouvoir crÃ©er
+                    // les modificateurs de l'option dans la mÃªme application.
                     optionDto.TraitOptionId = optionId;
                 }
             }
@@ -3112,8 +3112,8 @@ namespace Rollocracy.Infrastructure.Services
                     DisplayOrder = item.DisplayOrder
                 });
 
-                // Important : on remonte l'id généré dans le DTO
-                // pour permettre la synchro des modificateurs dans le même save.
+                // Important : on remonte l'id gÃ©nÃ©rÃ© dans le DTO
+                // pour permettre la synchro des modificateurs dans le mÃªme save.
                 item.TalentDefinitionId = talentId;
             }
         }
@@ -3176,8 +3176,8 @@ namespace Rollocracy.Infrastructure.Services
                     DisplayOrder = item.DisplayOrder
                 });
 
-                // Important : on remonte l'id généré dans le DTO
-                // pour permettre la synchro des modificateurs dans le même save.
+                // Important : on remonte l'id gÃ©nÃ©rÃ© dans le DTO
+                // pour permettre la synchro des modificateurs dans le mÃªme save.
                 item.ItemDefinitionId = itemId;
             }
         }
@@ -3509,3 +3509,4 @@ namespace Rollocracy.Infrastructure.Services
         }
     }
 }
+

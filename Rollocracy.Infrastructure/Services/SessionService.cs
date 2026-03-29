@@ -130,10 +130,10 @@ namespace Rollocracy.Infrastructure.Services
                     s.SessionSlug.ToLower() == normalizedSlug);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             if (!session.IsActive)
-                throw new Exception(_localizer["Backend_SessionInactive"]);
+                throw new Exception(_localizer["Session_Inactive"]);
 
             if (!string.IsNullOrWhiteSpace(session.SessionPassword) && session.SessionPassword != sessionPassword)
                 throw new Exception(_localizer["Backend_InvalidSessionPassword"]);
@@ -466,7 +466,7 @@ namespace Rollocracy.Infrastructure.Services
                 throw new Exception(_localizer["Backend_JoinSessionNotFound"]);
 
             if (!session.IsActive)
-                throw new Exception(_localizer["Backend_JoinSessionInactive"]);
+                throw new Exception(_localizer["Session_Inactive"]);
 
             var expectedPassword = session.SessionPassword?.Trim() ?? string.Empty;
             var providedPassword = sessionPassword?.Trim() ?? string.Empty;
@@ -509,7 +509,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             session.IsActive = isActive;
             await context.SaveChangesAsync();
@@ -524,7 +524,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             if (session.IsActive)
                 throw new Exception(_localizer["Backend_CannotDeleteActiveSession"]);
@@ -576,7 +576,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             var system = await context.GameSystems
                 .AsNoTracking()
@@ -586,7 +586,7 @@ namespace Rollocracy.Infrastructure.Services
                     (gs.OwnerUserAccountId == gameMasterUserAccountId || gs.IsGeneric));
 
             if (system == null)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             session.GameSystemId = gameSystemId;
             await context.SaveChangesAsync();
@@ -651,7 +651,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             var trimmedSessionName = sessionName.Trim();
             if (string.IsNullOrWhiteSpace(trimmedSessionName))
@@ -872,7 +872,7 @@ namespace Rollocracy.Infrastructure.Services
                 .AnyAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
 
             if (!exists)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
         }
 
         private static int NormalizeSessionCapacity(int rawValue) => Math.Clamp(rawValue, 0, 5000);
@@ -895,3 +895,4 @@ namespace Rollocracy.Infrastructure.Services
         }
     }
 }
+

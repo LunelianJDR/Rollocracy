@@ -296,7 +296,7 @@ namespace Rollocracy.Infrastructure.Services
                     {
                         matchedUser.Username = pending.TwitchLogin;
                         matchedUser.LastSensitiveChangeAtUtc = DateTime.UtcNow;
-                        matchedUser.LastSensitiveChangeType = "SecurityHistory_UsernameChangedFromTwitch";
+                        matchedUser.LastSensitiveChangeType = "Account_SecurityHistory_UsernameChangedFromTwitch";
                     }
                 }
             }
@@ -347,7 +347,7 @@ namespace Rollocracy.Infrastructure.Services
             user.TwitchDisplayName = null;
 
             user.LastSensitiveChangeAtUtc = DateTime.UtcNow;
-            user.LastSensitiveChangeType = "SecurityHistory_TwitchUnlinked";
+            user.LastSensitiveChangeType = "Account_SecurityHistory_TwitchUnlinked";
 
             await context.SaveChangesAsync();
         }
@@ -376,7 +376,7 @@ namespace Rollocracy.Infrastructure.Services
 
             user.Username = user.TwitchLogin;
             user.LastSensitiveChangeAtUtc = DateTime.UtcNow;
-            user.LastSensitiveChangeType = "SecurityHistory_UsernameChangedFromTwitch";
+            user.LastSensitiveChangeType = "Account_SecurityHistory_UsernameChangedFromTwitch";
 
             await context.SaveChangesAsync();
         }

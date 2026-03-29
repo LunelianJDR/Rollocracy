@@ -24,8 +24,8 @@ else
         <div class="rc-tool-panel">
             <div class="rc-tool-panel__header">
                 <div class="rc-tool-panel__header-main">
-                    <h4 class="rc-tool-panel__title">@L["Layout_PlayerJoinSession"]</h4>
-                    <p class="rc-tool-panel__subtitle">@L["JoinSession_Subtitle"]</p>
+                    <h4 class="rc-tool-panel__title">@L["Session_Join_Title"]</h4>
+                    <p class="rc-tool-panel__subtitle">@L["Session_Join_Subtitle"]</p>
                 </div>
             </div>
 
@@ -36,23 +36,23 @@ else
 
             <div class="rc-tool-form-grid--dense">
                 <div class="rc-form-field">
-                    <label>@L["JoinSession_GameMasterUsername"]</label>
+                    <label>@L["Session_Join_GameMasterUsername"]</label>
                     <input @bind="GameMasterUsername" />
                 </div>
 
                 <div class="rc-form-field">
-                    <label>@L["JoinSession_SessionSlug"]</label>
+                    <label>@L["Session_Name"]</label>
                     <input @bind="SessionSlug" />
                 </div>
 
                 <div class="rc-form-field">
-                    <label>@L["JoinSession_Password"]</label>
+                    <label>@L["Session_Password"]</label>
                     <input type="password" @bind="SessionPassword" />
                 </div>
             </div>
 
             <div class="rc-tool-actions">
-                <button type="button" @onclick="JoinSession">@L["Layout_PlayerJoinSession"]</button>
+                <button type="button" @onclick="JoinSession">@L["Session_Join_Title"]</button>
             </div>
         </div>
     </section>

@@ -1,4 +1,4 @@
-@page "/mj/session/{SessionId:guid}/characters/{CharacterId:guid}/edit"
+﻿@page "/mj/session/{SessionId:guid}/characters/{CharacterId:guid}/edit"
 @rendermode InteractiveServer
 
 @using System.Security.Claims
@@ -24,12 +24,12 @@ else if (RedirectToHome)
 }
 else if (Character is null)
 {
-    <p>@L["EditCharacter_NotFound"]</p>
+    <p>@L["Character_Edit_NotFound"]</p>
 }
 else
 {
-    <p><strong>@L["EditCharacter_PlayerName"] :</strong> @Character.PlayerName</p>
-    <p><strong>@L["EditCharacter_Status"] :</strong> @(Character.IsAlive? L["Common_Alive"] : L["Common_Dead"])</p>
+    <p><strong>@L["Character_Edit_PlayerName"] :</strong> @Character.PlayerName</p>
+    <p><strong>@L["Character_Edit_Status"] :</strong> @(Character.IsAlive? L["Common_Alive"] : L["Common_Dead"])</p>
 
     @if (Character.DiedAtUtc.HasValue && !Character.IsAlive)
     {
@@ -37,18 +37,18 @@ else
     }
 
     <div style="margin-top:12px;">
-        <label>@L["EditCharacter_Name"]</label><br />
+        <label>@L["Character_Edit_Name"]</label><br />
         <input @bind="Character.Name" />
     </div>
 
     <div style="margin-top:12px;">
-        <label>@L["EditCharacter_Biography"]</label><br />
+        <label>@L["Common_Biography"]</label><br />
         <textarea @bind="Character.Biography"></textarea>
     </div>
 
     <hr />
 
-    <h4>@L["PlayerRoom_Attributes"]</h4>
+    <h4>@L["Session_Player_Attributes"]</h4>
     @foreach (var attributeItem in Character.Attributes)
     {
         <div style="margin-top:8px;">
@@ -60,7 +60,7 @@ else
     @if (Character.DerivedStats.Count > 0)
     {
         <hr />
-        <h4>@L["PlayerRoom_DerivedStats"]</h4>
+        <h4>@L["Session_Player_DerivedStats"]</h4>
         <ul>
             @foreach (var derivedItem in Character.DerivedStats)
             {
@@ -72,7 +72,7 @@ else
     @if (Character.Metrics.Count > 0)
     {
         <hr />
-        <h4>@L["EditCharacter_Metrics"]</h4>
+        <h4>@L["Character_Edit_Metrics"]</h4>
         <ul>
             @foreach (var metricItem in Character.Metrics)
             {
@@ -83,7 +83,7 @@ else
 
     <hr />
 
-    <h4>@L["PlayerRoom_Traits"]</h4>
+    <h4>@L["Session_Player_Traits"]</h4>
     @foreach (var traitItem in Character.Traits)
     {
         <div style="margin-top:8px;">
@@ -100,7 +100,7 @@ else
 
     <hr />
 
-    <h4>@L["PlayerRoom_Gauges"]</h4>
+    <h4>@L["Session_Player_Gauges"]</h4>
     @foreach (var gaugeItem in Character.Gauges)
     {
         <div style="margin-top:8px;">
@@ -108,7 +108,7 @@ else
                 @gaugeItem.Name (@gaugeItem.MinValue - @gaugeItem.MaxValue)
                 @if (gaugeItem.IsHealthGauge)
                 {
-                    <span>- @L["EditCharacter_HealthGauge"]</span>
+                    <span>- @L["Character_Edit_HealthGauge"]</span>
                 }
             </label><br />
             <input type="number" min="@gaugeItem.MinValue" max="@gaugeItem.MaxValue" @bind="gaugeItem.Value" />
@@ -117,10 +117,10 @@ else
 
     <hr />
 
-    <h4>@L["EditCharacter_Talents"]</h4>
+    <h4>@L["Character_Edit_Talents"]</h4>
     @if (Character.Talents.Count == 0)
     {
-        <p>@L["EditCharacter_NoTalentsDefined"]</p>
+        <p>@L["Character_Edit_NoTalentsDefined"]</p>
     }
     else
     {
@@ -137,10 +137,10 @@ else
 
     <hr />
 
-    <h4>@L["EditCharacter_Items"]</h4>
+    <h4>@L["Character_Edit_Items"]</h4>
     @if (Character.Items.Count == 0)
     {
-        <p>@L["EditCharacter_NoItemsDefined"]</p>
+        <p>@L["Character_Edit_NoItemsDefined"]</p>
     }
     else
     {
@@ -157,7 +157,7 @@ else
 
     <div style="margin-top:16px;">
         <button @onclick="SaveCharacter">@L["Common_Save"]</button>
-        <button @onclick="BackToSession">@L["EditCharacter_BackToSession"]</button>
+        <button @onclick="BackToSession">@L["Session_BackToSession"]</button>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(Message))
@@ -240,11 +240,11 @@ else
 
             await LoadCharacter();
 
-            Message = L["EditCharacter_Saved"];
+            Message = L["Character_Edit_Saved"];
 
             if (result.ResurrectionBlocked)
             {
-                Message = $"{Message} {L["EditCharacter_ResurrectionBlocked"]}";
+                Message = $"{Message} {L["Character_Edit_ResurrectionBlocked"]}";
             }
         }
         catch (Exception ex)
@@ -264,3 +264,4 @@ else
         Navigation.NavigateTo($"/mj/session/{SessionId}");
     }
 }
+

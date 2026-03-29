@@ -61,7 +61,7 @@ namespace Rollocracy.Infrastructure.Services
 
             user.PasswordHash = _passwordHasher.HashPassword(user, newPassword);
             user.LastSensitiveChangeAtUtc = DateTime.UtcNow;
-            user.LastSensitiveChangeType = "SecurityHistory_PasswordChanged";
+            user.LastSensitiveChangeType = "Account_SecurityHistory_PasswordChanged";
 
             await context.SaveChangesAsync();
         }
@@ -143,7 +143,7 @@ $@"{_localizer["Email_ResetPassword_BodyLine1"]}
 
             user.PasswordHash = _passwordHasher.HashPassword(user, newPassword);
             user.LastSensitiveChangeAtUtc = DateTime.UtcNow;
-            user.LastSensitiveChangeType = "SecurityHistory_PasswordReset";
+            user.LastSensitiveChangeType = "Account_SecurityHistory_PasswordReset";
 
             tokenEntity.ConsumedAtUtc = DateTime.UtcNow;
 
@@ -228,7 +228,7 @@ $@"{_localizer["Email_VerifyEmail_BodyLine1"]}
 
             user.IsEmailVerified = true;
             user.LastSensitiveChangeAtUtc = DateTime.UtcNow;
-            user.LastSensitiveChangeType = "SecurityHistory_EmailVerified";
+            user.LastSensitiveChangeType = "Account_SecurityHistory_EmailVerified";
 
             tokenEntity.ConsumedAtUtc = DateTime.UtcNow;
 

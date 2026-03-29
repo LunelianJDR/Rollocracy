@@ -72,39 +72,35 @@ else
                 </div>
 
                 <div class="rc-tool-subsection">
-                    <div class="rc-tool-subsection__title">@L["MassDistribution_FilterSection"]</div>
-
-                    <div class="rc-filter-groups">
-                        <CharacterAudienceFilters Title="@L["GameTest_TargetScope"]"
-                                                    OnlyOnline="Request.Filter.OnlyOnline"
-                                                    OnlyAlive="Request.Filter.OnlyAlive"
-                                                    IncludeNpcs="Request.Filter.IncludeNpcs"
-                                                    OnlyOnlineChanged="@(value => { Request.Filter.OnlyOnline = value; if (value) Request.Filter.OnlyAlive = false; })"
-                                                    OnlyAliveChanged="@(value => { Request.Filter.OnlyAlive = value; if (value) Request.Filter.OnlyOnline = false; })"
-                                                    IncludeNpcsChanged="@(value => Request.Filter.IncludeNpcs = value)" />
-
-                        <CharacterAdvancedFilters Filter="Request.Filter"
-                                                  TraitOptionGroups="AdvancedTraitOptionGroups"
-                                                  TalentOptions="AdvancedTalentOptions"
-                                                  ItemOptions="AdvancedItemOptions"
-                                                  AttributeTargets="AdvancedAttributeTargets"
-                                                  GaugeTargets="AdvancedGaugeTargets"
-                                                  DerivedStatTargets="AdvancedDerivedTargets"
-                                                  MetricTargets="AdvancedMetricTargets" />
-                    </div>
+                    <CharacterAudienceFilters Title="@L["Test_TargetScope"]"
+                                                OnlyOnline="Request.Filter.OnlyOnline"
+                                                OnlyAlive="Request.Filter.OnlyAlive"
+                                                IncludeNpcs="Request.Filter.IncludeNpcs"
+                                                OnlyOnlineChanged="@(value => { Request.Filter.OnlyOnline = value; if (value) Request.Filter.OnlyAlive = true; })"
+                                                OnlyAliveChanged="@(value => { Request.Filter.OnlyAlive = value; if (value) Request.Filter.OnlyOnline = false; })"
+                                                IncludeNpcsChanged="@(value => Request.Filter.IncludeNpcs = value)" />
+                        
+                    <CharacterAdvancedFilters Filter="Request.Filter"
+                                                TraitOptionGroups="AdvancedTraitOptionGroups"
+                                                TalentOptions="AdvancedTalentOptions"
+                                                ItemOptions="AdvancedItemOptions"
+                                                AttributeTargets="AdvancedAttributeTargets"
+                                                GaugeTargets="AdvancedGaugeTargets"
+                                                DerivedStatTargets="AdvancedDerivedTargets"
+                                                MetricTargets="AdvancedMetricTargets" />
                 </div>
 
                 <div class="rc-filter-group-card">
                     <div class="rc-tool-subsection__header">
-                        <div class="rc-filter-group-card__title">@L["GameTest_Consequences"]</div>
+                        <div class="rc-filter-group-card__title">@L["Test_Consequences"]</div>
                         <div class="rc-tool-inline-actions">
-                            <button @onclick="AddEffect">@L["GameTest_AddConsequence"]</button>
+                            <button @onclick="AddEffect">@L["Test_AddConsequence"]</button>
                         </div>
                     </div>
 
                     @if (Request.Effects.Count == 0)
                     {
-                        <p class="rc-tool-muted">@L["GameTest_NoConsequence"]</p>
+                        <p class="rc-tool-muted">@L["Test_NoConsequence"]</p>
                     }
                     else
                     {
@@ -129,16 +125,16 @@ else
                                             <div class="rc-form-field">
                                                 <label>@L["MassDistribution_FilterTarget"]</label>
                                                 <select @bind="effect.TargetType">
-                                                    <option value="@CharacterEffectTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
+                                                    <option value="@CharacterEffectTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_Attribute"]</option>
                                                     <option value="@CharacterEffectTargetType.Gauge">@L["MassDistribution_Target_Gauge"]</option>
-                                                    <option value="@CharacterEffectTargetType.SessionGauge">@L["SessionPage_TargetSessionGauge"]</option>
-                                                    <option value="@CharacterEffectTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
-                                                    <option value="@CharacterEffectTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                                                    <option value="@CharacterEffectTargetType.SessionGauge">@L["Session_Manage_TargetSessionGauge"]</option>
+                                                    <option value="@CharacterEffectTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option>
+                                                    <option value="@CharacterEffectTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option>
                                                 </select>
                                             </div>
 
                                             <div class="rc-form-field">
-                                                <label>@L["GameTest_TargetDefinition"]</label>
+                                                <label>@L["Test_TargetDefinition"]</label>
 
                                                 @if (effect.TargetType == CharacterEffectTargetType.BaseAttribute)
                                                 {
@@ -188,10 +184,10 @@ else
                                             </div>
 
                                             <div class="rc-form-field">
-                                                <label>@L["GameTest_ConsequenceValueMode"]</label>
+                                                <label>@L["Test_ConsequenceValueMode"]</label>
                                                 <select @bind="effect.ValueMode">
-                                                    <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
-                                                    <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                                                    <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
+                                                    <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
                                                 </select>
                                             </div>
 
@@ -208,17 +204,17 @@ else
                                                 </div>
 
                                                 <div class="rc-form-field">
-                                                    <label>@L["GameTest_DifficultyMode"]</label>
+                                                    <label>@L["Test_DifficultyMode"]</label>
                                                     <select @bind="effect.Value">
-                                                        <option value="1">@L["GameTest_Bonus"]</option>
-                                                        <option value="-1">@L["GameTest_Malus"]</option>
+                                                        <option value="1">@L["Test_Bonus"]</option>
+                                                        <option value="-1">@L["Test_Malus"]</option>
                                                     </select>
                                                 </div>
                                             }
                                             else
                                             {
                                                 <div class="rc-form-field">
-                                                    <label>@L["GameTest_DifficultyValue"]</label>
+                                                    <label>@L["Test_DifficultyValue"]</label>
                                                     <input type="number" @bind="effect.Value" />
                                                 </div>
                                             }
@@ -228,7 +224,7 @@ else
                                             effect.TargetType = CharacterEffectTargetType.Talent;
 
                                             <div class="rc-form-field">
-                                                <label>@L["GameTest_TargetDefinition"]</label>
+                                                <label>@L["Test_TargetDefinition"]</label>
                                                 <select @bind="effect.TargetId">
                                                     @foreach (var item in Editor.Talents)
                                                     {
@@ -242,7 +238,7 @@ else
                                             effect.TargetType = CharacterEffectTargetType.Item;
 
                                             <div class="rc-form-field">
-                                                <label>@L["GameTest_TargetDefinition"]</label>
+                                                <label>@L["Test_TargetDefinition"]</label>
                                                 <select @bind="effect.TargetId">
                                                     @foreach (var item in Editor.Items)
                                                     {

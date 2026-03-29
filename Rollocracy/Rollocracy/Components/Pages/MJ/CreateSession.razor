@@ -30,8 +30,8 @@ else
             <div class="rc-tool-panel">
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
-                        <h4 class="rc-tool-panel__title">@L["CreateSession_Title"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["CreateSession_Subtitle"]</p>
+                        <h4 class="rc-tool-panel__title">@L["Session_Create_Title"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["Session_Create_Subtitle"]</p>
                     </div>
                 </div>
 
@@ -42,12 +42,12 @@ else
 
                 <div class="rc-tool-form-grid">
                     <div class="rc-form-field">
-                        <label for="session-name">@L["CreateSession_Name"]</label>
+                        <label for="session-name">@L["Session_Name"]</label>
                         <input id="session-name" maxlength="16" @bind="SessionName" />
                     </div>
 
                     <div class="rc-form-field">
-                        <label for="session-password">@L["CreateSession_PasswordOptional"]</label>
+                        <label for="session-password">@L["Session_Create_PasswordOptional"]</label>
                         <input id="session-password" @bind="SessionPassword" />
                     </div>
                 </div>
@@ -55,27 +55,27 @@ else
                 <div class="rc-tool-subsection rc-tool-subsection--compact">
                     <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                         <div class="rc-tool-panel__header-main">
-                            <h5 class="rc-tool-panel__title">@L["CreateSession_GameSystemSection"]</h5>
-                            <p class="rc-tool-panel__subtitle">@L["CreateSession_GameSystemSectionSubtitle"]</p>
+                            <h5 class="rc-tool-panel__title">@L["GameSystem_Label"]</h5>
+                            <p class="rc-tool-panel__subtitle">@L["Session_Create_GameSystemSectionSubtitle"]</p>
                         </div>
                     </div>
 
                     @if (OwnedGameSystems.Count == 0)
                     {
                         <div class="rc-empty-panel">
-                            <p>@L["CreateSession_NoGameSystem"]</p>
+                            <p>@L["Session_Create_NoGameSystem"]</p>
                         </div>
                     }
                     else
                     {
                         <div class="rc-form-field">
-                            <label for="selected-game-system">@L["CreateSession_SelectedGameSystem"]</label>
+                            <label for="selected-game-system">@L["Session_Create_SelectedGameSystem"]</label>
                             <select id="selected-game-system" @bind="SelectedGameSystemIdString">
                                 @foreach (var system in OwnedGameSystems)
                                 {
                                     <option value="@system.Id.ToString()">
                                         @(system.IsGeneric
-                                            ? $"{system.Name} ({L["GameSystems_GenericBadge"]})"
+                                            ? $"{system.Name} ({L["GameSystem_List_GenericBadge"]})"
                                             : system.Name)
                                     </option>
                                 }
@@ -93,12 +93,12 @@ else
                                 <div class="rc-inline-picker">
                                     @if (SelectedGameSystem.IsGeneric)
                                     {
-                                        <div>@L["CreateSession_GenericSystemNotice"]</div>
+                                        <div>@L["Session_Create_GenericSystemNotice"]</div>
                                     }
                                     else
                                     {
                                         <button type="button" @onclick="EditSelectedSystem">
-                                            @L["CreateSession_EditSelectedGameSystem"]
+                                            @L["Session_Create_EditSelectedGameSystem"]
                                         </button>
                                     }
                                 </div>
@@ -115,7 +115,7 @@ else
 
                 <div class="rc-tool-actions">
                     <button type="button" @onclick="HandleCreateSession" disabled="@IsCreatingSession">
-                        @L["CreateSession_Submit"]
+                        @L["Session_Create_Submit"]
                     </button>
                 </div>
             </div>
@@ -123,19 +123,19 @@ else
             <div class="rc-tool-panel">
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
-                        <h4 class="rc-tool-panel__title">@L["CreateSession_CreateGameSystemTitle"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["CreateSession_CreateGameSystemSubtitle"]</p>
+                        <h4 class="rc-tool-panel__title">@L["Session_Create_CreateGameSystemTitle"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["Session_Create_CreateGameSystemSubtitle"]</p>
                     </div>
                 </div>
 
                 <div class="rc-tool-form-grid">
                     <div class="rc-form-field">
-                        <label for="new-system-name">@L["GameSystems_Name"]</label>
+                        <label for="new-system-name">@L["Common_Name"]</label>
                         <input id="new-system-name" @bind="NewSystemName" />
                     </div>
 
                     <div class="rc-form-field">
-                        <label for="new-system-resolution">@L["GameSystems_ResolutionMode"]</label>
+                        <label for="new-system-resolution">@L["GameSystem_ResolutionMode"]</label>
                         <select id="new-system-resolution" @bind="NewSystemResolutionMode">
                             <option value="@TestResolutionMode.SuccessThreshold">@L["Resolution_SuccessThreshold"]</option>
                             <option value="@TestResolutionMode.RollUnderAttribute">@L["Resolution_RollUnderAttribute"]</option>
@@ -143,14 +143,14 @@ else
                     </div>
 
                     <div class="rc-form-field" style="grid-column: 1 / -1;">
-                        <label for="new-system-description">@L["GameSystems_Description"]</label>
+                        <label for="new-system-description">@L["Common_Description"]</label>
                         <textarea id="new-system-description" rows="4" @bind="NewSystemDescription"></textarea>
                     </div>
                 </div>
 
                 <div class="rc-tool-actions">
                     <button type="button" @onclick="CreateGameSystem" disabled="@IsCreatingGameSystem">
-                        @L["CreateSession_CreateGameSystemButton"]
+                        @L["Session_Create_CreateGameSystemButton"]
                     </button>
                 </div>
             </div>
@@ -275,7 +275,7 @@ else
 
             if (string.IsNullOrWhiteSpace(SessionName))
             {
-                Message = L["CreateSession_NameRequired"];
+                Message = L["Session_Create_NameRequired"];
                 return;
             }
 
@@ -287,7 +287,7 @@ else
 
             if (!SelectedGameSystemId.HasValue)
             {
-                Message = L["CreateSession_GameSystemRequired"];
+                Message = L["Session_Create_GameSystemRequired"];
                 return;
             }
 
@@ -326,7 +326,7 @@ else
 
             if (string.IsNullOrWhiteSpace(NewSystemName))
             {
-                Message = L["GameSystems_NameRequired"];
+                Message = L["GameSystem_List_NameRequired"];
                 return;
             }
 
@@ -343,7 +343,7 @@ else
             await LoadGameSystemsAsync();
             SelectedGameSystemId = system.Id;
 
-            Message = L["CreateSession_GameSystemCreated"];
+            Message = L["Session_Create_GameSystemCreated"];
         }
         catch (Exception ex)
         {

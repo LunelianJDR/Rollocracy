@@ -84,7 +84,7 @@ namespace Rollocracy.Infrastructure.Services
             {
                 user.IsEmailVerified = false;
                 user.LastSensitiveChangeAtUtc = DateTime.UtcNow;
-                user.LastSensitiveChangeType = "SecurityHistory_EmailChanged";
+                user.LastSensitiveChangeType = "Account_SecurityHistory_EmailChanged";
             }
 
             if (user.WantsToBeGameMaster && string.IsNullOrWhiteSpace(user.Email))
@@ -126,7 +126,7 @@ namespace Rollocracy.Infrastructure.Services
 
             user.Username = normalizedUsername;
             user.LastSensitiveChangeAtUtc = DateTime.UtcNow;
-            user.LastSensitiveChangeType = "SecurityHistory_UsernameChanged";
+            user.LastSensitiveChangeType = "Account_SecurityHistory_UsernameChanged";
 
             await context.SaveChangesAsync();
         }

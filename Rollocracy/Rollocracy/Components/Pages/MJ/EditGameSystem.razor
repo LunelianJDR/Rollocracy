@@ -1,4 +1,4 @@
-@page "/mj/gamesystems/{GameSystemId:guid}"
+﻿@page "/mj/gamesystems/{GameSystemId:guid}"
 @rendermode InteractiveServer
 
 @using System.Security.Claims
@@ -23,7 +23,7 @@ else if (RedirectToHome)
 }
 else if (CurrentSystem is null)
 {
-    <p>@L["EditGameSystem_NotFound"]</p>
+    <p>@L["GameSystem_NotFound"]</p>
 }
 else
 {
@@ -33,7 +33,7 @@ else
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
                         <h4 class="rc-tool-panel__title">@CurrentSystem.Name</h4>
-                        <p class="rc-tool-panel__subtitle">@L["EditGameSystem_Subtitle"]</p>
+                        <p class="rc-tool-panel__subtitle">@L["GameSystem_Editor_Subtitle"]</p>
                     </div>
 
                     <div class="rc-tool-actions">
@@ -42,7 +42,7 @@ else
 
                         @if (CurrentSystem.CanUndoLastChange)
                         {
-                            <button type="button" @onclick="UndoLastChange">@L["EditGameSystem_UndoLastChange"]</button>
+                            <button type="button" @onclick="UndoLastChange">@L["GameSystem_Editor_UndoLastChange"]</button>
                         }
                     </div>
                 </div>
@@ -54,11 +54,11 @@ else
                 @if (ShowSharedConfirm)
                 {
                     <div class="rc-filter-group-card">
-                        <p>@L["EditGameSystem_SharedConfirmMessage"]</p>
+                        <p>@L["GameSystem_Editor_SharedConfirmMessage"]</p>
 
                         <div class="rc-tool-actions">
                             <button type="button" @onclick="ConfirmSharedSave">
-                                @L["Common_Confirm"]
+                                @L["Common_Yes"]
                             </button>
                             <button type="button" @onclick="CancelSharedSave">
                                 @L["Common_Cancel"]
@@ -69,57 +69,57 @@ else
 
                 <div class="rc-test-stats-grid">
                     <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["EditGameSystem_StatsAttributes"]</span>
+                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsAttributes"]</span>
                         <span class="rc-stat-card__value">@CurrentSystem.Attributes.Count(x => !x.IsDeleted)</span>
                     </div>
 
                     <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["EditGameSystem_StatsDerivedStats"]</span>
+                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsDerivedStats"]</span>
                         <span class="rc-stat-card__value">@CurrentSystem.DerivedStats.Count(x => !x.IsDeleted)</span>
                     </div>
 
                     <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["EditGameSystem_StatsMetrics"]</span>
+                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsMetrics"]</span>
                         <span class="rc-stat-card__value">@CurrentSystem.Metrics.Count(x => !x.IsDeleted)</span>
                     </div>
 
                     <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["EditGameSystem_StatsTraits"]</span>
+                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsTraits"]</span>
                         <span class="rc-stat-card__value">@CurrentSystem.Traits.Count(x => !x.IsDeleted)</span>
                     </div>
                 </div>
 
                 <div class="rc-test-stats-grid">
                     <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["EditGameSystem_StatsGauges"]</span>
+                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsGauges"]</span>
                         <span class="rc-stat-card__value">@CurrentSystem.Gauges.Count(x => !x.IsDeleted)</span>
                     </div>
 
                     <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["EditGameSystem_StatsTalents"]</span>
+                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsTalents"]</span>
                         <span class="rc-stat-card__value">@CurrentSystem.Talents.Count(x => !x.IsDeleted)</span>
                     </div>
 
                     <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["EditGameSystem_StatsItems"]</span>
+                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsItems"]</span>
                         <span class="rc-stat-card__value">@CurrentSystem.Items.Count(x => !x.IsDeleted)</span>
                     </div>
 
                     <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["EditGameSystem_StatsSessions"]</span>
+                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsSessions"]</span>
                         <span class="rc-stat-card__value">@CurrentSystem.ImpactedSessions.Count</span>
                     </div>
                 </div>
 
                 <div class="rc-inline-warning">
-                    <p>@L["EditGameSystem_DiceDefaultHelp"]</p>
+                    <p>@L["GameSystem_Editor_DiceDefaultHelp"]</p>
                 </div>
 
                 @if (!CurrentSystem.IsLockedToSessionCopy && CurrentSystem.ImpactedSessions.Count > 0)
                 {
                     <div class="rc-inline-warning">
-                        <p><strong>@L["EditGameSystem_SharedWarningTitle"]</strong></p>
-                        <p>@L["EditGameSystem_SharedWarningText"]</p>
+                        <p><strong>@L["GameSystem_Editor_SharedWarningTitle"]</strong></p>
+                        <p>@L["GameSystem_Editor_SharedWarningText"]</p>
                         <ul>
                             @foreach (var session in CurrentSystem.ImpactedSessions)
                             {
@@ -132,16 +132,16 @@ else
                 @if (CurrentSystem.IsLockedToSessionCopy)
                 {
                     <div class="rc-inline-warning">
-                        <p><strong>@L["EditGameSystem_LockedCopyTitle"]</strong></p>
-                        <p>@L["EditGameSystem_LockedCopyText"]</p>
+                        <p><strong>@L["GameSystem_Editor_LockedCopyTitle"]</strong></p>
+                        <p>@L["GameSystem_Editor_LockedCopyText"]</p>
                     </div>
                 }
             </div>
             <div class="rc-tool-panel">
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
-                        <h4 class="rc-tool-panel__title">@L["EditGameSystem_GeneralSection"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["EditGameSystem_GeneralSectionSubtitle"]</p>
+                        <h4 class="rc-tool-panel__title">@L["GameSystem_Editor_GeneralSection"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["GameSystem_Editor_GeneralSectionSubtitle"]</p>
                     </div>
 
                     <div class="rc-tool-actions">
@@ -151,12 +151,12 @@ else
 
                 <div class="rc-tool-form-grid rc-tool-form-grid--dense">
                     <div class="rc-form-field">
-                        <label>@L["EditGameSystem_Name"]</label>
+                        <label>@L["Common_Name"]</label>
                         <input @bind="CurrentSystem.Name" />
                     </div>
 
                     <div class="rc-form-field">
-                        <label>@L["EditGameSystem_ResolutionMode"]</label>
+                        <label>@L["GameSystem_ResolutionMode"]</label>
                         <select @bind="CurrentSystem.TestResolutionMode">
                             <option value="@TestResolutionMode.SuccessThreshold">@L["Resolution_SuccessThreshold"]</option>
                             <option value="@TestResolutionMode.RollUnderAttribute">@L["Resolution_RollUnderAttribute"]</option>
@@ -164,12 +164,12 @@ else
                     </div>
 
                     <div class="rc-form-field">
-                        <label>@L["EditGameSystem_DefaultTestDiceCount"]</label>
+                        <label>@L["GameSystem_Editor_DefaultTestDiceCount"]</label>
                         <input type="number" @bind="CurrentSystem.DefaultTestDiceCount" />
                     </div>
 
                     <div class="rc-form-field">
-                        <label>@L["EditGameSystem_DefaultTestDiceSides"]</label>
+                        <label>@L["GameSystem_Editor_DefaultTestDiceSides"]</label>
                         <input type="number" @bind="CurrentSystem.DefaultTestDiceSides" />
                     </div>
 
@@ -186,7 +186,7 @@ else
                     @if (CurrentSystem.CanEditGenericFlag && !CurrentSystem.IsLockedToSessionCopy)
                     {
                         <div class="rc-form-field">
-                            <label>@L["EditGameSystem_IsGeneric"]</label>
+                            <label>@L["GameSystem_Editor_IsGeneric"]</label>
                             <label class="rc-filter-toggle">
                                 <input type="checkbox" @bind="CurrentSystem.IsGeneric" />
                                 <span>@L["Common_Yes"]</span>
@@ -195,7 +195,7 @@ else
                     }
 
                     <div class="rc-form-field rc-form-field--full">
-                        <label>@L["EditGameSystem_Description"]</label>
+                        <label>@L["Common_Description"]</label>
                         <textarea rows="4" @bind="CurrentSystem.Description"></textarea>
                     </div>
                 </div>
@@ -206,8 +206,8 @@ else
             <summary class="rc-collapse-section__summary">
                 <div class="rc-collapse-section__summary-main">
                     <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["EditGameSystem_AttributesSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["EditGameSystem_AttributesSubtitle"]</div>
+                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_AttributesSection"]</div>
+                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_AttributesSubtitle"]</div>
                 </div>
                         <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
                             <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
@@ -218,13 +218,13 @@ else
             <div class="rc-collapse-section__body">
                 <div class="rc-tool-panel">
                     <div class="rc-tool-actions">
-                        <button type="button" @onclick="AddAttributeRow">@L["EditGameSystem_AddAttributeRow"]</button>
+                        <button type="button" @onclick="AddAttributeRow">@L["GameSystem_Editor_AddAttributeRow"]</button>
                     </div>
 
                     @if (CurrentSystem.Attributes.Count == 0)
                     {
                         <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["EditGameSystem_NoAttributes"]</p>
+                            <p>@L["GameSystem_Editor_NoAttributes"]</p>
                         </div>
                     }
                     else
@@ -236,11 +236,11 @@ else
                                     @if (attributeItem.IsDeleted)
                                     {
                                         <div class="rc-inline-warning">
-                                            <p><strong>@attributeItem.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                                            <p><strong>@attributeItem.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
                                         </div>
 
                                         <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => attributeItem.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                                            <button type="button" @onclick="() => attributeItem.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
                                         </div>
                                     }
                                     else
@@ -260,11 +260,18 @@ else
                                                 <label>@L["Common_Max"]</label>
                                                 <input type="number" @bind="attributeItem.MaxValue" />
                                             </div>
+                                            <div class="rc-form-field">
+                                                <label>@L["GameSystem_Editor_DefaultMode"]</label>
+                                                <select @bind="attributeItem.DefaultValueMode">
+                                                    <option value="@BaseValueGenerationMode.Fixed">@L["GameSystem_Editor_DefaultModeFixed"]</option>
+                                                    <option value="@BaseValueGenerationMode.DiceExpression">@L["GameSystem_Editor_DefaultModeDice"]</option>
+                                                </select>
+                                            </div>
 
                                             @if (attributeItem.DefaultValueMode == BaseValueGenerationMode.DiceExpression)
                                             {
                                                 <div class="rc-form-field">
-                                                    <label>@L["EditGameSystem_DefaultFlatBonus"]</label>
+                                                    <label>@L["GameSystem_Editor_DefaultFlatBonus"]</label>
                                                     <input type="number" @bind="attributeItem.DefaultValueFlatBonus" />
                                                 </div>
                                             }
@@ -275,23 +282,16 @@ else
                                                     <input type="number" @bind="attributeItem.DefaultValue" />
                                                 </div>
                                             }
-                                            <div class="rc-form-field">
-                                                <label>@L["EditGameSystem_DefaultMode"]</label>
-                                                <select @bind="attributeItem.DefaultValueMode">
-                                                    <option value="@BaseValueGenerationMode.Fixed">@L["EditGameSystem_DefaultModeFixed"]</option>
-                                                    <option value="@BaseValueGenerationMode.DiceExpression">@L["EditGameSystem_DefaultModeDice"]</option>
-                                                </select>
-                                            </div>
 
                                             @if (attributeItem.DefaultValueMode == BaseValueGenerationMode.DiceExpression)
                                             {
                                                 <div class="rc-form-field">
-                                                    <label>@L["EditGameSystem_DefaultDiceCount"]</label>
+                                                    <label>@L["GameSystem_Editor_DefaultDiceCount"]</label>
                                                     <input type="number" @bind="attributeItem.DefaultValueDiceCount" />
                                                 </div>
 
                                                 <div class="rc-form-field">
-                                                    <label>@L["EditGameSystem_DefaultDiceSides"]</label>
+                                                    <label>@L["GameSystem_Editor_DefaultDiceSides"]</label>
                                                     <input type="number" @bind="attributeItem.DefaultValueDiceSides" />
                                                 </div>
                                             }
@@ -300,11 +300,11 @@ else
                                         <div class="rc-tool-actions">
                                             @if (attributeItem.AttributeDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => attributeItem.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => attributeItem.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.Attributes.Remove(attributeItem)">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.Attributes.Remove(attributeItem)">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                         </div>
                                     }
@@ -320,8 +320,8 @@ else
             <summary class="rc-collapse-section__summary">
                 <div class="rc-collapse-section__summary-main">
                     <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["EditGameSystem_DerivedStatsSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["EditGameSystem_DerivedStatsHelp"]</div>
+                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_DerivedStatsSection"]</div>
+                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_DerivedStatsHelp"]</div>
                     </div>
 
                     <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
@@ -333,13 +333,13 @@ else
             <div class="rc-collapse-section__body">
                 <div class="rc-tool-panel">
                     <div class="rc-tool-actions">
-                        <button type="button" @onclick="AddDerivedStatRow">@L["EditGameSystem_AddDerivedStatRow"]</button>
+                        <button type="button" @onclick="AddDerivedStatRow">@L["GameSystem_Editor_AddDerivedStatRow"]</button>
                     </div>
 
                     @if (CurrentSystem.DerivedStats.Count == 0)
                     {
                         <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["EditGameSystem_NoDerivedStats"]</p>
+                            <p>@L["GameSystem_Editor_NoDerivedStats"]</p>
                         </div>
                     }
                     else
@@ -351,11 +351,11 @@ else
                                     @if (derivedStat.IsDeleted)
                                     {
                                         <div class="rc-inline-warning">
-                                            <p><strong>@derivedStat.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                                            <p><strong>@derivedStat.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
                                         </div>
 
                                         <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => derivedStat.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                                            <button type="button" @onclick="() => derivedStat.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
                                         </div>
                                     }
                                     else
@@ -377,17 +377,17 @@ else
                                             </div>
 
                                             <div class="rc-form-field">
-                                                <label>@L["EditGameSystem_RoundMode"]</label>
+                                                <label>@L["GameSystem_Editor_RoundMode"]</label>
                                                 <select @bind="derivedStat.RoundMode">
-                                                    <option value="@ComputedValueRoundMode.Ceiling">@L["EditGameSystem_RoundModeCeiling"]</option>
-                                                    <option value="@ComputedValueRoundMode.Floor">@L["EditGameSystem_RoundModeFloor"]</option>
-                                                    <option value="@ComputedValueRoundMode.Nearest">@L["EditGameSystem_RoundModeNearest"]</option>
-                                                    <option value="@ComputedValueRoundMode.None">@L["EditGameSystem_RoundModeNone"]</option>
+                                                    <option value="@ComputedValueRoundMode.Ceiling">@L["GameSystem_Editor_RoundModeCeiling"]</option>
+                                                    <option value="@ComputedValueRoundMode.Floor">@L["GameSystem_Editor_RoundModeFloor"]</option>
+                                                    <option value="@ComputedValueRoundMode.Nearest">@L["GameSystem_Editor_RoundModeNearest"]</option>
+                                                    <option value="@ComputedValueRoundMode.None">@L["GameSystem_Editor_RoundModeNone"]</option>
                                                 </select>
                                             </div>
 
                                             <div class="rc-form-field">
-                                                <label>@L["EditGameSystem_DisplayOrder"]</label>
+                                                <label>@L["GameSystem_Editor_DisplayOrder"]</label>
                                                 <input type="number" @bind="derivedStat.DisplayOrder" />
                                             </div>
                                         </div>
@@ -397,7 +397,7 @@ else
                                                 <div class="rc-tool-subsection__title">@L["EditGameSystem_DerivedStatComponents"]</div>
                                                 <div class="rc-tool-inline-actions">
                                                     <button type="button" @onclick="() => AddDerivedComponentRow(derivedStat)">
-                                                        @L["EditGameSystem_AddDerivedComponentRow"]
+                                                        @L["GameSystem_Editor_AddDerivedComponentRow"]
                                                     </button>
                                                 </div>
                                             </div>
@@ -407,16 +407,16 @@ else
                                                 <div class="rc-filter-group-card">
                                                     @if (component.IsDeleted)
                                                     {
-                                                        <span><strong>@GetBaseAttributeName(component.AttributeDefinitionId)</strong> - @L["EditGameSystem_PendingDeletion"]</span>
+                                                        <span><strong>@GetBaseAttributeName(component.AttributeDefinitionId)</strong> - @L["GameSystem_Editor_PendingDeletion"]</span>
                                                         <div class="rc-tool-actions">
-                                                            <button type="button" @onclick="() => component.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                                                            <button type="button" @onclick="() => component.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
                                                         </div>
                                                     }
                                                     else
                                                     {
                                                         <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
                                                             <div class="rc-form-field">
-                                                                <label>@L["EditGameSystem_ComponentAttribute"]</label>
+                                                                <label>@L["GameSystem_Editor_ComponentAttribute"]</label>
                                                                 <select @key="GetEditableBaseAttributesRenderKey()" @bind="component.AttributeTemporaryKey">
                                                                     @foreach (var attributeRef in GetEditableBaseAttributes())
                                                                     {
@@ -426,20 +426,20 @@ else
                                                             </div>
 
                                                             <div class="rc-form-field">
-                                                                <label>@L["EditGameSystem_ComponentWeight"]</label>
+                                                                <label>@L["GameSystem_Editor_ComponentWeight"]</label>
                                                                 <input type="number" @bind="component.Weight" />
-                                                                <!--<span class="rc-tool-muted">@L["EditGameSystem_ComponentWeightHelp"]</span>-->
+                                                                <!--<span class="rc-tool-muted">@L["GameSystem_Editor_ComponentWeightHelp"]</span>-->
                                                             </div>
                                                         </div>
 
                                                         <div class="rc-tool-actions">
                                                             @if (component.DerivedStatComponentId.HasValue)
                                                             {
-                                                                <button type="button" @onclick="() => component.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                                                <button type="button" @onclick="() => component.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
                                                             }
                                                             else
                                                             {
-                                                                <button type="button" @onclick="() => derivedStat.Components.Remove(component)">@L["EditGameSystem_Delete"]</button>
+                                                                <button type="button" @onclick="() => derivedStat.Components.Remove(component)">@L["GameSystem_Editor_Delete"]</button>
                                                             }
                                                         </div>
                                                     }
@@ -450,11 +450,11 @@ else
                                         <div class="rc-tool-actions">
                                             @if (derivedStat.DerivedStatDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => derivedStat.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => derivedStat.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.DerivedStats.Remove(derivedStat)">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.DerivedStats.Remove(derivedStat)">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                         </div>
                                     }
@@ -470,8 +470,8 @@ else
             <summary class="rc-collapse-section__summary">
                 <div class="rc-collapse-section__summary-main">
                     <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["EditGameSystem_MetricsSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["EditGameSystem_MetricsHelp"]</div>
+                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_MetricsSection"]</div>
+                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_MetricsHelp"]</div>
                     </div>
 
                     <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
@@ -483,13 +483,13 @@ else
             <div class="rc-collapse-section__body">
                 <div class="rc-tool-panel">
                     <div class="rc-tool-actions">
-                        <button type="button" @onclick="AddMetricRow">@L["EditGameSystem_AddMetricRow"]</button>
+                        <button type="button" @onclick="AddMetricRow">@L["GameSystem_Editor_AddMetricRow"]</button>
                     </div>
 
                     @if (CurrentSystem.Metrics.Count == 0)
                     {
                         <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["EditGameSystem_NoMetrics"]</p>
+                            <p>@L["GameSystem_Editor_NoMetrics"]</p>
                         </div>
                     }
                     else
@@ -501,11 +501,11 @@ else
                                     @if (metric.IsDeleted)
                                     {
                                         <div class="rc-inline-warning">
-                                            <p><strong>@metric.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                                            <p><strong>@metric.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
                                         </div>
 
                                         <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => metric.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                                            <button type="button" @onclick="() => metric.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
                                         </div>
                                     }
                                     else
@@ -527,7 +527,7 @@ else
                                             }
 
                                             <div class="rc-form-field">
-                                                <label>@L["EditGameSystem_MetricBaseValue"]</label>
+                                                <label>@L["GameSystem_Editor_MetricBaseValue"]</label>
                                                 <input type="number" @bind="metric.BaseValue" />
                                             </div>
 
@@ -542,27 +542,27 @@ else
                                             </div>
 
                                             <div class="rc-form-field">
-                                                <label>@L["EditGameSystem_RoundMode"]</label>
+                                                <label>@L["GameSystem_Editor_RoundMode"]</label>
                                                 <select @bind="metric.RoundMode">
-                                                    <option value="@ComputedValueRoundMode.Ceiling">@L["EditGameSystem_RoundModeCeiling"]</option>
-                                                    <option value="@ComputedValueRoundMode.Floor">@L["EditGameSystem_RoundModeFloor"]</option>
-                                                    <option value="@ComputedValueRoundMode.Nearest">@L["EditGameSystem_RoundModeNearest"]</option>
-                                                    <option value="@ComputedValueRoundMode.None">@L["EditGameSystem_RoundModeNone"]</option>
+                                                    <option value="@ComputedValueRoundMode.Ceiling">@L["GameSystem_Editor_RoundModeCeiling"]</option>
+                                                    <option value="@ComputedValueRoundMode.Floor">@L["GameSystem_Editor_RoundModeFloor"]</option>
+                                                    <option value="@ComputedValueRoundMode.Nearest">@L["GameSystem_Editor_RoundModeNearest"]</option>
+                                                    <option value="@ComputedValueRoundMode.None">@L["GameSystem_Editor_RoundModeNone"]</option>
                                                 </select>
                                             </div>
 
                                             <div class="rc-form-field">
-                                                <label>@L["EditGameSystem_DisplayOrder"]</label>
+                                                <label>@L["GameSystem_Editor_DisplayOrder"]</label>
                                                 <input type="number" @bind="metric.DisplayOrder" />
                                             </div>
                                         </div>
 
                                         <div class="rc-tool-subsection">
                                             <div class="rc-tool-subsection__header">
-                                                <div class="rc-tool-subsection__title">@L["EditGameSystem_MetricFormulaSection"]</div>
+                                                <div class="rc-tool-subsection__title">@L["GameSystem_Editor_MetricFormulaSection"]</div>
                                                 <div class="rc-tool-inline-actions">
                                                     <button type="button" @onclick="() => AddMetricFormulaStepRow(metric)">
-                                                        @L["EditGameSystem_AddMetricFormulaStepRow"]
+                                                        @L["GameSystem_Editor_AddMetricFormulaStepRow"]
                                                     </button>
                                                 </div>
                                             </div>
@@ -572,39 +572,39 @@ else
                                                 <div class="rc-filter-group-card">
                                                     @if (step.IsDeleted)
                                                     {
-                                                        <span>@GetMetricFormulaStepSummary(step) - @L["EditGameSystem_PendingDeletion"]</span>
+                                                        <span>@GetMetricFormulaStepSummary(step) - @L["GameSystem_Editor_PendingDeletion"]</span>
                                                         <div class="rc-tool-actions">
-                                                            <button type="button" @onclick="() => step.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                                                            <button type="button" @onclick="() => step.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
                                                         </div>
                                                     }
                                                     else
                                                     {
                                                         <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
                                                             <div class="rc-form-field">
-                                                                <label>@L["EditGameSystem_MetricFormulaOperation"]</label>
+                                                                <label>@L["GameSystem_Editor_MetricFormulaOperation"]</label>
                                                                 <select @bind="step.OperationType">
-                                                                    <option value="@MetricFormulaOperationType.Add">@L["EditGameSystem_MetricFormulaOperation_Add"]</option>
-                                                                    <option value="@MetricFormulaOperationType.Subtract">@L["EditGameSystem_MetricFormulaOperation_Subtract"]</option>
-                                                                    <option value="@MetricFormulaOperationType.Multiply">@L["EditGameSystem_MetricFormulaOperation_Multiply"]</option>
-                                                                    <option value="@MetricFormulaOperationType.Divide">@L["EditGameSystem_MetricFormulaOperation_Divide"]</option>
+                                                                    <option value="@MetricFormulaOperationType.Add">@L["GameSystem_Editor_MetricFormulaOperation_Add"]</option>
+                                                                    <option value="@MetricFormulaOperationType.Subtract">@L["GameSystem_Editor_MetricFormulaOperation_Subtract"]</option>
+                                                                    <option value="@MetricFormulaOperationType.Multiply">@L["GameSystem_Editor_MetricFormulaOperation_Multiply"]</option>
+                                                                    <option value="@MetricFormulaOperationType.Divide">@L["GameSystem_Editor_MetricFormulaOperation_Divide"]</option>
                                                                 </select>
                                                             </div>
 
                                                             <div class="rc-form-field">
-                                                                <label>@L["EditGameSystem_MetricFormulaSourceType"]</label>
+                                                                <label>@L["GameSystem_Editor_MetricFormulaSourceType"]</label>
                                                                 <select value="@step.SourceType.ToString()" @onchange="e => ChangeMetricFormulaSourceType(step, e.Value?.ToString())">
-                                                                    <option value="@MetricFormulaSourceType.BaseAttribute">@L["EditGameSystem_MetricFormulaSource_BaseAttribute"]</option>
-                                                                    <option value="@MetricFormulaSourceType.Gauge">@L["EditGameSystem_MetricFormulaSource_Gauge"]</option>
-                                                                    <option value="@MetricFormulaSourceType.DerivedStat">@L["EditGameSystem_MetricFormulaSource_DerivedStat"]</option>
-                                                                    <option value="@MetricFormulaSourceType.Metric">@L["EditGameSystem_MetricFormulaSource_Metric"]</option>
-                                                                    <option value="@MetricFormulaSourceType.Constant">@L["EditGameSystem_MetricFormulaSource_Constant"]</option>
+                                                                    <option value="@MetricFormulaSourceType.BaseAttribute">@L["GameSystem_Editor_MetricFormulaSource_BaseAttribute"]</option>
+                                                                    <option value="@MetricFormulaSourceType.Gauge">@L["GameSystem_Editor_MetricFormulaSource_Gauge"]</option>
+                                                                    <option value="@MetricFormulaSourceType.DerivedStat">@L["GameSystem_Editor_MetricFormulaSource_DerivedStat"]</option>
+                                                                    <option value="@MetricFormulaSourceType.Metric">@L["GameSystem_Editor_MetricFormulaSource_Metric"]</option>
+                                                                    <option value="@MetricFormulaSourceType.Constant">@L["GameSystem_Editor_MetricFormulaSource_Constant"]</option>
                                                                 </select>
                                                             </div>
 
                                                             @if (step.SourceType == MetricFormulaSourceType.Constant)
                                                             {
                                                                 <div class="rc-form-field">
-                                                                    <label>@L["EditGameSystem_MetricFormulaConstantValue"]</label>
+                                                                    <label>@L["GameSystem_Editor_MetricFormulaConstantValue"]</label>
                                                                     <input type="number" step="0.01" @bind="step.ConstantValue" />
                                                                 </div>
                                                             }
@@ -613,7 +613,7 @@ else
                                                                 var options = GetMetricFormulaSourceOptions(metric, step.SourceType);
 
                                                                 <div class="rc-form-field">
-                                                                    <label>@L["EditGameSystem_MetricFormulaSourceValue"]</label>
+                                                                    <label>@L["GameSystem_Editor_MetricFormulaSourceValue"]</label>
                                                                     <select value="@(step.SourceId?.ToString() ?? string.Empty)" @onchange="e => ChangeMetricFormulaSourceId(step, e.Value?.ToString())">
                                                                         @foreach (var option in options)
                                                                         {
@@ -627,11 +627,11 @@ else
                                                         <div class="rc-tool-actions">
                                                             @if (step.MetricFormulaStepId.HasValue)
                                                             {
-                                                                <button type="button" @onclick="() => step.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                                                <button type="button" @onclick="() => step.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
                                                             }
                                                             else
                                                             {
-                                                                <button type="button" @onclick="() => metric.FormulaSteps.Remove(step)">@L["EditGameSystem_Delete"]</button>
+                                                                <button type="button" @onclick="() => metric.FormulaSteps.Remove(step)">@L["GameSystem_Editor_Delete"]</button>
                                                             }
                                                         </div>
                                                     }
@@ -641,10 +641,10 @@ else
 
                                         <div class="rc-tool-subsection">
                                             <div class="rc-tool-subsection__header">
-                                                <div class="rc-tool-subsection__title">@L["EditGameSystem_MetricComponentsSection"]</div>
+                                                <div class="rc-tool-subsection__title">@L["GameSystem_Editor_MetricComponentsSection"]</div>
                                                 <div class="rc-tool-inline-actions">
                                                     <button type="button" @onclick="() => AddMetricComponentRow(metric)">
-                                                        @L["EditGameSystem_AddMetricComponentRow"]
+                                                        @L["GameSystem_Editor_AddMetricComponentRow"]
                                                     </button>
                                                 </div>
                                             </div>
@@ -654,16 +654,16 @@ else
                                                 <div class="rc-filter-group-card">
                                                     @if (component.IsDeleted)
                                                     {
-                                                        <span><strong>@GetBaseAttributeName(component.AttributeDefinitionId)</strong> - @L["EditGameSystem_PendingDeletion"]</span>
+                                                        <span><strong>@GetBaseAttributeName(component.AttributeDefinitionId)</strong> - @L["GameSystem_Editor_PendingDeletion"]</span>
                                                         <div class="rc-tool-actions">
-                                                            <button type="button" @onclick="() => component.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                                                            <button type="button" @onclick="() => component.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
                                                         </div>
                                                     }
                                                     else
                                                     {
                                                         <div class="rc-tool-form-grid">
                                                             <div class="rc-form-field">
-                                                                <label>@L["EditGameSystem_ComponentAttribute"]</label>
+                                                                <label>@L["GameSystem_Editor_ComponentAttribute"]</label>
                                                                 <select @bind="component.AttributeDefinitionId">
                                                                     @foreach (var attributeRef in CurrentSystem.AvailableBaseAttributes)
                                                                     {
@@ -673,20 +673,20 @@ else
                                                             </div>
 
                                                             <div class="rc-form-field">
-                                                                <label>@L["EditGameSystem_ComponentWeight"]</label>
+                                                                <label>@L["GameSystem_Editor_ComponentWeight"]</label>
                                                                 <input type="number" @bind="component.Weight" />
-                                                                <span class="rc-tool-muted">@L["EditGameSystem_ComponentWeightHelp"]</span>
+                                                                <span class="rc-tool-muted">@L["GameSystem_Editor_ComponentWeightHelp"]</span>
                                                             </div>
                                                         </div>
 
                                                         <div class="rc-tool-actions">
                                                             @if (component.MetricComponentId.HasValue)
                                                             {
-                                                                <button type="button" @onclick="() => component.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                                                <button type="button" @onclick="() => component.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
                                                             }
                                                             else
                                                             {
-                                                                <button type="button" @onclick="() => metric.Components.Remove(component)">@L["EditGameSystem_Delete"]</button>
+                                                                <button type="button" @onclick="() => metric.Components.Remove(component)">@L["GameSystem_Editor_Delete"]</button>
                                                             }
                                                         </div>
                                                     }
@@ -697,15 +697,15 @@ else
                                         <div class="rc-tool-actions">
                                             @if (IsVoteWeightMetric(metric))
                                             {
-                                                <span class="rc-tool-muted">@L["EditGameSystem_VoteWeightMetricLocked"]</span>
+                                                <span class="rc-tool-muted">@L["GameSystem_Editor_VoteWeightMetricLocked"]</span>
                                             }
                                             else if (metric.MetricDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => metric.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => metric.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.Metrics.Remove(metric)">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.Metrics.Remove(metric)">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                         </div>
                                     }
@@ -721,8 +721,8 @@ else
             <summary class="rc-collapse-section__summary">
                 <div class="rc-collapse-section__summary-main">
                     <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["EditGameSystem_TraitsSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["EditGameSystem_TraitsSubtitle"]</div>
+                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_TraitsSection"]</div>
+                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_TraitsSubtitle"]</div>
                     </div>
 
                     <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
@@ -740,7 +740,7 @@ else
                     @if (CurrentSystem.Traits.Count == 0)
                     {
                         <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["EditGameSystem_NoTraits"]</p>
+                            <p>@L["GameSystem_Editor_NoTraits"]</p>
                         </div>
                     }
                     else
@@ -752,11 +752,11 @@ else
                                     @if (trait.IsDeleted)
                                     {
                                         <div class="rc-inline-warning">
-                                            <p><strong>@trait.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                                            <p><strong>@trait.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
                                         </div>
 
                                         <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => trait.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                                            <button type="button" @onclick="() => trait.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
                                         </div>
                                     }
                                     else
@@ -771,17 +771,17 @@ else
                                                 <label></label>
                                                 <label class="rc-filter-toggle">
                                                     <input type="checkbox" @bind="trait.IsRandomSelectionGroup" />
-                                                    <span>@L["EditGameSystem_TraitIsRandomGroup"]</span>
+                                                    <span>@L["GameSystem_Editor_TraitIsRandomGroup"]</span>
                                                 </label>
                                             </div>
                                         </div>
 
                                         <div class="rc-tool-subsection">
                                             <div class="rc-tool-subsection__header">
-                                                <div class="rc-tool-subsection__title">@L["EditGameSystem_TraitOptionsSection"]</div>
+                                                <div class="rc-tool-subsection__title">@L["GameSystem_Editor_TraitOptionsSection"]</div>
                                                 <div class="rc-tool-inline-actions">
                                                     <button type="button" @onclick="() => AddTraitOptionRow(trait)">
-                                                        @L["EditGameSystem_AddTraitOptionRow"]
+                                                        @L["GameSystem_Editor_AddTraitOptionRow"]
                                                     </button>
                                                 </div>
                                             </div>
@@ -791,9 +791,9 @@ else
                                                 <div class="rc-filter-group-card">
                                                     @if (option.IsDeleted)
                                                     {
-                                                        <span><strong>@option.Name</strong> - @L["EditGameSystem_PendingDeletion"]</span>
+                                                        <span><strong>@option.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</span>
                                                         <div class="rc-tool-actions">
-                                                            <button type="button" @onclick="() => option.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                                                            <button type="button" @onclick="() => option.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
                                                         </div>
                                                     }
                                                     else
@@ -807,7 +807,7 @@ else
                                                                 <label></label>
                                                                 <label class="rc-filter-toggle">
                                                                     <input type="checkbox" @bind="option.IsLockedForCharacterCreation" />
-                                                                    <span>@L["EditGameSystem_TraitOptionLockedForCreation"]</span>
+                                                                    <span>@L["GameSystem_Editor_TraitOptionLockedForCreation"]</span>
                                                                 </label>
                                                             </div>
                                                         </div>
@@ -816,10 +816,10 @@ else
 
                                                         <div class="rc-tool-subsection">
                                                             <div class="rc-tool-subsection__header">
-                                                                <div class="rc-tool-subsection__title">@L["EditGameSystem_ChoiceModifiersSection"]</div>
+                                                                <div class="rc-tool-subsection__title">@L["GameSystem_Editor_ChoiceModifiersSection"]</div>
                                                                 <div class="rc-tool-inline-actions">
                                                                     <button type="button" @onclick="() => AddTraitOptionModifierRow(option)">
-                                                                        @L["EditGameSystem_AddChoiceModifierRow"]
+                                                                        @L["GameSystem_Editor_AddChoiceModifierRow"]
                                                                     </button>
                                                                 </div>
                                                             </div>
@@ -829,24 +829,24 @@ else
                                                                 <div class="rc-filter-group-card">
                                                                     <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
                                                                         <div class="rc-form-field">
-                                                                            <label>@L["EditGameSystem_ModifierOperation"]</label>
+                                                                            <label>@L["GameSystem_Editor_ModifierOperation"]</label>
                                                                             <select @bind="modifier.OperationType">
-                                                                                <option value="@ModifierOperationType.AddValue">@L["EditGameSystem_ModifierOperation_Add"]</option>
+                                                                                <option value="@ModifierOperationType.AddValue">@L["GameSystem_Editor_ModifierOperation_Add"]</option>
                                                                             </select>
                                                                         </div>
 
                                                                         <div class="rc-form-field">
-                                                                            <label>@L["EditGameSystem_ModifierTargetType"]</label>
+                                                                            <label>@L["GameSystem_Editor_ModifierTargetType"]</label>
                                                                             <select value="@modifier.TargetType.ToString()" @onchange="e => ChangeModifierTargetType(modifier, e.Value?.ToString())">
-                                                                                <option value="@ModifierTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_BaseAttribute"]</option>
-                                                                                <option value="@ModifierTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
-                                                                                <option value="@ModifierTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
-                                                                                <option value="@ModifierTargetType.Gauge">@L["EditGameSystem_ModifierTarget_Gauge"]</option>
+                                                                                <option value="@ModifierTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_BaseAttribute"]</option>
+                                                                                <option value="@ModifierTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option>
+                                                                                <option value="@ModifierTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option>
+                                                                                <option value="@ModifierTargetType.Gauge">@L["GameSystem_Editor_ModifierTarget_Gauge"]</option>
                                                                             </select>
                                                                         </div>
 
                                                                         <div class="rc-form-field">
-                                                                            <label>@L["EditGameSystem_ModifierTarget"]</label>
+                                                                            <label>@L["GameSystem_Editor_ModifierTarget"]</label>
                                                                             <select @bind="modifier.TargetId">
                                                                                 @foreach (var optionItem in GetModifierTargetOptions(modifier.TargetType))
                                                                                 {
@@ -856,24 +856,24 @@ else
                                                                         </div>
 
                                                                         <div class="rc-form-field">
-                                                                            <label>@L["EditGameSystem_ModifierValueMode"]</label>
+                                                                            <label>@L["GameSystem_Editor_ModifierValueMode"]</label>
                                                                             <select @bind="modifier.ValueMode">
-                                                                                <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
-                                                                                <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                                                                                <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
+                                                                                <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
                                                                             </select>
                                                                         </div>
 
                                                                         @if (modifier.ValueMode == ModifierValueMode.Fixed)
                                                                         {
                                                                             <div class="rc-form-field">
-                                                                                <label>@L["EditGameSystem_ModifierValue"]</label>
+                                                                                <label>@L["GameSystem_Editor_ModifierValue"]</label>
                                                                                 <input type="number" @bind="modifier.Value" />
                                                                             </div>
                                                                         }
                                                                         else
                                                                         {
                                                                             <div class="rc-form-field">
-                                                                                <label>@L["EditGameSystem_ModifierSourceMetric"]</label>
+                                                                                <label>@L["GameSystem_Editor_ModifierSourceMetric"]</label>
                                                                                 <select @bind="modifier.SourceMetricId">
                                                                                     @foreach (var metricRef in CurrentSystem.AvailableMetrics)
                                                                                     {
@@ -887,7 +887,7 @@ else
 
                                                                     <div class="rc-tool-actions">
                                                                         <button type="button" @onclick="() => option.Modifiers.Remove(modifier)">
-                                                                            @L["EditGameSystem_Delete"]
+                                                                            @L["GameSystem_Editor_Delete"]
                                                                         </button>
                                                                     </div>
                                                                 </div>
@@ -897,11 +897,11 @@ else
                                                         <div class="rc-tool-actions">
                                                             @if (option.TraitOptionId.HasValue)
                                                             {
-                                                                <button type="button" @onclick="() => option.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                                                <button type="button" @onclick="() => option.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
                                                             }
                                                             else
                                                             {
-                                                                <button type="button" @onclick="() => trait.Options.Remove(option)">@L["EditGameSystem_Delete"]</button>
+                                                                <button type="button" @onclick="() => trait.Options.Remove(option)">@L["GameSystem_Editor_Delete"]</button>
                                                             }
                                                         </div>
                                                     }
@@ -912,11 +912,11 @@ else
                                         <div class="rc-tool-actions">
                                             @if (trait.TraitDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => trait.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => trait.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.Traits.Remove(trait)">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.Traits.Remove(trait)">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                         </div>
                                     }
@@ -932,8 +932,8 @@ else
             <summary class="rc-collapse-section__summary">
                 <div class="rc-collapse-section__summary-main">
                     <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["EditGameSystem_GaugesSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["EditGameSystem_GaugesSubtitle"]</div>
+                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_GaugesSection"]</div>
+                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_GaugesSubtitle"]</div>
                     </div>
 
                     <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
@@ -945,13 +945,13 @@ else
             <div class="rc-collapse-section__body">
                 <div class="rc-tool-panel">
                     <div class="rc-tool-actions">
-                        <button type="button" @onclick="AddGaugeRow">@L["EditGameSystem_AddGaugeRow"]</button>
+                        <button type="button" @onclick="AddGaugeRow">@L["GameSystem_Editor_AddGaugeRow"]</button>
                     </div>
 
                     @if (CurrentSystem.Gauges.Count == 0)
                     {
                         <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["EditGameSystem_NoGauges"]</p>
+                            <p>@L["GameSystem_Editor_NoGauges"]</p>
                         </div>
                     }
                     else
@@ -963,11 +963,11 @@ else
                                     @if (gauge.IsDeleted)
                                     {
                                         <div class="rc-inline-warning">
-                                            <p><strong>@gauge.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                                            <p><strong>@gauge.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
                                         </div>
 
                                         <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => gauge.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                                            <button type="button" @onclick="() => gauge.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
                                         </div>
                                     }
                                     else
@@ -996,7 +996,7 @@ else
                                             <div class="rc-form-field">
                                                 <label class="rc-filter-toggle">
                                                     <input type="checkbox" @bind="gauge.IsHealthGauge" />
-                                                    <span>@L["EditGameSystem_IsHealthGauge"]</span>
+                                                    <span>@L["GameSystem_Editor_IsHealthGauge"]</span>
                                                 </label>
                                             </div>
                                         </div>
@@ -1004,11 +1004,11 @@ else
                                         <div class="rc-tool-actions">
                                             @if (gauge.GaugeDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => gauge.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => gauge.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.Gauges.Remove(gauge)">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.Gauges.Remove(gauge)">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                         </div>
                                     }
@@ -1024,8 +1024,8 @@ else
             <summary class="rc-collapse-section__summary">
                 <div class="rc-collapse-section__summary-main">
                     <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["EditGameSystem_TalentsSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["EditGameSystem_TalentsSubtitle"]</div>
+                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_TalentsSection"]</div>
+                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_TalentsSubtitle"]</div>
                     </div>
 
                     <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
@@ -1037,13 +1037,13 @@ else
             <div class="rc-collapse-section__body">
                 <div class="rc-tool-panel">
                     <div class="rc-tool-actions">
-                        <button type="button" @onclick="AddTalentRow">@L["EditGameSystem_AddTalentRow"]</button>
+                        <button type="button" @onclick="AddTalentRow">@L["GameSystem_Editor_AddTalentRow"]</button>
                     </div>
 
                     @if (CurrentSystem.Talents.Count == 0)
                     {
                         <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["EditGameSystem_NoTalents"]</p>
+                            <p>@L["GameSystem_Editor_NoTalents"]</p>
                         </div>
                     }
                     else
@@ -1055,11 +1055,11 @@ else
                                     @if (talent.IsDeleted)
                                     {
                                         <div class="rc-inline-warning">
-                                            <p><strong>@talent.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                                            <p><strong>@talent.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
                                         </div>
 
                                         <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => talent.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                                            <button type="button" @onclick="() => talent.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
                                         </div>
                                     }
                                     else
@@ -1071,22 +1071,22 @@ else
                                             </div>
 
                                             <div class="rc-form-field">
-                                                <label>@L["EditGameSystem_DisplayOrder"]</label>
+                                                <label>@L["GameSystem_Editor_DisplayOrder"]</label>
                                                 <input type="number" @bind="talent.DisplayOrder" />
                                             </div>
 
                                             <div class="rc-form-field rc-form-field--full">
-                                                <label>@L["EditGameSystem_Description"]</label>
+                                                <label>@L["Common_Description"]</label>
                                                 <textarea rows="3" @bind="talent.Description"></textarea>
                                             </div>
                                         </div>
 
                                         <div class="rc-tool-subsection">
                                             <div class="rc-tool-subsection__header">
-                                                <div class="rc-tool-subsection__title">@L["EditGameSystem_TalentModifiersSection"]</div>
+                                                <div class="rc-tool-subsection__title">@L["GameSystem_Editor_TalentModifiersSection"]</div>
                                                 <div class="rc-tool-inline-actions">
                                                     <button type="button" @onclick="() => AddTalentModifierRow(talent)">
-                                                        @L["EditGameSystem_AddTalentModifierRow"]
+                                                        @L["GameSystem_Editor_AddTalentModifierRow"]
                                                     </button>
                                                 </div>
                                             </div>
@@ -1096,17 +1096,17 @@ else
                                                 <div class="rc-filter-group-card">
                                                     <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
                                                         <div class="rc-form-field">
-                                                            <label>@L["EditGameSystem_ModifierTargetType"]</label>
+                                                            <label>@L["GameSystem_Editor_ModifierTargetType"]</label>
                                                             <select value="@modifier.TargetType.ToString()" @onchange="e => ChangeModifierTargetType(modifier, e.Value?.ToString())">
-                                                                <option value="@ModifierTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_BaseAttribute"]</option>
-                                                                <option value="@ModifierTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
-                                                                <option value="@ModifierTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
-                                                                <option value="@ModifierTargetType.Gauge">@L["EditGameSystem_ModifierTarget_Gauge"]</option>
+                                                                <option value="@ModifierTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_BaseAttribute"]</option>
+                                                                <option value="@ModifierTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option>
+                                                                <option value="@ModifierTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option>
+                                                                <option value="@ModifierTargetType.Gauge">@L["GameSystem_Editor_ModifierTarget_Gauge"]</option>
                                                             </select>
                                                         </div>
 
                                                         <div class="rc-form-field">
-                                                            <label>@L["EditGameSystem_ModifierTarget"]</label>
+                                                            <label>@L["GameSystem_Editor_ModifierTarget"]</label>
                                                             <select @bind="modifier.TargetId">
                                                                 @foreach (var optionItem in GetModifierTargetOptions(modifier.TargetType))
                                                                 {
@@ -1116,24 +1116,24 @@ else
                                                         </div>
 
                                                         <div class="rc-form-field">
-                                                            <label>@L["EditGameSystem_ModifierValueMode"]</label>
+                                                            <label>@L["GameSystem_Editor_ModifierValueMode"]</label>
                                                             <select @bind="modifier.ValueMode">
-                                                                <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
-                                                                <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                                                                <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
+                                                                <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
                                                             </select>
                                                         </div>
 
                                                         @if (modifier.ValueMode == ModifierValueMode.Fixed)
                                                         {
                                                             <div class="rc-form-field">
-                                                                <label>@L["EditGameSystem_ModifierValue"]</label>
+                                                                <label>@L["GameSystem_Editor_ModifierValue"]</label>
                                                                 <input type="number" @bind="modifier.Value" />
                                                             </div>
                                                         }
                                                         else
                                                         {
                                                             <div class="rc-form-field">
-                                                                <label>@L["EditGameSystem_ModifierSourceMetric"]</label>
+                                                                <label>@L["GameSystem_Editor_ModifierSourceMetric"]</label>
                                                                 <select @bind="modifier.SourceMetricId">
                                                                     @foreach (var metricRef in CurrentSystem.AvailableMetrics)
                                                                     {
@@ -1146,7 +1146,7 @@ else
 
                                                     <div class="rc-tool-actions">
                                                         <button type="button" @onclick="() => talent.Modifiers.Remove(modifier)">
-                                                            @L["EditGameSystem_Delete"]
+                                                            @L["GameSystem_Editor_Delete"]
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1156,11 +1156,11 @@ else
                                         <div class="rc-tool-actions">
                                             @if (talent.TalentDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => talent.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => talent.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.Talents.Remove(talent)">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.Talents.Remove(talent)">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                         </div>
                                     }
@@ -1176,8 +1176,8 @@ else
             <summary class="rc-collapse-section__summary">
                 <div class="rc-collapse-section__summary-main">
                     <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["EditGameSystem_ItemsSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["EditGameSystem_ItemsSubtitle"]</div>
+                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_ItemsSection"]</div>
+                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_ItemsSubtitle"]</div>
                     </div>
 
                     <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
@@ -1190,13 +1190,13 @@ else
             <div class="rc-collapse-section__body">
                 <div class="rc-tool-panel">
                     <div class="rc-tool-actions">
-                        <button type="button" @onclick="AddItemRow">@L["EditGameSystem_AddItemRow"]</button>
+                        <button type="button" @onclick="AddItemRow">@L["GameSystem_Editor_AddItemRow"]</button>
                     </div>
 
                     @if (CurrentSystem.Items.Count == 0)
                     {
                         <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["EditGameSystem_NoItems"]</p>
+                            <p>@L["GameSystem_Editor_NoItems"]</p>
                         </div>
                     }
                     else
@@ -1208,11 +1208,11 @@ else
                                     @if (item.IsDeleted)
                                     {
                                         <div class="rc-inline-warning">
-                                            <p><strong>@item.Name</strong> - @L["EditGameSystem_PendingDeletion"]</p>
+                                            <p><strong>@item.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
                                         </div>
 
                                         <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => item.IsDeleted = false">@L["EditGameSystem_Restore"]</button>
+                                            <button type="button" @onclick="() => item.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
                                         </div>
                                     }
                                     else
@@ -1224,22 +1224,22 @@ else
                                             </div>
 
                                             <div class="rc-form-field">
-                                                <label>@L["EditGameSystem_DisplayOrder"]</label>
+                                                <label>@L["GameSystem_Editor_DisplayOrder"]</label>
                                                 <input type="number" @bind="item.DisplayOrder" />
                                             </div>
 
                                             <div class="rc-form-field rc-form-field--full">
-                                                <label>@L["EditGameSystem_Description"]</label>
+                                                <label>@L["Common_Description"]</label>
                                                 <textarea rows="3" @bind="item.Description"></textarea>
                                             </div>
                                         </div>
 
                                         <div class="rc-tool-subsection">
                                             <div class="rc-tool-subsection__header">
-                                                <div class="rc-tool-subsection__title">@L["EditGameSystem_ItemModifiersSection"]</div>
+                                                <div class="rc-tool-subsection__title">@L["GameSystem_Editor_ItemModifiersSection"]</div>
                                                 <div class="rc-tool-inline-actions">
                                                     <button type="button" @onclick="() => AddItemModifierRow(item)">
-                                                        @L["EditGameSystem_AddItemModifierRow"]
+                                                        @L["GameSystem_Editor_AddItemModifierRow"]
                                                     </button>
                                                 </div>
                                             </div>
@@ -1249,17 +1249,17 @@ else
                                                 <div class="rc-filter-group-card">
                                                     <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
                                                         <div class="rc-form-field">
-                                                            <label>@L["EditGameSystem_ModifierTargetType"]</label>
+                                                            <label>@L["GameSystem_Editor_ModifierTargetType"]</label>
                                                             <select value="@modifier.TargetType.ToString()" @onchange="e => ChangeModifierTargetType(modifier, e.Value?.ToString())">
-                                                                <option value="@ModifierTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_BaseAttribute"]</option>
-                                                                <option value="@ModifierTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
-                                                                <option value="@ModifierTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
-                                                                <option value="@ModifierTargetType.Gauge">@L["EditGameSystem_ModifierTarget_Gauge"]</option>
+                                                                <option value="@ModifierTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_BaseAttribute"]</option>
+                                                                <option value="@ModifierTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option>
+                                                                <option value="@ModifierTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option>
+                                                                <option value="@ModifierTargetType.Gauge">@L["GameSystem_Editor_ModifierTarget_Gauge"]</option>
                                                             </select>
                                                         </div>
 
                                                         <div class="rc-form-field">
-                                                            <label>@L["EditGameSystem_ModifierTarget"]</label>
+                                                            <label>@L["GameSystem_Editor_ModifierTarget"]</label>
                                                             <select @bind="modifier.TargetId">
                                                                 @foreach (var optionItem in GetModifierTargetOptions(modifier.TargetType))
                                                                 {
@@ -1269,24 +1269,24 @@ else
                                                         </div>
 
                                                         <div class="rc-form-field">
-                                                            <label>@L["EditGameSystem_ModifierValueMode"]</label>
+                                                            <label>@L["GameSystem_Editor_ModifierValueMode"]</label>
                                                             <select @bind="modifier.ValueMode">
-                                                                <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
-                                                                <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                                                                <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
+                                                                <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
                                                             </select>
                                                         </div>
 
                                                         @if (modifier.ValueMode == ModifierValueMode.Fixed)
                                                         {
                                                             <div class="rc-form-field">
-                                                                <label>@L["EditGameSystem_ModifierValue"]</label>
+                                                                <label>@L["GameSystem_Editor_ModifierValue"]</label>
                                                                 <input type="number" @bind="modifier.Value" />
                                                             </div>
                                                         }
                                                         else
                                                         {
                                                             <div class="rc-form-field">
-                                                                <label>@L["EditGameSystem_ModifierSourceMetric"]</label>
+                                                                <label>@L["GameSystem_Editor_ModifierSourceMetric"]</label>
                                                                 <select @bind="modifier.SourceMetricId">
                                                                     @foreach (var metricRef in CurrentSystem.AvailableMetrics)
                                                                     {
@@ -1299,7 +1299,7 @@ else
 
                                                     <div class="rc-tool-actions">
                                                         <button type="button" @onclick="() => item.Modifiers.Remove(modifier)">
-                                                            @L["EditGameSystem_Delete"]
+                                                            @L["GameSystem_Editor_Delete"]
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1309,11 +1309,11 @@ else
                                         <div class="rc-tool-actions">
                                             @if (item.ItemDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => item.IsDeleted = true">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => item.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.Items.Remove(item)">@L["EditGameSystem_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.Items.Remove(item)">@L["GameSystem_Editor_Delete"]</button>
                                             }
                                         </div>
                                     }
@@ -1413,12 +1413,12 @@ else
     private string GetReturnButtonLabel()
     {
         if (string.Equals(ReturnTo, "mj-session", StringComparison.OrdinalIgnoreCase))
-            return L["EditGameSystem_BackToSession"];
+            return L["GameSystem_Editor_BackToSession"];
 
         if (string.Equals(ReturnTo, "player-room", StringComparison.OrdinalIgnoreCase))
-            return L["EditGameSystem_BackToPlayerRoom"];
+            return L["Session_BackToSession"];
 
-        return L["EditGameSystem_BackToList"];
+        return L["GameSystem_Editor_BackToList"];
     }
 
     private void BackToOrigin()
@@ -1631,10 +1631,10 @@ else
     {
         var operation = step.OperationType switch
         {
-            MetricFormulaOperationType.Add => L["EditGameSystem_MetricFormulaOperation_Add"].Value,
-            MetricFormulaOperationType.Subtract => L["EditGameSystem_MetricFormulaOperation_Subtract"].Value,
-            MetricFormulaOperationType.Multiply => L["EditGameSystem_MetricFormulaOperation_Multiply"].Value,
-            MetricFormulaOperationType.Divide => L["EditGameSystem_MetricFormulaOperation_Divide"].Value,
+            MetricFormulaOperationType.Add => L["GameSystem_Editor_MetricFormulaOperation_Add"].Value,
+            MetricFormulaOperationType.Subtract => L["GameSystem_Editor_MetricFormulaOperation_Subtract"].Value,
+            MetricFormulaOperationType.Multiply => L["GameSystem_Editor_MetricFormulaOperation_Multiply"].Value,
+            MetricFormulaOperationType.Divide => L["GameSystem_Editor_MetricFormulaOperation_Divide"].Value,
             _ => string.Empty
         };
 
@@ -1829,25 +1829,25 @@ else
     private string GetCriticalSuccessLabel()
     {
         if (CurrentSystem is null)
-            return L["EditGameSystem_CriticalSuccessValue"];
+            return L["GameSystem_Editor_CriticalSuccessValue"];
 
         var sign = CurrentSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold
             ? "≥"
             : "≤";
 
-        return $"{L["EditGameSystem_CriticalSuccessValue"]} {sign}";
+        return $"{L["GameSystem_Editor_CriticalSuccessValue"]} {sign}";
     }
 
     private string GetCriticalFailureLabel()
     {
         if (CurrentSystem is null)
-            return L["EditGameSystem_CriticalFailureValue"];
+            return L["GameSystem_Editor_CriticalFailureValue"];
 
         var sign = CurrentSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold
             ? "≤"
             : "≥";
 
-        return $"{L["EditGameSystem_CriticalFailureValue"]} {sign}";
+        return $"{L["GameSystem_Editor_CriticalFailureValue"]} {sign}";
     }
 
     private async Task SaveChanges()
@@ -1872,8 +1872,8 @@ else
         if (CurrentSystem is null)
             return;
 
-        // Si le système est partagé avec des sessions existantes
-        // et qu'on n'a pas encore confirmé explicitement,
+        // Si le systÃ¨me est partagÃ© avec des sessions existantes
+        // et qu'on n'a pas encore confirmÃ© explicitement,
         // on affiche d'abord le panneau de confirmation.
         if (!confirmShared &&
             !CurrentSystem.IsLockedToSessionCopy &&
@@ -1917,7 +1917,7 @@ else
                 request);
 
             await LoadEditor();
-            Message = L["EditGameSystem_ChangesApplied"];
+            Message = L["GameSystem_Editor_ChangesApplied"];
         }
         catch (Exception ex)
         {
@@ -1937,7 +1937,7 @@ else
             await GameSystemService.UndoLastGameSystemChangeAsync(GameSystemId, CurrentUserId);
             await LoadEditor();
 
-            Message = L["EditGameSystem_LastChangeUndone"];
+            Message = L["GameSystem_Editor_LastChangeUndone"];
         }
         catch (Exception ex)
         {

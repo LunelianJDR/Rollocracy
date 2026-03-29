@@ -44,7 +44,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             var activePoll = await context.SessionPolls
                 .AsNoTracking()
@@ -404,7 +404,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             var poll = await context.SessionPolls
                 .FirstOrDefaultAsync(p => p.SessionId == sessionId && !p.IsClosed);
@@ -680,7 +680,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             var latestPoll = await context.SessionPolls
                 .Where(p => p.SessionId == sessionId)
@@ -1523,10 +1523,10 @@ namespace Rollocracy.Infrastructure.Services
                 MetricName = poll.MetricNameSnapshot,
                 TotalVotes = totalVotes,
                 TotalWeightedVotes = totalWeightedVotes,
-                OnlinePlayersCount = eligibleOnlinePlayersCount,
-                ParticipationPercent = eligiblePlayersCount == 0
+                OnlinePlayersCount = eligibleOnlinePlayersCount, 
+                ParticipationPercent = eligibleOnlinePlayersCount == 0 //remplacement de eligiblePlayersCount par eligibleOnelinePlayersCount
                     ? 0
-                    : (double)totalVotes * 100.0 / eligiblePlayersCount,
+                    : (double)totalVotes * 100.0 / eligibleOnlinePlayersCount, //remplacement de eligiblePlayersCount par eligibleOnelinePlayersCount
                 Options = options.Select(o =>
                 {
                     var count = votes.Count(v => v.SessionPollOptionId == o.Id);

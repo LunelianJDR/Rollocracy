@@ -4,82 +4,82 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
-<PageTitle>@L["Login_Title"]</PageTitle>
+<PageTitle>@L["Auth_Login_Title"]</PageTitle>
 
 <section class="rc-auth-shell">
     <div class="rc-auth-grid">
         <article class="rc-auth-panel">
             <div class="rc-tool-panel__header-main">
-                <h1 class="rc-tool-panel__title">@L["Login_Title"]</h1>
-                <p class="rc-tool-panel__subtitle">@L["Login_Subtitle"]</p>
+                <h1 class="rc-tool-panel__title">@L["Auth_Login_Title"]</h1>
+                <p class="rc-tool-panel__subtitle">@L["Auth_Login_Subtitle"]</p>
             </div>
 
             @if (HasError)
             {
-                <div class="rc-inline-error">@L["Login_InvalidCredentials"]</div>
+                <div class="rc-inline-error">@L["Auth_InvalidCredentials"]</div>
             }
 
             @if (HasRegistered)
             {
-                <div class="rc-inline-warning">@L["Login_RegisteredSuccess"]</div>
+                <div class="rc-inline-warning">@L["Auth_Login_RegisteredSuccess"]</div>
             }
 
             @if (HasResetSuccess)
             {
-                <div class="rc-inline-warning">@L["ResetPassword_Success"]</div>
+                <div class="rc-inline-warning">@L["Auth_ResetPassword_Success"]</div>
             }
 
             @if (HasVerifiedEmail)
             {
-                <div class="rc-inline-warning">@L["VerifyEmail_Success"]</div>
+                <div class="rc-inline-warning">@L["Auth_VerifyEmail_Success"]</div>
             }
 
             @if (HasTwitchError)
             {
-                <div class="rc-inline-error">@L["Login_TwitchError"]</div>
+                <div class="rc-inline-error">@L["Auth_Login_TwitchError"]</div>
             }
 
             <form method="post" action="/auth/login" class="rc-auth-form">
                 <div class="rc-form-field">
-                    <label for="username">@L["Login_Username"]</label>
+                    <label for="username">@L["Common_Username"]</label>
                     <input id="username" name="Username" autocomplete="username" />
                 </div>
 
                 <div class="rc-form-field">
-                    <label for="password">@L["Login_Password"]</label>
+                    <label for="password">@L["Common_Password"]</label>
                     <input id="password" name="Password" type="password" autocomplete="current-password" />
                 </div>
 
                 <label class="rc-filter-toggle">
                     <input id="remember-me" name="RememberMe" type="checkbox" value="true" />
-                    <span>@L["Login_RememberMe"]</span>
+                    <span>@L["Auth_Login_RememberMe"]</span>
                 </label>
 
                 <div class="rc-tool-actions">
-                    <button type="submit">@L["Login_Submit"]</button>
+                    <button type="submit">@L["Auth_Login_Action"]</button>
                 </div>
 
-                <a class="rc-auth-text-link" href="/forgot-password">@L["Login_ForgotPassword"]</a>
+                <a class="rc-auth-text-link" href="/forgot-password">@L["Auth_Login_ForgotPassword"]</a>
             </form>
         </article>
 
         <article class="rc-auth-panel">
             <div class="rc-tool-panel__header-main">
-                <h2 class="rc-tool-panel__title">@L["Login_AlternativeTitle"]</h2>
-                <p class="rc-tool-panel__subtitle">@L["Login_AlternativeSubtitle"]</p>
+                <h2 class="rc-tool-panel__title">@L["Auth_Login_AlternativeTitle"]</h2>
+                <p class="rc-tool-panel__subtitle">@L["Auth_Login_AlternativeSubtitle"]</p>
             </div>
 
             <div class="rc-auth-stack">
                 <!-- Connexion directe Twitch -->
                 <a class="rc-auth-link-button" href="/auth/twitch/login?language=fr">
-                    @L["Login_WithTwitch"]
+                    @L["Auth_Login_WithTwitch"]
                 </a>
 
-                <p class="rc-tool-muted">@L["Login_TwitchDescription"]</p>
+                <p class="rc-tool-muted">@L["Auth_Login_TwitchDescription"]</p>
 
                 <div class="rc-auth-divider"></div>
 
-                <a class="rc-auth-link-button" href="/register">@L["Login_CreateAccount"]</a>
+                <a class="rc-auth-link-button" href="/register">@L["Auth_Login_CreateAccount"]</a>
             </div>
         </article>
     </div>

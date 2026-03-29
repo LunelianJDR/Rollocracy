@@ -38,14 +38,14 @@
                 @if (CurrentSession is not null && CanViewSessionHeaderInfo)
                 {
                     <div class="rc-session-strip">
-                        <h5 class="rc-tool-panel__title">@L["SessionPage_JoinUrl"]</h5>
+                        <h5 class="rc-tool-panel__title">@L["Session_Manage_JoinUrl"]</h5>
 
                         <div class="rc-session-strip__group">
                             <code class="rc-session-strip__value rc-session-strip__value--link">@JoinUrl</code>
                         </div>
 
                         <div class="rc-session-strip__group">
-                            <span class="rc-session-strip__label">@L["SessionPage_Password"]</span>
+                            <span class="rc-session-strip__label">@L["Common_Password"]</span>
                             <div class="rc-session-strip__password">
                                 <code class="rc-session-strip__value">@DisplayedPassword</code>
                                 @if (!string.IsNullOrWhiteSpace(CurrentSession.SessionPassword))
@@ -53,7 +53,7 @@
                                     <button type="button"
                                             class="icon-button"
                                             @onclick="ToggleSessionPasswordVisibility"
-                                            title="@(ShowSessionPassword? L["SessionPage_HidePassword"] : L["SessionPage_ShowPassword"])">
+                                            title="@(ShowSessionPassword? L["Session_Manage_HidePassword"] : L["Session_Manage_ShowPassword"])">
                                         👁
                                     </button>
                                 }
@@ -61,7 +61,7 @@
                         </div>
 
                         <div class="rc-session-strip__group">
-                            <span class="rc-session-strip__label">@L["SessionPage_ConnectedPlayers"]</span>
+                            <span class="rc-session-strip__label">@L["Session_ConnectedPlayers"]</span>
                             <span class="rc-session-strip__value">@(CurrentSessionStats?.ConnectedPlayersCount ?? 0)</span>
                         </div>
                     </div>
@@ -117,7 +117,7 @@
                                         <button type="button"
                                                 class="rc-round-icon-button"
                                                 @onclick="() => SaveSessionGaugeQuickValue(gauge.SessionGaugeId)"
-                                                title="@L["Common_Confirm"]">
+                                                title="@L["Common_Yes"]">
                                             ✓
                                         </button>
                                         <button type="button"
@@ -181,7 +181,7 @@
         => CurrentSession is null
             ? string.Empty
             : string.IsNullOrWhiteSpace(CurrentSession.SessionPassword)
-                ? L["Layout_NoPassword"]
+                ? L["Navigation_NoPassword"]
                 : ShowSessionPassword
                     ? CurrentSession.SessionPassword
                     : "••••";
@@ -449,3 +449,4 @@
         }
     }
 }
+

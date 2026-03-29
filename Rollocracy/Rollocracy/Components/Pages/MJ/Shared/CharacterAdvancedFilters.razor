@@ -39,15 +39,15 @@
                                     <div class="rc-form-field">
                                         <label>@L["MassDistribution_FilterTarget"]</label>
                                         <select @bind="valueFilter.TargetType" @bind:after="() => ResetValueFilterTarget(valueFilter)">
-                                            <option value="@CharacterEffectTargetType.BaseAttribute">@L["EditGameSystem_ModifierTarget_Attribute"]</option>
+                                            <option value="@CharacterEffectTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_Attribute"]</option>
                                             <option value="@CharacterEffectTargetType.Gauge">@L["MassDistribution_Target_Gauge"]</option>
-                                            <option value="@CharacterEffectTargetType.DerivedStat">@L["EditGameSystem_ModifierTarget_DerivedStat"]</option>
-                                            <option value="@CharacterEffectTargetType.Metric">@L["EditGameSystem_ModifierTarget_Metric"]</option>
+                                            <option value="@CharacterEffectTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option>
+                                            <option value="@CharacterEffectTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option>
                                         </select>
                                     </div>
 
                                     <div class="rc-form-field">
-                                        <label>@L["GameTest_TargetDefinition"]</label>
+                                        <label>@L["Test_TargetDefinition"]</label>
                                         <select @bind="valueFilter.TargetId">
                                             @foreach (var item in GetTargetOptions(valueFilter.TargetType))
                                             {
@@ -69,7 +69,7 @@
                                     </div>
 
                                     <div class="rc-form-field">
-                                        <label>@L["GameTest_DifficultyValue"]</label>
+                                        <label>@L["Test_DifficultyValue"]</label>
                                         <input type="number" @bind="valueFilter.Value" />
                                     </div>
                                 </div>

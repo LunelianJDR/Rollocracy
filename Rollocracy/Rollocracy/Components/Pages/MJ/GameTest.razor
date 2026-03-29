@@ -33,7 +33,7 @@ else if (RedirectToHome)
 }
 else if (CurrentSession is null)
 {
-    <p>@L["SessionPage_NotFound"]</p>
+    <p>@L["Session_NotFound"]</p>
 }
 else
 {
@@ -41,13 +41,13 @@ else
         @if (AssignedGameSystem is null)
         {
             <div class="rc-empty-panel">
-                <p>@L["GameTest_NoGameSystemForSession"]</p>
+                <p>@L["Test_NoGameSystemForSession"]</p>
             </div>
         }
         else if (AvailableAttributes.Count == 0 && AvailableDerivedStats.Count == 0)
         {
             <div class="rc-empty-panel">
-                <p>@L["GameTest_NoAttributeAvailable"]</p>
+                <p>@L["Test_NoAttributeAvailable"]</p>
             </div>
         }
         else
@@ -56,14 +56,14 @@ else
                 <div class="rc-tool-panel">
                     <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                         <div class="rc-tool-panel__header-main">
-                            <h5 class="rc-tool-panel__title">@L["GameTest_GameMasterSectionTitle"]</h5>
-                            <p class="rc-tool-panel__subtitle">@L["GameTest_Target"] / @L["GameTest_Dice"] / @L["GameTest_Consequences"]</p>
+                            <h5 class="rc-tool-panel__title">@L["Test_GameMasterSectionTitle"]</h5>
+                            <p class="rc-tool-panel__subtitle">@L["Test_Target"] / @L["Test_Dice"] / @L["Test_Consequences"]</p>
                         </div>
 
                         @if (ActiveTest is null || ActiveTest.IsClosed)
                         {
                             <div class="rc-tool-inline-actions">
-                                <button @onclick="CreateGameTest">@L["GameTest_Create"]</button>
+                                <button @onclick="CreateGameTest">@L["Test_Create"]</button>
                             </div>
                         }
                     </div>
@@ -75,17 +75,17 @@ else
 
                     <div class="rc-tool-form-grid">
                         <div class="rc-form-field">
-                            <label>@L["GameTest_TargetKind"]</label>
+                            <label>@L["Test_TargetKind"]</label>
                             <select @bind="NewTargetKind" @bind:after="OnTestTargetKindChanged">
-                                <option value="@GameTestTargetKind.BaseAttribute">@L["GameTest_TargetAttribute"]</option>
+                                <option value="@GameTestTargetKind.BaseAttribute">@L["Test_TargetAttribute"]</option>
                                 <option value="@GameTestTargetKind.DerivedStat">@L["TestConsequence_Target_DerivedStat"]</option>
                             </select>
                         </div>
 
                         <div class="rc-form-field">
-                            <label>@L["GameTest_Attribute"]</label>
+                            <label>@L["Test_Attribute"]</label>
                             <select @bind="SelectedAttributeId">
-                                <option value="">@L["GameTest_SelectAttribute"]</option>
+                                <option value="">@L["Test_SelectAttribute"]</option>
                                 @if (NewTargetKind == GameTestTargetKind.BaseAttribute)
                                 {
                                     @foreach (var attributeDefinition in AvailableAttributes)
@@ -104,29 +104,29 @@ else
                         </div>
 
                         <div class="rc-form-field">
-                            <label>@L["GameTest_DiceMode"]</label>
+                            <label>@L["Test_DiceMode"]</label>
                             <InputSelect @bind-Value="UseSystemDefaultDice" @bind-Value:after="OnDiceModeChanged">
-                                <option value="true">@L["GameTest_UseSystemDefaultDice"]</option>
-                                <option value="false">@L["GameTest_UseCustomDice"]</option>
+                                <option value="true">@L["Test_UseSystemDefaultDice"]</option>
+                                <option value="false">@L["Test_UseCustomDice"]</option>
                             </InputSelect>
                         </div>
 
                         @if (UseSystemDefaultDice)
                         {
                             <div class="rc-form-field rc-form-field--readonly">
-                                <label>@L["GameTest_Dice"]</label>
+                                <label>@L["Test_Dice"]</label>
                                 <div class="rc-readonly-value">@($"{AssignedGameSystem.DefaultTestDiceCount}d{AssignedGameSystem.DefaultTestDiceSides}")</div>
                             </div>
                         }
                         else
                         {
                             <div class="rc-form-field">
-                                <label>@L["GameTest_DiceCount"]</label>
+                                <label>@L["Test_DiceCount"]</label>
                                 <input type="number" @bind="NewDiceCount" @bind:after="OnCustomDiceChanged" />
                             </div>
 
                             <div class="rc-form-field">
-                                <label>@L["GameTest_DiceSides"]</label>
+                                <label>@L["Test_DiceSides"]</label>
                                 <input type="number" @bind="NewDiceSides" @bind:after="OnCustomDiceChanged" />
                             </div>
                         }
@@ -134,13 +134,13 @@ else
                         @if (AssignedGameSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold)
                         {
                             <div class="rc-form-field">
-                                <label>@L["GameTest_SuccessThreshold"]</label>
+                                <label>@L["Test_SuccessThreshold"]</label>
                                 <input type="number" @bind="NewSuccessThreshold" />
                             </div>
                         }
                         
                         <div class="rc-form-field">
-                            <label>@L["GameTest_AutoRollDelay"]</label>
+                            <label>@L["Test_AutoRollDelay"]</label>
                             <div class="rc-difficulty-slider">
                                 <input type="range"
                                        class="rc-difficulty-slider--classic"
@@ -160,7 +160,7 @@ else
                         </div>
 
                         <div class="rc-form-field rc-form-field--full">
-                            <label>@L["GameTest_DifficultyMode"]</label>
+                            <label>@L["Test_DifficultyMode"]</label>
                             <div class="rc-difficulty-slider">
                                 <input type="range"
                                        class="rc-difficulty-slider--centered"
@@ -181,20 +181,20 @@ else
                         
                         <div class="rc-form-field rc-form-field--full">
                             <div class="rc-tool-subsection__header">
-                            <label>@L["GameTest_GlobalThresholds"]</label>
+                            <label>@L["Test_GlobalThresholds"]</label>
                                 <div class="rc-tool-inline-actions">
                                     <button type="button" @onclick="AddGlobalThreshold" disabled="@(GlobalSuccessThresholds.Count >= 3)">
-                                        @L["GameTest_AddGlobalThreshold"]
+                                        @L["Test_AddGlobalThreshold"]
                                     </button>
                                     <button type="button" @onclick="RemoveGlobalThreshold" disabled="@(GlobalSuccessThresholds.Count == 0)">
-                                        @L["GameTest_RemoveGlobalThreshold"]
+                                        @L["Test_RemoveGlobalThreshold"]
                                     </button>
                                 </div>
                             </div>
 
                             @if (GlobalSuccessThresholds.Count == 0)
                             {
-                                <p>@L["GameTest_NoGlobalThresholds"]</p>
+                                <p>@L["Test_NoGlobalThresholds"]</p>
                             }
                             else
                             {
@@ -226,7 +226,7 @@ else
                     </div>
                     <hr />
                     
-                    <CharacterAudienceFilters Title="@L["GameTest_TargetScope"]"
+                    <CharacterAudienceFilters Title="@L["Test_TargetScope"]"
                                                 OnlyOnline="@(NewTargetScope == TestTargetScope.OnlineLivingCharacters)"
                                                 OnlyAlive="@(NewTargetScope == TestTargetScope.AllLivingCharacters)"
                                                 IncludeNpcs="IncludeNpcsInTest"
@@ -246,15 +246,15 @@ else
                     
                         <div class="rc-filter-group-card">
                             <div class="rc-tool-subsection__header">
-                                <div class="rc-filter-group-card__title">@L["GameTest_Consequences"]</div>
+                                <div class="rc-filter-group-card__title">@L["Test_Consequences"]</div>
                                     <div class="rc-tool-inline-actions">
-                                        <button @onclick="AddGenericConsequence">@L["GameTest_AddConsequence"]</button>
+                                        <button @onclick="AddGenericConsequence">@L["Test_AddConsequence"]</button>
                                     </div>
                             </div>
 
                             @if (ConsequenceRows.Count == 0)
                             {
-                                <p class="rc-tool-muted">@L["GameTest_NoConsequence"]</p>
+                                <p class="rc-tool-muted">@L["Test_NoConsequence"]</p>
                             }
                             else
                             {
@@ -266,7 +266,7 @@ else
                                         <div class="rc-consequence-card">
                                             <div class="rc-consequence-card__grid">
                                                 <div class="rc-form-field">
-                                                    <label>@L["GameTest_When"]</label>
+                                                    <label>@L["Test_When"]</label>
                                                 <select @bind="row.ApplyOn">
                                                     @foreach (var applyOnOption in GetAvailableConsequenceApplyOnOptions())
                                                     {
@@ -276,7 +276,7 @@ else
                                                 </div>
 
                                                 <div class="rc-form-field">
-                                                    <label>@L["GameTest_ConsequenceOperation"]</label>
+                                                    <label>@L["Test_ConsequenceOperation"]</label>
                                                     <select value="@((int)row.OperationType)" @onchange="e => ChangeConsequenceOperation(row, e.Value?.ToString())">
                                                         <option value="@((int)TestConsequenceOperationType.AddValue)">@L["TestConsequence_Operation_AddValue"]</option>
                                                         <option value="@((int)TestConsequenceOperationType.GrantTalent)">@L["TestConsequence_Operation_GrantTalent"]</option>
@@ -289,11 +289,11 @@ else
                                                 @if (row.OperationType == TestConsequenceOperationType.AddValue)
                                                 {
                                                     <div class="rc-form-field">
-                                                        <label>@L["GameTest_ConsequenceTargetKind"]</label>
+                                                        <label>@L["Test_ConsequenceTargetKind"]</label>
                                                         <select value="@((int)row.TargetKind)" @onchange="e => ChangeConsequenceTargetKind(row, e.Value?.ToString())">
-                                                            <option value="@((int)TestConsequenceTargetKind.Gauge)">@L["GameTest_TargetGauge"]</option>
-                                                            <option value="@((int)TestConsequenceTargetKind.SessionGauge)">@L["SessionPage_TargetSessionGauge"]</option>
-                                                            <option value="@((int)TestConsequenceTargetKind.Attribute)">@L["GameTest_TargetAttribute"]</option>
+                                                            <option value="@((int)TestConsequenceTargetKind.Gauge)">@L["Test_TargetGauge"]</option>
+                                                            <option value="@((int)TestConsequenceTargetKind.SessionGauge)">@L["Session_Manage_TargetSessionGauge"]</option>
+                                                            <option value="@((int)TestConsequenceTargetKind.Attribute)">@L["Test_TargetAttribute"]</option>
                                                             <option value="@((int)TestConsequenceTargetKind.DerivedStat)">@L["TestConsequence_Target_DerivedStat"]</option>
                                                             <option value="@((int)TestConsequenceTargetKind.Metric)">@L["TestConsequence_Target_Metric"]</option>
                                                         </select>
@@ -303,7 +303,7 @@ else
                                                 {
                                                     row.TargetKind = TestConsequenceTargetKind.Talent;
                                                     <div class="rc-form-field rc-form-field--readonly">
-                                                        <label>@L["GameTest_ConsequenceTargetKind"]</label>
+                                                        <label>@L["Test_ConsequenceTargetKind"]</label>
                                                         <div class="rc-readonly-value">@L["TestConsequence_Target_Talent"]</div>
                                                     </div>
                                                 }
@@ -311,13 +311,13 @@ else
                                                 {
                                                     row.TargetKind = TestConsequenceTargetKind.Item;
                                                     <div class="rc-form-field rc-form-field--readonly">
-                                                        <label>@L["GameTest_ConsequenceTargetKind"]</label>
+                                                        <label>@L["Test_ConsequenceTargetKind"]</label>
                                                         <div class="rc-readonly-value">@L["TestConsequence_Target_Item"]</div>
                                                     </div>
                                                 }
 
                                                 <div class="rc-form-field">
-                                                    <label>@L["GameTest_TargetDefinition"]</label>
+                                                    <label>@L["Test_TargetDefinition"]</label>
 
                                                     @if (row.TargetKind == TestConsequenceTargetKind.Gauge)
                                                     {
@@ -387,18 +387,18 @@ else
                                                 @if (row.OperationType == TestConsequenceOperationType.AddValue)
                                                 {
                                                     <div class="rc-form-field">
-                                                        <label>@L["GameTest_DifficultyMode"]</label>
+                                                        <label>@L["Test_DifficultyMode"]</label>
                                                         <select @bind="row.ModifierMode">
-                                                            <option value="@TestModifierMode.Bonus">@L["GameTest_Bonus"]</option>
-                                                            <option value="@TestModifierMode.Malus">@L["GameTest_Malus"]</option>
+                                                            <option value="@TestModifierMode.Bonus">@L["Test_Bonus"]</option>
+                                                            <option value="@TestModifierMode.Malus">@L["Test_Malus"]</option>
                                                         </select>
                                                     </div>
 
                                                     <div class="rc-form-field">
-                                                        <label>@L["GameTest_ConsequenceValueMode"]</label>
+                                                        <label>@L["Test_ConsequenceValueMode"]</label>
                                                         <select @bind="row.ValueMode">
-                                                            <option value="@ModifierValueMode.Fixed">@L["EditGameSystem_ModifierValueMode_Fixed"]</option>
-                                                            <option value="@ModifierValueMode.Metric">@L["EditGameSystem_ModifierValueMode_Metric"]</option>
+                                                            <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
+                                                            <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
                                                         </select>
                                                     </div>
 
@@ -417,7 +417,7 @@ else
                                                     else
                                                     {
                                                         <div class="rc-form-field">
-                                                            <label>@L["GameTest_DifficultyValue"]</label>
+                                                            <label>@L["Test_DifficultyValue"]</label>
                                                             <input type="number" @bind="row.Value" />
                                                         </div>
                                                     }
@@ -436,7 +436,7 @@ else
                     @if (ActiveTest is null || ActiveTest.IsClosed)
                     {
                         <div class="rc-tool-actions rc-tool-actions--right">
-                            <button @onclick="CreateGameTest">@L["GameTest_Create"]</button>
+                            <button @onclick="CreateGameTest">@L["Test_Create"]</button>
                         </div>
                     }
                 </div>
@@ -445,7 +445,7 @@ else
                     @if (ActiveTest is null)
                     {
                         <div class="rc-empty-panel">
-                            <p>@L["GameTest_LastTestPerformed"]</p>
+                            <p>@L["Test_LastTestPerformed"]</p>
                         </div>
                     }
                     else
@@ -459,7 +459,7 @@ else
                             <div class="rc-tool-inline-actions">
                                 @if (!ConfirmRollbackVisible)
                                 {
-                                    <button @onclick="ShowRollbackConfirmation">@L["GameTest_RollbackLastTest"]</button>
+                                    <button @onclick="ShowRollbackConfirmation">@L["Test_RollbackLastTest"]</button>
                                 }
                                 else
                                 {
@@ -471,53 +471,53 @@ else
 
                         @if (ConfirmRollbackVisible)
                         {
-                            <div class="rc-inline-warning">@L["GameTest_RollbackConfirmQuestion"]</div>
+                            <div class="rc-inline-warning">@L["Test_RollbackConfirmQuestion"]</div>
                         }
 
                         <div class="rc-test-stats-grid">
                             <div class="rc-stat-card">
-                                <div class="rc-stat-card__label">@L["GameTest_TargetCount"]</div>
+                                <div class="rc-stat-card__label">@L["Test_TargetCount"]</div>
                                 <div class="rc-stat-card__value">@ActiveTest.TargetCount</div>
                             </div>
 
                             <div class="rc-stat-card">
-                                <div class="rc-stat-card__label">@L["GameTest_RolledCount"]</div>
+                                <div class="rc-stat-card__label">@L["Test_RolledCount"]</div>
                                 <div class="rc-stat-card__value">@ActiveTest.RolledCount</div>
                             </div>
 
                             <div class="rc-stat-card">
-                                <div class="rc-stat-card__label">@L["GameTest_SuccessCount"]</div>
+                                <div class="rc-stat-card__label">@L["Test_SuccessCount"]</div>
                                 <div class="rc-stat-card__value">@ActiveTest.SuccessCount</div>
                             </div>
 
                             <div class="rc-stat-card">
-                                <div class="rc-stat-card__label">@L["GameTest_FailureCount"]</div>
+                                <div class="rc-stat-card__label">@L["Test_FailureCount"]</div>
                                 <div class="rc-stat-card__value">@ActiveTest.FailureCount</div>
                             </div>
 
                             <div class="rc-stat-card">
-                                <div class="rc-stat-card__label">@L["GameTest_CriticalSuccessCount"]</div>
+                                <div class="rc-stat-card__label">@L["Test_CriticalSuccessCount"]</div>
                                 <div class="rc-stat-card__value">@ActiveTest.CriticalSuccessCount</div>
                             </div>
 
                             <div class="rc-stat-card">
-                                <div class="rc-stat-card__label">@L["GameTest_CriticalFailureCount"]</div>
+                                <div class="rc-stat-card__label">@L["Test_CriticalFailureCount"]</div>
                                 <div class="rc-stat-card__value">@ActiveTest.CriticalFailureCount</div>
                             </div>
 
                             <div class="rc-stat-card">
-                                <div class="rc-stat-card__label">@L["GameTest_SuccessRate"]</div>
+                                <div class="rc-stat-card__label">@L["Test_SuccessRate"]</div>
                                 <div class="rc-stat-card__value">@($"{ActiveTest.SuccessRatePercent:F1}%")</div>
                             </div>
 
                             <div class="rc-stat-card">
-                                <div class="rc-stat-card__label">@L["GameTest_AverageRoll"]</div>
+                                <div class="rc-stat-card__label">@L["Test_AverageRoll"]</div>
                                 <div class="rc-stat-card__value">@(ActiveTest.AverageDiceTotal?.ToString("F2") ?? "-")</div>
                             </div>
                         </div>
 
                         <div class="rc-tool-subsection">
-                            <div class="rc-tool-subsection__title">@L["GameTest_IndividualResults"]</div>
+                            <div class="rc-tool-subsection__title">@L["Test_IndividualResults"]</div>
 
                             <div class="rc-test-result-grid">
                                 @foreach (var resultLine in ActiveTest.Results)
@@ -531,7 +531,7 @@ else
                                                     @if (!resultLine.HasRolled)
                                                     {
                                                         <div class="rc-test-result-card__status">
-                                                            <span class="rc-result-banner pending">@L["GameTest_Pending"]</span>
+                                                            <span class="rc-result-banner pending">@L["Test_Pending"]</span>
                                                         </div>
                                                     }
                                                     else
@@ -999,13 +999,13 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
 
             if (AssignedGameSystem is null)
             {
-                Message = L["GameTest_NoGameSystemForSession"];
+                Message = L["Test_NoGameSystemForSession"];
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(SelectedAttributeId))
             {
-                Message = L["GameTest_AttributeRequired"];
+                Message = L["Test_AttributeRequired"];
                 return;
             }
 
@@ -1067,7 +1067,7 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
 
             ActiveTest = await GameTestService.CreateGameTestAsync(SessionId, CurrentUserId, request);
             await LoadCharacterSummariesAsync();
-            Message = L["GameTest_Created"];
+            Message = L["Test_Created"];
         }
         catch (Exception ex)
         {
@@ -1109,10 +1109,10 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
     {
         return outcome switch
         {
-            GameTestOutcome.CriticalSuccess => L["GameTest_CriticalSuccess"],
-            GameTestOutcome.CriticalFailure => L["GameTest_CriticalFailure"],
-            GameTestOutcome.Success => L["GameTest_Success"],
-            _ => L["GameTest_Failure"]
+            GameTestOutcome.CriticalSuccess => L["Test_CriticalSuccess"],
+            GameTestOutcome.CriticalFailure => L["Test_CriticalFailure"],
+            GameTestOutcome.Success => L["Test_Success"],
+            _ => L["Test_Failure"]
         };
     }
 
@@ -1161,8 +1161,8 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
     private string GetTargetDisplayName()
     {
         return NewTargetKind == GameTestTargetKind.DerivedStat
-            ? AvailableDerivedStats.FirstOrDefault(x => x.DerivedStatDefinitionId?.ToString() == SelectedAttributeId)?.Name ?? L["GameTest_Target"]
-            : AvailableAttributes.FirstOrDefault(x => x.Id.ToString() == SelectedAttributeId)?.Name ?? L["GameTest_Target"];
+            ? AvailableDerivedStats.FirstOrDefault(x => x.DerivedStatDefinitionId?.ToString() == SelectedAttributeId)?.Name ?? L["Test_Target"]
+            : AvailableAttributes.FirstOrDefault(x => x.Id.ToString() == SelectedAttributeId)?.Name ?? L["Test_Target"];
     }
 
     private int GetSuccessDifference(GameMasterGameTestResultLineDto resultLine)
@@ -1332,7 +1332,7 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
 
     private string GetGlobalThresholdLabel(int index)
     {
-        return L["GameTest_GlobalThresholdLabel", index + 1];
+        return L["Test_GlobalThresholdLabel", index + 1];
     }
 
     private void BeginGlobalThresholdDrag(int index)
@@ -1394,30 +1394,30 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
     {
         var result = new List<(TestConsequenceApplyOn, string)>
     {
-        (TestConsequenceApplyOn.OnSuccess, L["GameTest_OnSuccess"]),
-        (TestConsequenceApplyOn.OnFailure, L["GameTest_OnFailure"]),
-        (TestConsequenceApplyOn.OnCriticalSuccess, L["GameTest_OnCriticalSuccess"]),
-        (TestConsequenceApplyOn.OnCriticalFailure, L["GameTest_OnCriticalFailure"])
+        (TestConsequenceApplyOn.OnSuccess, L["Test_OnSuccess"]),
+        (TestConsequenceApplyOn.OnFailure, L["Test_OnFailure"]),
+        (TestConsequenceApplyOn.OnCriticalSuccess, L["Test_OnCriticalSuccess"]),
+        (TestConsequenceApplyOn.OnCriticalFailure, L["Test_OnCriticalFailure"])
     };
 
         if (GlobalSuccessThresholds.Count >= 1)
         {
-            result.Add((TestConsequenceApplyOn.OnGlobalSuccess, L["GameTest_OnGlobalSuccess"]));
+            result.Add((TestConsequenceApplyOn.OnGlobalSuccess, L["Test_OnGlobalSuccess"]));
         }
 
         if (GlobalSuccessThresholds.Count >= 2)
         {
-            result.Add((TestConsequenceApplyOn.OnModerateSuccess, L["GameTest_OnModerateSuccess"]));
+            result.Add((TestConsequenceApplyOn.OnModerateSuccess, L["Test_OnModerateSuccess"]));
         }
 
         if (GlobalSuccessThresholds.Count >= 3)
         {
-            result.Add((TestConsequenceApplyOn.OnModerateFailure, L["GameTest_OnModerateFailure"]));
+            result.Add((TestConsequenceApplyOn.OnModerateFailure, L["Test_OnModerateFailure"]));
         }
         
         if (GlobalSuccessThresholds.Count >= 1)
         {
-            result.Add((TestConsequenceApplyOn.OnGlobalFailure, L["GameTest_OnGlobalFailure"]));
+            result.Add((TestConsequenceApplyOn.OnGlobalFailure, L["Test_OnGlobalFailure"]));
         }
 
         return result;
@@ -1534,7 +1534,7 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
             await GameTestService.RollbackLatestTestAsync(SessionId, CurrentUserId);
             await LoadPageData();
 
-            Message = L["GameTest_RollbackSuccess"];
+            Message = L["Test_RollbackSuccess"];
         }
         catch (Exception ex)
         {

@@ -49,7 +49,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             if (!session.GameSystemId.HasValue)
                 throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
@@ -66,7 +66,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(gs => gs.Id == session.GameSystemId.Value);
 
             if (gameSystem == null)
-                throw new Exception(_localizer["Backend_GameSystemNotFound"]);
+                throw new Exception(_localizer["GameSystem_NotFound"]);
 
             var targetName = await ResolveTestTargetNameAsync(
                 context,
@@ -474,7 +474,7 @@ namespace Rollocracy.Infrastructure.Services
                 .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
 
             if (session == null)
-                throw new Exception(_localizer["Backend_SessionNotFound"]);
+                throw new Exception(_localizer["Session_NotFound"]);
 
             var latestTest = await context.GameTests
                 .Where(t => t.SessionId == sessionId)

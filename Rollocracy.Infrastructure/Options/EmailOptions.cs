@@ -12,6 +12,6 @@
         public string FromNoReply { get; set; } = "no-reply@rollocracy.com";
         public string FromContact { get; set; } = "contact@rollocracy.com";
 
-        public string PublicBaseUrl { get; set; } = "https://localhost:7252";
+        public string PublicBaseUrl { get; set; } = string.Empty;
     }
 }

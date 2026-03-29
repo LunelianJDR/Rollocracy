@@ -64,7 +64,7 @@ namespace Rollocracy.Controllers
             var success = await SignInUserAsync(request.Username, request.Password, request.RememberMe);
 
             if (!success)
-                return Unauthorized(_localizer["Backend_InvalidCredentials"]);
+                return Unauthorized(_localizer["Auth_InvalidCredentials"]);
 
             return Ok();
         }

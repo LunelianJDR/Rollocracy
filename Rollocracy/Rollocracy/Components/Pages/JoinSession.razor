@@ -16,8 +16,8 @@
 @inject IStringLocalizer<SharedTexts> L
 
 
-<p>@L["JoinSession_GameMasterLabel"] : @mjUsername</p>
-<p>@L["JoinSession_SessionLabel"] : @sessionSlug</p>
+<p>@L["Session_Join_GameMasterLabel"] : @mjUsername</p>
+<p>@L["Session_Join_SessionLabel"] : @sessionSlug</p>
 
 @if (!IsLoaded)
 {
@@ -25,31 +25,31 @@
 }
 else if (!IsAuthenticated)
 {
-    <p>@L["JoinSession_MustBeLoggedIn"]</p>
+    <p>@L["Session_Join_MustBeLoggedIn"]</p>
 }
 else if (Session is null)
 {
-    <p>@L["JoinSession_NotFound"]</p>
+    <p>@L["Session_NotFound"]</p>
 }
 else if (!Session.IsActive)
 {
-    <p>@L["JoinSession_Inactive"]</p>
+    <p>@L["Session_Inactive"]</p>
 }
 else
 {
     @if (RequiresPassword)
     {
         <div>
-            <label>@L["JoinSession_PasswordLabel"]</label><br />
+            <label>@L["Session_Password"]</label><br />
             <input @bind="SessionPassword" />
         </div>
     }
     else
     {
-        <p>@L["JoinSession_NoPasswordRequired"]</p>
+        <p>@L["Session_Join_NoPasswordRequired"]</p>
     }
 
-    <button @onclick="HandleJoinSession">@L["JoinSession_Submit"]</button>
+    <button @onclick="HandleJoinSession">@L["Session_Join_Submit"]</button>
 
     @if (!string.IsNullOrWhiteSpace(Message))
     {
@@ -105,13 +105,13 @@ else
         {
             if (Session is null)
             {
-                Message = L["JoinSession_NotFound"];
+                Message = L["Session_NotFound"];
                 return;
             }
 
             if (!Session.IsActive)
             {
-                Message = L["JoinSession_Inactive"];
+                Message = L["Session_Inactive"];
                 return;
             }
 

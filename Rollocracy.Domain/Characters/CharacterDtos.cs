@@ -121,6 +121,8 @@ namespace Rollocracy.Domain.Characters
         public bool CanCreateNewCharacter { get; set; }
         public DateTime? CanCreateNewCharacterAtUtc { get; set; }
         public SessionPublicStatsDto SessionStats { get; set; } = new();
+        public string GameMasterUsername { get; set; } = string.Empty;
+        public string? GameMasterTwitchLogin { get; set; }
         public SessionSpecialRole SpecialRole { get; set; } = SessionSpecialRole.None;
         public bool CanViewSessionCharacters { get; set; }
         public bool CanEditSessionCharacters { get; set; }
