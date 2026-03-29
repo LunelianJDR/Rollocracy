@@ -144,8 +144,15 @@ namespace Rollocracy.Controllers
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request)
         {
-            await _accountSecurityService.RequestPasswordResetAsync(request.EmailOrUsername);
-            return Ok();
+            try
+            {
+                await _accountSecurityService.RequestPasswordResetAsync(request.EmailOrUsername);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpPost("reset-password")]

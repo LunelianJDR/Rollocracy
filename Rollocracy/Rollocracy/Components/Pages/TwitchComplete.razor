@@ -114,6 +114,12 @@
         {
             Message = string.Empty;
 
+            if (string.IsNullOrWhiteSpace(Username))
+            {
+                Message = L["Auth_TwitchComplete_UsernameRequired"];
+                return;
+            }
+
             var response = await Http.PostAsJsonAsync("api/twitch/complete", new CompleteTwitchRegistrationRequestDto
             {
                 PendingToken = PendingToken,
@@ -124,8 +130,7 @@
 
             if (!response.IsSuccessStatusCode)
             {
-                var error = await response.Content.ReadAsStringAsync();
-                Message = $"{L["Common_Error"]} : {error}";
+                Message = await ExtractApiErrorMessageAsync(response, L["Auth_TwitchComplete_RequestFailed"]);
                 return;
             }
 
@@ -135,5 +140,30 @@
         {
             Message = $"{L["Common_Error"]} : {ex.Message}";
         }
+    }
+
+    private async Task<string> ExtractApiErrorMessageAsync(HttpResponseMessage response, string fallbackMessage)
+    {
+        var contentType = response.Content.Headers.ContentType?.MediaType;
+        var body = await response.Content.ReadAsStringAsync();
+
+        if (string.IsNullOrWhiteSpace(body))
+            return fallbackMessage;
+
+        if (!string.IsNullOrWhiteSpace(contentType) &&
+            contentType.Contains("html", StringComparison.OrdinalIgnoreCase))
+        {
+            return fallbackMessage;
+        }
+
+        var trimmed = body.Trim();
+
+        if (trimmed.StartsWith("<!DOCTYPE html>", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.StartsWith("<html", StringComparison.OrdinalIgnoreCase))
+        {
+            return fallbackMessage;
+        }
+
+        return $"{L["Common_Error"]} : {trimmed}";
     }
 }

@@ -63,10 +63,7 @@
 
             if (!response.IsSuccessStatusCode)
             {
-                var error = await response.Content.ReadAsStringAsync();
-                ErrorMessage = string.IsNullOrWhiteSpace(error)
-                    ? L["Auth_VerifyEmail_InvalidOrExpired"]
-                    : error;
+                ErrorMessage = await ExtractApiErrorMessageAsync(response, L["Auth_VerifyEmail_InvalidOrExpired"]);
 
                 IsLoading = false;
                 return;
@@ -80,5 +77,30 @@
             ErrorMessage = $"{L["Common_Error"]} : {ex.Message}";
             IsLoading = false;
         }
+    }
+
+    private async Task<string> ExtractApiErrorMessageAsync(HttpResponseMessage response, string fallbackMessage)
+    {
+        var contentType = response.Content.Headers.ContentType?.MediaType;
+        var body = await response.Content.ReadAsStringAsync();
+
+        if (string.IsNullOrWhiteSpace(body))
+            return fallbackMessage;
+
+        if (!string.IsNullOrWhiteSpace(contentType) &&
+            contentType.Contains("html", StringComparison.OrdinalIgnoreCase))
+        {
+            return fallbackMessage;
+        }
+
+        var trimmed = body.Trim();
+
+        if (trimmed.StartsWith("<!DOCTYPE html>", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.StartsWith("<html", StringComparison.OrdinalIgnoreCase))
+        {
+            return fallbackMessage;
+        }
+
+        return trimmed;
     }
 }

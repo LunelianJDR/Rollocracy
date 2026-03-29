@@ -13,17 +13,20 @@ namespace Rollocracy.Infrastructure.Services
         private readonly IStringLocalizer _localizer;
         private readonly IPresenceTracker _presenceTracker;
         private readonly ISessionNotifier _sessionNotifier;
+        private readonly IAccountService _accountService;
 
         public SessionService(
             IDbContextFactory<RollocracyDbContext> contextFactory,
             IStringLocalizerFactory localizerFactory,
             IPresenceTracker presenceTracker,
-            ISessionNotifier sessionNotifier)
+            ISessionNotifier sessionNotifier,
+            IAccountService accountService)
         {
             _contextFactory = contextFactory;
             _localizer = localizerFactory.Create("Rollocracy.Localization.SharedTexts", "Rollocracy");
             _presenceTracker = presenceTracker;
             _sessionNotifier = sessionNotifier;
+            _accountService = accountService;
         }
 
         public async Task<Session> CreateSessionAsync(
@@ -33,6 +36,8 @@ namespace Rollocracy.Infrastructure.Services
     string sessionPassword)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
+
+            await _accountService.ApplyDueSubscriptionChangesAsync(gameMasterUserAccountId);
 
             var gameMasterUser = await context.UserAccounts
                 .FirstOrDefaultAsync(u => u.Id == gameMasterUserAccountId);
@@ -594,12 +599,14 @@ namespace Rollocracy.Infrastructure.Services
 
         public async Task<bool> CanUserCreateSessionsAsync(Guid userAccountId)
         {
+            await _accountService.ApplyDueSubscriptionChangesAsync(userAccountId);
             var maxPlayers = await GetUserMaxPlayersPerSessionAsync(userAccountId);
             return maxPlayers > 0;
         }
 
         public async Task<int> GetUserMaxPlayersPerSessionAsync(Guid userAccountId)
         {
+            await _accountService.ApplyDueSubscriptionChangesAsync(userAccountId);
             await using var context = await _contextFactory.CreateDbContextAsync();
 
             var user = await context.UserAccounts

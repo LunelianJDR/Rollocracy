@@ -18,5 +18,13 @@ namespace Rollocracy.Domain.Interfaces
         Task SetGameMasterModeAsync(
             Guid userAccountId,
             bool enabled);
+
+        Task<List<AccountSubscriptionPlanDto>> GetSubscriptionPlansAsync(Guid userAccountId);
+
+        Task ChangeSubscriptionPlanAsync(Guid userAccountId, Guid planId);
+
+        Task CancelSubscriptionAsync(Guid userAccountId);
+
+        Task ApplyDueSubscriptionChangesAsync(Guid userAccountId);
     }
 }

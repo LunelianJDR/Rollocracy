@@ -9,6 +9,7 @@
 @using Rollocracy.Domain.Account
 @using Rollocracy.Domain.Interfaces
 @using Rollocracy.Localization
+@using System.Linq
 @inject IAccountService AccountService
 @inject IAccountSecurityService AccountSecurityService
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -305,20 +306,120 @@ else
                 }
                 else
                 {
-                    <div class="rc-tool-form-grid">
-                        <div class="rc-form-field">
-                            <label>@L["Account_Settings_MaxPlayersPerSession"]</label>
-                            <div class="rc-readonly-value">@Settings.MaxPlayersPerSession</div>
+                    var hasScheduledChange = Settings.CancelSubscriptionAtRenewal || !string.IsNullOrWhiteSpace(Settings.PendingSubscriptionPlanCode);
+
+                    <div class="rc-subscription-current-card @(hasScheduledChange ? "is-warning" : "is-active")">
+                        <div class="rc-subscription-current-card__header">
+                            <div>
+                                <div class="rc-subscription-current-card__eyebrow">@L["Account_Settings_SubscriptionCurrentPlan"]</div>
+                                <div class="rc-subscription-current-card__title">
+                                    @(Settings.CurrentSubscriptionPlanCode is null
+                                        ? L["Account_Settings_SubscriptionNoActivePlan"]
+                                        : GetPlanDisplayName(Settings.CurrentSubscriptionPlanCode))
+                                </div>
+                            </div>
+
+                            <div class="rc-subscription-current-card__badge">
+                                @if (hasScheduledChange)
+                                {
+                                    <span class="rc-inline-pill">@L["Account_Settings_SubscriptionPendingBadge"]</span>
+                                }
+                                else
+                                {
+                                    <span class="rc-inline-pill">@L["Account_Settings_SubscriptionCurrentBadge"]</span>
+                                }
+                            </div>
                         </div>
 
-                        <div class="rc-form-field">
-                            <label>@L["Account_Settings_SubscriptionStatus"]</label>
-                            <div class="rc-readonly-value">@L["Account_Settings_SubscriptionComingSoon"]</div>
+                        <div class="rc-subscription-current-card__stats">
+                            <div class="rc-subscription-current-card__stat">
+                                <span class="rc-subscription-current-card__label">@L["Account_Settings_MaxPlayersPerSession"]</span>
+                                <strong class="rc-subscription-current-card__value">@Settings.MaxPlayersPerSession</strong>
+                            </div>
+
+                            <div class="rc-subscription-current-card__stat">
+                                <span class="rc-subscription-current-card__label">@L["Account_Settings_SubscriptionRenewsOn"]</span>
+                                <strong class="rc-subscription-current-card__value">
+                                    @(Settings.NextSubscriptionRenewalAtUtc.HasValue
+                                        ? Settings.NextSubscriptionRenewalAtUtc.Value.ToLocalTime().ToString("g")
+                                        : "—")
+                                </strong>
+                            </div>
+
+                            <div class="rc-subscription-current-card__stat">
+                                <span class="rc-subscription-current-card__label">@L["Account_Settings_SubscriptionPendingPlan"]</span>
+                                <strong class="rc-subscription-current-card__value">
+                                    @if (Settings.CancelSubscriptionAtRenewal)
+                                    {
+                                        @L["Account_Settings_SubscriptionCancellationScheduled"]
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(Settings.PendingSubscriptionPlanCode))
+                                    {
+                                        @GetPlanDisplayName(Settings.PendingSubscriptionPlanCode!)
+                                    }
+                                    else
+                                    {
+                                        @("—")
+                                    }
+                                </strong>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="rc-tool-actions">
-                        <button type="button" disabled>@L["Account_Settings_SubscriptionButtonSoon"]</button>
+                    <div class="rc-subscription-plan-grid">
+                        @foreach (var plan in SubscriptionPlans.OrderBy(x => x.DisplayOrder))
+                        {
+                            var isWarningCurrent = plan.IsCurrent && hasScheduledChange;
+                            var cardClass = plan.IsCurrent
+                                ? (isWarningCurrent ? "is-current-warning" : "is-current")
+                                : (plan.IsPending ? "is-pending" : string.Empty);
+
+                            <div class="rc-subscription-plan-card @cardClass">
+                                <div class="rc-subscription-plan-card__header">
+                                    <div>
+                                        <div class="rc-subscription-plan-card__title">@GetPlanDisplayName(plan.Code)</div>
+                                        <div class="rc-subscription-plan-card__subtitle">@GetPlanPriceLabel(plan)</div>
+                                    </div>
+
+                                    <div class="rc-subscription-plan-card__badges">
+                                        @if (plan.IsCurrent)
+                                        {
+                                            <span class="rc-inline-pill">
+                                                @(isWarningCurrent
+                                                    ? L["Account_Settings_SubscriptionPendingBadge"]
+                                                    : L["Account_Settings_SubscriptionCurrentBadge"])
+                                            </span>
+                                        }
+                                        else if (plan.IsPending)
+                                        {
+                                            <span class="rc-inline-pill">@L["Account_Settings_SubscriptionPendingBadge"]</span>
+                                        }
+                                    </div>
+                                </div>
+
+                                <div class="rc-subscription-plan-card__capacity">
+                                    @string.Format(L["Account_Settings_SubscriptionPlayersIncluded"], plan.MaxPlayersPerSession)
+                                </div>
+
+                                <div class="rc-tool-actions">
+                                    @if (plan.IsCurrent)
+                                    {
+                                        @if (!plan.IsFree)
+                                        {
+                                            <button type="button" @onclick="CancelCurrentSubscription">
+                                                @L["Account_Settings_SubscriptionUnsubscribe"]
+                                            </button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <button type="button" @onclick="() => SelectSubscriptionPlan(plan.PlanId)">
+                                            @GetPlanActionLabel(plan)
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
                     </div>
                 }
             </div>
@@ -331,6 +432,7 @@ else
     private bool RedirectToLogin;
     private Guid CurrentUserId;
     private AccountSettingsDto? Settings;
+    private List<AccountSubscriptionPlanDto> SubscriptionPlans = new();
     private string Message = string.Empty;
 
     private string EditableEmail = string.Empty;
@@ -385,6 +487,7 @@ else
         try
         {
             Settings = await AccountService.GetAccountSettingsAsync(CurrentUserId);
+            SubscriptionPlans = await AccountService.GetSubscriptionPlansAsync(CurrentUserId);
 
             EditableEmail = Settings.Email ?? string.Empty;
             EditableLanguage = Settings.Language;
@@ -393,6 +496,7 @@ else
         catch
         {
             Settings = null;
+            SubscriptionPlans.Clear();
         }
     }
 
@@ -569,5 +673,74 @@ else
             : L[Settings.LastSensitiveChangeType];
 
         return $"{typeLabel} — {Settings.LastSensitiveChangeAtUtc.Value.ToLocalTime():g}";
+    }
+
+    private async Task SelectSubscriptionPlan(Guid planId)
+    {
+        try
+        {
+            Message = string.Empty;
+
+            await AccountService.ChangeSubscriptionPlanAsync(CurrentUserId, planId);
+
+            await LoadSettingsAsync();
+            Message = L["Account_Settings_SubscriptionActionCompleted"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task CancelCurrentSubscription()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            await AccountService.CancelSubscriptionAsync(CurrentUserId);
+
+            await LoadSettingsAsync();
+            Message = L["Account_Settings_SubscriptionCancellationScheduled"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private string GetPlanDisplayName(string code)
+    {
+        return code switch
+        {
+            "aventurier" => L["Subscription_Plan_Aventurier"],
+            "heros" => L["Subscription_Plan_Heros"],
+            "champion" => L["Subscription_Plan_Champion"],
+            "legende" => L["Subscription_Plan_Legende"],
+            "mythique" => L["Subscription_Plan_Mythique"],
+            "divin" => L["Subscription_Plan_Divin"],
+            _ => code
+        };
+    }
+
+    private string GetPlanPriceLabel(AccountSubscriptionPlanDto plan)
+    {
+        if (plan.IsFree)
+            return L["Account_Settings_SubscriptionFreePrice"];
+
+        return string.Format(L["Account_Settings_SubscriptionPaidPrice"], plan.MonthlyPriceTtc.ToString("0.##"));
+    }
+
+    private string GetPlanActionLabel(AccountSubscriptionPlanDto targetPlan)
+    {
+        var currentPlan = SubscriptionPlans.FirstOrDefault(x => x.IsCurrent);
+
+        if (currentPlan is null)
+            return L["Account_Settings_SubscriptionSelectPlan"];
+
+        if (targetPlan.MaxPlayersPerSession > currentPlan.MaxPlayersPerSession)
+            return L["Account_Settings_SubscriptionChangePlan"];
+
+        return L["Account_Settings_SubscriptionChangePlanAtRenewal"];
     }
 }

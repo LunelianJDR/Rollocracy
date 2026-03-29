@@ -13,6 +13,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject IStringLocalizer<SharedTexts> L
+@inject IConfiguration Configuration
 
 <div class="rc-shell @(IsSidebarCollapsed ? "sidebar-collapsed" : string.Empty)">
     <aside class="rc-shell__sidebar">
@@ -149,9 +150,9 @@
 </div>
 
 <div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
+    @L["Layout_GlobalUnhandledError"]
+    <a href="" class="reload">@L["Layout_Reload"]</a>
+    <a class="dismiss">@L["Common_Close"]</a>
 </div>
 
 @code {
@@ -324,8 +325,15 @@
         if (hubConnection is not null)
             return;
 
+        var internalBaseUrl = Configuration["InternalUrls:AppBaseUrl"];
+
+        if (string.IsNullOrWhiteSpace(internalBaseUrl))
+        {
+            internalBaseUrl = Navigation.BaseUri.TrimEnd('/');
+        }
+
         hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri("/sessionhub"))
+            .WithUrl($"{internalBaseUrl.TrimEnd('/')}/sessionhub")
             .WithAutomaticReconnect()
             .Build();
 

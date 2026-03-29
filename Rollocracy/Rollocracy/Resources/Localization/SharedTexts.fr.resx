@@ -2947,6 +2947,93 @@
 	<data name="Backend_VoteWeightMetricRequired" xml:space="preserve">
 		<value>Le système doit toujours contenir la metric obligatoire « Poids de vote ».</value>
 	</data>
+	<data name="Backend_SubscriptionRequiresEmail" xml:space="preserve">
+    <value>Une adresse email est requise pour gérer l’abonnement.</value>
+  </data>
+	<data name="Backend_SubscriptionRequiresGameMasterMode" xml:space="preserve">
+    <value>Vous devez d’abord activer le mode MJ pour gérer l’abonnement.</value>
+  </data>
+	<data name="Backend_SubscriptionPlanNotFound" xml:space="preserve">
+    <value>La formule d’abonnement demandée est introuvable.</value>
+  </data>
+	<data name="Backend_FreeSubscriptionPlanNotFound" xml:space="preserve">
+    <value>La formule gratuite par défaut est introuvable.</value>
+  </data>
+
+	<data name="Account_SecurityHistory_GameMasterModeEnabled" xml:space="preserve">
+    <value>Mode MJ activé</value>
+  </data>
+	<data name="Account_SecurityHistory_GameMasterModeDisabled" xml:space="preserve">
+    <value>Mode MJ désactivé</value>
+  </data>
+	<data name="Account_SecurityHistory_SubscriptionChanged" xml:space="preserve">
+    <value>Abonnement modifié</value>
+  </data>
+
+	<data name="Subscription_Plan_Aventurier" xml:space="preserve">
+    <value>Aventurier</value>
+  </data>
+	<data name="Subscription_Plan_Heros" xml:space="preserve">
+    <value>Héros</value>
+  </data>
+	<data name="Subscription_Plan_Champion" xml:space="preserve">
+    <value>Champion</value>
+  </data>
+	<data name="Subscription_Plan_Legende" xml:space="preserve">
+    <value>Légende</value>
+  </data>
+	<data name="Subscription_Plan_Mythique" xml:space="preserve">
+    <value>Mythique</value>
+  </data>
+	<data name="Subscription_Plan_Divin" xml:space="preserve">
+    <value>Divin</value>
+  </data>
+
+	<data name="Account_Settings_SubscriptionCurrentPlan" xml:space="preserve">
+    <value>Formule actuelle</value>
+  </data>
+	<data name="Account_Settings_SubscriptionPendingPlan" xml:space="preserve">
+    <value>Changement programmé</value>
+  </data>
+	<data name="Account_Settings_SubscriptionRenewsOn" xml:space="preserve">
+    <value>Renouvellement</value>
+  </data>
+	<data name="Account_Settings_SubscriptionNoActivePlan" xml:space="preserve">
+    <value>Aucune formule active</value>
+  </data>
+	<data name="Account_Settings_SubscriptionFreePrice" xml:space="preserve">
+    <value>Gratuit</value>
+  </data>
+	<data name="Account_Settings_SubscriptionPaidPrice" xml:space="preserve">
+    <value>{0} € / mois TTC</value>
+  </data>
+	<data name="Account_Settings_SubscriptionPlayersIncluded" xml:space="preserve">
+    <value>{0} joueurs max par session</value>
+  </data>
+	<data name="Account_Settings_SubscriptionCurrentBadge" xml:space="preserve">
+    <value>Actuelle</value>
+  </data>
+	<data name="Account_Settings_SubscriptionPendingBadge" xml:space="preserve">
+    <value>Prochaine</value>
+  </data>
+	<data name="Account_Settings_SubscriptionSelectPlan" xml:space="preserve">
+    <value>S’abonner</value>
+  </data>
+	<data name="Account_Settings_SubscriptionChangePlan" xml:space="preserve">
+    <value>Changer de formule</value>
+  </data>
+	<data name="Account_Settings_SubscriptionChangePlanAtRenewal" xml:space="preserve">
+    <value>Changer à renouvellement</value>
+  </data>
+	<data name="Account_Settings_SubscriptionUnsubscribe" xml:space="preserve">
+    <value>Se désabonner</value>
+  </data>
+	<data name="Account_Settings_SubscriptionActionCompleted" xml:space="preserve">
+    <value>Formule d’abonnement mise à jour.</value>
+  </data>
+	<data name="Account_Settings_SubscriptionCancellationScheduled" xml:space="preserve">
+    <value>Le désabonnement sera effectif à la date de renouvellement.</value>
+  </data>
 	<!-- Resolution -->
 	<data name="Resolution_RollUnderAttribute" xml:space="preserve">
 		<value>Inférieur à la caractéristique</value>
@@ -2958,4 +3045,43 @@
 	<data name="SystemMetric_VoteWeight" xml:space="preserve">
 		<value>Poids de vote</value>
 	</data>
+
+	<data name="Layout_GlobalUnhandledError" xml:space="preserve">
+    <value>Une erreur inattendue est survenue.</value>
+  </data>
+	<data name="Layout_Reload" xml:space="preserve">
+    <value>Recharger</value>
+  </data>
+
+	<data name="Auth_Register_RequiredFields" xml:space="preserve">
+    <value>Le nom d’utilisateur et le mot de passe sont requis.</value>
+  </data>
+	<data name="Auth_Register_RequestFailed" xml:space="preserve">
+    <value>Impossible de créer le compte pour le moment.</value>
+  </data>
+
+	<data name="Auth_ForgotPassword_EmptyInput" xml:space="preserve">
+    <value>Renseignez une adresse email ou un nom d’utilisateur.</value>
+  </data>
+	<data name="Auth_ForgotPassword_RequestFailed" xml:space="preserve">
+    <value>Impossible de traiter la demande de récupération pour le moment.</value>
+  </data>
+
+	<data name="Auth_ResetPassword_RequiredFields" xml:space="preserve">
+    <value>Les deux champs de mot de passe sont requis.</value>
+  </data>
+	<data name="Auth_ResetPassword_RequestFailed" xml:space="preserve">
+    <value>Impossible de réinitialiser le mot de passe pour le moment.</value>
+  </data>
+
+	<data name="Auth_TwitchComplete_UsernameRequired" xml:space="preserve">
+    <value>Le nom de compte Rollocracy est requis.</value>
+  </data>
+	<data name="Auth_TwitchComplete_RequestFailed" xml:space="preserve">
+    <value>Impossible de finaliser le compte Twitch pour le moment.</value>
+  </data>
+
+	<data name="Auth_TwitchMerge_RequestFailed" xml:space="preserve">
+    <value>Impossible de finaliser la fusion Twitch pour le moment.</value>
+  </data>
 </root>

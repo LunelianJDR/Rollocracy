@@ -18,6 +18,8 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
         public DbSet<AccountSecurityToken> AccountSecurityTokens => Set<AccountSecurityToken>();
         public DbSet<TwitchPendingAuthSession> TwitchPendingAuthSessions => Set<TwitchPendingAuthSession>();
+        public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+        public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
         public DbSet<GameSystem> GameSystems => Set<GameSystem>();
         public DbSet<GameSystemSnapshot> GameSystemSnapshots => Set<GameSystemSnapshot>();
 
@@ -153,6 +155,108 @@ namespace Rollocracy.Infrastructure.Persistence
 
                 entity.Property(x => x.Language)
                     .HasColumnType("text");
+            });
+
+            modelBuilder.Entity<SubscriptionPlan>(entity =>
+            {
+                entity.HasIndex(x => x.Code).IsUnique();
+
+                entity.Property(x => x.Code)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.Name)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.MonthlyPriceTtc)
+                    .HasPrecision(18, 2);
+
+                entity.ToTable(table =>
+                {
+                    table.HasCheckConstraint(
+                        "CK_SubscriptionPlans_MaxPlayersPerSession_Range",
+                        "\"MaxPlayersPerSession\" >= 0 AND \"MaxPlayersPerSession\" <= 5000");
+                });
+
+                entity.HasData(
+                    new SubscriptionPlan
+                    {
+                        Id = Guid.Parse("0c1c29b4-c9b9-4e3b-a4aa-4106d7dd6a10"),
+                        Code = "aventurier",
+                        Name = "Aventurier",
+                        MonthlyPriceTtc = 0m,
+                        MaxPlayersPerSession = 15,
+                        DisplayOrder = 1,
+                        IsActive = true
+                    },
+                    new SubscriptionPlan
+                    {
+                        Id = Guid.Parse("2f3df112-4d0d-4ef7-8b53-0c6fcb88b701"),
+                        Code = "heros",
+                        Name = "Héros",
+                        MonthlyPriceTtc = 5m,
+                        MaxPlayersPerSession = 75,
+                        DisplayOrder = 2,
+                        IsActive = true
+                    },
+                    new SubscriptionPlan
+                    {
+                        Id = Guid.Parse("8c48c20d-5f5d-4b5a-b997-d863cf7be702"),
+                        Code = "champion",
+                        Name = "Champion",
+                        MonthlyPriceTtc = 10m,
+                        MaxPlayersPerSession = 200,
+                        DisplayOrder = 3,
+                        IsActive = true
+                    },
+                    new SubscriptionPlan
+                    {
+                        Id = Guid.Parse("5fa71ab1-3f0c-401d-8c90-6b76a2d2c703"),
+                        Code = "legende",
+                        Name = "Légende",
+                        MonthlyPriceTtc = 20m,
+                        MaxPlayersPerSession = 500,
+                        DisplayOrder = 4,
+                        IsActive = true
+                    },
+                    new SubscriptionPlan
+                    {
+                        Id = Guid.Parse("c7c1d657-7fd4-42bd-b4f4-7047a6d43704"),
+                        Code = "mythique",
+                        Name = "Mythique",
+                        MonthlyPriceTtc = 50m,
+                        MaxPlayersPerSession = 1500,
+                        DisplayOrder = 5,
+                        IsActive = true
+                    },
+                    new SubscriptionPlan
+                    {
+                        Id = Guid.Parse("8d9d4e4a-9d2b-4204-8c16-2f7ab0cb2f05"),
+                        Code = "divin",
+                        Name = "Divin",
+                        MonthlyPriceTtc = 100m,
+                        MaxPlayersPerSession = 5000,
+                        DisplayOrder = 6,
+                        IsActive = true
+                    });
+            });
+
+            modelBuilder.Entity<UserSubscription>(entity =>
+            {
+                entity.HasIndex(x => x.UserAccountId).IsUnique();
+                entity.HasIndex(x => x.CurrentPlanId);
+                entity.HasIndex(x => x.PendingPlanId);
+
+                entity.Property(x => x.CreatedAtUtc)
+                    .HasColumnType("timestamp with time zone");
+
+                entity.Property(x => x.UpdatedAtUtc)
+                    .HasColumnType("timestamp with time zone");
+
+                entity.Property(x => x.StartedAtUtc)
+                    .HasColumnType("timestamp with time zone");
+
+                entity.Property(x => x.NextRenewalAtUtc)
+                    .HasColumnType("timestamp with time zone");
             });
 
             modelBuilder.Entity<Session>()
