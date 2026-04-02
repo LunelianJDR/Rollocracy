@@ -3,8 +3,10 @@
 
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.Extensions.Localization @using Rollocracy.Domain.Characters
+@using Microsoft.Extensions.Localization 
+@using Rollocracy.Domain.Characters
 @using Rollocracy.Domain.Entities
+@using Rollocracy.Domain.GameRules
 @using Rollocracy.Localization
 @using DomainSession = Rollocracy.Domain.Entities.Session
 
@@ -275,7 +277,7 @@ else
                                             @L["Session_Settings_EditGauge"]
                                         </button>
                                         <button type="button" @onclick="() => AskDeleteSessionGauge(gauge.SessionGaugeId)">
-                                            @L["GameSystem_Editor_Delete"]
+                                            @L["Common_Remove"]
                                         </button>
                                     </div>
                                 }
@@ -332,6 +334,118 @@ else
                             <button type="button" @onclick="CancelCreateSessionGaugeEditor">@L["Common_Cancel"]</button>
                         </div>
                     </div>
+                }
+            </div>
+
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["SessionSettings_SessionItemsTitle"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["SessionSettings_SessionItemsSubtitle"]</p>
+                    </div>
+
+                    <div class="rc-tool-actions">
+                        <button type="button" @onclick="AddSessionItemRow">@L["GameSystem_Editor_AddItemRow"]</button>
+                        <button type="button" @onclick="SaveSessionItems">@L["Common_Save"]</button>
+                    </div>
+                </div>
+
+                @if (SessionItems.Count == 0)
+                {
+                    <div class="rc-empty-panel">
+                        <p>@L["SessionSettings_NoSessionItems"]</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var item in SessionItems.Where(x => !x.IsDeleted).OrderBy(x => x.DisplayOrder))
+                    {
+                        <div class="rc-filter-group-card">
+                            <div class="rc-tool-form-grid">
+                                <div class="rc-form-field">
+                                    <label>@L["Common_Name"]</label>
+                                    <input @bind="item.Name" />
+                                </div>
+
+                                <div class="rc-form-field">
+                                    <label>@L["Common_Description"]</label>
+                                    <input @bind="item.Description" />
+                                </div>
+                            </div>
+
+                            <div class="rc-tool-actions">
+                                <button type="button" @onclick="() => AddSessionItemModifierRow(item)">
+                                    @L["GameSystem_Editor_AddItemModifierRow"]
+                                </button>
+
+                                <button type="button" @onclick="() => item.IsDeleted = true">
+                                    @L["Common_Remove"]
+                                </button>
+                            </div>
+
+                            @foreach (var modifier in item.Modifiers)
+                            {
+                                <div class="rc-tool-form-grid--dense">
+                                    <div class="rc-form-field">
+                                        <label>@L["GameSystem_Editor_ModifierTargetType"]</label>
+                                        <select value="@modifier.TargetType" @onchange="e => ChangeSessionItemModifierTargetType(modifier, e.Value?.ToString())">
+                                            <option value="@ModifierTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_BaseAttribute"]</option>
+                                            <option value="@ModifierTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option>
+                                            <option value="@ModifierTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option>
+                                            <option value="@ModifierTargetType.Gauge">@L["GameSystem_Editor_ModifierTarget_Gauge"]</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="rc-form-field">
+                                        <label>@L["GameSystem_Editor_ModifierTarget"]</label>
+                                        <select @bind="modifier.TargetId">
+                                            @foreach (var option in GetSessionItemModifierTargetOptions(modifier.TargetType))
+                                            {
+                                                <option value="@option.Id">@option.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+
+                                    <div class="rc-form-field">
+                                        <label>@L["GameSystem_Editor_ModifierValueMode"]</label>
+                                        <select @bind="modifier.ValueMode">
+                                            <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
+                                            <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
+                                        </select>
+                                    </div>
+
+                                    @if (modifier.ValueMode == ModifierValueMode.Fixed)
+                                    {
+                                        <div class="rc-form-field">
+                                            <label>@L["GameSystem_Editor_ModifierValue"]</label>
+                                            <input type="number" @bind="modifier.Value" />
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="rc-form-field">
+                                            <label>@L["GameSystem_Editor_ModifierSourceMetric"]</label>
+                                            <select @bind="modifier.SourceMetricId">
+                                                @foreach (var metric in CurrentSystemEditor?.AvailableMetrics ?? Enumerable.Empty<EditableMetricDefinitionDto>())
+                                                {
+                                                    if (!metric.IsDeleted && metric.MetricDefinitionId.HasValue)
+                                                    {
+                                                        <option value="@metric.MetricDefinitionId.Value">@metric.Name</option>
+                                                    }
+                                                }
+                                            </select>
+                                        </div>
+                                    }
+
+                                    <div class="rc-tool-actions">
+                                        <button type="button" @onclick="() => item.Modifiers.Remove(modifier)">
+                                            @L["Common_Remove"]
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
                 }
             </div>
 
@@ -408,7 +522,7 @@ else
 
                                 <div class="rc-tool-actions">
                                     <button type="button" @onclick="() => RemoveSpecialRole(player.Id)">
-                                        @L["GameSystem_Editor_Delete"]
+                                        @L["Common_Remove"]
                                     </button>
                                 </div>
                             </article>
@@ -444,6 +558,9 @@ else
 
     private Rollocracy.Domain.Entities.GameSystem? AssignedGameSystem;
     private bool ShowCreateSessionGaugeEditor;
+
+    private List<EditableItemDefinitionDto> SessionItems = new();
+    private GameSystemEditorDto? CurrentSystemEditor;
 
     private List<SessionGaugeDto> SessionGauges = new();
     private string NewSessionGaugeName = string.Empty;
@@ -524,6 +641,13 @@ else
         SpecialRoleEligiblePlayers = await SessionService.GetEligibleSpecialRolePlayersAsync(SessionId, CurrentUserId);
         SpecialRoleAssignments = await SessionService.GetPlayersWithSpecialRolesAsync(SessionId, CurrentUserId);
         SessionGauges = await SessionService.GetSessionGaugesAsync(SessionId, CurrentUserId);
+
+        SessionItems = await SessionService.GetSessionItemDefinitionsAsync(SessionId, CurrentUserId);
+
+        if (Settings.GameSystemId.HasValue)
+        {
+            CurrentSystemEditor = await GameSystemService.GetGameSystemEditorAsync(Settings.GameSystemId.Value, CurrentUserId);
+        }
 
         CancelEditSessionGauge();
         PendingSessionGaugeDeleteId = null;
@@ -855,5 +979,89 @@ else
             Rollocracy.Domain.GameRules.TestResolutionMode.RollUnderAttribute => L["Resolution_RollUnderAttribute"],
             _ => mode.ToString()
         };
+    }
+
+    private void AddSessionItemRow()
+    {
+        SessionItems.Add(new EditableItemDefinitionDto
+        {
+            Name = string.Empty,
+            Description = string.Empty,
+            DisplayOrder = SessionItems.Count
+        });
+    }
+
+    private void AddSessionItemModifierRow(EditableItemDefinitionDto item)
+    {
+        var firstAttribute = CurrentSystemEditor?.AvailableBaseAttributes.FirstOrDefault();
+
+        item.Modifiers.Add(new EditableModifierDefinitionDto
+        {
+            TargetType = ModifierTargetType.BaseAttribute,
+            TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
+            Value = 0,
+            ValueMode = ModifierValueMode.Fixed,
+            SourceMetricId = CurrentSystemEditor?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId
+        });
+    }
+
+    private IReadOnlyList<ModifierTargetOption> GetSessionItemModifierTargetOptions(ModifierTargetType targetType)
+    {
+        if (CurrentSystemEditor is null)
+            return Array.Empty<ModifierTargetOption>();
+
+        return targetType switch
+        {
+            ModifierTargetType.BaseAttribute => CurrentSystemEditor.AvailableBaseAttributes
+                .Select(x => new ModifierTargetOption(x.AttributeDefinitionId, x.Name))
+                .ToList(),
+
+            ModifierTargetType.Gauge => CurrentSystemEditor.Gauges
+                .Where(x => !x.IsDeleted && x.GaugeDefinitionId.HasValue)
+                .Select(x => new ModifierTargetOption(x.GaugeDefinitionId!.Value, x.Name))
+                .ToList(),
+
+            ModifierTargetType.DerivedStat => CurrentSystemEditor.DerivedStats
+                .Where(x => !x.IsDeleted && x.DerivedStatDefinitionId.HasValue)
+                .Select(x => new ModifierTargetOption(x.DerivedStatDefinitionId!.Value, x.Name))
+                .ToList(),
+
+            ModifierTargetType.Metric => CurrentSystemEditor.Metrics
+                .Where(x => !x.IsDeleted && x.MetricDefinitionId.HasValue)
+                .Select(x => new ModifierTargetOption(x.MetricDefinitionId!.Value, x.Name))
+                .ToList(),
+
+            _ => Array.Empty<ModifierTargetOption>()
+        };
+    }
+
+    private sealed record ModifierTargetOption(Guid Id, string Name);
+
+    private void ChangeSessionItemModifierTargetType(EditableModifierDefinitionDto modifier, string? rawValue)
+    {
+        if (!Enum.TryParse<ModifierTargetType>(rawValue, out var parsed))
+            return;
+
+        modifier.TargetType = parsed;
+
+        var firstOption = GetSessionItemModifierTargetOptions(parsed).FirstOrDefault();
+        modifier.TargetId = firstOption?.Id ?? Guid.Empty;
+    }
+
+    private async Task SaveSessionItems()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            await SessionService.SaveSessionItemDefinitionsAsync(SessionId, CurrentUserId, SessionItems);
+            SessionItems = await SessionService.GetSessionItemDefinitionsAsync(SessionId, CurrentUserId);
+
+            Message = L["SessionSettings_SessionItemsSaved"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
     }
 }

@@ -19,7 +19,9 @@ namespace Rollocracy.Domain.GameTests
         public string TargetNameSnapshot { get; set; } = string.Empty;
 
         // Pour Attribute / Gauge / DerivedStat / Metric
-        public TestModifierMode ModifierMode { get; set; }
+        // Conservé pour compatibilité technique/transitoire.
+        // En L-2, la valeur signée porte le sens métier.
+        public TestModifierMode ModifierMode { get; set; } = TestModifierMode.Bonus;
 
         // Pour Add / Remove value
         public int Value { get; set; }

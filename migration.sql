@@ -2275,3 +2275,176 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260329211948_U4_GameMasterAndSubscriptions') THEN
+    CREATE TABLE "SubscriptionPlans" (
+        "Id" uuid NOT NULL,
+        "Code" text NOT NULL,
+        "Name" text NOT NULL,
+        "MonthlyPriceTtc" numeric(18,2) NOT NULL,
+        "MaxPlayersPerSession" integer NOT NULL,
+        "DisplayOrder" integer NOT NULL,
+        "IsActive" boolean NOT NULL,
+        CONSTRAINT "PK_SubscriptionPlans" PRIMARY KEY ("Id"),
+        CONSTRAINT "CK_SubscriptionPlans_MaxPlayersPerSession_Range" CHECK ("MaxPlayersPerSession" >= 0 AND "MaxPlayersPerSession" <= 5000)
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260329211948_U4_GameMasterAndSubscriptions') THEN
+    CREATE TABLE "UserSubscriptions" (
+        "Id" uuid NOT NULL,
+        "UserAccountId" uuid NOT NULL,
+        "CurrentPlanId" uuid NOT NULL,
+        "PendingPlanId" uuid,
+        "StartedAtUtc" timestamp with time zone NOT NULL,
+        "NextRenewalAtUtc" timestamp with time zone NOT NULL,
+        "CancelAtRenewal" boolean NOT NULL,
+        "CreatedAtUtc" timestamp with time zone NOT NULL,
+        "UpdatedAtUtc" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_UserSubscriptions" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260329211948_U4_GameMasterAndSubscriptions') THEN
+    INSERT INTO "SubscriptionPlans" ("Id", "Code", "DisplayOrder", "IsActive", "MaxPlayersPerSession", "MonthlyPriceTtc", "Name")
+    VALUES ('0c1c29b4-c9b9-4e3b-a4aa-4106d7dd6a10', 'aventurier', 1, TRUE, 15, 0.0, 'Aventurier');
+    INSERT INTO "SubscriptionPlans" ("Id", "Code", "DisplayOrder", "IsActive", "MaxPlayersPerSession", "MonthlyPriceTtc", "Name")
+    VALUES ('2f3df112-4d0d-4ef7-8b53-0c6fcb88b701', 'heros', 2, TRUE, 75, 5.0, 'Héros');
+    INSERT INTO "SubscriptionPlans" ("Id", "Code", "DisplayOrder", "IsActive", "MaxPlayersPerSession", "MonthlyPriceTtc", "Name")
+    VALUES ('5fa71ab1-3f0c-401d-8c90-6b76a2d2c703', 'legende', 4, TRUE, 500, 20.0, 'Légende');
+    INSERT INTO "SubscriptionPlans" ("Id", "Code", "DisplayOrder", "IsActive", "MaxPlayersPerSession", "MonthlyPriceTtc", "Name")
+    VALUES ('8c48c20d-5f5d-4b5a-b997-d863cf7be702', 'champion', 3, TRUE, 200, 10.0, 'Champion');
+    INSERT INTO "SubscriptionPlans" ("Id", "Code", "DisplayOrder", "IsActive", "MaxPlayersPerSession", "MonthlyPriceTtc", "Name")
+    VALUES ('8d9d4e4a-9d2b-4204-8c16-2f7ab0cb2f05', 'divin', 6, TRUE, 5000, 100.0, 'Divin');
+    INSERT INTO "SubscriptionPlans" ("Id", "Code", "DisplayOrder", "IsActive", "MaxPlayersPerSession", "MonthlyPriceTtc", "Name")
+    VALUES ('c7c1d657-7fd4-42bd-b4f4-7047a6d43704', 'mythique', 5, TRUE, 1500, 50.0, 'Mythique');
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260329211948_U4_GameMasterAndSubscriptions') THEN
+    CREATE UNIQUE INDEX "IX_SubscriptionPlans_Code" ON "SubscriptionPlans" ("Code");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260329211948_U4_GameMasterAndSubscriptions') THEN
+    CREATE INDEX "IX_UserSubscriptions_CurrentPlanId" ON "UserSubscriptions" ("CurrentPlanId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260329211948_U4_GameMasterAndSubscriptions') THEN
+    CREATE INDEX "IX_UserSubscriptions_PendingPlanId" ON "UserSubscriptions" ("PendingPlanId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260329211948_U4_GameMasterAndSubscriptions') THEN
+    CREATE UNIQUE INDEX "IX_UserSubscriptions_UserAccountId" ON "UserSubscriptions" ("UserAccountId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260329211948_U4_GameMasterAndSubscriptions') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260329211948_U4_GameMasterAndSubscriptions', '10.0.5');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331082159_L6_SessionItems') THEN
+    ALTER TABLE "ItemDefinitions" ALTER COLUMN "GameSystemId" DROP NOT NULL;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331082159_L6_SessionItems') THEN
+    ALTER TABLE "ItemDefinitions" ADD "SessionId" uuid;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331082159_L6_SessionItems') THEN
+    CREATE INDEX "IX_ItemDefinitions_GameSystemId" ON "ItemDefinitions" ("GameSystemId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331082159_L6_SessionItems') THEN
+    CREATE INDEX "IX_ItemDefinitions_GameSystemId_DisplayOrder" ON "ItemDefinitions" ("GameSystemId", "DisplayOrder");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331082159_L6_SessionItems') THEN
+    CREATE INDEX "IX_ItemDefinitions_SessionId" ON "ItemDefinitions" ("SessionId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331082159_L6_SessionItems') THEN
+    CREATE INDEX "IX_ItemDefinitions_SessionId_DisplayOrder" ON "ItemDefinitions" ("SessionId", "DisplayOrder");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331082159_L6_SessionItems') THEN
+    ALTER TABLE "ItemDefinitions" ADD CONSTRAINT "CK_ItemDefinitions_Scope" CHECK (("GameSystemId" IS NOT NULL AND "SessionId" IS NULL) OR ("GameSystemId" IS NULL AND "SessionId" IS NOT NULL));
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331082159_L6_SessionItems') THEN
+    CREATE INDEX "IX_CharacterItems_CharacterId" ON "CharacterItems" ("CharacterId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331082159_L6_SessionItems') THEN
+    CREATE UNIQUE INDEX "IX_CharacterItems_CharacterId_ItemDefinitionId" ON "CharacterItems" ("CharacterId", "ItemDefinitionId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331082159_L6_SessionItems') THEN
+    CREATE INDEX "IX_CharacterItems_ItemDefinitionId" ON "CharacterItems" ("ItemDefinitionId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331082159_L6_SessionItems') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260331082159_L6_SessionItems', '10.0.5');
+    END IF;
+END $EF$;
+COMMIT;
+

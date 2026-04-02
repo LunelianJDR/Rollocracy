@@ -32,5 +32,10 @@ namespace Rollocracy.Services
         {
             await _hubContext.Clients.Group(sessionId.ToString()).SendAsync("PollChanged");
         }
+
+        public async Task NotifyJournalChangedAsync(Guid sessionId)
+        {
+            await _hubContext.Clients.Group(sessionId.ToString()).SendAsync("JournalChanged");
+        }
     }
 }

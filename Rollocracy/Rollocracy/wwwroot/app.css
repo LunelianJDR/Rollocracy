@@ -1,3 +1,5 @@
+
+
 /* =========================================================
    THÈME GLOBAL
    ---------------------------------------------------------
@@ -2927,4 +2929,355 @@ button.rc-global-threshold-slider__handle:focus-visible {
     .rc-subscription-current-card__stats {
         grid-template-columns: 1fr;
     }
+}
+
+/* =========================================================
+   L-2 - CONSEQUENCE COLORS
+   ========================================================= */
+
+.rc-consequence-pill {
+    border: 1px solid var(--rc-border);
+    border-radius: 12px;
+    transition: border-color var(--rc-transition), box-shadow var(--rc-transition), color var(--rc-transition);
+}
+
+.rc-consequence-pill--positive {
+    border-color: rgba(29, 107, 60, 0.65);
+    color: rgb(29, 107, 60);
+}
+
+.rc-consequence-pill--negative {
+    border-color: rgba(178, 85, 85, 0.65);
+    color: rgb(178, 85, 85);
+}
+
+.rc-consequence-pill--warning {
+    border-color: rgba(196, 152, 40, 0.7);
+    color: rgb(165, 128, 31);
+}
+
+.rc-consequence-pill--warning-negative {
+    border-color: rgba(201, 125, 37, 0.7);
+    color: rgb(184, 104, 18);
+}
+
+.rc-consequence-text--positive {
+    color: rgb(29, 107, 60);
+}
+
+.rc-consequence-text--negative {
+    color: rgb(178, 85, 85);
+}
+
+/* =========================================================
+   L-2 - CONSEQUENCES SHARED
+   ========================================================= */
+
+.rc-form-field select.rc-consequence-pill,
+.rc-form-field input.rc-consequence-pill {
+    border-width: 1px;
+}
+
+.rc-form-field select.rc-consequence-pill--positive,
+.rc-form-field input.rc-consequence-pill--positive {
+    border-color: rgba(29, 107, 60, 0.65);
+    color: rgb(29, 107, 60);
+}
+
+.rc-form-field select.rc-consequence-pill--negative,
+.rc-form-field input.rc-consequence-pill--negative {
+    border-color: rgba(178, 85, 85, 0.65);
+    color: rgb(178, 85, 85);
+}
+
+.rc-form-field select.rc-consequence-pill--warning,
+.rc-form-field input.rc-consequence-pill--warning {
+    border-color: rgba(196, 152, 40, 0.7);
+    color: rgb(165, 128, 31);
+}
+
+.rc-form-field select.rc-consequence-pill--warning-negative,
+.rc-form-field input.rc-consequence-pill--warning-negative {
+    border-color: rgba(201, 125, 37, 0.7);
+    color: rgb(184, 104, 18);
+}
+
+/* =========================================================
+   L-4 - SESSION INACTIVE JOIN URL
+   ========================================================= */
+
+.rc-session-strip--inactive {
+    border: 1px solid rgba(178, 85, 85, 0.55);
+    border-radius: 18px;
+    padding: 0.75rem;
+    background: rgba(178, 85, 85, 0.06);
+}
+
+.rc-session-strip__value--inactive {
+    color: rgb(178, 85, 85);
+    border-color: rgba(178, 85, 85, 0.45);
+}
+
+/* =========================================================
+   JOURNAL DE SESSION
+   ========================================================= */
+
+.rc-journal-editor,
+.rc-journal-viewer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.rc-journal-editor__topbar,
+.rc-journal-viewer__nav,
+.rc-journal-editor__nav {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.rc-journal-editor__page-number,
+.rc-journal-viewer__page-number {
+    min-width: 2rem;
+    text-align: center;
+    font-weight: 700;
+}
+
+.rc-journal-editor__page-title,
+.rc-journal-viewer__page-title {
+    font-weight: 700;
+    color: var(--rc-text-soft);
+}
+
+.rc-journal-editor__textarea {
+    min-height: 22rem;
+    width: 100%;
+    resize: vertical;
+    font-family: inherit;
+}
+
+.rc-journal-preview,
+.rc-journal-content {
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 18px;
+    background: var(--rc-surface);
+}
+
+    /* =========================================================
+   CONTENU (APERÇU)
+   ========================================================= */
+
+
+    .rc-journal-content p {
+        font-size: small;
+        line-height: 1.35;
+        font-weight: 400;
+        margin: 0 0 0.8rem 0;
+    }
+
+        .rc-journal-content p:last-child {
+            margin-bottom: 0;
+        }
+
+    .rc-journal-content h4 {
+        font-size: medium;
+        line-height: 1.35;
+        font-weight: 500;
+        margin: 0 0 0.8rem 0;
+    }
+
+    .rc-journal-content h3 {
+        font-size: large;
+        line-height: 1.35;
+        font-weight: 600;
+        margin: 0 0 0.85rem 0;
+    }
+
+
+/* =========================================================
+   L-7 - QUILL / JOURNAL (TEXT BUTTONS + BIND FIX)
+   ========================================================= */
+
+/* =========================================================
+   L-7 - JOURNAL / QUILL
+   ========================================================= */
+
+.rc-journal-editor__topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.rc-journal-editor__nav {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.rc-journal-editor__page-number {
+    min-width: 2rem;
+    text-align: center;
+    font-weight: 700;
+}
+
+.rc-journal-editor__page-title {
+    color: var(--rc-text-soft);
+    font-weight: 600;
+}
+
+.rc-journal-editor .ql-toolbar.ql-snow,
+.rc-journal-editor .ql-container.ql-snow {
+    border-color: var(--rc-border);
+}
+
+.rc-journal-editor .ql-toolbar.ql-snow {
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+    background: var(--rc-surface);
+    padding: 0.5rem;
+}
+
+.rc-journal-editor .ql-container.ql-snow {
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
+    background: var(--rc-surface);
+}
+
+.rc-journal-editor .ql-editor {
+    min-height: 22rem;
+    color: var(--rc-text);
+    background: var(--rc-surface);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+    .rc-journal-editor .ql-editor p {
+        font-size: 1rem;
+        line-height: 1.6;
+        font-weight: 400;
+        margin: 0 0 0.8rem 0;
+    }
+
+    .rc-journal-editor .ql-editor h4 {
+        font-size: 1.2rem;
+        line-height: 1.35;
+        font-weight: 600;
+        margin: 0 0 0.8rem 0;
+    }
+
+    .rc-journal-editor .ql-editor h3 {
+        font-size: 1.6rem;
+        line-height: 1.25;
+        font-weight: 700;
+        margin: 0 0 0.85rem 0;
+    }
+
+/* Boutons génériques visibles */
+.rc-journal-editor .rc-journal-toolbar-button {
+    width: auto !important;
+    min-width: 2.5rem !important;
+    padding: 0 0.65rem !important;
+    border-radius: 10px;
+    line-height: 1;
+    overflow: visible !important;
+}
+
+    .rc-journal-editor .rc-journal-toolbar-button svg,
+    .rc-journal-editor .rc-journal-toolbar-button span {
+        display: none !important;
+    }
+
+    .rc-journal-editor .rc-journal-toolbar-button::after {
+        display: inline-block;
+        color: var(--rc-text);
+        font-size: 0.82rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+.rc-journal-editor .ql-bold.rc-journal-toolbar-button::after {
+    content: "B";
+}
+
+.rc-journal-editor .ql-italic.rc-journal-toolbar-button::after {
+    content: "I";
+    font-style: italic;
+}
+
+.rc-journal-editor .ql-underline.rc-journal-toolbar-button::after {
+    content: "U";
+    text-decoration: underline;
+}
+
+.rc-journal-editor .ql-strike.rc-journal-toolbar-button::after {
+    content: "S";
+    text-decoration: line-through;
+}
+
+.rc-journal-editor .ql-list.rc-journal-toolbar-button[value="ordered"]::after {
+    content: "1.";
+}
+
+.rc-journal-editor .ql-list.rc-journal-toolbar-button[value="bullet"]::after {
+    content: "•";
+    font-size: 1rem;
+}
+
+.rc-journal-editor .ql-snow button:hover::after,
+.rc-journal-editor .ql-snow button.ql-active::after {
+    color: var(--rc-accent);
+}
+
+/* Picker de niveaux avec libellés courts, lisibles dans les deux thèmes */
+.rc-journal-editor .ql-snow .ql-picker {
+    color: var(--rc-text);
+}
+
+    .rc-journal-editor .ql-snow .ql-picker.ql-header {
+        min-width: 5rem;
+    }
+
+.rc-journal-editor .ql-snow .ql-picker-options {
+    background: var(--rc-surface) !important;
+    border: 1px solid var(--rc-border);
+    color: var(--rc-text);
+}
+
+.rc-journal-editor .ql-snow .ql-picker-label::before,
+.rc-journal-editor .ql-snow .ql-picker-item::before {
+    color: inherit !important;
+}
+
+.rc-journal-editor .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="false"]::before,
+.rc-journal-editor .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="false"]::before {
+    content: "P";
+}
+
+.rc-journal-editor .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="4"]::before,
+.rc-journal-editor .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="4"]::before {
+    content: "ST";
+}
+
+.rc-journal-editor .ql-snow .ql-picker.ql-header .ql-picker-label[data-value="3"]::before,
+.rc-journal-editor .ql-snow .ql-picker.ql-header .ql-picker-item[data-value="3"]::before {
+    content: "T";
+}
+
+.rc-journal-editor .ql-snow .ql-picker.ql-header .ql-picker-label > span,
+.rc-journal-editor .ql-snow .ql-picker.ql-header .ql-picker-item > span {
+    display: none;
+}
+
+.rc-journal-editor .ql-snow .ql-picker-item:hover,
+.rc-journal-editor .ql-snow .ql-picker-item.ql-selected,
+.rc-journal-editor .ql-snow .ql-picker-label:hover,
+.rc-journal-editor .ql-snow .ql-picker-label.ql-active,
+.rc-journal-editor .ql-snow .ql-picker.ql-expanded .ql-picker-label {
+    color: var(--rc-accent) !important;
 }

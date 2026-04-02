@@ -4,6 +4,7 @@ using Rollocracy.Domain.Account;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
+using System.Net.Mail;
 
 namespace Rollocracy.Infrastructure.Services
 {
@@ -98,6 +99,9 @@ namespace Rollocracy.Infrastructure.Services
             var normalizedEmail = NormalizeEmail(email);
             var normalizedLanguage = NormalizeLanguage(language);
 
+            if (!string.IsNullOrWhiteSpace(normalizedEmail) && !IsValidEmail(normalizedEmail))
+                throw new Exception(_localizer["Backend_EmailInvalidFormat"]);
+
             if (!string.IsNullOrWhiteSpace(normalizedEmail))
             {
                 var existingUserWithEmail = await context.UserAccounts
@@ -152,11 +156,11 @@ namespace Rollocracy.Infrastructure.Services
             if (string.IsNullOrWhiteSpace(normalizedUsername))
                 throw new Exception(_localizer["Backend_UsernameRequired"]);
 
-            if (string.Equals(user.Username, normalizedUsername, StringComparison.Ordinal))
+            if (string.Equals(user.Username, normalizedUsername, StringComparison.OrdinalIgnoreCase))
                 return;
 
             var existingUser = await context.UserAccounts
-                .FirstOrDefaultAsync(u => u.Username == normalizedUsername && u.Id != userAccountId);
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUsername && u.Id != userAccountId);
 
             if (existingUser != null)
                 throw new Exception(_localizer["Backend_UsernameAlreadyExists"]);
@@ -506,7 +510,7 @@ namespace Rollocracy.Infrastructure.Services
 
         private static string NormalizeUsername(string username)
         {
-            return username?.Trim() ?? string.Empty;
+            return username?.Trim().ToLowerInvariant() ?? string.Empty;
         }
 
         private static string? NormalizeEmail(string? email)
@@ -515,6 +519,19 @@ namespace Rollocracy.Infrastructure.Services
                 return null;
 
             return email.Trim().ToLowerInvariant();
+        }
+
+        private static bool IsValidEmail(string email)
+        {
+            try
+            {
+                var parsed = new MailAddress(email);
+                return string.Equals(parsed.Address, email, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static string NormalizeLanguage(string language)

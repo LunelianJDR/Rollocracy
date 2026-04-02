@@ -6,7 +6,9 @@
 @using Microsoft.Extensions.Localization
 @using Rollocracy.Domain.GameRules
 @using Rollocracy.Localization
+@using Microsoft.JSInterop
 
+@inject IJSRuntime JS
 @inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
 @inject Rollocracy.Domain.Interfaces.ISessionService SessionService
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -300,11 +302,11 @@ else
                                         <div class="rc-tool-actions">
                                             @if (attributeItem.AttributeDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => attributeItem.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => attributeItem.IsDeleted = true">@L["Common_Remove"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.Attributes.Remove(attributeItem)">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.Attributes.Remove(attributeItem)">@L["Common_Remove"]</button>
                                             }
                                         </div>
                                     }
@@ -435,11 +437,11 @@ else
                                                         <div class="rc-tool-actions">
                                                             @if (component.DerivedStatComponentId.HasValue)
                                                             {
-                                                                <button type="button" @onclick="() => component.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
+                                                                <button type="button" @onclick="() => component.IsDeleted = true">@L["Common_Remove"]</button>
                                                             }
                                                             else
                                                             {
-                                                                <button type="button" @onclick="() => derivedStat.Components.Remove(component)">@L["GameSystem_Editor_Delete"]</button>
+                                                                <button type="button" @onclick="() => derivedStat.Components.Remove(component)">@L["Common_Remove"]</button>
                                                             }
                                                         </div>
                                                     }
@@ -450,11 +452,11 @@ else
                                         <div class="rc-tool-actions">
                                             @if (derivedStat.DerivedStatDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => derivedStat.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => derivedStat.IsDeleted = true">@L["Common_Remove"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.DerivedStats.Remove(derivedStat)">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.DerivedStats.Remove(derivedStat)">@L["Common_Remove"]</button>
                                             }
                                         </div>
                                     }
@@ -627,11 +629,11 @@ else
                                                         <div class="rc-tool-actions">
                                                             @if (step.MetricFormulaStepId.HasValue)
                                                             {
-                                                                <button type="button" @onclick="() => step.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
+                                                                <button type="button" @onclick="() => step.IsDeleted = true">@L["Common_Remove"]</button>
                                                             }
                                                             else
                                                             {
-                                                                <button type="button" @onclick="() => metric.FormulaSteps.Remove(step)">@L["GameSystem_Editor_Delete"]</button>
+                                                                <button type="button" @onclick="() => metric.FormulaSteps.Remove(step)">@L["Common_Remove"]</button>
                                                             }
                                                         </div>
                                                     }
@@ -682,11 +684,11 @@ else
                                                         <div class="rc-tool-actions">
                                                             @if (component.MetricComponentId.HasValue)
                                                             {
-                                                                <button type="button" @onclick="() => component.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
+                                                                <button type="button" @onclick="() => component.IsDeleted = true">@L["Common_Remove"]</button>
                                                             }
                                                             else
                                                             {
-                                                                <button type="button" @onclick="() => metric.Components.Remove(component)">@L["GameSystem_Editor_Delete"]</button>
+                                                                <button type="button" @onclick="() => metric.Components.Remove(component)">@L["Common_Remove"]</button>
                                                             }
                                                         </div>
                                                     }
@@ -701,11 +703,11 @@ else
                                             }
                                             else if (metric.MetricDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => metric.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => metric.IsDeleted = true">@L["Common_Remove"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.Metrics.Remove(metric)">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.Metrics.Remove(metric)">@L["Common_Remove"]</button>
                                             }
                                         </div>
                                     }
@@ -887,7 +889,7 @@ else
 
                                                                     <div class="rc-tool-actions">
                                                                         <button type="button" @onclick="() => option.Modifiers.Remove(modifier)">
-                                                                            @L["GameSystem_Editor_Delete"]
+                                                                            @L["Common_Remove"]
                                                                         </button>
                                                                     </div>
                                                                 </div>
@@ -897,11 +899,11 @@ else
                                                         <div class="rc-tool-actions">
                                                             @if (option.TraitOptionId.HasValue)
                                                             {
-                                                                <button type="button" @onclick="() => option.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
+                                                                <button type="button" @onclick="() => option.IsDeleted = true">@L["Common_Remove"]</button>
                                                             }
                                                             else
                                                             {
-                                                                <button type="button" @onclick="() => trait.Options.Remove(option)">@L["GameSystem_Editor_Delete"]</button>
+                                                                <button type="button" @onclick="() => trait.Options.Remove(option)">@L["Common_Remove"]</button>
                                                             }
                                                         </div>
                                                     }
@@ -912,11 +914,11 @@ else
                                         <div class="rc-tool-actions">
                                             @if (trait.TraitDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => trait.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => trait.IsDeleted = true">@L["Common_Remove"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.Traits.Remove(trait)">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.Traits.Remove(trait)">@L["Common_Remove"]</button>
                                             }
                                         </div>
                                     }
@@ -1004,11 +1006,11 @@ else
                                         <div class="rc-tool-actions">
                                             @if (gauge.GaugeDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => gauge.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => gauge.IsDeleted = true">@L["Common_Remove"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.Gauges.Remove(gauge)">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.Gauges.Remove(gauge)">@L["Common_Remove"]</button>
                                             }
                                         </div>
                                     }
@@ -1146,7 +1148,7 @@ else
 
                                                     <div class="rc-tool-actions">
                                                         <button type="button" @onclick="() => talent.Modifiers.Remove(modifier)">
-                                                            @L["GameSystem_Editor_Delete"]
+                                                            @L["Common_Remove"]
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1156,11 +1158,11 @@ else
                                         <div class="rc-tool-actions">
                                             @if (talent.TalentDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => talent.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => talent.IsDeleted = true">@L["Common_Remove"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.Talents.Remove(talent)">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.Talents.Remove(talent)">@L["Common_Remove"]</button>
                                             }
                                         </div>
                                     }
@@ -1299,7 +1301,7 @@ else
 
                                                     <div class="rc-tool-actions">
                                                         <button type="button" @onclick="() => item.Modifiers.Remove(modifier)">
-                                                            @L["GameSystem_Editor_Delete"]
+                                                            @L["Common_Remove"]
                                                         </button>
                                                     </div>
                                                 </div>
@@ -1309,11 +1311,11 @@ else
                                         <div class="rc-tool-actions">
                                             @if (item.ItemDefinitionId.HasValue)
                                             {
-                                                <button type="button" @onclick="() => item.IsDeleted = true">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => item.IsDeleted = true">@L["Common_Remove"]</button>
                                             }
                                             else
                                             {
-                                                <button type="button" @onclick="() => CurrentSystem.Items.Remove(item)">@L["GameSystem_Editor_Delete"]</button>
+                                                <button type="button" @onclick="() => CurrentSystem.Items.Remove(item)">@L["Common_Remove"]</button>
                                             }
                                         </div>
                                     }
@@ -1881,6 +1883,7 @@ else
         {
             ShowSharedConfirm = true;
             Message = string.Empty;
+            await ScrollToTopAsync();
             return;
         }
 
@@ -1918,10 +1921,12 @@ else
 
             await LoadEditor();
             Message = L["GameSystem_Editor_ChangesApplied"];
+            await ScrollToTopAsync();
         }
         catch (Exception ex)
         {
             Message = $"{L["Common_Error"]} : {ex.Message}";
+            await ScrollToTopAsync();
         }
     }
 
@@ -1948,5 +1953,10 @@ else
     private bool IsVoteWeightMetric(EditableMetricDefinitionDto metric)
     {
         return string.Equals(metric.Name?.Trim(), L["SystemMetric_VoteWeight"], StringComparison.CurrentCultureIgnoreCase);
+    }
+
+    private async Task ScrollToTopAsync()
+    {
+        await JS.InvokeVoidAsync("window.scrollTo", 0, 0);
     }
 }

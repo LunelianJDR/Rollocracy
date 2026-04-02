@@ -16,7 +16,9 @@ namespace Rollocracy.Domain.Polls
 
         public string TargetNameSnapshot { get; set; } = string.Empty;
 
-        public TestModifierMode ModifierMode { get; set; }
+        // Conservé pour compatibilité technique/transitoire.
+        // En L-2, la valeur signée porte le sens métier.
+        public TestModifierMode ModifierMode { get; set; } = TestModifierMode.Bonus;
 
         public int Value { get; set; }
 

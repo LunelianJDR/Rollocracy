@@ -6,6 +6,8 @@ namespace Rollocracy.Domain.Entities
     {
         public Guid SessionId { get; set; }
 
+        public Guid? GameSystemId { get; set; }
+
         public string SessionName { get; set; } = string.Empty;
 
         public string SessionSlug { get; set; } = string.Empty;

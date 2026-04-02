@@ -21,6 +21,7 @@
 @inject ISessionNotifier SessionNotifier
 @inject IConfiguration Configuration
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject ISessionService SessionService
 
 @if (!IsLoaded)
 {
@@ -256,22 +257,6 @@ else
                                 </div>
                             </div>
 
-                            @if (CreationTemplate.Attributes.Count > 0)
-                            {
-                                <div class="rc-detail-block">
-                                    <div class="rc-detail-block__title">@L["Session_Player_Attributes"]</div>
-                                    <div class="rc-player-creation-attribute-grid">
-                                        @foreach (var typeattribute in CreationTemplate.Attributes)
-                                        {
-                                            <div class="rc-player-stat-card">
-                                                <div class="rc-player-stat-card__label">@typeattribute.Name</div>
-                                                <div class="rc-player-stat-card__value">@CreationAttributeValues[typeattribute.AttributeDefinitionId]</div>
-                                            </div>
-                                        }
-                                    </div>
-                                </div>
-                            }
-
                             @if (CreationTemplate.Traits.Count > 0)
                             {
                                 <div class="rc-detail-block">
@@ -355,37 +340,48 @@ else
         </div>
 
         <aside class="rc-player-room__side">
-    <div class="rc-tool-panel">
-        <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
-            <div class="rc-tool-panel__header-main">
-                <h4 class="rc-tool-panel__title">
-                    @(ShowSessionCharactersPanel && State.CanViewSessionCharacters
-                        ? L["Session_Player_SessionCharactersPanelTitle"]
-                        : L["Session_Player_StreamPanelTitle"])
-                </h4>
-                <p class="rc-tool-panel__subtitle">
-                    @(ShowSessionCharactersPanel && State.CanViewSessionCharacters
-                        ? L["Session_Player_SessionCharactersPanelSubtitle"]
-                        : L["Session_Player_StreamPanelSubtitle"])
-                </p>
-            </div>
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">
+                            @(ShowSessionCharactersPanel && State.CanViewSessionCharacters
+                                ? L["Session_Player_SessionCharactersPanelTitle"]
+                                : ShowJournalPanel
+                                    ? L["Journal_PublicTab"]
+                                    : L["Session_Player_StreamPanelTitle"])
+                        </h4>
+                        <p class="rc-tool-panel__subtitle">
+                            @(ShowSessionCharactersPanel && State.CanViewSessionCharacters
+                                ? L["Session_Player_SessionCharactersPanelSubtitle"]
+                                : ShowJournalPanel
+                                    ? L["Journal_PlayerSubtitle"]
+                                    : L["Session_Player_StreamPanelSubtitle"])
+                        </p>
+                    </div>
 
-            <div class="rc-tool-actions">
-                @if (State.CanViewSessionCharacters)
-                {
-                    @if (ShowSessionCharactersPanel)
-                    {
-                        <button type="button" @onclick="() => ShowSessionCharactersPanel = false">
-                            @L["Session_Player_ShowStreamPanel"]
-                        </button>
-                    }
-                    else
-                    {
-                        <button type="button" @onclick="() => ShowSessionCharactersPanel = true">
-                            @L["Session_Player_ShowSessionCharactersPanel"]
-                        </button>
-                    }
-                }
+                    <div class="rc-tool-actions">
+                        @if (State.CanViewSessionCharacters)
+                        {
+                            @if (ShowSessionCharactersPanel)
+                            {
+                                <button type="button" @onclick="() => ShowSessionCharactersPanel = false">
+                                    @L["Session_Player_ShowStreamPanel"]
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" @onclick="() => ShowSessionCharactersPanel = true">
+                                    @L["Session_Player_ShowSessionCharactersPanel"]
+                                </button>
+                            }
+                        }
+
+                        @if (!ShowSessionCharactersPanel && PublicJournal is not null && PublicJournal.PublicPages.Count > 0)
+                        {
+                            <button type="button" @onclick="ToggleJournalPanel">
+                                @(ShowJournalPanel? L["Journal_ShowStream"] : L["Journal_ShowJournal"])
+                            </button>
+                        }
 
                         @if (ShowEditSystemConfirm)
                         {
@@ -400,590 +396,614 @@ else
                             </div>
                         }
 
-                @if (ShowSessionCharactersPanel && State.CanEditSessionCharacters)
-                {
-                    <button type="button" @onclick="CreateNpcFromAssistantPanel">
-                        @L["Session_Manage_CreateNpc"]
-                    </button>
-                }
+                        @if (ShowSessionCharactersPanel && State.CanEditSessionCharacters)
+                        {
+                            <button type="button" @onclick="CreateNpcFromAssistantPanel">
+                                @L["Session_Manage_CreateNpc"]
+                            </button>
+                        }
 
-                @if (!ShowSessionCharactersPanel)
-                {
-                    <button type="button" @onclick="() => IsTwitchEnabled = !IsTwitchEnabled">
-                        @(IsTwitchEnabled? L["Session_Player_DisableStream"] : L["Session_Player_EnableStream"])
-                    </button>
-                }
+                        @if (!ShowSessionCharactersPanel)
+                        {
+                            <button type="button" @onclick="() => IsTwitchEnabled = !IsTwitchEnabled">
+                                @(IsTwitchEnabled? L["Session_Player_DisableStream"] : L["Session_Player_EnableStream"])
+                            </button>
+                        }
 
-                        @if (ShowSessionCharactersPanel && State.SessionGameSystemId.HasValue && State.CanEditSessionGameSystem && !ShowEditSystemConfirm)
-                {
-                    <button type="button" @onclick="EditSessionGameSystem">
-                        @L["Session_Player_EditSessionGameSystem"]
-                    </button>
-                }
-            </div>
-        </div>
-
-        @if (ShowSessionCharactersPanel && State.CanViewSessionCharacters)
-        {
-            <section class="rc-character-view">
-                <div class="rc-character-view__filters">
-                    <label class="rc-filter-toggle">
-                        <input type="checkbox" @bind="ShowObservedAttributes" />
-                        <span>@L["Session_Manage_ShowAttributes"]</span>
-                    </label>
-
-                    <label class="rc-filter-toggle">
-                        <input type="checkbox" @bind="ShowObservedDerivedStats" />
-                        <span>@L["Session_Manage_ShowDerivedStats"]</span>
-                    </label>
-
-                    <label class="rc-filter-toggle">
-                        <input type="checkbox" @bind="ShowObservedTraits" />
-                        <span>@L["Session_Manage_ShowTraits"]</span>
-                    </label>
-
-                    <label class="rc-filter-toggle">
-                        <input type="checkbox" @bind="ShowObservedGauges" />
-                        <span>@L["Session_Manage_ShowGauges"]</span>
-                    </label>
-
-                    <label class="rc-filter-toggle">
-                        <input type="checkbox" @bind="SpecialIncludeOffline" @bind:after="LoadSpecialRoleCharacters" />
-                        <span>@L["Session_Manage_ShowOfflineCharacters"]</span>
-                    </label>
-
-                    <label class="rc-filter-toggle">
-                        <input type="checkbox" @bind="SpecialIncludeDead" @bind:after="LoadSpecialRoleCharacters" />
-                        <span>@L["Session_Manage_ShowDeadCharacters"]</span>
-                    </label>
-                    <label class="rc-filter-toggle">
-                        <input type="checkbox" @bind="SpecialIncludeNpcs" @bind:after="LoadSpecialRoleCharacters" />
-                        <span>@L["Session_Manage_ShowNpcs"]</span>
-                    </label>
-
-                    <div class="rc-filter-toggle">
-                        <label>@L["Session_Manage_SortBy"]</label>
-                        <select @bind="ObservedCharacterSortMode">
-                            @foreach (var option in GetObservedCharacterSortOptions())
-                            {
-                                <option value="@option.Value">@option.Label</option>
-                            }
-                        </select>
+                                @if (ShowSessionCharactersPanel && State.SessionGameSystemId.HasValue && State.CanEditSessionGameSystem && !ShowEditSystemConfirm)
+                        {
+                            <button type="button" @onclick="EditSessionGameSystem">
+                                @L["Session_Player_EditSessionGameSystem"]
+                            </button>
+                        }
                     </div>
                 </div>
 
-                <div class="rc-character-view__layout @(ObservedCharacterSheet is not null ? "has-selection" : string.Empty)">
-                    <div class="rc-character-view__grid">
-                        @if (SpecialRoleCharacters.Count == 0)
-                        {
-                            <div class="rc-empty-panel">
-                                <p>@L["Session_Player_NoSessionCharactersVisible"]</p>
+                @if (ShowSessionCharactersPanel && State.CanViewSessionCharacters)
+                {
+                    <section class="rc-character-view">
+                        <div class="rc-character-view__filters">
+                            <label class="rc-filter-toggle">
+                                <input type="checkbox" @bind="ShowObservedAttributes" />
+                                <span>@L["Session_Manage_ShowAttributes"]</span>
+                            </label>
+
+                            <label class="rc-filter-toggle">
+                                <input type="checkbox" @bind="ShowObservedDerivedStats" />
+                                <span>@L["Session_Manage_ShowDerivedStats"]</span>
+                            </label>
+
+                            <label class="rc-filter-toggle">
+                                <input type="checkbox" @bind="ShowObservedTraits" />
+                                <span>@L["Session_Manage_ShowTraits"]</span>
+                            </label>
+
+                            <label class="rc-filter-toggle">
+                                <input type="checkbox" @bind="ShowObservedGauges" />
+                                <span>@L["Session_Manage_ShowGauges"]</span>
+                            </label>
+
+                            <label class="rc-filter-toggle">
+                                <input type="checkbox" @bind="SpecialIncludeOffline" @bind:after="LoadSpecialRoleCharacters" />
+                                <span>@L["Session_Manage_ShowOfflineCharacters"]</span>
+                            </label>
+
+                            <label class="rc-filter-toggle">
+                                <input type="checkbox" @bind="SpecialIncludeDead" @bind:after="LoadSpecialRoleCharacters" />
+                                <span>@L["Session_Manage_ShowDeadCharacters"]</span>
+                            </label>
+                            <label class="rc-filter-toggle">
+                                <input type="checkbox" @bind="SpecialIncludeNpcs" @bind:after="LoadSpecialRoleCharacters" />
+                                <span>@L["Session_Manage_ShowNpcs"]</span>
+                            </label>
+
+                            <div class="rc-filter-toggle">
+                                <label>@L["Session_Manage_SortBy"]</label>
+                                <select @bind="ObservedCharacterSortMode">
+                                    @foreach (var option in GetObservedCharacterSortOptions())
+                                    {
+                                        <option value="@option.Value">@option.Label</option>
+                                    }
+                                </select>
                             </div>
-                        }
-                        else
-                        {
-                            @foreach (var character in GetSortedObservedCharacters())
+                        </div>
+
+                        <div class="rc-character-view__layout @(ObservedCharacterSheet is not null ? "has-selection" : string.Empty)">
+                            <div class="rc-character-view__grid">
+                                @if (SpecialRoleCharacters.Count == 0)
+                                {
+                                    <div class="rc-empty-panel">
+                                        <p>@L["Session_Player_NoSessionCharactersVisible"]</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    @foreach (var character in GetSortedObservedCharacters())
+                                    {
+                                        var healthGauges = character.Gauges.Where(g => g.IsHealthGauge).ToList();
+                                        var regularGauges = character.Gauges.Where(g => !g.IsHealthGauge).ToList();
+                                        var isSelected = ObservedCharacterSheet?.CharacterId == character.CharacterId;
+
+                                        <button type="button"
+                                                class="rc-character-card @(isSelected ? "selected" : string.Empty)"
+                                                @onclick="() => ToggleObservedCharacterDetails(character.CharacterId)">
+
+                                            <div class="rc-character-card__header">
+                                                <div class="rc-character-card__title-wrap">
+                                                    <div class="rc-character-card__title">@character.CharacterName</div>
+
+                                                    <div class="rc-character-card__player">
+                                                        <span class="rc-character-card__player-name">@character.PlayerName</span>
+                                                    </div>
+
+                                                    <div class="rc-character-card__meta-row">
+                                                        <span class="rc-character-chip @(character.IsAlive ? "alive" : "dead")">
+                                                            @(character.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
+                                                        </span>
+
+                                                        <span class="rc-character-chip @(character.IsOnline ? "online" : "offline")">
+                                                            @(character.IsOnline ? L["Common_Online"] : L["Common_Offline"])
+                                                        </span>
+
+                                                        @if (character.IsNpc)
+                                                        {
+                                                            <span class="rc-character-chip npc">@L["Common_Npc"]</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            @if (ShowObservedAttributes && character.Attributes.Count > 0)
+                                            {
+                                                <div class="rc-character-card__section">
+                                                    <div class="rc-character-card__section-title">@L["Session_Player_Attributes"]</div>
+                                                    <div class="rc-character-inline-list">
+                                                        @foreach (var attributeItem in character.Attributes)
+                                                        {
+                                                            <span class="rc-inline-pill">@attributeItem.Name: @attributeItem.Value</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+
+                                            @if (ShowObservedDerivedStats && character.DerivedStats.Count > 0)
+                                            {
+                                                <div class="rc-character-card__section">
+                                                    <div class="rc-character-card__section-title">@L["Session_Player_DerivedStats"]</div>
+                                                    <div class="rc-character-inline-list">
+                                                        @foreach (var derivedItem in character.DerivedStats)
+                                                        {
+                                                            <span class="rc-inline-pill">@derivedItem.Name: @derivedItem.Value</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+
+                                            @if (ShowObservedTraits && character.Traits.Count > 0)
+                                            {
+                                                <div class="rc-character-card__section">
+                                                    <div class="rc-character-card__section-title">@L["Session_Player_Traits"]</div>
+                                                    <div class="rc-character-inline-list">
+                                                        @foreach (var traitItem in character.Traits)
+                                                        {
+                                                            <span class="rc-inline-pill">@traitItem.TraitName: @traitItem.OptionName</span>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+
+                                            @if (healthGauges.Count > 0 || (ShowObservedGauges && regularGauges.Count > 0))
+                                            {
+                                                <div class="rc-character-card__section">
+                                                    <div class="rc-character-card__section-title">@L["Session_Player_Gauges"]</div>
+
+                                                    @if (healthGauges.Count > 0)
+                                                    {
+                                                        <div class="rc-character-gauges">
+                                                            @foreach (var gauge in healthGauges)
+                                                            {
+                                                                var percent = gauge.MaxValue <= gauge.MinValue
+                                                                    ? 0
+                                                                    : Math.Clamp((int)Math.Round((double)(gauge.Value - gauge.MinValue) * 100 / (gauge.MaxValue - gauge.MinValue)), 0, 100);
+
+                                                                <div class="rc-health-gauge">
+                                                                    <div class="rc-health-gauge__header">
+                                                                        <span>@gauge.Name</span>
+                                                                        <strong>@gauge.Value / @gauge.MaxValue</strong>
+                                                                    </div>
+                                                                    <div class="rc-health-gauge__track">
+                                                                        <div class="rc-health-gauge__fill" style="@($"width:{percent}%")"></div>
+                                                                    </div>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+
+                                                    @if (ShowObservedGauges && regularGauges.Count > 0)
+                                                    {
+                                                        <div class="rc-character-gauges">
+                                                            @foreach (var gauge in regularGauges)
+                                                            {
+                                                                <div class="rc-character-gauge-line">
+                                                                    <span class="rc-character-gauge-line__name">@gauge.Name</span>
+                                                                    <span class="rc-character-gauge-line__value">@gauge.Value / @gauge.MaxValue</span>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </button>
+                                    }
+                                }
+                            </div>
+
+                            @if (ObservedCharacterSheet is not null)
                             {
-                                var healthGauges = character.Gauges.Where(g => g.IsHealthGauge).ToList();
-                                var regularGauges = character.Gauges.Where(g => !g.IsHealthGauge).ToList();
-                                var isSelected = ObservedCharacterSheet?.CharacterId == character.CharacterId;
-
-                                <button type="button"
-                                        class="rc-character-card @(isSelected ? "selected" : string.Empty)"
-                                        @onclick="() => ToggleObservedCharacterDetails(character.CharacterId)">
-
-                                    <div class="rc-character-card__header">
-                                        <div class="rc-character-card__title-wrap">
-                                            <div class="rc-character-card__title">@character.CharacterName</div>
-
-                                            <div class="rc-character-card__player">
-                                                <span class="rc-character-card__player-name">@character.PlayerName</span>
-                                            </div>
-
-                                            <div class="rc-character-card__meta-row">
-                                                <span class="rc-character-chip @(character.IsAlive ? "alive" : "dead")">
-                                                    @(character.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
+                                <aside class="rc-character-detail-panel">
+                                    <div class="rc-character-detail-panel__header">
+                                        <div>
+                                            <h5 class="rc-character-detail-panel__title">@ObservedCharacterSheet.Name</h5>
+                                            <div class="rc-character-detail-panel__meta">
+                                                <span class="rc-character-chip @(ObservedCharacterSheet.IsAlive ? "alive" : "dead")">
+                                                    @(ObservedCharacterSheet.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
                                                 </span>
-
-                                                <span class="rc-character-chip @(character.IsOnline ? "online" : "offline")">
-                                                    @(character.IsOnline ? L["Common_Online"] : L["Common_Offline"])
-                                                </span>
-
-                                                @if (character.IsNpc)
-                                                {
-                                                    <span class="rc-character-chip npc">@L["Common_Npc"]</span>
-                                                }
                                             </div>
                                         </div>
-                                    </div>
 
-                                    @if (ShowObservedAttributes && character.Attributes.Count > 0)
-                                    {
-                                        <div class="rc-character-card__section">
-                                            <div class="rc-character-card__section-title">@L["Session_Player_Attributes"]</div>
-                                            <div class="rc-character-inline-list">
-                                                @foreach (var attributeItem in character.Attributes)
-                                                {
-                                                    <span class="rc-inline-pill">@attributeItem.Name: @attributeItem.Value</span>
-                                                }
-                                            </div>
-                                        </div>
-                                    }
-
-                                    @if (ShowObservedDerivedStats && character.DerivedStats.Count > 0)
-                                    {
-                                        <div class="rc-character-card__section">
-                                            <div class="rc-character-card__section-title">@L["Session_Player_DerivedStats"]</div>
-                                            <div class="rc-character-inline-list">
-                                                @foreach (var derivedItem in character.DerivedStats)
-                                                {
-                                                    <span class="rc-inline-pill">@derivedItem.Name: @derivedItem.Value</span>
-                                                }
-                                            </div>
-                                        </div>
-                                    }
-
-                                    @if (ShowObservedTraits && character.Traits.Count > 0)
-                                    {
-                                        <div class="rc-character-card__section">
-                                            <div class="rc-character-card__section-title">@L["Session_Player_Traits"]</div>
-                                            <div class="rc-character-inline-list">
-                                                @foreach (var traitItem in character.Traits)
-                                                {
-                                                    <span class="rc-inline-pill">@traitItem.TraitName: @traitItem.OptionName</span>
-                                                }
-                                            </div>
-                                        </div>
-                                    }
-
-                                    @if (healthGauges.Count > 0 || (ShowObservedGauges && regularGauges.Count > 0))
-                                    {
-                                        <div class="rc-character-card__section">
-                                            <div class="rc-character-card__section-title">@L["Session_Player_Gauges"]</div>
-
-                                            @if (healthGauges.Count > 0)
-                                            {
-                                                <div class="rc-character-gauges">
-                                                    @foreach (var gauge in healthGauges)
-                                                    {
-                                                        var percent = gauge.MaxValue <= gauge.MinValue
-                                                            ? 0
-                                                            : Math.Clamp((int)Math.Round((double)(gauge.Value - gauge.MinValue) * 100 / (gauge.MaxValue - gauge.MinValue)), 0, 100);
-
-                                                        <div class="rc-health-gauge">
-                                                            <div class="rc-health-gauge__header">
-                                                                <span>@gauge.Name</span>
-                                                                <strong>@gauge.Value / @gauge.MaxValue</strong>
-                                                            </div>
-                                                            <div class="rc-health-gauge__track">
-                                                                <div class="rc-health-gauge__fill" style="@($"width:{percent}%")"></div>
-                                                            </div>
-                                                        </div>
-                                                    }
-                                                </div>
-                                            }
-
-                                            @if (ShowObservedGauges && regularGauges.Count > 0)
-                                            {
-                                                <div class="rc-character-gauges">
-                                                    @foreach (var gauge in regularGauges)
-                                                    {
-                                                        <div class="rc-character-gauge-line">
-                                                            <span class="rc-character-gauge-line__name">@gauge.Name</span>
-                                                            <span class="rc-character-gauge-line__value">@gauge.Value / @gauge.MaxValue</span>
-                                                        </div>
-                                                    }
-                                                </div>
-                                            }
-                                        </div>
-                                    }
-                                </button>
-                            }
-                        }
-                    </div>
-
-                    @if (ObservedCharacterSheet is not null)
-                    {
-                        <aside class="rc-character-detail-panel">
-                            <div class="rc-character-detail-panel__header">
-                                <div>
-                                    <h5 class="rc-character-detail-panel__title">@ObservedCharacterSheet.Name</h5>
-                                    <div class="rc-character-detail-panel__meta">
-                                        <span class="rc-character-chip @(ObservedCharacterSheet.IsAlive ? "alive" : "dead")">
-                                            @(ObservedCharacterSheet.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div class="rc-character-detail-panel__actions">
-                                    @if (State.CanEditSessionCharacters)
-                                    {
-                                        @if (IsObservedCharacterEditMode || IsObservedBiographyEditMode)
-                                        {
-                                            <button type="button" @onclick="CancelObservedCharacterPanelEdition">@L["Common_Cancel"]</button>
-                                        }
-                                        else
-                                        {
-                                            <button type="button" @onclick="BeginObservedCharacterEdit">@L["EditCharacter_EditCharacter"]</button>
-                                        }
-                                    }
-
-                                    @if (!IsObservedCharacterEditMode && !IsObservedBiographyEditMode)
-                                    {
-                                        @if (ShowObservedCharacterBioPanel)
-                                        {
+                                        <div class="rc-character-detail-panel__actions">
                                             @if (State.CanEditSessionCharacters)
                                             {
-                                                <button type="button" @onclick="BeginObservedBiographyEdit">@L["Session_Player_EditBiography"]</button>
+                                                @if (IsObservedCharacterEditMode || IsObservedBiographyEditMode)
+                                                {
+                                                    <button type="button" @onclick="CancelObservedCharacterPanelEdition">@L["Common_Cancel"]</button>
+                                                }
+                                                else
+                                                {
+                                                    <button type="button" @onclick="BeginObservedCharacterEdit">@L["EditCharacter_EditCharacter"]</button>
+                                                }
                                             }
-                                            <button type="button" @onclick="HideObservedBiography">@L["Session_Player_Statistics"]</button>
-                                        }
-                                        else
-                                        {
-                                            <button type="button" @onclick="ShowObservedBiography">@L["Session_Player_ViewBiography"]</button>
-                                        }
-                                    }
-                                </div>
-                            </div>
 
-                            <div class="rc-character-detail-panel__body">
-                                @if (IsObservedCharacterEditMode && ObservedEditableCharacter is not null)
-                                {
-                                    @* <div class="rc-tool-form-grid">
-                                        <div class="rc-form-field">
-                                            <label>@L["Character_Edit_Name"]</label>
-                                            <input @bind="ObservedEditableCharacter.Name" />
-                                        </div>
-
-                                        @foreach (var typeattribute in ObservedEditableCharacter.Attributes)
-                                        {
-                                            <div class="rc-form-field">
-                                                        <label>@typeattribute.Name</label>
-                                                        <input type="number" @bind="typeattribute.Value" />
-                                            </div>
-                                        }
-
-                                        @foreach (var gauge in ObservedEditableCharacter.Gauges)
-                                        {
-                                            <div class="rc-form-field">
-                                                <label>@gauge.Name</label>
-                                                <input type="number" @bind="gauge.Value" />
-                                            </div>
-                                        }
-
-                                        @foreach (var trait in ObservedEditableCharacter.Traits)
-                                        {
-                                            <div class="rc-form-field">
-                                                <label>@trait.TraitName</label>
-                                                <select @bind="trait.SelectedOptionId">
-                                                    @foreach (var option in trait.Options)
+                                            @if (!IsObservedCharacterEditMode && !IsObservedBiographyEditMode)
+                                            {
+                                                @if (ShowObservedCharacterBioPanel)
+                                                {
+                                                    @if (State.CanEditSessionCharacters)
                                                     {
-                                                        <option value="@option.TraitOptionId">@option.Name</option>
+                                                        <button type="button" @onclick="BeginObservedBiographyEdit">@L["Session_Player_EditBiography"]</button>
                                                     }
-                                                </select>
-                                            </div>
-                                        }
-                                    </div> *@
-                                    <div class="rc-detail-block">
-                                        <div class="rc-detail-block__title">@L["Character_Edit_PlayerName"]</div>
-                                                <div>@ObservedEditableCharacter.PlayerName</div>
+                                                    <button type="button" @onclick="HideObservedBiography">@L["Session_Player_Statistics"]</button>
+                                                }
+                                                else
+                                                {
+                                                    <button type="button" @onclick="ShowObservedBiography">@L["Session_Player_ViewBiography"]</button>
+                                                }
+                                            }
+                                        </div>
                                     </div>
 
-                                    <div class="rc-tool-form-grid rc-tool-form-grid--dense">
-                                        <div class="rc-form-field">
-                                            <label>@L["Character_Edit_Name"]</label>
+                                    <div class="rc-character-detail-panel__body">
+                                        @if (IsObservedCharacterEditMode && ObservedEditableCharacter is not null)
+                                        {
+                                            @* <div class="rc-tool-form-grid">
+                                                <div class="rc-form-field">
+                                                    <label>@L["Character_Edit_Name"]</label>
                                                     <input @bind="ObservedEditableCharacter.Name" />
-                                        </div>
-                                    </div>
-
-                                    <div class="rc-detail-block">
-                                        <div class="rc-detail-block__title">@L["Session_Player_Attributes"]</div>
-                                        <div class="rc-tool-form-grid rc-tool-form-grid--dense">
-                                                    @foreach (var attributeItem in ObservedEditableCharacter.Attributes)
-                                            {
-                                                <div class="rc-form-field">
-                                                    <label>@attributeItem.Name (@attributeItem.MinValue - @attributeItem.MaxValue)</label>
-                                                    <input type="number"
-                                                            min="@attributeItem.MinValue"
-                                                            max="@attributeItem.MaxValue"
-                                                            @bind="attributeItem.Value" />
                                                 </div>
-                                            }
-                                        </div>
-                                    </div>
 
-                                    @if (ObservedEditableCharacter.DerivedStats.Count > 0)
-                                    {
-                                        <div class="rc-detail-block">
-                                            <div class="rc-detail-block__title">@L["Session_Player_DerivedStats"]</div>
-                                            <ul class="rc-detail-list">
-                                                @foreach (var derived in ObservedEditableCharacter.DerivedStats)
+                                                @foreach (var typeattribute in ObservedEditableCharacter.Attributes)
                                                 {
-                                                    <li>@derived.Name : @derived.Value</li>
-                                                }
-                                            </ul>
-                                        </div>
-                                    }
-
-                                    @if (ObservedEditableCharacter.Metrics.Count > 0)
-                                    {
-                                        <div class="rc-detail-block">
-                                            <div class="rc-detail-block__title">@L["Session_Player_Metrics"]</div>
-                                            <ul class="rc-detail-list">
-                                                @foreach (var metric in ObservedEditableCharacter.Metrics)
-                                                {
-                                                    <li>@metric.Name : @metric.Value</li>
-                                                }
-                                            </ul>
-                                        </div>
-                                    }
-
-                                    <div class="rc-detail-block">
-                                        <div class="rc-detail-block__title">@L["Session_Player_Traits"]</div>
-                                        <div class="rc-tool-form-grid rc-tool-form-grid--dense">
-                                                    @foreach (var traitItem in ObservedEditableCharacter.Traits)
-                                            {
-                                                <div class="rc-form-field">
-                                                    <label>@traitItem.TraitName</label>
-                                                    <select @bind="traitItem.SelectedOptionId">
-                                                        <option value="">--</option>
-                                                        @foreach (var optionItem in traitItem.Options)
-                                                        {
-                                                            <option value="@optionItem.TraitOptionId">@optionItem.Name</option>
-                                                        }
-                                                    </select>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-
-                                    <div class="rc-detail-block">
-                                        <div class="rc-detail-block__title">@L["Session_Player_Gauges"]</div>
-                                        <div class="rc-tool-form-grid rc-tool-form-grid--dense">
-                                                    @foreach (var gaugeItem in ObservedEditableCharacter.Gauges)
-                                            {
-                                                <div class="rc-form-field">
-                                                    <label>
-                                                        @gaugeItem.Name (@gaugeItem.MinValue - @gaugeItem.MaxValue)
-                                                        @if (gaugeItem.IsHealthGauge)
-                                                        {
-                                                            <span>- @L["Character_Edit_HealthGauge"]</span>
-                                                        }
-                                                    </label>
-                                                    <input type="number"
-                                                            min="@gaugeItem.MinValue"
-                                                            max="@gaugeItem.MaxValue"
-                                                            @bind="gaugeItem.Value" />
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-
-                                            <div class="rc-detail-block">
-                                                <div class="rc-detail-block__title">@L["Character_Edit_Talents"]</div>
-                                                @if (ObservedEditableCharacter.Talents.Count == 0)
-                                                {
-                                                    <p>@L["Character_Edit_NoTalentsDefined"]</p>
-                                                }
-                                                else
-                                                {
-                                                    <div class="rc-character-inline-list">
-                                                        @foreach (var talentItem in ObservedEditableCharacter.Talents)
-                                                        {
-                                                            <label class="rc-filter-toggle">
-                                                                <input type="checkbox" @bind="talentItem.IsSelected" />
-                                                                <span>@talentItem.Name</span>
-                                                            </label>
-                                                        }
+                                                    <div class="rc-form-field">
+                                                                <label>@typeattribute.Name</label>
+                                                                <input type="number" @bind="typeattribute.Value" />
                                                     </div>
                                                 }
-                                            </div>
 
-                                            <div class="rc-detail-block">
-                                                <div class="rc-detail-block__title">@L["Character_Edit_Items"]</div>
-                                                @if (ObservedEditableCharacter.Items.Count == 0)
+                                                @foreach (var gauge in ObservedEditableCharacter.Gauges)
                                                 {
-                                                    <p>@L["Character_Edit_NoItemsDefined"]</p>
-                                                }
-                                                else
-                                                {
-                                                    <div class="rc-character-inline-list">
-                                                        @foreach (var item in ObservedEditableCharacter.Items)
-                                                        {
-                                                            <label class="rc-filter-toggle">
-                                                                <input type="checkbox" @bind="item.IsSelected" />
-                                                                <span>@item.Name</span>
-                                                            </label>
-                                                        }
+                                                    <div class="rc-form-field">
+                                                        <label>@gauge.Name</label>
+                                                        <input type="number" @bind="gauge.Value" />
                                                     </div>
                                                 }
+
+                                                @foreach (var trait in ObservedEditableCharacter.Traits)
+                                                {
+                                                    <div class="rc-form-field">
+                                                        <label>@trait.TraitName</label>
+                                                        <select @bind="trait.SelectedOptionId">
+                                                            @foreach (var option in trait.Options)
+                                                            {
+                                                                <option value="@option.TraitOptionId">@option.Name</option>
+                                                            }
+                                                        </select>
+                                                    </div>
+                                                }
+                                            </div> *@
+                                            <div class="rc-detail-block">
+                                                <div class="rc-detail-block__title">@L["Character_Edit_PlayerName"]</div>
+                                                        <div>@ObservedEditableCharacter.PlayerName</div>
                                             </div>
 
+                                            <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                                <div class="rc-form-field">
+                                                    <label>@L["Character_Edit_Name"]</label>
+                                                            <input @bind="ObservedEditableCharacter.Name" />
+                                                </div>
+                                            </div>
 
-                                    <div class="rc-tool-actions">
-                                        <button type="button" @onclick="SaveObservedCharacterEdits">@L["Common_Save"]</button>
-                                    </div>
-                                }
-                                else if (IsObservedBiographyEditMode && ObservedEditableCharacter is not null)
-                                {
-                                    <div class="rc-form-field rc-form-field--full">
-                                        <label>@L["Common_Biography"]</label>
-                                        <textarea rows="12" @bind="ObservedEditableCharacter.Biography"></textarea>
-                                    </div>
-
-                                    <div class="rc-tool-actions">
-                                        <button type="button" @onclick="SaveObservedBiography">@L["Common_Save"]</button>
-                                    </div>
-                                }
-                                else if (ShowObservedCharacterBioPanel)
-                                {
-                                    <div class="rc-character-bio">
-                                        @if (string.IsNullOrWhiteSpace(ObservedCharacterSheet.Biography))
-                                        {
-                                            <span>@L["Session_Player_NoBiography"]</span>
-                                        }
-                                        else
-                                        {
-                                            @ObservedCharacterSheet.Biography
-                                        }
-                                    </div>
-                                }
-                                        else
-                                        {
                                             <div class="rc-detail-block">
                                                 <div class="rc-detail-block__title">@L["Session_Player_Attributes"]</div>
-                                                <ul class="rc-detail-list">
-                                                    @foreach (var item in ObservedCharacterSheet.Attributes)
+                                                <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                                            @foreach (var attributeItem in ObservedEditableCharacter.Attributes)
                                                     {
-                                                        <li>@item.Name : @item.Value</li>
+                                                        <div class="rc-form-field">
+                                                            <label>@attributeItem.Name (@attributeItem.MinValue - @attributeItem.MaxValue)</label>
+                                                            <input type="number"
+                                                                    min="@attributeItem.MinValue"
+                                                                    max="@attributeItem.MaxValue"
+                                                                    @bind="attributeItem.Value" />
+                                                        </div>
                                                     }
-                                                </ul>
+                                                </div>
                                             </div>
 
-                                            @if (ObservedCharacterSheet.DerivedStats.Count > 0)
+                                            @if (ObservedEditableCharacter.DerivedStats.Count > 0)
                                             {
                                                 <div class="rc-detail-block">
                                                     <div class="rc-detail-block__title">@L["Session_Player_DerivedStats"]</div>
                                                     <ul class="rc-detail-list">
-                                                        @foreach (var item in ObservedCharacterSheet.DerivedStats)
+                                                        @foreach (var derived in ObservedEditableCharacter.DerivedStats)
                                                         {
-                                                            <li>@item.Name : @item.Value</li>
+                                                            <li>@derived.Name : @derived.Value</li>
                                                         }
                                                     </ul>
                                                 </div>
                                             }
 
-                                            @if (ObservedCharacterSheet.Traits.Count > 0)
+                                            @if (ObservedEditableCharacter.Metrics.Count > 0)
                                             {
                                                 <div class="rc-detail-block">
-                                                    <div class="rc-detail-block__title">@L["Session_Player_Traits"]</div>
+                                                    <div class="rc-detail-block__title">@L["Session_Player_Metrics"]</div>
                                                     <ul class="rc-detail-list">
-                                                        @foreach (var item in ObservedCharacterSheet.Traits)
+                                                        @foreach (var metric in ObservedEditableCharacter.Metrics)
                                                         {
-                                                            <li>@item.TraitName : @item.OptionName</li>
+                                                            <li>@metric.Name : @metric.Value</li>
                                                         }
                                                     </ul>
                                                 </div>
                                             }
 
-                                            @if (ObservedCharacterSheet.Talents.Count > 0)
-                                            {
-                                                <div class="rc-detail-block">
-                                                    <div class="rc-detail-block__title">@L["Character_Edit_Talents"]</div>
-                                                    <ul class="rc-detail-list">
-                                                        @foreach (var item in ObservedCharacterSheet.Talents)
-                                                        {
-                                                            <li>@item.Name</li>
-                                                        }
-                                                    </ul>
+                                            <div class="rc-detail-block">
+                                                <div class="rc-detail-block__title">@L["Session_Player_Traits"]</div>
+                                                <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                                            @foreach (var traitItem in ObservedEditableCharacter.Traits)
+                                                    {
+                                                        <div class="rc-form-field">
+                                                            <label>@traitItem.TraitName</label>
+                                                            <select @bind="traitItem.SelectedOptionId">
+                                                                <option value="">--</option>
+                                                                @foreach (var optionItem in traitItem.Options)
+                                                                {
+                                                                    <option value="@optionItem.TraitOptionId">@optionItem.Name</option>
+                                                                }
+                                                            </select>
+                                                        </div>
+                                                    }
                                                 </div>
-                                            }
+                                            </div>
 
-                                            @if (ObservedCharacterSheet.Items.Count > 0)
-                                            {
-                                                <div class="rc-detail-block">
-                                                    <div class="rc-detail-block__title">@L["Character_Edit_Items"]</div>
-                                                    <ul class="rc-detail-list">
-                                                        @foreach (var item in ObservedCharacterSheet.Items)
-                                                        {
-                                                            <li>@item.Name</li>
-                                                        }
-                                                    </ul>
+                                            <div class="rc-detail-block">
+                                                <div class="rc-detail-block__title">@L["Session_Player_Gauges"]</div>
+                                                <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                                            @foreach (var gaugeItem in ObservedEditableCharacter.Gauges)
+                                                    {
+                                                        <div class="rc-form-field">
+                                                            <label>
+                                                                @gaugeItem.Name (@gaugeItem.MinValue - @gaugeItem.MaxValue)
+                                                                @if (gaugeItem.IsHealthGauge)
+                                                                {
+                                                                    <span>- @L["Character_Edit_HealthGauge"]</span>
+                                                                }
+                                                            </label>
+                                                            <input type="number"
+                                                                    min="@gaugeItem.MinValue"
+                                                                    max="@gaugeItem.MaxValue"
+                                                                    @bind="gaugeItem.Value" />
+                                                        </div>
+                                                    }
                                                 </div>
-                                            }
+                                            </div>
 
-                                            @if (ObservedCharacterSheet.Gauges.Count > 0)
-                                            {
-                                                <div class="rc-detail-block">
-                                                    <div class="rc-detail-block__title">@L["Session_Player_Gauges"]</div>
-                                                    <ul class="rc-detail-list">
-                                                        @foreach (var gauge in ObservedCharacterSheet.Gauges)
+                                                    <div class="rc-detail-block">
+                                                        <div class="rc-detail-block__title">@L["Character_Edit_Talents"]</div>
+                                                        @if (ObservedEditableCharacter.Talents.Count == 0)
                                                         {
-                                                            <li>@gauge.Name : @gauge.Value / @gauge.MaxValue</li>
+                                                            <p>@L["Character_Edit_NoTalentsDefined"]</p>
                                                         }
-                                                    </ul>
-                                                </div>
-                                            }
+                                                        else
+                                                        {
+                                                            <div class="rc-character-inline-list">
+                                                                @foreach (var talentItem in ObservedEditableCharacter.Talents)
+                                                                {
+                                                                    <label class="rc-filter-toggle">
+                                                                        <input type="checkbox" @bind="talentItem.IsSelected" />
+                                                                        <span>@talentItem.Name</span>
+                                                                    </label>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </div>
+
+                                                    <div class="rc-detail-block">
+                                                        <div class="rc-detail-block__title">@L["Character_Edit_Items"]</div>
+                                                        @if (ObservedEditableCharacter.Items.Count == 0)
+                                                        {
+                                                            <p>@L["Character_Edit_NoItemsDefined"]</p>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="rc-character-inline-list">
+                                                                @foreach (var item in ObservedEditableCharacter.Items)
+                                                                {
+                                                                    <label class="rc-filter-toggle">
+                                                                        <input type="checkbox" @bind="item.IsSelected" />
+                                                                        <span>@item.Name</span>
+                                                                    </label>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </div>
+
+
+                                            <div class="rc-tool-actions">
+                                                <button type="button" @onclick="SaveObservedCharacterEdits">@L["Common_Save"]</button>
+                                            </div>
                                         }
+                                        else if (IsObservedBiographyEditMode && ObservedEditableCharacter is not null)
+                                        {
+                                            <div class="rc-form-field rc-form-field--full">
+                                                <label>@L["Common_Biography"]</label>
+                                                <textarea rows="12" @bind="ObservedEditableCharacter.Biography"></textarea>
+                                            </div>
 
-                                @if (!string.IsNullOrWhiteSpace(ObservedCharacterPanelMessage))
-                                {
-                                    <div class="rc-inline-error">@ObservedCharacterPanelMessage</div>
-                                }
-                            </div>
-                        </aside>
-                    }
-                </div>
-            </section>
-        }
-        else
-        {
-            @if (!IsTwitchEnabled)
-            {
-                <div class="rc-empty-panel rc-empty-panel--small">
-                    <p>@L["Session_Player_StreamDisabled"]</p>
-                </div>
-            }
-                    else
-                    {
-                        @if (!IsTwitchEnabled)
+                                            <div class="rc-tool-actions">
+                                                <button type="button" @onclick="SaveObservedBiography">@L["Common_Save"]</button>
+                                            </div>
+                                        }
+                                        else if (ShowObservedCharacterBioPanel)
+                                        {
+                                            <div class="rc-character-bio">
+                                                @if (string.IsNullOrWhiteSpace(ObservedCharacterSheet.Biography))
+                                                {
+                                                    <span>@L["Session_Player_NoBiography"]</span>
+                                                }
+                                                else
+                                                {
+                                                    @ObservedCharacterSheet.Biography
+                                                }
+                                            </div>
+                                        }
+                                                else
+                                                {
+                                                    <div class="rc-detail-block">
+                                                        <div class="rc-detail-block__title">@L["Session_Player_Attributes"]</div>
+                                                        <ul class="rc-detail-list">
+                                                            @foreach (var item in ObservedCharacterSheet.Attributes)
+                                                            {
+                                                                <li>@item.Name : @item.Value</li>
+                                                            }
+                                                        </ul>
+                                                    </div>
+
+                                                    @if (ObservedCharacterSheet.DerivedStats.Count > 0)
+                                                    {
+                                                        <div class="rc-detail-block">
+                                                            <div class="rc-detail-block__title">@L["Session_Player_DerivedStats"]</div>
+                                                            <ul class="rc-detail-list">
+                                                                @foreach (var item in ObservedCharacterSheet.DerivedStats)
+                                                                {
+                                                                    <li>@item.Name : @item.Value</li>
+                                                                }
+                                                            </ul>
+                                                        </div>
+                                                    }
+
+                                                    @if (ObservedCharacterSheet.Traits.Count > 0)
+                                                    {
+                                                        <div class="rc-detail-block">
+                                                            <div class="rc-detail-block__title">@L["Session_Player_Traits"]</div>
+                                                            <ul class="rc-detail-list">
+                                                                @foreach (var item in ObservedCharacterSheet.Traits)
+                                                                {
+                                                                    <li>@item.TraitName : @item.OptionName</li>
+                                                                }
+                                                            </ul>
+                                                        </div>
+                                                    }
+
+                                                    @if (ObservedCharacterSheet.Talents.Count > 0)
+                                                    {
+                                                        <div class="rc-detail-block">
+                                                            <div class="rc-detail-block__title">@L["Character_Edit_Talents"]</div>
+                                                            <ul class="rc-detail-list">
+                                                                @foreach (var item in ObservedCharacterSheet.Talents)
+                                                                {
+                                                                    <li>@item.Name</li>
+                                                                }
+                                                            </ul>
+                                                        </div>
+                                                    }
+
+                                                    @if (ObservedCharacterSheet.Items.Count > 0)
+                                                    {
+                                                        <div class="rc-detail-block">
+                                                            <div class="rc-detail-block__title">@L["Character_Edit_Items"]</div>
+                                                            <ul class="rc-detail-list">
+                                                                @foreach (var item in ObservedCharacterSheet.Items)
+                                                                {
+                                                                    <li>@item.Name</li>
+                                                                }
+                                                            </ul>
+                                                        </div>
+                                                    }
+
+                                                    @if (ObservedCharacterSheet.Gauges.Count > 0)
+                                                    {
+                                                        <div class="rc-detail-block">
+                                                            <div class="rc-detail-block__title">@L["Session_Player_Gauges"]</div>
+                                                            <ul class="rc-detail-list">
+                                                                @foreach (var gauge in ObservedCharacterSheet.Gauges)
+                                                                {
+                                                                    <li>@gauge.Name : @gauge.Value / @gauge.MaxValue</li>
+                                                                }
+                                                            </ul>
+                                                        </div>
+                                                    }
+                                                }
+
+                                        @if (!string.IsNullOrWhiteSpace(ObservedCharacterPanelMessage))
+                                        {
+                                            <div class="rc-inline-error">@ObservedCharacterPanelMessage</div>
+                                        }
+                                    </div>
+                                </aside>
+                            }
+                        </div>
+                    </section>
+                }
+                        else if (ShowJournalPanel)
                         {
-                            <div class="rc-empty-panel rc-empty-panel--small">
-                                <p>@L["Session_Player_StreamDisabled"]</p>
-                            </div>
-                        }
-                        else if (string.IsNullOrWhiteSpace(TwitchChannelName))
-                        {
-                            <div class="rc-empty-panel rc-empty-panel--small">
-                                <p>@L["Session_Player_NoTwitchStreamConfigured"]</p>
-                            </div>
+                            @if (CurrentPublicJournalPage is null)
+                            {
+                                <div class="rc-empty-panel rc-empty-panel--small">
+                                    <p>@L["Journal_EmptyPage"]</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <section class="rc-journal-viewer">
+                                    <div class="rc-journal-viewer__nav">
+                                        <button type="button" @onclick="PreviousPublicJournalPage" disabled="@(CurrentPublicJournalPageIndex <= 0)">&lt;</button>
+                                        <span class="rc-journal-viewer__page-number">@CurrentPublicJournalPage.PageNumber</span>
+                                        <button type="button" @onclick="NextPublicJournalPage" disabled="@(PublicJournal is null || CurrentPublicJournalPageIndex >= PublicJournal.PublicPages.Count - 1)">&gt;</button>
+                                        <span class="rc-journal-viewer__page-title">@GetJournalDisplayTitle(CurrentPublicJournalPage)</span>
+                                    </div>
+
+                                    @if (string.IsNullOrWhiteSpace(CurrentPublicJournalPage.ContentHtml))
+                                    {
+                                        <div class="rc-empty-panel rc-empty-panel--small">
+                                            <p>@L["Journal_EmptyPage"]</p>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="rc-journal-content">
+                                            @((MarkupString)CurrentPublicJournalPage.ContentHtml)
+                                        </div>
+                                    }
+                                </section>
+                            }
                         }
                         else
                         {
-                            <div class="rc-player-stream">
-                                @if (ShowTwitchChat)
-                                {
-                                    <iframe class="rc-player-stream__chat"
-                                            src="@($"https://www.twitch.tv/embed/{TwitchChannelName}/chat?parent={TwitchParentHost}")">
+                            @if (!IsTwitchEnabled)
+                            {
+                                <div class="rc-empty-panel rc-empty-panel--small">
+                                    <p>@L["Session_Player_StreamDisabled"]</p>
+                                </div>
+                            }
+                            else if (string.IsNullOrWhiteSpace(TwitchChannelName))
+                            {
+                                <div class="rc-empty-panel rc-empty-panel--small">
+                                    <p>@L["Session_Player_NoTwitchStreamConfigured"]</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="rc-player-stream">
+                                    @if (ShowTwitchChat)
+                                    {
+                                        <iframe class="rc-player-stream__chat"
+                                                src="@($"https://www.twitch.tv/embed/{TwitchChannelName}/chat?parent={TwitchParentHost}")">
+                                        </iframe>
+                                    }
+
+                                    <iframe class="rc-player-stream__video"
+                                            src="@($"https://player.twitch.tv/?channel={TwitchChannelName}&parent={TwitchParentHost}")"
+                                            allow="fullscreen">
                                     </iframe>
-                                }
+                                </div>
 
-                                <iframe class="rc-player-stream__video"
-                                        src="@($"https://player.twitch.tv/?channel={TwitchChannelName}&parent={TwitchParentHost}")"
-                                        allow="fullscreen">
-                                </iframe>
-                            </div>
-
-                            <div class="rc-tool-actions" style="margin-top: 0.75rem;">
-                                <button type="button" @onclick="() => ShowTwitchChat = !ShowTwitchChat">
-                                    @(ShowTwitchChat? L["Session_Player_HideChat"] : L["Session_Player_ShowChat"])
-                                </button>
-                            </div>
+                                <div class="rc-tool-actions" style="margin-top: 0.75rem;">
+                                    <button type="button" @onclick="() => ShowTwitchChat = !ShowTwitchChat">
+                                        @(ShowTwitchChat? L["Session_Player_HideChat"] : L["Session_Player_ShowChat"])
+                                    </button>
+                                </div>
+                            }
                         }
-                    }
-        }
-    </div>
-</aside>
+            </div>
+        </aside>
     </section>
 }
 
@@ -1012,6 +1032,10 @@ else
     private bool ShowObservedGauges = false;
     private bool SpecialIncludeNpcs;
     private string ObservedCharacterSortMode = "character-name";
+
+    private SessionJournalViewDto? PublicJournal;
+    private bool ShowJournalPanel;
+    private int CurrentPublicJournalPageIndex;
 
     private EditableCharacterDto? ObservedEditableCharacter;
     private bool IsObservedCharacterEditMode;
@@ -1093,6 +1117,7 @@ else
         {
             Message = string.Empty;
             State = await CharacterService.GetPlayerRoomStateAsync(PlayerSessionId);
+            await LoadPublicJournal();
 
             if (State?.AliveCharacter is null)
             {
@@ -1171,15 +1196,15 @@ else
         });
 
         hubConnection.On("CharacterStateChanged", async () =>
-{
-    await InvokeAsync(async () =>
-    {
-        await LoadState();
-        await LoadActiveTest();
-        await LoadLatestPoll();
-        StateHasChanged();
-    });
-});
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadState();
+                await LoadActiveTest();
+                await LoadLatestPoll();
+                StateHasChanged();
+            });
+        });
 
         hubConnection.On("TestChanged", async () =>
         {
@@ -1197,6 +1222,15 @@ else
             {
                 await LoadState();
                 await LoadLatestPoll();
+                StateHasChanged();
+            });
+        });
+
+        hubConnection.On("JournalChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadPublicJournal();
                 StateHasChanged();
             });
         });
@@ -1252,11 +1286,6 @@ else
             CreationAttributeValues.Clear();
             CreationTraitSelections.Clear();
 
-            foreach (var attribute in CreationTemplate.Attributes)
-            {
-                CreationAttributeValues[attribute.AttributeDefinitionId] = attribute.DefaultValue;
-            }
-
             foreach (var trait in CreationTemplate.Traits)
             {
                 if (trait.IsRandomSelectionGroup)
@@ -1303,13 +1332,33 @@ else
                 PlayerSessionId,
                 NewCharacterName,
                 NewCharacterBiography,
-                CreationAttributeValues,
+                new Dictionary<Guid, int>(),
                 CreationTraitSelections);
+
+            if (hubConnection is not null && !PresenceJoined && State is not null)
+            {
+                await hubConnection.SendAsync(
+                    "JoinPlayerPresence",
+                    State.SessionId.ToString(),
+                    PlayerSessionId.ToString(),
+                    false);
+
+                PresenceJoined = true;
+            }
 
             await SessionNotifier.NotifyCharacterStateChangedAsync(CreationTemplate.SessionId);
 
             IsCreatingCharacterInline = false;
             await LoadState();
+            await LoadActiveTest();
+            await LoadLatestPoll();
+
+            IsCreatingCharacterInline = false;
+            CreationTemplate = null;
+            NewCharacterName = string.Empty;
+            NewCharacterBiography = string.Empty;
+            CreationAttributeValues.Clear();
+            CreationTraitSelections.Clear();
         }
         catch (Exception ex)
         {
@@ -2082,5 +2131,53 @@ else
         return Task.CompletedTask;
     }
 
+    private SessionJournalPageDto? CurrentPublicJournalPage
+    => PublicJournal is null || PublicJournal.PublicPages.Count == 0
+        ? null
+        : PublicJournal.PublicPages[Math.Clamp(CurrentPublicJournalPageIndex, 0, PublicJournal.PublicPages.Count - 1)];
+
+    private async Task LoadPublicJournal()
+    {
+        PublicJournal = await SessionService.GetPublicSessionJournalAsync(PlayerSessionId);
+
+        if (PublicJournal is null || PublicJournal.PublicPages.Count == 0)
+        {
+            CurrentPublicJournalPageIndex = 0;
+            ShowJournalPanel = false;
+            return;
+        }
+
+        CurrentPublicJournalPageIndex = Math.Clamp(
+            CurrentPublicJournalPageIndex,
+            0,
+            PublicJournal.PublicPages.Count - 1);
+    }
+
+    private void ToggleJournalPanel()
+    {
+        ShowJournalPanel = !ShowJournalPanel;
+    }
+
+    private void PreviousPublicJournalPage()
+    {
+        if (CurrentPublicJournalPageIndex > 0)
+            CurrentPublicJournalPageIndex--;
+    }
+
+    private void NextPublicJournalPage()
+    {
+        if (PublicJournal is null)
+            return;
+
+        if (CurrentPublicJournalPageIndex < PublicJournal.PublicPages.Count - 1)
+            CurrentPublicJournalPageIndex++;
+    }
+
+    private static string GetJournalDisplayTitle(SessionJournalPageDto page)
+    {
+        return string.IsNullOrWhiteSpace(page.Title)
+            ? "Nouvelle page"
+            : page.Title.Trim();
+    }
 }
 

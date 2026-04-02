@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.GameRules;
@@ -150,7 +151,7 @@ namespace Rollocracy.Infrastructure.Services
                 CriticalSuccessValueSnapshot = criticalSuccessValue,
                 CriticalFailureValueSnapshot = criticalFailureValue,
                 SuccessThreshold = request.SuccessThreshold,
-                ModifierMode = request.ModifierMode,
+                ModifierMode = TestModifierMode.Bonus,
                 DifficultyValue = request.DifficultyValue,
                 TargetScope = request.TargetScope,
                 TraitFilterMode = request.TraitFilterMode,
@@ -206,7 +207,7 @@ namespace Rollocracy.Infrastructure.Services
                     TargetKind = consequence.TargetKind,
                     TargetDefinitionId = consequence.TargetDefinitionId,
                     TargetNameSnapshot = resolvedTargetName,
-                    ModifierMode = consequence.ModifierMode,
+                    ModifierMode = consequence.ValueMode == ModifierValueMode.Metric ? consequence.ModifierMode : TestModifierMode.Bonus,
                     Value = consequence.Value,
                     ValueMode = consequence.ValueMode,
                     SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
@@ -1932,7 +1933,9 @@ namespace Rollocracy.Infrastructure.Services
                 case TestConsequenceTargetKind.Item:
                     var item = await context.ItemDefinitions
                         .AsNoTracking()
-                        .FirstOrDefaultAsync(i => i.Id == consequence.TargetDefinitionId && i.GameSystemId == gameSystemId);
+                        .FirstOrDefaultAsync(i =>
+                            i.Id == consequence.TargetDefinitionId &&
+                            (i.GameSystemId == gameSystemId || i.SessionId == sessionId));
 
                     if (item == null)
                         throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);

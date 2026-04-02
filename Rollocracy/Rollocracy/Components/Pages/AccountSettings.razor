@@ -3,6 +3,7 @@
 @rendermode InteractiveServer
 @using System.Security.Claims
 @using System.Net.Http.Json
+@using System.Net.Mail
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
@@ -506,6 +507,12 @@ else
         {
             Message = string.Empty;
 
+            if (!string.IsNullOrWhiteSpace(EditableEmail) && !IsValidEmail(EditableEmail))
+            {
+                Message = $"{L["Common_Error"]} : {L["Auth_EmailInvalidFormat"]}";
+                return;
+            }
+
             await AccountService.UpdateGeneralInfoAsync(
                 CurrentUserId,
                 string.IsNullOrWhiteSpace(EditableEmail) ? null : EditableEmail,
@@ -526,6 +533,12 @@ else
         try
         {
             Message = string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(EditableEmail) && !IsValidEmail(EditableEmail))
+            {
+                Message = $"{L["Common_Error"]} : {L["Auth_EmailInvalidFormat"]}";
+                return;
+            }
 
             await AccountService.UpdateUsernameAsync(CurrentUserId, NewUsername);
 
@@ -742,5 +755,18 @@ else
             return L["Account_Settings_SubscriptionChangePlan"];
 
         return L["Account_Settings_SubscriptionChangePlanAtRenewal"];
+    }
+
+    private static bool IsValidEmail(string email)
+    {
+        try
+        {
+            var parsed = new MailAddress(email.Trim());
+            return string.Equals(parsed.Address, email.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

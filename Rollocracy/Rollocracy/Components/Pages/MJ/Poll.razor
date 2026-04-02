@@ -110,10 +110,6 @@ else
                                     <div class="rc-tool-subsection__title">@($"{L["Poll_OptionLabel"]} {optionIndex + 1}")</div>
 
                                     <div class="rc-tool-inline-actions">
-                                        <button @onclick="() => AddPollOptionConsequence(optionIndex)">
-                                            @L["Poll_AddOptionConsequence"]
-                                        </button>
-
                                         @if (NewPollOptions.Count > 2)
                                         {
                                             <button @onclick="() => RemovePollOption(optionIndex)">
@@ -127,167 +123,21 @@ else
                                     <input @bind="NewPollOptions[optionIndex].Label" placeholder="@L["Poll_OptionLabel"]" />
                                 </div>
 
-                                @if (optionRow.Consequences.Count > 0)
-                                {
-                                    <div class="rc-consequence-list">
-                                        @foreach (var consequence in optionRow.Consequences)
-                                        {
-                                            <div class="rc-consequence-card rc-consequence-card--nested">
-                                                <div class="rc-consequence-card__grid">
-                                                    <div class="rc-form-field">
-                                                        <label>@L["Poll_ConsequenceOperation"]</label>
-                                                        <select @bind="consequence.OperationType" @bind:after="() => OnPollConsequenceOperationChanged(consequence)">
-                                                            <option value="@TestConsequenceOperationType.AddValue">@L["TestConsequence_Operation_AddValue"]</option>
-                                                            <option value="@TestConsequenceOperationType.GrantTalent">@L["TestConsequence_Operation_GrantTalent"]</option>
-                                                            <option value="@TestConsequenceOperationType.RevokeTalent">@L["TestConsequence_Operation_RevokeTalent"]</option>
-                                                            <option value="@TestConsequenceOperationType.GrantItem">@L["TestConsequence_Operation_GrantItem"]</option>
-                                                            <option value="@TestConsequenceOperationType.RevokeItem">@L["TestConsequence_Operation_RevokeItem"]</option>
-                                                        </select>
-                                                    </div>
-
-                                                    @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
-                                                    {
-                                                        <div class="rc-form-field">
-                                                            <label>@L["Test_ConsequenceTargetKind"]</label>
-                                                            <select @bind="consequence.TargetKind" @bind:after="() => OnPollConsequenceTargetKindChanged(consequence)">
-                                                                <option value="@TestConsequenceTargetKind.Gauge">@L["Test_TargetGauge"]</option>
-                                                                <option value="@TestConsequenceTargetKind.SessionGauge">@L["Session_Manage_TargetSessionGauge"]</option>
-                                                                <option value="@TestConsequenceTargetKind.Attribute">@L["Test_TargetAttribute"]</option>
-                                                                <option value="@TestConsequenceTargetKind.DerivedStat">@L["TestConsequence_Target_DerivedStat"]</option>
-                                                                <option value="@TestConsequenceTargetKind.Metric">@L["TestConsequence_Target_Metric"]</option>
-                                                            </select>
-                                                        </div>
-                                                    }
-                                                    else if (consequence.OperationType == TestConsequenceOperationType.GrantTalent || consequence.OperationType == TestConsequenceOperationType.RevokeTalent)
-                                                    {
-                                                        <div class="rc-form-field rc-form-field--readonly">
-                                                            <label>@L["Test_ConsequenceTargetKind"]</label>
-                                                            <div class="rc-readonly-value">@L["TestConsequence_Target_Talent"]</div>
-                                                        </div>
-                                                    }
-                                                    else
-                                                    {
-                                                        <div class="rc-form-field rc-form-field--readonly">
-                                                            <label>@L["Test_ConsequenceTargetKind"]</label>
-                                                            <div class="rc-readonly-value">@L["TestConsequence_Target_Item"]</div>
-                                                        </div>
-                                                    }
-
-                                                    <div class="rc-form-field">
-                                                        <label>@L["Test_TargetDefinition"]</label>
-
-                                                        @if (consequence.TargetKind == TestConsequenceTargetKind.Gauge)
-                                                        {
-                                                            <select @bind="consequence.TargetDefinitionId">
-                                                                @foreach (var gaugeDefinition in AvailableGaugeDefinitions)
-                                                                {
-                                                                    <option value="@gaugeDefinition.Id">@gaugeDefinition.Name</option>
-                                                                }
-                                                            </select>
-                                                        }
-                                                        else if (consequence.TargetKind == TestConsequenceTargetKind.SessionGauge)
-                                                        {
-                                                            <select @bind="consequence.TargetDefinitionId">
-                                                                @foreach (var gauge in SessionGauges)
-                                                                {
-                                                                    <option value="@gauge.SessionGaugeId">@gauge.Name</option>
-                                                                }
-                                                            </select>
-                                                        }
-                                                        else if (consequence.TargetKind == TestConsequenceTargetKind.Attribute)
-                                                        {
-                                                            <select @bind="consequence.TargetDefinitionId">
-                                                                @foreach (var attributeDefinition in AvailableAttributes)
-                                                                {
-                                                                    <option value="@attributeDefinition.Id">@attributeDefinition.Name</option>
-                                                                }
-                                                            </select>
-                                                        }
-                                                        else if (consequence.TargetKind == TestConsequenceTargetKind.DerivedStat)
-                                                        {
-                                                            <select @bind="consequence.TargetDefinitionId">
-                                                                @foreach (var derivedDefinition in AvailableDerivedStats)
-                                                                {
-                                                                    <option value="@derivedDefinition.DerivedStatDefinitionId">@derivedDefinition.Name</option>
-                                                                }
-                                                            </select>
-                                                        }
-                                                        else if (consequence.TargetKind == TestConsequenceTargetKind.Metric)
-                                                        {
-                                                            <select @bind="consequence.TargetDefinitionId">
-                                                                @foreach (var metricDefinition in AvailableMetrics)
-                                                                {
-                                                                    <option value="@metricDefinition.Id">@metricDefinition.Name</option>
-                                                                }
-                                                            </select>
-                                                        }
-                                                        else if (consequence.TargetKind == TestConsequenceTargetKind.Talent)
-                                                        {
-                                                            <select @bind="consequence.TargetDefinitionId">
-                                                                @foreach (var talentDefinition in AvailableTalents)
-                                                                {
-                                                                    <option value="@talentDefinition.TalentDefinitionId">@talentDefinition.Name</option>
-                                                                }
-                                                            </select>
-                                                        }
-                                                        else if (consequence.TargetKind == TestConsequenceTargetKind.Item)
-                                                        {
-                                                            <select @bind="consequence.TargetDefinitionId">
-                                                                @foreach (var itemDefinition in AvailableItems)
-                                                                {
-                                                                    <option value="@itemDefinition.ItemDefinitionId">@itemDefinition.Name</option>
-                                                                }
-                                                            </select>
-                                                        }
-                                                    </div>
-
-                                                    @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
-                                                    {
-                                                        <div class="rc-form-field">
-                                                            <label>@L["Test_DifficultyMode"]</label>
-                                                            <select @bind="consequence.ModifierMode">
-                                                                <option value="@TestModifierMode.Bonus">@L["Test_Bonus"]</option>
-                                                                <option value="@TestModifierMode.Malus">@L["Test_Malus"]</option>
-                                                            </select>
-                                                        </div>
-
-                                                        <div class="rc-form-field">
-                                                            <label>@L["Test_ConsequenceValueMode"]</label>
-                                                            <select @bind="consequence.ValueMode">
-                                                                <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
-                                                                <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
-                                                            </select>
-                                                        </div>
-
-                                                        @if (consequence.ValueMode == ModifierValueMode.Metric)
-                                                        {
-                                                            <div class="rc-form-field">
-                                                                <label>@L["Common_SourceMetric"]</label>
-                                                                <select @bind="consequence.SourceMetricId">
-                                                                    @foreach (var metricDefinition in AvailableMetrics)
-                                                                    {
-                                                                        <option value="@metricDefinition.Id">@metricDefinition.Name</option>
-                                                                    }
-                                                                </select>
-                                                            </div>
-                                                        }
-                                                        else
-                                                        {
-                                                            <div class="rc-form-field">
-                                                                <label>@L["Test_DifficultyValue"]</label>
-                                                                <input type="number" @bind="consequence.Value" />
-                                                            </div>
-                                                        }
-                                                    }
-                                                </div>
-
-                                                <div class="rc-tool-inline-actions">
-                                                    <button @onclick="() => optionRow.Consequences.Remove(consequence)">@L["Common_Remove"]</button>
-                                                </div>
-                                            </div>
-                                        }
-                                    </div>
-                                }
+                                <Consequences Title="@L["Poll_OptionConsequences"]"
+                                              AddButtonLabel="@L["Poll_AddOptionConsequence"]"
+                                              EmptyLabel="@L["Test_NoConsequence"]"
+                                              ShowApplyOn="false"
+                                              Rows="optionRow.Consequences"
+                                              ApplyOnOptions="ConsequenceApplyOnOptions"
+                                              AttributeTargets="ConsequenceAttributeTargets"
+                                              GaugeTargets="ConsequenceGaugeTargets"
+                                              SessionGaugeTargets="ConsequenceSessionGaugeTargets"
+                                              DerivedStatTargets="ConsequenceDerivedStatTargets"
+                                              MetricTargets="ConsequenceMetricTargets"
+                                              TalentTargets="ConsequenceTalentTargets"
+                                              ItemTargets="ConsequenceItemTargets"
+                                              AllowSessionGaugeTarget="true"
+                                              PreferredAddValueTargetKind="@(AvailableGaugeDefinitions.Count > 0 ? TestConsequenceTargetKind.Gauge : TestConsequenceTargetKind.Attribute)" />
                             </div>
                         }
                     </div>
@@ -491,17 +341,15 @@ else
                                         @if (consequence.OperationType == TestConsequenceOperationType.AddValue)
                                         {
                                             <div class="rc-test-result-line">
-                                                <span>@L["Test_DifficultyMode"]</span>
-                                                <strong>
+                                                <span>@L["Test_DifficultyValue"]</span>
+                                                <strong class="@(consequence.Value >= 0 ? "rc-consequence-text--positive" : "rc-consequence-text--negative")">
                                                     @if (consequence.ValueMode == ModifierValueMode.Metric)
                                                     {
-                                                        @(consequence.ModifierMode == TestModifierMode.Bonus ? L["Test_Bonus"] : L["Test_Malus"])
-                                                        @($" · {L["Common_SourceMetric"]} : {consequence.SourceMetricName}")
+                                                        @($"{L["Common_SourceMetric"]} : {consequence.SourceMetricName}")
                                                     }
                                                     else
                                                     {
-                                                        @(consequence.ModifierMode == TestModifierMode.Bonus ? L["Test_Bonus"] : L["Test_Malus"])
-                                                        @($" {consequence.Value}")
+                                                        @($"{(consequence.Value >= 0 ? "+" : string.Empty)}{consequence.Value}")
                                                     }
                                                 </strong>
                                             </div>
@@ -570,6 +418,50 @@ else
         new(),
         new()
     };
+    private List<SharedConsequenceApplyOnOption> ConsequenceApplyOnOptions => new();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceAttributeTargets
+        => AvailableAttributes.Select(x => new SharedConsequenceDefinitionOption { Id = x.Id, Name = x.Name }).ToList();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceGaugeTargets
+        => AvailableGaugeDefinitions.Select(x => new SharedConsequenceDefinitionOption { Id = x.Id, Name = x.Name }).ToList();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceSessionGaugeTargets
+        => SessionGauges.Select(x => new SharedConsequenceDefinitionOption { Id = x.SessionGaugeId, Name = x.Name }).ToList();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceMetricTargets
+        => AvailableMetrics.Select(x => new SharedConsequenceDefinitionOption { Id = x.Id, Name = x.Name }).ToList();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceDerivedStatTargets
+    => AvailableDerivedStats
+        .Where(x => x.DerivedStatDefinitionId.HasValue)
+        .Select(x => new SharedConsequenceDefinitionOption
+        {
+            Id = x.DerivedStatDefinitionId!.Value,
+            Name = x.Name
+        })
+        .ToList();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceTalentTargets
+        => AvailableTalents
+            .Where(x => x.TalentDefinitionId.HasValue)
+            .Select(x => new SharedConsequenceDefinitionOption
+            {
+                Id = x.TalentDefinitionId!.Value,
+                Name = x.Name
+            })
+            .ToList();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceItemTargets
+        => AvailableItems
+            .Where(x => x.ItemDefinitionId.HasValue)
+            .Select(x => new SharedConsequenceDefinitionOption
+            {
+                Id = x.ItemDefinitionId!.Value,
+                Name = x.Name
+            })
+            .ToList();
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -647,6 +539,13 @@ else
                     AvailableTalents = editor.Talents;
                     AvailableItems = editor.Items;
                 }
+
+                var sessionItems = await SessionService.GetSessionItemDefinitionsAsync(SessionId, CurrentUserId);
+                AvailableItems = AvailableItems
+                    .Concat(sessionItems)
+                    .OrderBy(x => x.DisplayOrder)
+                    .ThenBy(x => x.Name)
+                    .ToList();
 
                 TraitOptionGroups.Clear();
 
@@ -762,13 +661,13 @@ else
             ? TestConsequenceTargetKind.Gauge
             : TestConsequenceTargetKind.Attribute;
 
-        NewPollOptions[optionIndex].Consequences.Add(new PollOptionConsequenceRowModel
+        NewPollOptions[optionIndex].Consequences.Add(new SharedConsequenceRowModel
         {
             RowId = Guid.NewGuid(),
             OperationType = TestConsequenceOperationType.AddValue,
             TargetKind = targetKind,
             TargetDefinitionId = GetFirstConsequenceTargetId(targetKind),
-            ModifierMode = TestModifierMode.Malus,
+            ModifierMode = TestModifierMode.Bonus,
             Value = 1,
             ValueMode = ModifierValueMode.Fixed,
             SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id
@@ -777,7 +676,7 @@ else
         return Task.CompletedTask;
     }
 
-    private void OnPollConsequenceOperationChanged(PollOptionConsequenceRowModel consequence)
+    private void OnPollConsequenceOperationChanged(SharedConsequenceRowModel consequence)
     {
         switch (consequence.OperationType)
         {
@@ -786,31 +685,39 @@ else
                     ? TestConsequenceTargetKind.Gauge
                     : TestConsequenceTargetKind.Attribute;
                 consequence.TargetDefinitionId = GetFirstConsequenceTargetId(consequence.TargetKind);
+                consequence.ModifierMode = TestModifierMode.Bonus;
+
                 if (consequence.Value == 0)
                     consequence.Value = 1;
                 break;
 
             case TestConsequenceOperationType.GrantTalent:
+                consequence.ModifierMode = TestModifierMode.Bonus;
+                break;
             case TestConsequenceOperationType.RevokeTalent:
                 consequence.TargetKind = TestConsequenceTargetKind.Talent;
                 consequence.TargetDefinitionId = GetFirstConsequenceTargetId(consequence.TargetKind);
                 consequence.Value = 0;
                 consequence.ValueMode = ModifierValueMode.Fixed;
                 consequence.SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id;
+                consequence.ModifierMode = TestModifierMode.Bonus;
                 break;
 
             case TestConsequenceOperationType.GrantItem:
+                consequence.ModifierMode = TestModifierMode.Bonus;
+                break;
             case TestConsequenceOperationType.RevokeItem:
                 consequence.TargetKind = TestConsequenceTargetKind.Item;
                 consequence.TargetDefinitionId = GetFirstConsequenceTargetId(consequence.TargetKind);
                 consequence.Value = 0;
                 consequence.ValueMode = ModifierValueMode.Fixed;
                 consequence.SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id;
+                consequence.ModifierMode = TestModifierMode.Bonus;
                 break;
         }
     }
 
-    private void OnPollConsequenceTargetKindChanged(PollOptionConsequenceRowModel consequence)
+    private void OnPollConsequenceTargetKindChanged(SharedConsequenceRowModel consequence)
     {
         consequence.TargetDefinitionId = GetFirstConsequenceTargetId(consequence.TargetKind);
     }
@@ -848,16 +755,26 @@ else
                 Options = NewPollOptions.Select(o => new PollOptionDraftDto
                 {
                     Label = o.Label,
-                    Consequences = o.Consequences.Select(c => new PollOptionConsequenceInlineDraftDto
-                    {
-                        OperationType = c.OperationType,
-                        TargetKind = c.TargetKind,
-                        TargetDefinitionId = c.TargetDefinitionId,
-                        ModifierMode = c.ModifierMode,
-                        Value = c.ValueMode == ModifierValueMode.Metric ? 0 : c.Value,
-                        ValueMode = c.ValueMode,
-                        SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null
-                    }).ToList()
+                    Consequences = o.Consequences
+                        .Where(consequence => consequence.TargetDefinitionId != Guid.Empty)
+                        .Where(consequence => consequence.OperationType != TestConsequenceOperationType.AddValue
+                            || consequence.ValueMode != ModifierValueMode.Metric
+                            || consequence.SourceMetricId.HasValue)
+                        .Select(consequence => new PollOptionConsequenceInlineDraftDto
+                        {
+                            TargetKind = consequence.TargetKind,
+                            TargetDefinitionId = consequence.TargetDefinitionId,
+                            ModifierMode = consequence.ValueMode == ModifierValueMode.Metric
+                                ? consequence.ModifierMode
+                                : TestModifierMode.Bonus,
+                            Value = consequence.ValueMode == ModifierValueMode.Metric ? 0 : consequence.Value,
+                            ValueMode = consequence.ValueMode,
+                            SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
+                                ? consequence.SourceMetricId
+                                : null,
+                            OperationType = consequence.OperationType
+                        })
+                    .ToList()
                 }).ToList(),
                 VoteWeightMode = PollVoteWeightMode.Metric,
                 MetricDefinitionId = VoteWeightMetricId,
@@ -1021,19 +938,7 @@ else
     private class PollOptionRowModel
     {
         public string Label { get; set; } = string.Empty;
-        public List<PollOptionConsequenceRowModel> Consequences { get; set; } = new();
-    }
-
-    private class PollOptionConsequenceRowModel
-    {
-        public Guid RowId { get; set; }
-        public TestConsequenceOperationType OperationType { get; set; } = TestConsequenceOperationType.AddValue;
-        public TestConsequenceTargetKind TargetKind { get; set; }
-        public Guid TargetDefinitionId { get; set; }
-        public TestModifierMode ModifierMode { get; set; }
-        public int Value { get; set; }
-        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
-        public Guid? SourceMetricId { get; set; }
+        public List<SharedConsequenceRowModel> Consequences { get; set; } = new();
     }
 
     private async Task LoadCharacterSummariesAsync()
@@ -1045,5 +950,32 @@ else
             includeNpcs: true);
 
         CharacterSummariesById = characters.ToDictionary(x => x.CharacterId, x => x);
+    }
+
+    private string GetPollConsequenceOperationCssClass(SharedConsequenceRowModel consequence)
+    {
+        return consequence.OperationType switch
+        {
+            TestConsequenceOperationType.AddValue when consequence.Value >= 0 => "rc-consequence-pill rc-consequence-pill--positive",
+            TestConsequenceOperationType.AddValue when consequence.Value < 0 => "rc-consequence-pill rc-consequence-pill--negative",
+
+            TestConsequenceOperationType.GrantTalent => "rc-consequence-pill rc-consequence-pill--positive",
+            TestConsequenceOperationType.GrantItem => "rc-consequence-pill rc-consequence-pill--positive",
+
+            TestConsequenceOperationType.RevokeTalent => "rc-consequence-pill rc-consequence-pill--negative",
+            TestConsequenceOperationType.RevokeItem => "rc-consequence-pill rc-consequence-pill--negative",
+
+            _ => "rc-consequence-pill"
+        };
+    }
+
+    private string GetPollConsequenceValueCssClass(SharedConsequenceRowModel consequence)
+    {
+        if (consequence.OperationType != TestConsequenceOperationType.AddValue)
+            return "rc-consequence-pill";
+
+        return consequence.Value >= 0
+            ? "rc-consequence-pill rc-consequence-pill--positive"
+            : "rc-consequence-pill rc-consequence-pill--negative";
     }
 }

@@ -375,6 +375,9 @@ namespace Rollocracy.Infrastructure.Services
 
             await context.SaveChangesAsync();
 
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(session.Id);
+            await _sessionNotifier.NotifyPresenceChangedAsync(session.Id);
+
             return character;
         }
 
@@ -526,6 +529,9 @@ namespace Rollocracy.Infrastructure.Services
 
             await context.SaveChangesAsync();
 
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(session.Id);
+            await _sessionNotifier.NotifyPresenceChangedAsync(session.Id);
+
             return character;
         }
 
@@ -621,7 +627,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var items = await context.ItemDefinitions
                 .AsNoTracking()
-                .Where(x => x.GameSystemId == gameSystemId)
+                .Where(x => x.GameSystemId == gameSystemId || x.SessionId == sessionId)
                 .OrderBy(x => x.DisplayOrder)
                 .ThenBy(x => x.Name)
                 .ToListAsync();
@@ -1008,7 +1014,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var itemDefinitions = await context.ItemDefinitions
                 .AsNoTracking()
-                .Where(i => i.GameSystemId == gameSystemId)
+                .Where(i => i.GameSystemId == gameSystemId || i.SessionId == sessionId)
                 .ToListAsync();
 
             var attributeValues = await context.CharacterAttributeValues
@@ -1208,7 +1214,11 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => x.CharacterId == row.character.Id)
                 .ToListAsync();
 
-            var computedAfterInventoryChange = await ComputeCharacterContextAsync(context, gameSystemId, row.character.Id);
+            var computedAfterInventoryChange = await ComputeCharacterContextAsync(
+                 context,
+                 row.playerSession.Id,
+                 gameSystemId,
+                 row.character.Id);
 
             var proposedGaugeValues = new Dictionary<Guid, int>();
             var previousGaugeValues = new Dictionary<Guid, int>();
@@ -1446,7 +1456,7 @@ namespace Rollocracy.Infrastructure.Services
             if (session == null || !session.GameSystemId.HasValue)
                 return null;
 
-            var computed = await ComputeCharacterContextAsync(context, session.GameSystemId.Value, character.Id);
+            var computed = await ComputeCharacterContextAsync(context, playerSessionId, session.GameSystemId.Value, character.Id);
 
             return new CharacterSheetDto
             {
@@ -1522,7 +1532,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var itemDefinitions = await context.ItemDefinitions
                 .AsNoTracking()
-                .Where(i => i.GameSystemId == gameSystemId)
+                .Where(i => i.GameSystemId == gameSystemId || i.SessionId == session.Id)
                 .OrderBy(i => i.DisplayOrder).ThenBy(i => i.Name)
                 .ToListAsync();
 
@@ -1538,7 +1548,7 @@ namespace Rollocracy.Infrastructure.Services
                 .Select(x => x.ItemDefinitionId)
                 .ToListAsync();
 
-            var computed = await ComputeCharacterContextAsync(context, gameSystemId, character.Id);
+            var computed = await ComputeCharacterContextAsync(context, playerSession.Id, gameSystemId, character.Id);
 
             return new EditableCharacterDto
             {
@@ -1712,7 +1722,17 @@ namespace Rollocracy.Infrastructure.Services
             if (metricDefinition == null)
                 return addValue;
 
-            var computed = await ComputeCharacterContextAsync(context, gameSystemId, characterId);
+            var characterPlayerSessionId = await context.Characters
+                .AsNoTracking()
+                .Where(x => x.Id == characterId)
+                .Select(x => x.PlayerSessionId)
+                .FirstAsync();
+
+            var computed = await ComputeCharacterContextAsync(
+                context,
+                characterPlayerSessionId,
+                gameSystemId,
+                characterId);
 
             var metricLine = computed.MetricLines
                 .FirstOrDefault(x => x.Name == metricDefinition.Name);
@@ -1754,7 +1774,17 @@ namespace Rollocracy.Infrastructure.Services
                 await context.SaveChangesAsync();
             }
 
-            var computed = await ComputeCharacterContextAsync(context, gameSystemId, characterId);
+            var characterPlayerSessionId = await context.Characters
+                .AsNoTracking()
+                .Where(x => x.Id == characterId)
+                .Select(x => x.PlayerSessionId)
+                .FirstAsync();
+
+            var computed = await ComputeCharacterContextAsync(
+                context,
+                characterPlayerSessionId,
+                gameSystemId,
+                characterId);
             var gaugeLine = computed.GaugeLines.FirstOrDefault(x => x.Name == definition.Name);
 
             var effectiveMax = gaugeLine?.MaxValue ?? definition.MaxValue;
@@ -1767,6 +1797,7 @@ namespace Rollocracy.Infrastructure.Services
 
         private async Task<ComputedCharacterContext> ComputeCharacterContextAsync(
             RollocracyDbContext context,
+            Guid playerSessionId,
             Guid gameSystemId,
             Guid characterId)
         {

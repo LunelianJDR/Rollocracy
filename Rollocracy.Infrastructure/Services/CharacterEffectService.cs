@@ -98,7 +98,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var itemDefinitions = await context.ItemDefinitions
                 .AsNoTracking()
-                .Where(i => i.GameSystemId == gameSystemId)
+                .Where(i => i.GameSystemId == gameSystemId || i.SessionId == sessionId)
                 .ToListAsync();
 
             ValidateEffects(

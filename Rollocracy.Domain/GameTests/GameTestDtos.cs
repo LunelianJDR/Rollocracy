@@ -27,7 +27,9 @@ namespace Rollocracy.Domain.GameTests
         public string TargetName { get; set; } = string.Empty;
 
         // Utilisé uniquement pour AddValue
-        public TestModifierMode ModifierMode { get; set; }
+        // Conservé pour compatibilité technique/transitoire.
+        // En L-2, l'UI ne l'expose plus et on force Bonus.
+        public TestModifierMode ModifierMode { get; set; } = TestModifierMode.Bonus;
 
         // Utilisé uniquement pour AddValue
         public int Value { get; set; }

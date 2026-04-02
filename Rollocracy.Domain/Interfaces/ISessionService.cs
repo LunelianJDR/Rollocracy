@@ -1,5 +1,6 @@
 ﻿using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.Entities;
+using Rollocracy.Domain.GameRules;
 
 namespace Rollocracy.Domain.Interfaces
 {
@@ -54,6 +55,15 @@ namespace Rollocracy.Domain.Interfaces
 
         Task<SessionSettingsDto?> GetSessionSettingsAsync(Guid sessionId, Guid gameMasterUserAccountId, string baseUri);
 
+        Task<SessionJournalEditorDto?> GetSessionJournalEditorAsync(Guid sessionId, Guid gameMasterUserAccountId);
+
+        Task SaveSessionJournalAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            SessionJournalSaveRequestDto request);
+
+        Task<SessionJournalViewDto?> GetPublicSessionJournalAsync(Guid playerSessionId);
+
         Task<List<SessionGaugeDto>> GetSessionGaugesAsync(Guid sessionId, Guid gameMasterUserAccountId);
 
         Task<List<SessionGaugeDto>> GetVisibleSessionGaugesAsync(Guid sessionId, Guid userAccountId);
@@ -82,6 +92,13 @@ namespace Rollocracy.Domain.Interfaces
             int currentValue);
 
         Task DeleteSessionGaugeAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid sessionGaugeId);
+
+        Task<List<EditableItemDefinitionDto>> GetSessionItemDefinitionsAsync(Guid sessionId, Guid gameMasterUserAccountId);
+
+        Task SaveSessionItemDefinitionsAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            List<EditableItemDefinitionDto> requestItems);
 
         Task<Session> UpdateSessionSettingsAsync(
             Guid sessionId,

@@ -18,7 +18,9 @@ namespace Rollocracy.Domain.Polls
         public Guid SessionPollOptionId { get; set; }
         public TestConsequenceTargetKind TargetKind { get; set; }
         public Guid TargetDefinitionId { get; set; }
-        public TestModifierMode ModifierMode { get; set; }
+        // Conservé pour compatibilité technique/transitoire.
+        // En L-2, l'UI ne l'expose plus et on force Bonus.
+        public TestModifierMode ModifierMode { get; set; } = TestModifierMode.Bonus;
         public int Value { get; set; }
         public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
         public Guid? SourceMetricId { get; set; }

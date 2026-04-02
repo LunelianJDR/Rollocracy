@@ -181,7 +181,7 @@ else
                         
                         <div class="rc-form-field rc-form-field--full">
                             <div class="rc-tool-subsection__header">
-                            <label>@L["Test_GlobalThresholds"]</label>
+                                <label>@L["Test_GlobalThresholds"]</label>
                                 <div class="rc-tool-inline-actions">
                                     <button type="button" @onclick="AddGlobalThreshold" disabled="@(GlobalSuccessThresholds.Count >= 3)">
                                         @L["Test_AddGlobalThreshold"]
@@ -227,212 +227,38 @@ else
                     <hr />
                     
                     <CharacterAudienceFilters Title="@L["Test_TargetScope"]"
-                                                OnlyOnline="@(NewTargetScope == TestTargetScope.OnlineLivingCharacters)"
-                                                OnlyAlive="@(NewTargetScope == TestTargetScope.AllLivingCharacters)"
-                                                IncludeNpcs="IncludeNpcsInTest"
-                                                OnlyOnlineChanged="@(value => NewTargetScope = value ? TestTargetScope.OnlineLivingCharacters : NewTargetScope)"
-                                                OnlyAliveChanged="@(value => NewTargetScope = value ? TestTargetScope.AllLivingCharacters : NewTargetScope)"
-                                                IncludeNpcsChanged="@(value => IncludeNpcsInTest = value)" />
+                                              OnlyOnline="@(NewTargetScope == TestTargetScope.OnlineLivingCharacters)"
+                                              OnlyAlive="@(NewTargetScope == TestTargetScope.AllLivingCharacters)"
+                                              IncludeNpcs="IncludeNpcsInTest"
+                                              OnlyOnlineChanged="@(value => NewTargetScope = value ? TestTargetScope.OnlineLivingCharacters : NewTargetScope)"
+                                              OnlyAliveChanged="@(value => NewTargetScope = value ? TestTargetScope.AllLivingCharacters : NewTargetScope)"
+                                              IncludeNpcsChanged="@(value => IncludeNpcsInTest = value)" />
                             
                     <CharacterAdvancedFilters Filter="AdvancedFilter"
-                                                TraitOptionGroups="AdvancedTraitOptionGroups"
-                                                TalentOptions="AdvancedTalentOptions"
-                                                ItemOptions="AdvancedItemOptions"
-                                                AttributeTargets="AdvancedAttributeTargets"
-                                                GaugeTargets="AdvancedGaugeTargets"
-                                                DerivedStatTargets="AdvancedDerivedTargets"
-                                                MetricTargets="AdvancedMetricTargets" />
+                                              TraitOptionGroups="AdvancedTraitOptionGroups"
+                                              TalentOptions="AdvancedTalentOptions"
+                                              ItemOptions="AdvancedItemOptions"
+                                              AttributeTargets="AdvancedAttributeTargets"
+                                              GaugeTargets="AdvancedGaugeTargets"
+                                              DerivedStatTargets="AdvancedDerivedTargets"
+                                              MetricTargets="AdvancedMetricTargets" />
                     
-                    
-                        <div class="rc-filter-group-card">
-                            <div class="rc-tool-subsection__header">
-                                <div class="rc-filter-group-card__title">@L["Test_Consequences"]</div>
-                                    <div class="rc-tool-inline-actions">
-                                        <button @onclick="AddGenericConsequence">@L["Test_AddConsequence"]</button>
-                                    </div>
-                            </div>
+                    <Consequences Title="@L["Test_Consequences"]"
+                                  AddButtonLabel="@L["Test_AddConsequence"]"
+                                  EmptyLabel="@L["Test_NoConsequence"]"
+                                  ShowApplyOn="true"
+                                  Rows="ConsequenceRows"
+                                  ApplyOnOptions="ConsequenceApplyOnOptions"
+                                  AttributeTargets="ConsequenceAttributeTargets"
+                                  GaugeTargets="ConsequenceGaugeTargets"
+                                  SessionGaugeTargets="ConsequenceSessionGaugeTargets"
+                                  DerivedStatTargets="ConsequenceDerivedStatTargets"
+                                  MetricTargets="ConsequenceMetricTargets"
+                                  TalentTargets="ConsequenceTalentTargets"
+                                  ItemTargets="ConsequenceItemTargets"
+                                  AllowSessionGaugeTarget="true"
+                                  PreferredAddValueTargetKind="@(AvailableGaugeDefinitions.Count > 0 ? TestConsequenceTargetKind.Gauge : TestConsequenceTargetKind.Attribute)" />
 
-                            @if (ConsequenceRows.Count == 0)
-                            {
-                                <p class="rc-tool-muted">@L["Test_NoConsequence"]</p>
-                            }
-                            else
-                            {
-                                <div class="rc-consequence-list">
-                                    @for (var i = 0; i < ConsequenceRows.Count; i++)
-                                    {
-                                        var row = ConsequenceRows[i];
-
-                                        <div class="rc-consequence-card">
-                                            <div class="rc-consequence-card__grid">
-                                                <div class="rc-form-field">
-                                                    <label>@L["Test_When"]</label>
-                                                <select @bind="row.ApplyOn">
-                                                    @foreach (var applyOnOption in GetAvailableConsequenceApplyOnOptions())
-                                                    {
-                                                        <option value="@applyOnOption.Value">@applyOnOption.Label</option>
-                                                    }
-                                                </select>
-                                                </div>
-
-                                                <div class="rc-form-field">
-                                                    <label>@L["Test_ConsequenceOperation"]</label>
-                                                    <select value="@((int)row.OperationType)" @onchange="e => ChangeConsequenceOperation(row, e.Value?.ToString())">
-                                                        <option value="@((int)TestConsequenceOperationType.AddValue)">@L["TestConsequence_Operation_AddValue"]</option>
-                                                        <option value="@((int)TestConsequenceOperationType.GrantTalent)">@L["TestConsequence_Operation_GrantTalent"]</option>
-                                                        <option value="@((int)TestConsequenceOperationType.RevokeTalent)">@L["TestConsequence_Operation_RevokeTalent"]</option>
-                                                        <option value="@((int)TestConsequenceOperationType.GrantItem)">@L["TestConsequence_Operation_GrantItem"]</option>
-                                                        <option value="@((int)TestConsequenceOperationType.RevokeItem)">@L["TestConsequence_Operation_RevokeItem"]</option>
-                                                    </select>
-                                                </div>
-
-                                                @if (row.OperationType == TestConsequenceOperationType.AddValue)
-                                                {
-                                                    <div class="rc-form-field">
-                                                        <label>@L["Test_ConsequenceTargetKind"]</label>
-                                                        <select value="@((int)row.TargetKind)" @onchange="e => ChangeConsequenceTargetKind(row, e.Value?.ToString())">
-                                                            <option value="@((int)TestConsequenceTargetKind.Gauge)">@L["Test_TargetGauge"]</option>
-                                                            <option value="@((int)TestConsequenceTargetKind.SessionGauge)">@L["Session_Manage_TargetSessionGauge"]</option>
-                                                            <option value="@((int)TestConsequenceTargetKind.Attribute)">@L["Test_TargetAttribute"]</option>
-                                                            <option value="@((int)TestConsequenceTargetKind.DerivedStat)">@L["TestConsequence_Target_DerivedStat"]</option>
-                                                            <option value="@((int)TestConsequenceTargetKind.Metric)">@L["TestConsequence_Target_Metric"]</option>
-                                                        </select>
-                                                    </div>
-                                                }
-                                                else if (row.OperationType == TestConsequenceOperationType.GrantTalent || row.OperationType == TestConsequenceOperationType.RevokeTalent)
-                                                {
-                                                    row.TargetKind = TestConsequenceTargetKind.Talent;
-                                                    <div class="rc-form-field rc-form-field--readonly">
-                                                        <label>@L["Test_ConsequenceTargetKind"]</label>
-                                                        <div class="rc-readonly-value">@L["TestConsequence_Target_Talent"]</div>
-                                                    </div>
-                                                }
-                                                else
-                                                {
-                                                    row.TargetKind = TestConsequenceTargetKind.Item;
-                                                    <div class="rc-form-field rc-form-field--readonly">
-                                                        <label>@L["Test_ConsequenceTargetKind"]</label>
-                                                        <div class="rc-readonly-value">@L["TestConsequence_Target_Item"]</div>
-                                                    </div>
-                                                }
-
-                                                <div class="rc-form-field">
-                                                    <label>@L["Test_TargetDefinition"]</label>
-
-                                                    @if (row.TargetKind == TestConsequenceTargetKind.Gauge)
-                                                    {
-                                                        <select @bind="row.TargetDefinitionId">
-                                                            @foreach (var gaugeDefinition in AvailableGaugeDefinitions)
-                                                            {
-                                                                <option value="@gaugeDefinition.Id">@gaugeDefinition.Name</option>
-                                                            }
-                                                        </select>
-                                                    }
-                                                    else if (row.TargetKind == TestConsequenceTargetKind.SessionGauge)
-                                                    {
-                                                        <select @bind="row.TargetDefinitionId">
-                                                            @foreach (var gauge in SessionGauges)
-                                                            {
-                                                                <option value="@gauge.SessionGaugeId">@gauge.Name</option>
-                                                            }
-                                                        </select>
-                                                    }
-                                                    else if (row.TargetKind == TestConsequenceTargetKind.Attribute)
-                                                    {
-                                                        <select @bind="row.TargetDefinitionId">
-                                                            @foreach (var attributeDefinition in AvailableAttributes)
-                                                            {
-                                                                <option value="@attributeDefinition.Id">@attributeDefinition.Name</option>
-                                                            }
-                                                        </select>
-                                                    }
-                                                    else if (row.TargetKind == TestConsequenceTargetKind.DerivedStat)
-                                                    {
-                                                        <select @bind="row.TargetDefinitionId">
-                                                            @foreach (var derivedDefinition in AvailableDerivedStats)
-                                                            {
-                                                                <option value="@derivedDefinition.DerivedStatDefinitionId">@derivedDefinition.Name</option>
-                                                            }
-                                                        </select>
-                                                    }
-                                                    else if (row.TargetKind == TestConsequenceTargetKind.Metric)
-                                                    {
-                                                        <select @bind="row.TargetDefinitionId">
-                                                            @foreach (var metricDefinition in AvailableMetrics)
-                                                            {
-                                                                <option value="@metricDefinition.Id">@metricDefinition.Name</option>
-                                                            }
-                                                        </select>
-                                                    }
-                                                    else if (row.TargetKind == TestConsequenceTargetKind.Talent)
-                                                    {
-                                                        <select @bind="row.TargetDefinitionId">
-                                                            @foreach (var talentDefinition in AvailableTalents)
-                                                            {
-                                                                <option value="@talentDefinition.TalentDefinitionId">@talentDefinition.Name</option>
-                                                            }
-                                                        </select>
-                                                    }
-                                                    else if (row.TargetKind == TestConsequenceTargetKind.Item)
-                                                    {
-                                                        <select @bind="row.TargetDefinitionId">
-                                                            @foreach (var itemDefinition in AvailableItems)
-                                                            {
-                                                                <option value="@itemDefinition.ItemDefinitionId">@itemDefinition.Name</option>
-                                                            }
-                                                        </select>
-                                                    }
-                                                </div>
-
-                                                @if (row.OperationType == TestConsequenceOperationType.AddValue)
-                                                {
-                                                    <div class="rc-form-field">
-                                                        <label>@L["Test_DifficultyMode"]</label>
-                                                        <select @bind="row.ModifierMode">
-                                                            <option value="@TestModifierMode.Bonus">@L["Test_Bonus"]</option>
-                                                            <option value="@TestModifierMode.Malus">@L["Test_Malus"]</option>
-                                                        </select>
-                                                    </div>
-
-                                                    <div class="rc-form-field">
-                                                        <label>@L["Test_ConsequenceValueMode"]</label>
-                                                        <select @bind="row.ValueMode">
-                                                            <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
-                                                            <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
-                                                        </select>
-                                                    </div>
-
-                                                    @if (row.ValueMode == ModifierValueMode.Metric)
-                                                    {
-                                                        <div class="rc-form-field">
-                                                            <label>@L["Common_SourceMetric"]</label>
-                                                            <select @bind="row.SourceMetricId">
-                                                                @foreach (var metricDefinition in AvailableMetrics)
-                                                                {
-                                                                    <option value="@metricDefinition.Id">@metricDefinition.Name</option>
-                                                                }
-                                                            </select>
-                                                        </div>
-                                                    }
-                                                    else
-                                                    {
-                                                        <div class="rc-form-field">
-                                                            <label>@L["Test_DifficultyValue"]</label>
-                                                            <input type="number" @bind="row.Value" />
-                                                        </div>
-                                                    }
-                                                }
-                                            </div>
-
-                                            <div class="rc-tool-inline-actions">
-                                                <button @onclick="() => RemoveConsequenceRow(row.RowId)">@L["Common_Remove"]</button>
-                                            </div>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    
                     @if (ActiveTest is null || ActiveTest.IsClosed)
                     {
                         <div class="rc-tool-actions rc-tool-actions--right">
@@ -602,8 +428,53 @@ else
     private TestTargetScope NewTargetScope = TestTargetScope.OnlineLivingCharacters;
     private TestTraitFilterMode NewTraitFilterMode = TestTraitFilterMode.AndBetweenGroups;
     private HashSet<Guid> SelectedTraitOptionIds = new();
-    private List<ConsequenceRowModel> ConsequenceRows = new();
-    
+    private List<SharedConsequenceRowModel> ConsequenceRows = new();
+
+
+    private List<SharedConsequenceApplyOnOption> ConsequenceApplyOnOptions
+        => GetAvailableConsequenceApplyOnOptions()
+            .Select(x => new SharedConsequenceApplyOnOption { Value = x.Value, Label = x.Label })
+            .ToList();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceAttributeTargets
+        => AvailableAttributes.Select(x => new SharedConsequenceDefinitionOption { Id = x.Id, Name = x.Name }).ToList();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceGaugeTargets
+        => AvailableGaugeDefinitions.Select(x => new SharedConsequenceDefinitionOption { Id = x.Id, Name = x.Name }).ToList();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceSessionGaugeTargets
+        => SessionGauges.Select(x => new SharedConsequenceDefinitionOption { Id = x.SessionGaugeId, Name = x.Name }).ToList();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceDerivedStatTargets
+        => AvailableDerivedStats
+            .Where(x => x.DerivedStatDefinitionId.HasValue)
+            .Select(x => new SharedConsequenceDefinitionOption { Id = x.DerivedStatDefinitionId!.Value, Name = x.Name })
+            .ToList();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceMetricTargets
+        => AvailableMetrics.Select(x => new SharedConsequenceDefinitionOption { Id = x.Id, Name = x.Name }).ToList();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceTalentTargets
+    => AvailableTalents
+        .Where(x => x.TalentDefinitionId.HasValue)
+        .Select(x => new SharedConsequenceDefinitionOption
+        {
+            Id = x.TalentDefinitionId!.Value,
+            Name = x.Name
+        })
+        .ToList();
+
+    private List<SharedConsequenceDefinitionOption> ConsequenceItemTargets
+        => AvailableItems
+            .Where(x => x.ItemDefinitionId.HasValue)
+            .Select(x => new SharedConsequenceDefinitionOption
+            {
+                Id = x.ItemDefinitionId!.Value,
+                Name = x.Name
+            })
+            .ToList();
+
+
     private CharacterTargetFilterDto AdvancedFilter = new()
     {
         MatchAllConditions = true
@@ -674,7 +545,7 @@ else
                 $"--slider-progress: {progress:F2}%;");
         }
     }
-    
+
     private string DifficultyTicksStyle
     => $"grid-template-columns: repeat({Math.Max(DifficultyScaleValues.Count, 1)}, minmax(0, 1fr));";
 
@@ -700,38 +571,38 @@ else
         .Where(x => x.Options.Count > 0)
         .ToList();
 
-private List<CharacterFilterReferenceItem> AdvancedTalentOptions
-    => AvailableTalents
-        .Select(x => new CharacterFilterReferenceItem { Id = x.TalentDefinitionId ?? Guid.Empty, Name = x.Name })
-        .Where(x => x.Id != Guid.Empty)
-        .ToList();
+    private List<CharacterFilterReferenceItem> AdvancedTalentOptions
+        => AvailableTalents
+            .Select(x => new CharacterFilterReferenceItem { Id = x.TalentDefinitionId ?? Guid.Empty, Name = x.Name })
+            .Where(x => x.Id != Guid.Empty)
+            .ToList();
 
-private List<CharacterFilterReferenceItem> AdvancedItemOptions
-    => AvailableItems
-        .Select(x => new CharacterFilterReferenceItem { Id = x.ItemDefinitionId ?? Guid.Empty, Name = x.Name })
-        .Where(x => x.Id != Guid.Empty)
-        .ToList();
+    private List<CharacterFilterReferenceItem> AdvancedItemOptions
+        => AvailableItems
+            .Select(x => new CharacterFilterReferenceItem { Id = x.ItemDefinitionId ?? Guid.Empty, Name = x.Name })
+            .Where(x => x.Id != Guid.Empty)
+            .ToList();
 
-private List<CharacterFilterReferenceItem> AdvancedAttributeTargets
-    => AvailableAttributes
-        .Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name })
-        .ToList();
+    private List<CharacterFilterReferenceItem> AdvancedAttributeTargets
+        => AvailableAttributes
+            .Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name })
+            .ToList();
 
-private List<CharacterFilterReferenceItem> AdvancedGaugeTargets
-    => AvailableGaugeDefinitions
-        .Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name })
-        .ToList();
+    private List<CharacterFilterReferenceItem> AdvancedGaugeTargets
+        => AvailableGaugeDefinitions
+            .Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name })
+            .ToList();
 
-private List<CharacterFilterReferenceItem> AdvancedDerivedTargets
-    => AvailableDerivedStats
-        .Select(x => new CharacterFilterReferenceItem { Id = x.DerivedStatDefinitionId ?? Guid.Empty, Name = x.Name })
-        .Where(x => x.Id != Guid.Empty)
-        .ToList();
+    private List<CharacterFilterReferenceItem> AdvancedDerivedTargets
+        => AvailableDerivedStats
+            .Select(x => new CharacterFilterReferenceItem { Id = x.DerivedStatDefinitionId ?? Guid.Empty, Name = x.Name })
+            .Where(x => x.Id != Guid.Empty)
+            .ToList();
 
-private List<CharacterFilterReferenceItem> AdvancedMetricTargets
-    => AvailableMetrics
-        .Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name })
-        .ToList();
+    private List<CharacterFilterReferenceItem> AdvancedMetricTargets
+        => AvailableMetrics
+            .Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name })
+            .ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -826,6 +697,13 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
             AvailableTalents = editor.Talents;
             AvailableItems = editor.Items;
         }
+
+        var sessionItems = await SessionService.GetSessionItemDefinitionsAsync(SessionId, CurrentUserId);
+        AvailableItems = AvailableItems
+            .Concat(sessionItems)
+            .OrderBy(x => x.DisplayOrder)
+            .ThenBy(x => x.Name)
+            .ToList();
 
         foreach (var traitDefinition in AvailableTraitDefinitions)
         {
@@ -1009,7 +887,7 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
                 return;
             }
 
-            
+
             var difficultyRaw = SelectedDifficultyRawValue;
             var modifierMode = difficultyRaw >= 0 ? TestModifierMode.Bonus : TestModifierMode.Malus;
             var difficultyValue = Math.Abs(difficultyRaw);
@@ -1052,17 +930,27 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
             })
             .ToList()
                 },
-                Consequences = ConsequenceRows.Select(row => new GameTestConsequenceDraftDto
-                {
-                    ApplyOn = row.ApplyOn,
-                    OperationType = row.OperationType,
-                    TargetKind = row.TargetKind,
-                    TargetDefinitionId = row.TargetDefinitionId,
-                    ModifierMode = row.ModifierMode,
-                    Value = row.ValueMode == ModifierValueMode.Metric ? 0 : row.Value,
-                    ValueMode = row.ValueMode,
-                    SourceMetricId = row.ValueMode == ModifierValueMode.Metric ? row.SourceMetricId : null
-                }).ToList()
+                Consequences = ConsequenceRows
+                    .Where(row => row.TargetDefinitionId != Guid.Empty)
+                    .Where(row => row.OperationType != TestConsequenceOperationType.AddValue
+                        || row.ValueMode != ModifierValueMode.Metric
+                        || row.SourceMetricId.HasValue)
+                    .Select(row => new GameTestConsequenceDraftDto
+                    {
+                        ApplyOn = row.ApplyOn,
+                        OperationType = row.OperationType,
+                        TargetKind = row.TargetKind,
+                        TargetDefinitionId = row.TargetDefinitionId,
+                        ModifierMode = row.ValueMode == ModifierValueMode.Metric
+                            ? row.ModifierMode
+                            : TestModifierMode.Bonus,
+                        Value = row.ValueMode == ModifierValueMode.Metric ? 0 : row.Value,
+                        ValueMode = row.ValueMode,
+                        SourceMetricId = row.ValueMode == ModifierValueMode.Metric
+                            ? row.SourceMetricId
+                            : null
+                    })
+                    .ToList()
             };
 
             ActiveTest = await GameTestService.CreateGameTestAsync(SessionId, CurrentUserId, request);
@@ -1076,19 +964,19 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
     }
 
     private string GetResultCardClass(GameMasterGameTestResultLineDto line)
-{
-    if (!line.HasRolled)
-        return string.Empty;
-
-    return line.Outcome switch
     {
+        if (!line.HasRolled)
+            return string.Empty;
+
+        return line.Outcome switch
+        {
             GameTestOutcome.Success => "rc-character-result-card--success",
             GameTestOutcome.CriticalSuccess => "rc-character-result-card--criticalsuccess",
             GameTestOutcome.Failure => "rc-character-result-card--failure",
             GameTestOutcome.CriticalFailure => "rc-character-result-card--criticalfailure",
-        _ => string.Empty
-    };
-}
+            _ => string.Empty
+        };
+    }
 
     private void ToggleTraitFilter(Guid optionId, object? isCheckedValue)
     {
@@ -1414,7 +1302,7 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
         {
             result.Add((TestConsequenceApplyOn.OnModerateFailure, L["Test_OnModerateFailure"]));
         }
-        
+
         if (GlobalSuccessThresholds.Count >= 1)
         {
             result.Add((TestConsequenceApplyOn.OnGlobalFailure, L["Test_OnGlobalFailure"]));
@@ -1429,14 +1317,14 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
             ? TestConsequenceTargetKind.Gauge
             : TestConsequenceTargetKind.Attribute;
 
-        ConsequenceRows.Add(new ConsequenceRowModel
+        ConsequenceRows.Add(new SharedConsequenceRowModel
         {
             RowId = Guid.NewGuid(),
             ApplyOn = TestConsequenceApplyOn.OnSuccess,
             OperationType = TestConsequenceOperationType.AddValue,
             TargetKind = targetKind,
             TargetDefinitionId = GetFirstConsequenceTargetId(targetKind),
-            ModifierMode = TestModifierMode.Malus,
+            ModifierMode = TestModifierMode.Bonus,
             Value = 1,
             ValueMode = ModifierValueMode.Fixed,
             SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id
@@ -1450,7 +1338,7 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
             ConsequenceRows.Remove(row);
     }
 
-    private void ChangeConsequenceOperation(ConsequenceRowModel row, string? rawValue)
+    private void ChangeConsequenceOperation(SharedConsequenceRowModel row, string? rawValue)
     {
         if (!int.TryParse(rawValue, out var parsed))
             return;
@@ -1464,31 +1352,39 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
                     ? TestConsequenceTargetKind.Gauge
                     : TestConsequenceTargetKind.Attribute;
                 row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
+                row.ModifierMode = TestModifierMode.Bonus;
+
                 if (row.Value == 0)
                     row.Value = 1;
                 break;
 
             case TestConsequenceOperationType.GrantTalent:
+                row.ModifierMode = TestModifierMode.Bonus;
+                break;
             case TestConsequenceOperationType.RevokeTalent:
                 row.TargetKind = TestConsequenceTargetKind.Talent;
                 row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
                 row.Value = 0;
                 row.ValueMode = ModifierValueMode.Fixed;
                 row.SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id;
+                row.ModifierMode = TestModifierMode.Bonus;
                 break;
 
             case TestConsequenceOperationType.GrantItem:
+                row.ModifierMode = TestModifierMode.Bonus;
+                break;
             case TestConsequenceOperationType.RevokeItem:
                 row.TargetKind = TestConsequenceTargetKind.Item;
                 row.TargetDefinitionId = GetFirstConsequenceTargetId(row.TargetKind);
                 row.Value = 0;
                 row.ValueMode = ModifierValueMode.Fixed;
                 row.SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id;
+                row.ModifierMode = TestModifierMode.Bonus;
                 break;
         }
     }
 
-    private void ChangeConsequenceTargetKind(ConsequenceRowModel row, string? rawValue)
+    private void ChangeConsequenceTargetKind(SharedConsequenceRowModel row, string? rawValue)
     {
         if (!int.TryParse(rawValue, out var parsed))
             return;
@@ -1544,19 +1440,6 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
 
     private bool ConfirmRollbackVisible;
 
-    private class ConsequenceRowModel
-    {
-        public Guid RowId { get; set; }
-        public TestConsequenceApplyOn ApplyOn { get; set; }
-        public TestConsequenceOperationType OperationType { get; set; } = TestConsequenceOperationType.AddValue;
-        public TestConsequenceTargetKind TargetKind { get; set; }
-        public Guid TargetDefinitionId { get; set; }
-        public TestModifierMode ModifierMode { get; set; }
-        public int Value { get; set; }
-        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
-        public Guid? SourceMetricId { get; set; }
-    }
-
     public async ValueTask DisposeAsync()
     {
         if (hubConnection is not null)
@@ -1567,5 +1450,50 @@ private List<CharacterFilterReferenceItem> AdvancedMetricTargets
     {
         public double Left { get; set; }
         public double Width { get; set; }
+    }
+
+    private string GetConsequenceApplyOnCssClass(TestConsequenceApplyOn applyOn)
+    {
+        return applyOn switch
+        {
+            TestConsequenceApplyOn.OnSuccess => "rc-consequence-pill rc-consequence-pill--positive",
+            TestConsequenceApplyOn.OnCriticalSuccess => "rc-consequence-pill rc-consequence-pill--positive",
+            TestConsequenceApplyOn.OnGlobalSuccess => "rc-consequence-pill rc-consequence-pill--positive",
+
+            TestConsequenceApplyOn.OnModerateSuccess => "rc-consequence-pill rc-consequence-pill--warning",
+            TestConsequenceApplyOn.OnModerateFailure => "rc-consequence-pill rc-consequence-pill--warning-negative",
+
+            TestConsequenceApplyOn.OnFailure => "rc-consequence-pill rc-consequence-pill--negative",
+            TestConsequenceApplyOn.OnCriticalFailure => "rc-consequence-pill rc-consequence-pill--negative",
+            TestConsequenceApplyOn.OnGlobalFailure => "rc-consequence-pill rc-consequence-pill--negative",
+            _ => "rc-consequence-pill"
+        };
+    }
+
+    private string GetConsequenceOperationCssClass(SharedConsequenceRowModel row)
+    {
+        return row.OperationType switch
+        {
+            TestConsequenceOperationType.AddValue when row.Value >= 0 => "rc-consequence-pill rc-consequence-pill--positive",
+            TestConsequenceOperationType.AddValue when row.Value < 0 => "rc-consequence-pill rc-consequence-pill--negative",
+
+            TestConsequenceOperationType.GrantTalent => "rc-consequence-pill rc-consequence-pill--positive",
+            TestConsequenceOperationType.GrantItem => "rc-consequence-pill rc-consequence-pill--positive",
+
+            TestConsequenceOperationType.RevokeTalent => "rc-consequence-pill rc-consequence-pill--negative",
+            TestConsequenceOperationType.RevokeItem => "rc-consequence-pill rc-consequence-pill--negative",
+
+            _ => "rc-consequence-pill"
+        };
+    }
+
+    private string GetConsequenceValueCssClass(SharedConsequenceRowModel row)
+    {
+        if (row.OperationType != TestConsequenceOperationType.AddValue)
+            return "rc-consequence-pill";
+
+        return row.Value >= 0
+            ? "rc-consequence-pill rc-consequence-pill--positive"
+            : "rc-consequence-pill rc-consequence-pill--negative";
     }
 }

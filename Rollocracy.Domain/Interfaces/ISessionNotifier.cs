@@ -9,5 +9,7 @@
         Task NotifyPresenceChangedAsync(Guid sessionId);
 
         Task NotifyPollChangedAsync(Guid sessionId);
+
+        Task NotifyJournalChangedAsync(Guid sessionId);
     }
 }

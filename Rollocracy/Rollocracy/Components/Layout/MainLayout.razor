@@ -42,7 +42,14 @@
                         <h5 class="rc-tool-panel__title">@L["Session_Manage_JoinUrl"]</h5>
 
                         <div class="rc-session-strip__group">
-                            <code class="rc-session-strip__value rc-session-strip__value--link">@JoinUrl</code>
+                            @if (CurrentSession.IsActive)
+                            {
+                                <code class="rc-session-strip__value rc-session-strip__value--link">@JoinUrl</code>
+                            }
+                            else
+                            {
+                                <code class="rc-session-strip__value rc-session-strip__value--inactive">@L["Session_Inactive"]</code>
+                            }
                         </div>
 
                         <div class="rc-session-strip__group">

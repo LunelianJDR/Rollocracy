@@ -170,7 +170,7 @@ namespace Rollocracy.Infrastructure.Services
                         TargetKind = consequence.TargetKind,
                         TargetDefinitionId = consequence.TargetDefinitionId,
                         TargetNameSnapshot = targetName,
-                        ModifierMode = consequence.ModifierMode,
+                        ModifierMode = consequence.ValueMode == ModifierValueMode.Metric ? consequence.ModifierMode : TestModifierMode.Bonus,
                         Value = consequence.Value,
                         ValueMode = consequence.ValueMode,
                         SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
@@ -1333,7 +1333,7 @@ namespace Rollocracy.Infrastructure.Services
                 case TestConsequenceTargetKind.Item:
                     var item = await context.ItemDefinitions
                         .AsNoTracking()
-                        .FirstOrDefaultAsync(i => i.Id == targetDefinitionId && i.GameSystemId == gameSystemId);
+                        .FirstOrDefaultAsync(i => i.Id == targetDefinitionId && (i.GameSystemId == gameSystemId || i.SessionId == sessionId));
 
                     if (item == null)
                         throw new Exception(_localizer["Backend_InvalidPollConsequenceTarget"]);
@@ -1523,7 +1523,7 @@ namespace Rollocracy.Infrastructure.Services
                 MetricName = poll.MetricNameSnapshot,
                 TotalVotes = totalVotes,
                 TotalWeightedVotes = totalWeightedVotes,
-                OnlinePlayersCount = eligibleOnlinePlayersCount, 
+                OnlinePlayersCount = eligibleOnlinePlayersCount,
                 ParticipationPercent = eligibleOnlinePlayersCount == 0 //remplacement de eligiblePlayersCount par eligibleOnelinePlayersCount
                     ? 0
                     : (double)totalVotes * 100.0 / eligibleOnlinePlayersCount, //remplacement de eligiblePlayersCount par eligibleOnelinePlayersCount

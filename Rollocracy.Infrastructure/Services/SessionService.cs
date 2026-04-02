@@ -4,6 +4,8 @@ using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
 using Rollocracy.Domain.Characters;
+using Rollocracy.Domain.GameRules;
+using System.Text.RegularExpressions;
 
 namespace Rollocracy.Infrastructure.Services
 {
@@ -642,6 +644,7 @@ namespace Rollocracy.Infrastructure.Services
             return new SessionSettingsDto
             {
                 SessionId = session.Id,
+                GameSystemId = session.GameSystemId,
                 SessionName = session.SessionName,
                 SessionSlug = session.SessionSlug,
                 SessionPassword = session.SessionPassword,
@@ -880,6 +883,476 @@ namespace Rollocracy.Infrastructure.Services
 
             if (!exists)
                 throw new Exception(_localizer["Session_NotFound"]);
+        }
+
+        public async Task<List<EditableItemDefinitionDto>> GetSessionItemDefinitionsAsync(Guid sessionId, Guid gameMasterUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (session == null)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var items = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(x => x.SessionId == sessionId)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.Name)
+                .ToListAsync();
+
+            var itemIds = items.Select(x => x.Id).ToList();
+
+            var modifiers = await context.ItemModifierDefinitions
+                .AsNoTracking()
+                .Where(x => itemIds.Contains(x.ItemDefinitionId))
+                .ToListAsync();
+
+            return items.Select(item => new EditableItemDefinitionDto
+            {
+                ItemDefinitionId = item.Id,
+                Name = item.Name,
+                Description = item.Description ?? string.Empty,
+                DisplayOrder = item.DisplayOrder,
+                IsDeleted = false,
+                Modifiers = modifiers
+                    .Where(x => x.ItemDefinitionId == item.Id)
+                    .Select(x => new EditableModifierDefinitionDto
+                    {
+                        Id = x.Id,
+                        OperationType = ModifierOperationType.Grant,
+                        TargetType = x.TargetType,
+                        TargetId = x.TargetId,
+                        Value = x.AddValue,
+                        ValueMode = x.ValueMode,
+                        SourceMetricId = x.SourceMetricId
+                    })
+                    .ToList()
+            }).ToList();
+        }
+
+        public async Task SaveSessionItemDefinitionsAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            List<EditableItemDefinitionDto> requestItems)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (session == null)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            if (!session.GameSystemId.HasValue)
+                throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
+
+            var gameSystemId = session.GameSystemId.Value;
+
+            var affectedCharacterIds = await context.Characters
+                .Join(context.PlayerSessions,
+                    character => character.PlayerSessionId,
+                    playerSession => playerSession.Id,
+                    (character, playerSession) => new { character, playerSession })
+                .Where(x => x.playerSession.SessionId == sessionId)
+                .Select(x => x.character.Id)
+                .ToListAsync();
+
+            await ValidateSessionItemNamesAsync(context, sessionId, gameSystemId, requestItems);
+            await SyncSessionItemsAsync(context, sessionId, affectedCharacterIds, requestItems);
+            await SyncSessionItemModifiersAsync(context, requestItems);
+
+            await context.SaveChangesAsync();
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
+        }
+
+        private async Task ValidateSessionItemNamesAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            Guid gameSystemId,
+            List<EditableItemDefinitionDto> requestItems)
+        {
+            var activeNames = requestItems
+                .Where(x => !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name))
+                .Select(x => x.Name.Trim().ToLowerInvariant())
+                .ToList();
+
+            if (activeNames.Count != activeNames.Distinct().Count())
+                throw new Exception(_localizer["Backend_SessionItemNameAlreadyExists"]);
+
+            var systemItemNames = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .Select(x => x.Name.ToLower())
+                .ToListAsync();
+
+            if (activeNames.Any(name => systemItemNames.Contains(name)))
+                throw new Exception(_localizer["Backend_SessionItemNameConflictsWithSystemItem"]);
+        }
+
+        private async Task SyncSessionItemsAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            List<Guid> affectedCharacterIds,
+            List<EditableItemDefinitionDto> requestItems)
+        {
+            var currentItems = await context.ItemDefinitions
+                .Where(x => x.SessionId == sessionId)
+                .ToListAsync();
+
+            var requestExistingIds = requestItems
+                .Where(x => x.ItemDefinitionId.HasValue)
+                .Select(x => x.ItemDefinitionId!.Value)
+                .ToHashSet();
+
+            var removedIds = requestItems
+                .Where(x => x.ItemDefinitionId.HasValue && x.IsDeleted)
+                .Select(x => x.ItemDefinitionId!.Value)
+                .Union(currentItems.Where(x => !requestExistingIds.Contains(x.Id)).Select(x => x.Id))
+                .Distinct()
+                .ToList();
+
+            if (removedIds.Count > 0)
+            {
+                var characterItems = await context.CharacterItems
+                    .Where(x => affectedCharacterIds.Contains(x.CharacterId) && removedIds.Contains(x.ItemDefinitionId))
+                    .ToListAsync();
+
+                var modifiers = await context.ItemModifierDefinitions
+                    .Where(x => removedIds.Contains(x.ItemDefinitionId))
+                    .ToListAsync();
+
+                context.CharacterItems.RemoveRange(characterItems);
+                context.ItemModifierDefinitions.RemoveRange(modifiers);
+                context.ItemDefinitions.RemoveRange(currentItems.Where(x => removedIds.Contains(x.Id)));
+            }
+
+            foreach (var item in requestItems.Where(x => x.ItemDefinitionId.HasValue && !x.IsDeleted))
+            {
+                var entity = currentItems.First(x => x.Id == item.ItemDefinitionId!.Value);
+                entity.Name = item.Name.Trim();
+                entity.Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim();
+                entity.DisplayOrder = item.DisplayOrder;
+            }
+
+            foreach (var item in requestItems.Where(x => !x.ItemDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
+            {
+                var itemId = Guid.NewGuid();
+
+                context.ItemDefinitions.Add(new ItemDefinition
+                {
+                    Id = itemId,
+                    GameSystemId = null,
+                    SessionId = sessionId,
+                    Name = item.Name.Trim(),
+                    Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim(),
+                    DisplayOrder = item.DisplayOrder
+                });
+
+                item.ItemDefinitionId = itemId;
+            }
+        }
+
+        private async Task SyncSessionItemModifiersAsync(
+            RollocracyDbContext context,
+            List<EditableItemDefinitionDto> requestItems)
+        {
+            foreach (var item in requestItems)
+            {
+                if (!item.ItemDefinitionId.HasValue)
+                    continue;
+
+                var currentModifiers = await context.ItemModifierDefinitions
+                    .Where(x => x.ItemDefinitionId == item.ItemDefinitionId.Value)
+                    .ToListAsync();
+
+                var incomingIds = item.Modifiers
+                    .Where(x => x.Id != Guid.Empty)
+                    .Select(x => x.Id)
+                    .ToHashSet();
+
+                var toDelete = currentModifiers
+                    .Where(x => !incomingIds.Contains(x.Id))
+                    .ToList();
+
+                if (toDelete.Count > 0)
+                    context.ItemModifierDefinitions.RemoveRange(toDelete);
+
+                foreach (var modifier in item.Modifiers)
+                {
+                    var sourceMetricId = modifier.ValueMode == ModifierValueMode.Metric
+                        ? modifier.SourceMetricId
+                        : null;
+
+                    if (modifier.Id != Guid.Empty)
+                    {
+                        var entity = currentModifiers.First(x => x.Id == modifier.Id);
+                        entity.TargetType = modifier.TargetType;
+                        entity.TargetId = modifier.TargetId;
+                        entity.AddValue = modifier.Value;
+                        entity.ValueMode = modifier.ValueMode;
+                        entity.SourceMetricId = sourceMetricId;
+                    }
+                    else
+                    {
+                        context.ItemModifierDefinitions.Add(new ItemModifierDefinition
+                        {
+                            Id = Guid.NewGuid(),
+                            ItemDefinitionId = item.ItemDefinitionId.Value,
+                            TargetType = modifier.TargetType,
+                            TargetId = modifier.TargetId,
+                            AddValue = modifier.Value,
+                            ValueMode = modifier.ValueMode,
+                            SourceMetricId = sourceMetricId
+                        });
+                    }
+                }
+            }
+        }
+
+        public async Task<SessionJournalEditorDto?> GetSessionJournalEditorAsync(Guid sessionId, Guid gameMasterUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (session == null)
+                return null;
+
+            var hasChanges = false;
+
+            hasChanges |= await EnsureJournalHasAtLeastOnePageAsync(context, sessionId, isPublic: false);
+            hasChanges |= await EnsureJournalHasAtLeastOnePageAsync(context, sessionId, isPublic: true);
+
+            if (hasChanges)
+            {
+                await context.SaveChangesAsync();
+            }
+
+            var privatePages = await context.SessionJournalPages
+                .AsNoTracking()
+                .Where(x => x.SessionId == sessionId && !x.IsPublic)
+                .OrderBy(x => x.PageNumber)
+                .ToListAsync();
+
+            var publicPages = await context.SessionJournalPages
+                .AsNoTracking()
+                .Where(x => x.SessionId == sessionId && x.IsPublic)
+                .OrderBy(x => x.PageNumber)
+                .ToListAsync();
+
+            return new SessionJournalEditorDto
+            {
+                SessionId = session.Id,
+                SessionName = session.SessionName,
+                PrivatePages = privatePages.Select(MapJournalPage).ToList(),
+                PublicPages = publicPages.Select(MapJournalPage).ToList()
+            };
+        }
+
+        public async Task SaveSessionJournalAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            SessionJournalSaveRequestDto request)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            await EnsureGameMasterOwnsSessionAsync(context, sessionId, gameMasterUserAccountId);
+
+            request ??= new SessionJournalSaveRequestDto();
+
+            await SyncJournalScopeAsync(context, sessionId, isPublic: false, request.PrivatePages);
+            await SyncJournalScopeAsync(context, sessionId, isPublic: true, request.PublicPages);
+
+            await context.SaveChangesAsync();
+            await _sessionNotifier.NotifyJournalChangedAsync(sessionId);
+        }
+
+        public async Task<SessionJournalViewDto?> GetPublicSessionJournalAsync(Guid playerSessionId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps => ps.Id == playerSessionId);
+
+            if (playerSession == null)
+                return null;
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == playerSession.SessionId);
+
+            if (session == null)
+                return null;
+
+            var hasChanges = await EnsureJournalHasAtLeastOnePageAsync(context, session.Id, isPublic: true);
+            if (hasChanges)
+            {
+                await context.SaveChangesAsync();
+            }
+
+            var publicPages = await context.SessionJournalPages
+                .AsNoTracking()
+                .Where(x => x.SessionId == session.Id && x.IsPublic)
+                .OrderBy(x => x.PageNumber)
+                .ToListAsync();
+
+            return new SessionJournalViewDto
+            {
+                SessionId = session.Id,
+                SessionName = session.SessionName,
+                PublicPages = publicPages.Select(MapJournalPage).ToList()
+            };
+        }
+
+        private static SessionJournalPageDto MapJournalPage(SessionJournalPage page)
+        {
+            return new SessionJournalPageDto
+            {
+                JournalPageId = page.Id,
+                PageNumber = page.PageNumber,
+                Title = page.Title,
+                ContentHtml = page.ContentHtml,
+                IsVisible = page.IsVisible
+            };
+        }
+
+        private async Task<bool> EnsureJournalHasAtLeastOnePageAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            bool isPublic)
+        {
+            var hasAnyPage = await context.SessionJournalPages
+                .AsNoTracking()
+                .AnyAsync(x => x.SessionId == sessionId && x.IsPublic == isPublic);
+
+            if (hasAnyPage)
+                return false;
+
+            context.SessionJournalPages.Add(new SessionJournalPage
+            {
+                Id = Guid.NewGuid(),
+                SessionId = sessionId,
+                IsPublic = isPublic,
+                PageNumber = 1,
+                Title = string.Empty,
+                ContentHtml = string.Empty,
+                IsVisible = isPublic,
+                CreatedAtUtc = DateTime.UtcNow,
+                UpdatedAtUtc = DateTime.UtcNow
+            });
+
+            return true;
+        }
+
+        private async Task SyncJournalScopeAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            bool isPublic,
+            List<SessionJournalPageDto>? incomingPages)
+        {
+            incomingPages ??= new List<SessionJournalPageDto>();
+
+            if (incomingPages.Count == 0)
+            {
+                incomingPages.Add(new SessionJournalPageDto
+                {
+                    PageNumber = 1,
+                    Title = string.Empty,
+                    ContentHtml = string.Empty,
+                    IsVisible = isPublic
+                });
+            }
+
+            var currentPages = await context.SessionJournalPages
+                .Where(x => x.SessionId == sessionId && x.IsPublic == isPublic)
+                .OrderBy(x => x.PageNumber)
+                .ToListAsync();
+
+            var incomingIds = incomingPages
+                .Where(x => x.JournalPageId.HasValue && x.JournalPageId.Value != Guid.Empty)
+                .Select(x => x.JournalPageId!.Value)
+                .ToHashSet();
+
+            var toDelete = currentPages
+                .Where(x => !incomingIds.Contains(x.Id))
+                .ToList();
+
+            if (toDelete.Count > 0)
+            {
+                context.SessionJournalPages.RemoveRange(toDelete);
+            }
+
+            for (var i = 0; i < incomingPages.Count; i++)
+            {
+                var dto = incomingPages[i];
+                var title = (dto.Title ?? string.Empty).Trim();
+                var contentHtml = SanitizeJournalHtml(dto.ContentHtml);
+                var isVisible = isPublic ? true : dto.IsVisible;
+
+                SessionJournalPage? entity = null;
+
+                if (dto.JournalPageId.HasValue && dto.JournalPageId.Value != Guid.Empty)
+                {
+                    entity = currentPages.FirstOrDefault(x => x.Id == dto.JournalPageId.Value);
+                }
+
+                if (entity is null)
+                {
+                    entity = new SessionJournalPage
+                    {
+                        Id = Guid.NewGuid(),
+                        SessionId = sessionId,
+                        IsPublic = isPublic,
+                        CreatedAtUtc = DateTime.UtcNow
+                    };
+
+                    context.SessionJournalPages.Add(entity);
+                }
+
+                entity.PageNumber = i + 1;
+                entity.Title = title;
+                entity.ContentHtml = contentHtml;
+                entity.IsVisible = isVisible;
+                entity.UpdatedAtUtc = DateTime.UtcNow;
+            }
+        }
+
+        private static string SanitizeJournalHtml(string? html)
+        {
+            if (string.IsNullOrWhiteSpace(html))
+                return string.Empty;
+
+            var value = html;
+
+            value = Regex.Replace(value, "<!--.*?-->", string.Empty, RegexOptions.Singleline);
+            value = Regex.Replace(
+                value,
+                @"<(script|style|iframe|object|embed|form|input|button|textarea|select|meta|link)\b[^>]*>.*?</\1>",
+                string.Empty,
+                RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+            value = Regex.Replace(
+                value,
+                @"<(script|style|iframe|object|embed|form|input|button|textarea|select|meta|link)\b[^>]*/?>",
+                string.Empty,
+                RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+            value = Regex.Replace(
+                value,
+                @"\son\w+\s*=\s*(""[^""]*""|'[^']*')",
+                string.Empty,
+                RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+            value = Regex.Replace(value, @"javascript\s*:", string.Empty, RegexOptions.IgnoreCase);
+
+            return value.Trim();
         }
 
         private static int NormalizeSessionCapacity(int rawValue) => Math.Clamp(rawValue, 0, 5000);

@@ -28,6 +28,8 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<Character> Characters => Set<Character>();
         public DbSet<CharacterModifier> CharacterModifiers => Set<CharacterModifier>();
 
+        public DbSet<SessionJournalPage> SessionJournalPages => Set<SessionJournalPage>();
+
         public DbSet<AttributeDefinition> AttributeDefinitions => Set<AttributeDefinition>();
         public DbSet<DerivedStatDefinition> DerivedStatDefinitions => Set<DerivedStatDefinition>();
         public DbSet<DerivedStatComponent> DerivedStatComponents => Set<DerivedStatComponent>();
@@ -340,7 +342,61 @@ namespace Rollocracy.Infrastructure.Persistence
                     .HasColumnType("text");
 
                 entity.Property(x => x.ResultSnapshotJson)
+                   
+                
+                .HasColumnType("text");
+            });
+
+            modelBuilder.Entity<SessionJournalPage>(entity =>
+            {
+                entity.HasIndex(x => x.SessionId);
+                entity.HasIndex(x => new { x.SessionId, x.IsPublic, x.PageNumber })
+                    .IsUnique();
+
+                entity.Property(x => x.Title)
                     .HasColumnType("text");
+
+                entity.Property(x => x.ContentHtml)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.CreatedAtUtc)
+                    .HasColumnType("timestamp with time zone");
+
+                entity.Property(x => x.UpdatedAtUtc)
+                    .HasColumnType("timestamp with time zone");
+            });
+
+            modelBuilder.Entity<ItemDefinition>(entity =>
+            {
+                entity.HasIndex(x => x.GameSystemId);
+                entity.HasIndex(x => x.SessionId);
+                entity.HasIndex(x => new { x.GameSystemId, x.DisplayOrder });
+                entity.HasIndex(x => new { x.SessionId, x.DisplayOrder });
+
+                entity.Property(x => x.Name)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.Description)
+                    .HasColumnType("text");
+
+                entity.ToTable(table =>
+                {
+                    table.HasCheckConstraint(
+                        "CK_ItemDefinitions_Scope",
+                        "(\"GameSystemId\" IS NOT NULL AND \"SessionId\" IS NULL) OR (\"GameSystemId\" IS NULL AND \"SessionId\" IS NOT NULL)");
+                });
+            });
+
+            modelBuilder.Entity<ItemModifierDefinition>(entity =>
+            {
+                entity.HasIndex(x => x.ItemDefinitionId);
+            });
+
+            modelBuilder.Entity<CharacterItem>(entity =>
+            {
+                entity.HasIndex(x => x.CharacterId);
+                entity.HasIndex(x => x.ItemDefinitionId);
+                entity.HasIndex(x => new { x.CharacterId, x.ItemDefinitionId }).IsUnique();
             });
 
             modelBuilder.Entity<SessionPollEligibleCharacter>(entity =>

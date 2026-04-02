@@ -10,6 +10,7 @@
     <ProjectReference Include="..\..\Rollocracy.Domain\Rollocracy.Domain.csproj" />
     <ProjectReference Include="..\..\Rollocracy.Infrastructure\Rollocracy.Infrastructure.csproj" />
     <ProjectReference Include="..\Rollocracy.Client\Rollocracy.Client.csproj" />
+    <PackageReference Include="Blazored.TextEditor" Version="1.0.7" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.5" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />

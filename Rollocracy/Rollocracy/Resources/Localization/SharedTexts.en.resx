@@ -2959,6 +2959,9 @@
 	<data name="Backend_FreeSubscriptionPlanNotFound" xml:space="preserve">
     <value>The default free subscription plan was not found.</value>
   </data>
+	<data name="Backend_EmailInvalidFormat" xml:space="preserve">
+    <value>The email address format is invalid.</value>
+  </data>
 
 	<data name="Account_SecurityHistory_GameMasterModeEnabled" xml:space="preserve">
     <value>Game Master mode enabled</value>
@@ -3084,4 +3087,125 @@
 	<data name="Auth_TwitchMerge_RequestFailed" xml:space="preserve">
     <value>Unable to finalize the Twitch merge right now.</value>
   </data>
+	<data name="Auth_EmailInvalidFormat" xml:space="preserve">
+    <value>The email address format is invalid.</value>
+  </data>
+
+	<data name="Backend_SessionItemNameAlreadyExists" xml:space="preserve">
+    <value>Two session items cannot share the same name.</value>
+  </data>
+	<data name="Backend_SessionItemNameConflictsWithSystemItem" xml:space="preserve">
+    <value>A session item cannot have the same name as a system item.</value>
+  </data>
+	<data name="SessionSettings_SessionItemsTitle" xml:space="preserve">
+    <value>Session items</value>
+  </data>
+	<data name="SessionSettings_SessionItemsSubtitle" xml:space="preserve">
+    <value>Manage items specific to this session. They stack with system items and apply immediately.</value>
+  </data>
+	<data name="SessionSettings_NoSessionItems" xml:space="preserve">
+    <value>No session item.</value>
+  </data>
+	<data name="SessionSettings_SessionItemsSaved" xml:space="preserve">
+    <value>Session items have been saved.</value>
+  </data>
+	<data name="Session_Settings_RemoveModifier" xml:space="preserve">
+    <value>Remove modifier</value>
+  </data>
+	<data name="Journal_Title" xml:space="preserve">
+  <value>Journal</value>
+</data>
+	<data name="Journal_BackToSettings" xml:space="preserve">
+  <value>Back to settings</value>
+</data>
+	<data name="Journal_Save" xml:space="preserve">
+  <value>Save</value>
+</data>
+	<data name="Journal_Saved" xml:space="preserve">
+  <value>Journal saved.</value>
+</data>
+	<data name="Journal_NotFound" xml:space="preserve">
+  <value>Journal not found.</value>
+</data>
+	<data name="Journal_PrivateTab" xml:space="preserve">
+  <value>Private journal</value>
+</data>
+	<data name="Journal_PublicTab" xml:space="preserve">
+  <value>Public journal</value>
+</data>
+	<data name="Journal_NoPage" xml:space="preserve">
+  <value>No page.</value>
+</data>
+	<data name="Journal_DeletePage" xml:space="preserve">
+  <value>Delete page</value>
+</data>
+	<data name="Journal_PageTitle" xml:space="preserve">
+  <value>Page title</value>
+</data>
+	<data name="Journal_PageContent" xml:space="preserve">
+  <value>Content</value>
+</data>
+	<data name="Journal_Preview" xml:space="preserve">
+  <value>Preview</value>
+</data>
+	<data name="Journal_EmptyPage" xml:space="preserve">
+  <value>Empty page.</value>
+</data>
+	<data name="Journal_PrivatePageVisible" xml:space="preserve">
+  <value>Visible</value>
+</data>
+	<data name="Journal_PrivatePageHidden" xml:space="preserve">
+  <value>This private page is hidden to avoid stream exposure.</value>
+</data>
+	<data name="Journal_RevealPrivatePage" xml:space="preserve">
+  <value>Temporarily reveal</value>
+</data>
+	<data name="Journal_FormatBold" xml:space="preserve">
+  <value>Bold</value>
+</data>
+	<data name="Journal_FormatItalic" xml:space="preserve">
+  <value>Italic</value>
+</data>
+	<data name="Journal_FormatUnderline" xml:space="preserve">
+  <value>Underline</value>
+</data>
+	<data name="Journal_FormatStrike" xml:space="preserve">
+  <value>Strikethrough</value>
+</data>
+	<data name="Journal_FormatParagraph" xml:space="preserve">
+  <value>Paragraph</value>
+</data>
+	<data name="Journal_FormatSmallTitle" xml:space="preserve">
+  <value>Small title</value>
+</data>
+	<data name="Journal_FormatLargeTitle" xml:space="preserve">
+  <value>Large title</value>
+</data>
+	<data name="Journal_ShowJournal" xml:space="preserve">
+  <value>Show journal</value>
+</data>
+	<data name="Journal_ShowStream" xml:space="preserve">
+  <value>Show stream</value>
+</data>
+	<data name="Journal_PlayerSubtitle" xml:space="preserve">
+  <value>Public session journal pages</value>
+</data>
+	<data name="Journal_EditorPlaceholder" xml:space="preserve">
+  <value>Write the page content…</value>
+</data>
+	<data name="Journal_DefaultPageTitle" xml:space="preserve">
+  <value>New page</value>
+</data>
+	<data name="Journal_ListOrdered" xml:space="preserve">
+  <value>Ordered list</value>
+</data>
+	<data name="Journal_ListBullet" xml:space="preserve">
+  <value>Bullet list</value>
+</data>
+	<data name="Journal_FormatLink" xml:space="preserve">
+  <value>Link</value>
+</data>
+	<data name="Journal_FormatClear" xml:space="preserve">
+  <value>Clear formatting</value>
+</data>
 </root>

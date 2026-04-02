@@ -33,16 +33,6 @@ else
         <textarea @bind="Biography"></textarea>
     </div>
 
-    <h4>@L["Character_Create_Attributes"]</h4>
-
-    @foreach (var attributeDefinition in Template.Attributes)
-    {
-        <div style="margin-top:8px;">
-                <label>@attributeDefinition.Name (@attributeDefinition.MinValue - @attributeDefinition.MaxValue)</label><br />
-                <input value="@attributeDefinition.DefaultValue" readonly />
-        </div>
-    }
-
     <h4>@L["Character_Create_Traits"]</h4>
 
     @foreach (var traitDefinition in Template.Traits)

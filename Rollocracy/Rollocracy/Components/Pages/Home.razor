@@ -6,38 +6,38 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
-<PageTitle>Accueil</PageTitle>
+<PageTitle>Rollocracy</PageTitle>
 
-<AuthorizeView>
-    <Authorizing>
-        <p>@L["Common_Loading"]</p>
-    </Authorizing>
 
-    <NotAuthorized>
-        <h1>@L["Home_WelcomeAnonymous"]</h1>
-
-        <div>
-            <button @onclick="GoToLogin">@L["Auth_Login_Action"]</button>
-            <button @onclick="GoToRegister">@L["Auth_Register_Title"]</button>
+    <section class="rc-tool-section">
+        <div class="rc-tool-layout">
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["Account_Settings_Title"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["Account_Settings_Subtitle"]</p>
+                    </div>
+                </div>
+            </div>
+        <div class="rc-tool-panel">
+            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                <div class="rc-tool-panel__header-main">
+                    <h4 class="rc-tool-panel__title">@L["Account_Settings_Title"]</h4>
+                    <p class="rc-tool-panel__subtitle">@L["Account_Settings_Subtitle"]</p>
+                </div>
+            </div>
         </div>
-    </NotAuthorized>
-
-    <Authorized Context="authState">
-        <h1>@L["Home_WelcomeUser", authState.User.Identity?.Name ?? string.Empty]</h1>
-
-        <div>
-            <button @onclick="HandleLogout">@L["Auth_Logout_Action"]</button>
-            <button @onclick="GoToJoin">@L["Session_Join_Title"]</button>
-
-            @if (IsGameMaster(authState.User))
-            {
-                <button @onclick="GoToCreateSession">@L["Session_Create_Title"]</button>
-                <button @onclick="GoToResumeSession">@L["Session_PlayerList_Title"]</button>
-                <button @onclick="GoToGameSystems">@L["GameSystem_List_Title"]</button>
-            }
+        <div class="rc-tool-panel">
+            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                <div class="rc-tool-panel__header-main">
+                    <h4 class="rc-tool-panel__title">@L["Account_Settings_Title"]</h4>
+                    <p class="rc-tool-panel__subtitle">@L["Account_Settings_Subtitle"]</p>
+                </div>
+            </div>
         </div>
-    </Authorized>
-</AuthorizeView>
+        </div>
+    </section>
+
 
 @code {
     private void GoToLogin()

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
+using System.Net.Mail;
 
 namespace Rollocracy.Infrastructure.Services
 {
@@ -42,8 +43,11 @@ namespace Rollocracy.Infrastructure.Services
             if (password.Trim().Length < 6)
                 throw new Exception(_localizer["Backend_PasswordTooShort"]);
 
+            if (!string.IsNullOrWhiteSpace(normalizedEmail) && !IsValidEmail(normalizedEmail))
+                throw new Exception(_localizer["Backend_EmailInvalidFormat"]);
+
             var existingUser = await context.UserAccounts
-                .FirstOrDefaultAsync(u => u.Username == normalizedUsername);
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUsername);
 
             if (existingUser != null)
                 throw new Exception(_localizer["Backend_UsernameAlreadyExists"]);
@@ -86,12 +90,11 @@ namespace Rollocracy.Infrastructure.Services
             var normalizedUsername = NormalizeUsername(username);
 
             var user = await context.UserAccounts
-                .FirstOrDefaultAsync(u => u.Username == normalizedUsername);
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUsername);
 
             if (user == null)
                 return null;
 
-            // Un compte Twitch-only peut ne pas avoir de mot de passe local.
             if (string.IsNullOrWhiteSpace(user.PasswordHash))
                 return null;
 
@@ -107,7 +110,7 @@ namespace Rollocracy.Infrastructure.Services
             var normalizedUsername = NormalizeUsername(username);
 
             return await context.UserAccounts
-                .FirstOrDefaultAsync(u => u.Username == normalizedUsername);
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUsername);
         }
 
         public async Task<UserAccount?> GetUserByEmailAsync(string email)
@@ -159,8 +162,11 @@ namespace Rollocracy.Infrastructure.Services
             if (string.IsNullOrWhiteSpace(normalizedUsername))
                 throw new Exception(_localizer["Backend_UsernameRequired"]);
 
+            if (!string.IsNullOrWhiteSpace(normalizedEmail) && !IsValidEmail(normalizedEmail))
+                throw new Exception(_localizer["Backend_EmailInvalidFormat"]);
+
             var existingUser = await context.UserAccounts
-                .FirstOrDefaultAsync(u => u.Username == normalizedUsername);
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUsername);
 
             if (existingUser != null)
                 throw new Exception(_localizer["Backend_UsernameAlreadyExists"]);
@@ -196,7 +202,6 @@ namespace Rollocracy.Infrastructure.Services
                 TwitchLogin = twitchLogin?.Trim(),
                 TwitchDisplayName = twitchDisplayName?.Trim(),
 
-                // Compte créé via Twitch : pas de mot de passe local au départ
                 PasswordHash = string.Empty,
 
                 LastSensitiveChangeAtUtc = DateTime.UtcNow,
@@ -235,10 +240,12 @@ namespace Rollocracy.Infrastructure.Services
             user.TwitchLogin = twitchLogin?.Trim();
             user.TwitchDisplayName = twitchDisplayName?.Trim();
 
-            // Si le compte local n’avait pas d’email et que Twitch en fournit un, on le récupère.
             if (string.IsNullOrWhiteSpace(user.Email) && !string.IsNullOrWhiteSpace(emailFromTwitch))
             {
                 var normalizedEmail = NormalizeEmail(emailFromTwitch);
+
+                if (!string.IsNullOrWhiteSpace(normalizedEmail) && !IsValidEmail(normalizedEmail))
+                    throw new Exception(_localizer["Backend_EmailInvalidFormat"]);
 
                 var existingEmailOwner = await context.UserAccounts
                     .FirstOrDefaultAsync(u => u.Email == normalizedEmail && u.Id != userAccountId);
@@ -266,12 +273,12 @@ namespace Rollocracy.Infrastructure.Services
                 return false;
 
             return !await context.UserAccounts
-                .AnyAsync(u => u.Username == normalizedUsername);
+                .AnyAsync(u => u.Username.ToLower() == normalizedUsername);
         }
 
         private static string NormalizeUsername(string username)
         {
-            return username?.Trim() ?? string.Empty;
+            return username?.Trim().ToLowerInvariant() ?? string.Empty;
         }
 
         private static string? NormalizeEmail(string? email)
@@ -280,6 +287,19 @@ namespace Rollocracy.Infrastructure.Services
                 return null;
 
             return email.Trim().ToLowerInvariant();
+        }
+
+        private static bool IsValidEmail(string email)
+        {
+            try
+            {
+                var parsed = new MailAddress(email);
+                return string.Equals(parsed.Address, email, StringComparison.OrdinalIgnoreCase);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private static string NormalizeLanguage(string language)

@@ -156,7 +156,17 @@ else
     private bool IsWarning;
 
     private RandomDrawEditorDto? Editor;
-    private RandomDrawRequestDto Request = new();
+    private RandomDrawRequestDto Request = new()
+    {
+        Filter = new CharacterTargetFilterDto
+        {
+            OnlyAlive = false,
+            OnlyDead = false,
+            OnlyOnline = true,
+            IncludeNpcs = false,
+            MatchAllConditions = true
+        }
+    };
     private RandomDrawResultDto? LastDraw;
     private Dictionary<Guid, SessionCharacterSummaryDto> CharacterSummariesById = new();
 
@@ -236,7 +246,10 @@ else
             if (Request.DrawCount <= 0)
                 Request.DrawCount = 1;
 
-            Request.Filter.IncludeNpcs = true;
+            Request.Filter.OnlyOnline = true;
+            Request.Filter.OnlyAlive = false;
+            Request.Filter.OnlyDead = false;
+            Request.Filter.IncludeNpcs = false;
         }
     }
 
@@ -288,9 +301,9 @@ else
     {
         var characters = await CharacterService.GetSessionCharacterSummariesAsync(
             SessionId,
-            includeOffline: true,
-            includeDead: true,
-            includeNpcs: true);
+            includeOffline: false,
+            includeDead: false,
+            includeNpcs: false);
 
         CharacterSummariesById = characters.ToDictionary(x => x.CharacterId, x => x);
     }

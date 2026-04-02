@@ -70,7 +70,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var items = await context.ItemDefinitions
                 .AsNoTracking()
-                .Where(x => x.GameSystemId == gameSystemId)
+                .Where(x => x.GameSystemId == gameSystemId || x.SessionId == sessionId)
                 .OrderBy(x => x.DisplayOrder)
                 .ThenBy(x => x.Name)
                 .ToListAsync();
@@ -187,6 +187,12 @@ namespace Rollocracy.Infrastructure.Services
                     CharacterEffectSourceType.MassDistribution,
                     batchId,
                     request.Name.Trim());
+
+                // L-3 :
+                // Les effets étaient bien appliqués en base, mais aucun refresh temps réel
+                // n'était envoyé aux pages MJ / joueur.
+                // Les écrans écoutent déjà CharacterStateChanged, donc on notifie ici.
+                await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
 
                 return targetCharacterIds.Count;
             }
