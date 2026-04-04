@@ -4,9 +4,12 @@ namespace Rollocracy.Infrastructure.Services
 {
     public class PresenceTracker : IPresenceTracker
     {
+        private static readonly TimeSpan PresenceTtl = TimeSpan.FromSeconds(20);
+
         private readonly object _lock = new();
 
         private readonly Dictionary<string, PresenceConnection> _connectionsById = new();
+        private readonly Dictionary<Guid, BrowserPresence> _presenceByPlayerSessionId = new();
 
         public void AddConnection(string connectionId, Guid sessionId, Guid playerSessionId, bool isGameMaster)
         {
@@ -19,6 +22,8 @@ namespace Rollocracy.Infrastructure.Services
                     PlayerSessionId = playerSessionId,
                     IsGameMaster = isGameMaster
                 };
+
+                TouchPlayerPresenceInternal(sessionId, playerSessionId, isGameMaster);
             }
         }
 
@@ -38,13 +43,41 @@ namespace Rollocracy.Infrastructure.Services
             }
         }
 
+        public bool RemovePlayerPresence(Guid sessionId, Guid playerSessionId)
+        {
+            lock (_lock)
+            {
+                var connectionIdsToRemove = _connectionsById.Values
+                    .Where(c => c.SessionId == sessionId && c.PlayerSessionId == playerSessionId)
+                    .Select(c => c.ConnectionId)
+                    .ToList();
+
+                foreach (var connectionId in connectionIdsToRemove)
+                {
+                    _connectionsById.Remove(connectionId);
+                }
+
+                return _presenceByPlayerSessionId.Remove(playerSessionId);
+            }
+        }
+
+        public void TouchPlayerPresence(Guid sessionId, Guid playerSessionId, bool isGameMaster)
+        {
+            lock (_lock)
+            {
+                TouchPlayerPresenceInternal(sessionId, playerSessionId, isGameMaster);
+            }
+        }
+
         public int GetConnectedPlayersCount(Guid sessionId)
         {
             lock (_lock)
             {
-                return _connectionsById.Values
-                    .Where(c => c.SessionId == sessionId && !c.IsGameMaster)
-                    .Select(c => c.PlayerSessionId)
+                CleanupExpiredPresenceInternal();
+
+                return _presenceByPlayerSessionId.Values
+                    .Where(x => x.SessionId == sessionId && !x.IsGameMaster)
+                    .Select(x => x.PlayerSessionId)
                     .Distinct()
                     .Count();
             }
@@ -54,19 +87,62 @@ namespace Rollocracy.Infrastructure.Services
         {
             lock (_lock)
             {
-                return _connectionsById.Values.Any(c => c.PlayerSessionId == playerSessionId);
+                CleanupExpiredPresenceInternal();
+
+                return _presenceByPlayerSessionId.ContainsKey(playerSessionId);
+            }
+        }
+
+        private void TouchPlayerPresenceInternal(Guid sessionId, Guid playerSessionId, bool isGameMaster)
+        {
+            _presenceByPlayerSessionId[playerSessionId] = new BrowserPresence
+            {
+                SessionId = sessionId,
+                PlayerSessionId = playerSessionId,
+                IsGameMaster = isGameMaster,
+                LastSeenUtc = DateTime.UtcNow
+            };
+        }
+
+        private void CleanupExpiredPresenceInternal()
+        {
+            var nowUtc = DateTime.UtcNow;
+
+            var expiredPlayerSessionIds = _presenceByPlayerSessionId.Values
+                .Where(x => nowUtc - x.LastSeenUtc > PresenceTtl)
+                .Select(x => x.PlayerSessionId)
+                .ToList();
+
+            foreach (var playerSessionId in expiredPlayerSessionIds)
+            {
+                _presenceByPlayerSessionId.Remove(playerSessionId);
+
+                var connectionIdsToRemove = _connectionsById.Values
+                    .Where(c => c.PlayerSessionId == playerSessionId)
+                    .Select(c => c.ConnectionId)
+                    .ToList();
+
+                foreach (var connectionId in connectionIdsToRemove)
+                {
+                    _connectionsById.Remove(connectionId);
+                }
             }
         }
 
         private class PresenceConnection
         {
             public string ConnectionId { get; set; } = string.Empty;
-
             public Guid SessionId { get; set; }
-
             public Guid PlayerSessionId { get; set; }
-
             public bool IsGameMaster { get; set; }
+        }
+
+        private class BrowserPresence
+        {
+            public Guid SessionId { get; set; }
+            public Guid PlayerSessionId { get; set; }
+            public bool IsGameMaster { get; set; }
+            public DateTime LastSeenUtc { get; set; }
         }
     }
 }

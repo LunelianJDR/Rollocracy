@@ -284,29 +284,29 @@ html[data-theme="dark"] .rc-main a.btn:focus {
 .rc-brand {
     display: inline-flex;
     align-items: center;
-    gap: 0.85rem;
+    height: calc(var(--rc-topbar-height) - 16px);
     min-width: 0;
+    max-width: min(100%, 520px);
 }
 
-.rc-brand__mark {
-    width: 40px;
-    height: 40px;
-    border-radius: 14px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--rc-accent);
-    color: var(--rc-accent-contrast);
-    font-weight: 700;
-    font-size: 1rem;
-    box-shadow: var(--rc-shadow);
+.rc-brand__logo {
+    display: block;
+    height: 90%;
+    width: auto;
+    max-width: 100%;
+    margin-left: 2.5rem;
 }
 
-.rc-brand__text {
-    font-size: 1.15rem;
-    font-weight: 700;
-    letter-spacing: 0.01em;
-    color: var(--rc-text);
+@media (max-width: 1100px) {
+    .rc-brand {
+        max-width: 360px;
+    }
+}
+
+@media (max-width: 800px) {
+    .rc-brand {
+        max-width: 240px;
+    }
 }
 
 .rc-session-strip {
@@ -353,6 +353,35 @@ html[data-theme="dark"] .rc-main a.btn:focus {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
+}
+
+.rc-support-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0.65rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--rc-border);
+    background: var(--rc-surface-2);
+    color: var(--rc-text);
+    font-weight: 600;
+    transition: background var(--rc-transition), border-color var(--rc-transition), transform var(--rc-transition), box-shadow var(--rc-transition);
+}
+
+    .rc-support-link:hover {
+        background: var(--rc-bg-alt);
+        border-color: var(--rc-accent);
+        transform: translateY(-1px);
+    }
+
+    .rc-support-link:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(40, 105, 131, 0.15);
+    }
+
+html[data-theme="dark"] .rc-support-link:focus {
+    box-shadow: 0 0 0 3px rgba(196, 167, 231, 0.18);
 }
 
 /* =========================================================
@@ -426,6 +455,14 @@ html[data-theme="dark"] .rc-main a.btn:focus {
     justify-content: center;
     transition: background var(--rc-transition), border-color var(--rc-transition), transform var(--rc-transition);
 }
+
+    .icon-button svg,
+    .rc-nav__icon svg {
+        display: block;
+        width: 24px;
+        height: 24px;
+        fill: currentColor;
+    }
 
     .icon-button:hover:not(:disabled) {
         background: var(--rc-bg-alt);

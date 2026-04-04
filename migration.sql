@@ -2448,3 +2448,46 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331125909_L7_SessionJournal') THEN
+    CREATE TABLE "SessionJournalPages" (
+        "Id" uuid NOT NULL,
+        "SessionId" uuid NOT NULL,
+        "IsPublic" boolean NOT NULL,
+        "PageNumber" integer NOT NULL,
+        "Title" text NOT NULL,
+        "ContentHtml" text NOT NULL,
+        "IsVisible" boolean NOT NULL,
+        "CreatedAtUtc" timestamp with time zone NOT NULL,
+        "UpdatedAtUtc" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_SessionJournalPages" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331125909_L7_SessionJournal') THEN
+    CREATE INDEX "IX_SessionJournalPages_SessionId" ON "SessionJournalPages" ("SessionId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331125909_L7_SessionJournal') THEN
+    CREATE UNIQUE INDEX "IX_SessionJournalPages_SessionId_IsPublic_PageNumber" ON "SessionJournalPages" ("SessionId", "IsPublic", "PageNumber");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260331125909_L7_SessionJournal') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260331125909_L7_SessionJournal', '10.0.5');
+    END IF;
+END $EF$;
+COMMIT;
+

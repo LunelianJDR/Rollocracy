@@ -12,6 +12,7 @@
 @using Rollocracy.Domain.Polls
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
 
 @inject ICharacterService CharacterService
 @inject IGameTestService GameTestService
@@ -22,6 +23,7 @@
 @inject IConfiguration Configuration
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ISessionService SessionService
+@inject IJSRuntime JS
 
 @if (!IsLoaded)
 {
@@ -98,18 +100,20 @@ else
                         }
                         else if (ActiveTest.Result is not null)
                         {
-                            <div class="rc-tool-form-grid">
+                            <div class="rc-tool-form-grid--very-dense">
                                 <div class="rc-form-field rc-form-field--readonly">
                                     <label>@L["Test_EffectiveAttributeValue"]</label>
                                     <div class="rc-readonly-value">@ActiveTest.Result.EffectiveAttributeValue</div>
                                 </div>
                                 <div class="rc-form-field rc-form-field--readonly">
-                                    <label>@L["Test_DiceTotal"]</label>
-                                    <div class="rc-readonly-value">@ActiveTest.Result.DiceTotal</div>
-                                </div>
-                                <div class="rc-form-field rc-form-field--readonly">
                                     <label>@L["Test_FinalValue"]</label>
                                     <div class="rc-readonly-value">@ActiveTest.Result.FinalValue</div>
+                                </div>
+                                <div class="rc-form-field rc-form-field--readonly">
+                                    <label>@L["Test_RollDelta"]</label>
+                                    <div class="rc-readonly-value">
+                                        @(ActiveTest.Result.FinalValue - ActiveTest.Result.EffectiveAttributeValue)
+                                    </div>
                                 </div>
                                 <div class="rc-form-field rc-form-field--readonly">
                                     <label>@L["Test_Result"]</label>
@@ -1022,6 +1026,8 @@ else
     private bool SpecialIncludeDead;
     private HubConnection? hubConnection;
     private bool PresenceJoined;
+    private IJSObjectReference? presenceModule;
+    private bool leaveBeaconRegistered;
     private Guid CurrentUserId;
     private bool RedirectToLogin;
 
@@ -1060,6 +1066,8 @@ else
     private bool ShowTwitchChat = true;
     private bool IsTestDismissed;
     private bool IsPollDismissed;
+
+    private int DiffTestResult;
 
     // Le live Twitch affiché côté joueur découle du compte Twitch du MJ.
     // Si le MJ n'a pas lié Twitch, on n'affiche pas l'embed.
@@ -1101,14 +1109,36 @@ else
         IsLoaded = true;
     }
 
-    protected override Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender && RedirectToLogin)
         {
             Navigation.NavigateTo("/login", forceLoad: true);
+            return;
         }
 
-        return Task.CompletedTask;
+        if (firstRender)
+        {
+            presenceModule = await JS.InvokeAsync<IJSObjectReference>(
+                "import",
+                "./js/playerPresence.js");
+
+            await RegisterBrowserPresenceIfNeededAsync();
+        }
+    }
+
+    private async Task RegisterBrowserPresenceIfNeededAsync()
+    {
+        if (presenceModule is null || State is null || !PresenceJoined)
+            return;
+
+        await presenceModule.InvokeVoidAsync(
+            "registerPlayerPresence",
+            State.SessionId.ToString(),
+            PlayerSessionId.ToString(),
+            false);
+
+        leaveBeaconRegistered = true;
     }
 
     private async Task LoadState()
@@ -1247,6 +1277,7 @@ else
                 false);
 
             PresenceJoined = true;
+            await RegisterBrowserPresenceIfNeededAsync();
         }
     }
 
@@ -1344,6 +1375,7 @@ else
                     false);
 
                 PresenceJoined = true;
+                await RegisterBrowserPresenceIfNeededAsync();
             }
 
             await SessionNotifier.NotifyCharacterStateChangedAsync(CreationTemplate.SessionId);
@@ -2011,6 +2043,25 @@ else
     public async ValueTask DisposeAsync()
     {
         creationCountdownTimer?.Dispose();
+
+        if (presenceModule is not null)
+        {
+            try
+            {
+                await presenceModule.InvokeVoidAsync("unregisterPlayerPresence");
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                await presenceModule.DisposeAsync();
+            }
+            catch
+            {
+            }
+        }
 
         if (hubConnection is not null)
         {

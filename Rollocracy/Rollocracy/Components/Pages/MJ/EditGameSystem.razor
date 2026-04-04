@@ -113,10 +113,6 @@ else
                     </div>
                 </div>
 
-                <div class="rc-inline-warning">
-                    <p>@L["GameSystem_Editor_DiceDefaultHelp"]</p>
-                </div>
-
                 @if (!CurrentSystem.IsLockedToSessionCopy && CurrentSystem.ImpactedSessions.Count > 0)
                 {
                     <div class="rc-inline-warning">
@@ -832,18 +828,27 @@ else
                                                                     <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
                                                                         <div class="rc-form-field">
                                                                             <label>@L["GameSystem_Editor_ModifierOperation"]</label>
-                                                                            <select @bind="modifier.OperationType">
+                                                                            <select value="@modifier.OperationType.ToString()" @onchange="e => ChangeModifierOperationType(modifier, e.Value?.ToString())">
                                                                                 <option value="@ModifierOperationType.AddValue">@L["GameSystem_Editor_ModifierOperation_Add"]</option>
+                                                                                <option value="@ModifierOperationType.Grant">@L["GameSystem_Editor_ModifierOperation_Grant"]</option>
                                                                             </select>
                                                                         </div>
 
                                                                         <div class="rc-form-field">
                                                                             <label>@L["GameSystem_Editor_ModifierTargetType"]</label>
                                                                             <select value="@modifier.TargetType.ToString()" @onchange="e => ChangeModifierTargetType(modifier, e.Value?.ToString())">
-                                                                                <option value="@ModifierTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_BaseAttribute"]</option>
-                                                                                <option value="@ModifierTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option>
-                                                                                <option value="@ModifierTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option>
-                                                                                <option value="@ModifierTargetType.Gauge">@L["GameSystem_Editor_ModifierTarget_Gauge"]</option>
+                                                                                @if (modifier.OperationType == ModifierOperationType.Grant)
+                                                                                {
+                                                                                    <option value="@ModifierTargetType.Talent">@L["GameSystem_Editor_ModifierTarget_Talent"]</option>
+                                                                                    <option value="@ModifierTargetType.Item">@L["GameSystem_Editor_ModifierTarget_Item"]</option>
+                                                                                }
+                                                                                else
+                                                                                {
+                                                                                    <option value="@ModifierTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_BaseAttribute"]</option>
+                                                                                    <option value="@ModifierTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option>
+                                                                                    <option value="@ModifierTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option>
+                                                                                    <option value="@ModifierTargetType.Gauge">@L["GameSystem_Editor_ModifierTarget_Gauge"]</option>
+                                                                                }
                                                                             </select>
                                                                         </div>
 
@@ -857,32 +862,35 @@ else
                                                                             </select>
                                                                         </div>
 
-                                                                        <div class="rc-form-field">
-                                                                            <label>@L["GameSystem_Editor_ModifierValueMode"]</label>
-                                                                            <select @bind="modifier.ValueMode">
-                                                                                <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
-                                                                                <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
-                                                                            </select>
-                                                                        </div>
-
-                                                                        @if (modifier.ValueMode == ModifierValueMode.Fixed)
+                                                                        @if (modifier.OperationType == ModifierOperationType.AddValue)
                                                                         {
                                                                             <div class="rc-form-field">
-                                                                                <label>@L["GameSystem_Editor_ModifierValue"]</label>
-                                                                                <input type="number" @bind="modifier.Value" />
-                                                                            </div>
-                                                                        }
-                                                                        else
-                                                                        {
-                                                                            <div class="rc-form-field">
-                                                                                <label>@L["GameSystem_Editor_ModifierSourceMetric"]</label>
-                                                                                <select @bind="modifier.SourceMetricId">
-                                                                                    @foreach (var metricRef in CurrentSystem.AvailableMetrics)
-                                                                                    {
-                                                                                        <option value="@metricRef.MetricDefinitionId">@metricRef.Name</option>
-                                                                                    }
+                                                                                <label>@L["GameSystem_Editor_ModifierValueMode"]</label>
+                                                                                <select @bind="modifier.ValueMode">
+                                                                                    <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
+                                                                                    <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
                                                                                 </select>
                                                                             </div>
+
+                                                                            @if (modifier.ValueMode == ModifierValueMode.Fixed)
+                                                                            {
+                                                                                <div class="rc-form-field">
+                                                                                    <label>@L["GameSystem_Editor_ModifierValue"]</label>
+                                                                                    <input type="number" @bind="modifier.Value" />
+                                                                                </div>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <div class="rc-form-field">
+                                                                                    <label>@L["GameSystem_Editor_ModifierSourceMetric"]</label>
+                                                                                    <select @bind="modifier.SourceMetricId">
+                                                                                        @foreach (var metricRef in CurrentSystem.AvailableMetrics)
+                                                                                        {
+                                                                                            <option value="@metricRef.MetricDefinitionId">@metricRef.Name</option>
+                                                                                        }
+                                                                                    </select>
+                                                                                </div>
+                                                                            }
                                                                         }
 
                                                                     </div>
@@ -1796,8 +1804,55 @@ else
                 .Select(x => new ModifierTargetOption(x.MetricDefinitionId!.Value, x.Name))
                 .ToList(),
 
+            ModifierTargetType.Talent => CurrentSystem.Talents
+                .Where(x => !x.IsDeleted && x.TalentDefinitionId.HasValue)
+                .Select(x => new ModifierTargetOption(x.TalentDefinitionId!.Value, x.Name))
+                .ToList(),
+
+            ModifierTargetType.Item => CurrentSystem.Items
+                .Where(x => !x.IsDeleted && x.ItemDefinitionId.HasValue)
+                .Select(x => new ModifierTargetOption(x.ItemDefinitionId!.Value, x.Name))
+                .ToList(),
+
             _ => Array.Empty<ModifierTargetOption>()
         };
+    }
+
+    private void ChangeModifierOperationType(EditableModifierDefinitionDto modifier, string? rawValue)
+    {
+        if (!Enum.TryParse<ModifierOperationType>(rawValue, out var parsed))
+            return;
+
+        modifier.OperationType = parsed;
+
+        if (parsed == ModifierOperationType.Grant)
+        {
+            if (modifier.TargetType != ModifierTargetType.Talent &&
+                modifier.TargetType != ModifierTargetType.Item)
+            {
+                modifier.TargetType = CurrentSystem?.Talents.Any(x => !x.IsDeleted && x.TalentDefinitionId.HasValue) == true
+                    ? ModifierTargetType.Talent
+                    : ModifierTargetType.Item;
+            }
+
+            var firstGrantOption = GetModifierTargetOptions(modifier.TargetType).FirstOrDefault();
+            modifier.TargetId = firstGrantOption?.Id ?? Guid.Empty;
+
+            modifier.ValueMode = ModifierValueMode.Fixed;
+            modifier.Value = 0;
+            modifier.SourceMetricId = null;
+        }
+        else
+        {
+            if (modifier.TargetType == ModifierTargetType.Talent ||
+                modifier.TargetType == ModifierTargetType.Item)
+            {
+                modifier.TargetType = ModifierTargetType.BaseAttribute;
+            }
+
+            var firstValueOption = GetModifierTargetOptions(modifier.TargetType).FirstOrDefault();
+            modifier.TargetId = firstValueOption?.Id ?? Guid.Empty;
+        }
     }
 
     private void ChangeModifierTargetType(EditableModifierDefinitionDto modifier, string? rawValue)

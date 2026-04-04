@@ -1773,6 +1773,9 @@
 	<data name="Test_EffectiveAttributeValue" xml:space="preserve">
 		<value>Modified attribute value</value>
 	</data>
+	<data name="Test_RollDelta" xml:space="preserve">
+  <value>Delta</value>
+</data>
 	<data name="Test_ExcludeNpcs" xml:space="preserve">
 		<value>Exclude NPCs</value>
 	</data>
@@ -3207,5 +3210,205 @@
 </data>
 	<data name="Journal_FormatClear" xml:space="preserve">
   <value>Clear formatting</value>
+</data>
+	<data name="Navigation_SupportRollocracy" xml:space="preserve">
+  <value>Support Rollocracy</value>
+</data>
+	<data name="Home_PageTitle" xml:space="preserve">
+  <value>Home</value>
+</data>
+	<data name="Home_Intro_Title" xml:space="preserve">
+  <value>🎲 What's this? 🎲</value>
+</data>
+	<data name="Home_Intro_Subtitle" xml:space="preserve">
+  <value>A community-driven role-playing tool designed for live sessions.</value>
+</data>
+	<data name="Home_Intro_Paragraph1" xml:space="preserve">
+  <value>Rollocracy is a tool developed by Lunelian for Community Roleplaying: a Game Master (streamer) can run a session for hundreds of players at once! Each player has their own character they can customize, perform rolls with, vote to influence the course of the session, and more.</value>
+</data>
+	<data name="Home_Intro_Paragraph2" xml:space="preserve">
+  <value>The game system is highly customizable, and entirely optional: want something simple with 4 attributes? Totally doable! Prefer something more complex with advanced skills, a wide variety of classes or species, and talents automatically assigned at character creation? That works too!</value>
+</data>
+	<data name="Home_Intro_Paragraph3" xml:space="preserve">
+  <value>Key features:</value>
+</data>
+	<data name="Home_Intro_FeatureList1" xml:space="preserve">
+  <value>Fully customizable game systems</value>
+</data>
+	<data name="Home_Intro_FeatureList2" xml:space="preserve">
+  <value>Instant setup with preconfigured systems</value>
+</data>
+	<data name="Home_Intro_FeatureList3" xml:space="preserve">
+  <value>Rolls, polls, mass distribution, random draws, logs...</value>
+</data>
+	<data name="Home_Intro_FeatureList4" xml:space="preserve">
+  <value>Option to undo consequences in case of mistakes</value>
+</data>
+	<data name="Home_Intro_FeatureList5" xml:space="preserve">
+  <value>Special roles for certain players (Observer, Assistant)</value>
+</data>
+	<data name="Home_Intro_SupportRollocracy" xml:space="preserve">
+  <value>If you'd like to support the project (help cover server costs and pay for childcare while I code instead of taking care of my kids), you can! 🥰</value>
+</data>
+	<data name="Home_Intro_LoggedIn" xml:space="preserve">
+  <value>You are logged in. You can join a session or access your account settings.</value>
+</data>
+
+	<data name="Home_Videos_Title" xml:space="preserve">
+  <value>🎞️ Videos for a better understanding 🎞️</value>
+</data>
+	<data name="Home_Videos_Subtitle" xml:space="preserve">
+  <value>Guides and tutorials to help you understand and get started with Rollocracy.</value>
+</data>
+	<data name="Home_Video_Presentation_Tab" xml:space="preserve">
+  <value>Overview</value>
+</data>
+	<data name="Home_Video_Presentation_Description" xml:space="preserve">
+  <value>An overview of Rollocracy, its purpose, and what it enables during a session.</value>
+</data>
+	<data name="Home_Video_QuickStart_Tab" xml:space="preserve">
+  <value>2-minute setup</value>
+</data>
+	<data name="Home_Video_QuickStart_Description" xml:space="preserve">
+  <value>A short video showing how to create and launch a playable session quickly.</value>
+</data>
+	<data name="Home_Video_Advanced_Tab" xml:space="preserve">
+  <value>Advanced customization</value>
+</data>
+	<data name="Home_Video_Advanced_Description" xml:space="preserve">
+  <value>A deeper dive for users who want to further customize their system and session.</value>
+</data>
+
+	<data name="Home_Project_Title" xml:space="preserve">
+  <value>⌨️ What's happening with the project? ⌨️</value>
+</data>
+	<data name="Home_Project_Subtitle" xml:space="preserve">
+  <value>Recent patch notes, upcoming features, and bug reporting.</value>
+</data>
+	<data name="Home_Project_ViewPatchnotes" xml:space="preserve">
+  <value>Patch notes</value>
+</data>
+	<data name="Home_Project_ViewPlannedFeatures" xml:space="preserve">
+  <value>What's next</value>
+</data>
+	<data name="Home_Project_SelectPatchnote" xml:space="preserve">
+  <value>Latest patch notes</value>
+</data>
+	<data name="Home_Project_ReportBug" xml:space="preserve">
+  <value>Report a bug</value>
+</data>
+
+	<data name="Home_Patchnote_Current_Label" xml:space="preserve">
+  <value>Current patch note (placeholder)</value>
+</data>
+	<data name="Home_Patchnote_Current_Title" xml:space="preserve">
+  <value>Latest update</value>
+</data>
+	<data name="Home_Patchnote_Current_Intro" xml:space="preserve">
+  <value>Patch summary</value>
+</data>
+	<data name="Home_Patchnote_Current_Item1" xml:space="preserve">
+  <value>Patch note item.</value>
+</data>
+	<data name="Home_Patchnote_Current_Item2" xml:space="preserve">
+  <value>Another item.</value>
+</data>
+	<data name="Home_Patchnote_Current_Item3" xml:space="preserve">
+  <value>You get the idea...</value>
+</data>
+
+	<data name="Home_Patchnote_Previous_Label" xml:space="preserve">
+  <value>Previous patch note (placeholder)</value>
+</data>
+	<data name="Home_Patchnote_Previous_Title" xml:space="preserve">
+  <value>Previous update</value>
+</data>
+	<data name="Home_Patchnote_Previous_Intro" xml:space="preserve">
+  <value>Temporary content to be replaced with an older patch note.</value>
+</data>
+	<data name="Home_Patchnote_Previous_Item1" xml:space="preserve">
+  <value>Patch note item.</value>
+</data>
+	<data name="Home_Patchnote_Previous_Item2" xml:space="preserve">
+  <value>Another item (yes really!).</value>
+</data>
+	<data name="Home_Patchnote_Previous_Item3" xml:space="preserve">
+  <value>And what’s this?</value>
+</data>
+
+	<data name="Home_Planned_Title" xml:space="preserve">
+  <value>Planned features</value>
+</data>
+	<data name="Home_Planned_Intro" xml:space="preserve">
+  <value>Temporary list to be replaced with upcoming features you want to showcase publicly.</value>
+</data>
+	<data name="Home_Planned_Item1" xml:space="preserve">
+  <value>Placeholder: something in progress</value>
+</data>
+	<data name="Home_Planned_Item2" xml:space="preserve">
+  <value>Placeholder: something that would be nice</value>
+</data>
+	<data name="Home_Planned_Item3" xml:space="preserve">
+  <value>Placeholder: something we’ll see if it’s feasible</value>
+</data>
+	<data name="Home_Planned_Item4" xml:space="preserve">
+  <value>Placeholder: something awesome!</value>
+</data>
+
+	<data name="Home_BugForm_Title" xml:space="preserve">
+  <value>Report a bug</value>
+</data>
+	<data name="Home_BugForm_Subtitle" xml:space="preserve">
+  <value>The form below prepares an email to rollocracy@lunelian.com.</value>
+</data>
+	<data name="Home_BugForm_PageLabel" xml:space="preserve">
+  <value>Affected page</value>
+</data>
+	<data name="Home_BugForm_PagePlaceholder" xml:space="preserve">
+  <value>e.g.: /gm/session/.../test</value>
+</data>
+	<data name="Home_BugForm_DescriptionLabel" xml:space="preserve">
+  <value>Bug description / how to reproduce</value>
+</data>
+	<data name="Home_BugForm_DescriptionPlaceholder" xml:space="preserve">
+  <value>Describe what happens, what you expected, and the steps to reproduce the issue.</value>
+</data>
+	<data name="Home_BugForm_Send" xml:space="preserve">
+  <value>Send</value>
+</data>
+	<data name="Home_BugForm_MissingFields" xml:space="preserve">
+  <value>Please fill in the affected page and the bug description.</value>
+</data>
+
+	<data name="Home_Thanks_Title" xml:space="preserve">
+  <value>❤️ Much love ❤️</value>
+</data>
+	<data name="Home_Thanks_Subtitle" xml:space="preserve">
+  <value>A few important acknowledgements around the project.</value>
+</data>
+	<data name="Home_Thanks_Paragraph1" xml:space="preserve">
+  <value>If Rollocracy exists today, it's mainly because others paved the way!</value>
+</data>
+	<data name="Home_Thanks_TonyTruand" xml:space="preserve">
+  <value>A huge thank you to TonyTruand, developer of MosaRPG, which inspired Rollocracy. I personally used his "little site" for two years before wanting to build my own solution, better suited to my GMing style. 🥨</value>
+</data>
+	<data name="Home_Thanks_FibreTigre" xml:space="preserve">
+  <value>Original idea of MosaRPG by FibreTigre.</value>
+</data>
+	<data name="Home_Thanks_Paragraph2" xml:space="preserve">
+  <value>Special thanks to Silkinael (SilkinaelTV) and the other streamers I played Community RPG with, who made it possible for me to keep doing it (Lubuwei, Siha, Phouille, Arzilia, ForceGhostProduction). Also a shoutout to Shaunz, who got me into this in the first place. And of course, every bit of feedback, bug report, and new idea to improve the tool is always welcome!</value>
+</data>
+
+	<data name="Home_BugForm_SentTitle" xml:space="preserve">
+  <value>Report sent</value>
+</data>
+	<data name="Home_BugForm_SentMessage" xml:space="preserve">
+  <value>Thanks for reporting this issue, I’ll take a look as soon as I can!</value>
+</data>
+	<data name="Home_BugForm_ReportAnother" xml:space="preserve">
+  <value>Report another bug</value>
+</data>
+	<data name="Home_BugForm_GuestUser" xml:space="preserve">
+  <value>guest</value>
 </data>
 </root>

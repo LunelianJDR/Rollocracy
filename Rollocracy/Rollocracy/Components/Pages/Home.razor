@@ -1,45 +1,307 @@
 ﻿@page "/"
 @rendermode InteractiveServer
+@using System.Security.Claims
+@using System.Text
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Interfaces
 @using Rollocracy.Localization
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IEmailService EmailService
 @inject IStringLocalizer<SharedTexts> L
 
-<PageTitle>Rollocracy</PageTitle>
+<PageTitle>@L["Home_PageTitle"]</PageTitle>
 
+<section class="rc-tool-section">
+    @if (!string.IsNullOrWhiteSpace(HomeMessage))
+    {
+        <div class="rc-inline-warning">@HomeMessage</div>
+    }
 
-    <section class="rc-tool-section">
-        <div class="rc-tool-layout">
-            <div class="rc-tool-panel">
-                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
-                    <div class="rc-tool-panel__header-main">
-                        <h4 class="rc-tool-panel__title">@L["Account_Settings_Title"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["Account_Settings_Subtitle"]</p>
+    @if (!string.IsNullOrWhiteSpace(HomeErrorMessage))
+    {
+        <div class="rc-inline-error">@HomeErrorMessage</div>
+    }
+
+    <div class="rc-tool-layout">
+        <div class="rc-tool-panel">
+            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                <div class="rc-tool-panel__header-main">
+                    <h3 class="rc-tool-panel__title">@L["Home_Intro_Title"]</h3>
+                </div>
+            </div>
+
+            <div class="rc-tool-section">
+                <p>@L["Home_Intro_Paragraph1"]</p>
+                <p>@L["Home_Intro_Paragraph2"]</p>
+
+                <ul>
+                    <li>@L["Home_Intro_FeatureList1"]</li>
+                    <li>@L["Home_Intro_FeatureList2"]</li>
+                    <li>@L["Home_Intro_FeatureList3"]</li>
+                    <li>@L["Home_Intro_FeatureList4"]</li>
+                    <li>@L["Home_Intro_FeatureList5"]</li>
+                </ul>
+                
+                <p>@L["Home_Intro_SupportRollocracy"]</p>
+
+                <a class="rc-support-link"
+                       href="@SupportRollocracyUrl"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       title="@L["Navigation_SupportRollocracy"]">
+                    @L["Navigation_SupportRollocracy"]
+                </a>
+
+                <AuthorizeView>
+                    <NotAuthorized>
+                        <div class="rc-tool-actions">
+                            <button type="button" @onclick="GoToLogin">@L["Auth_Login_Action"]</button>
+                            <button type="button" @onclick="GoToRegister">@L["Auth_Register_Title"]</button>
+                        </div>
+                    </NotAuthorized>
+
+                    <Authorized>
+                        <div class="rc-tool-actions">
+                            <button type="button" @onclick="GoToJoin">@L["Session_Join_Title"]</button>
+                            <button type="button" @onclick="GoToAccountSettings">@L["Account_Settings_Title"]</button>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </div>
+
+        <div class="rc-tool-panel">
+            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                <div class="rc-tool-panel__header-main">
+                    <h3 class="rc-tool-panel__title">@L["Home_Videos_Title"]</h3>
+                    <p class="rc-tool-panel__subtitle">@L["Home_Videos_Subtitle"]</p>
+                </div>
+            </div>
+
+            <div class="rc-tool-actions">
+                @foreach (var video in Videos)
+                {
+                    <button type="button"
+                            @onclick="() => SelectVideo(video.Key)">
+                        @L[video.TabResourceKey]
+                    </button>
+                }
+            </div>
+
+            <div class="rc-tool-section">
+                <p class="rc-tool-muted">@L[SelectedVideo.DescriptionResourceKey]</p>
+
+                <iframe width="100%"
+                        height="420"
+                        src="@SelectedVideo.EmbedUrl"
+                        title="@L[SelectedVideo.TabResourceKey]"
+                        loading="lazy"
+                        referrerpolicy="strict-origin-when-cross-origin"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowfullscreen>
+                </iframe>
+            </div>
+        </div>
+
+        <div class="rc-tool-panel">
+            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                <div class="rc-tool-panel__header-main">
+                    <h3 class="rc-tool-panel__title">@L["Home_Project_Title"]</h3>
+                    <p class="rc-tool-panel__subtitle">@L["Home_Project_Subtitle"]</p>
+                </div>
+
+                <div class="rc-tool-actions">
+                    <button type="button" @onclick="ShowPatchnotesView">@L["Home_Project_ViewPatchnotes"]</button>
+                    <button type="button" @onclick="ShowPlannedFeaturesView">@L["Home_Project_ViewPlannedFeatures"]</button>
+                    <button type="button" @onclick="OpenBugReportForm">@L["Home_Project_ReportBug"]</button>
+                </div>
+            </div>
+
+            @if (IsBugReportSent)
+            {
+                <div class="rc-tool-section">
+                    <div>
+                        <h4 class="rc-tool-panel__title">@L["Home_BugForm_SentTitle"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["Home_BugForm_SentMessage"]</p>
+                    </div>
+
+                    <div class="rc-tool-actions">
+                        <button type="button" @onclick="ReportAnotherBug">@L["Home_BugForm_ReportAnother"]</button>
                     </div>
                 </div>
-            </div>
-        <div class="rc-tool-panel">
-            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
-                <div class="rc-tool-panel__header-main">
-                    <h4 class="rc-tool-panel__title">@L["Account_Settings_Title"]</h4>
-                    <p class="rc-tool-panel__subtitle">@L["Account_Settings_Subtitle"]</p>
-                </div>
-            </div>
-        </div>
-        <div class="rc-tool-panel">
-            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
-                <div class="rc-tool-panel__header-main">
-                    <h4 class="rc-tool-panel__title">@L["Account_Settings_Title"]</h4>
-                    <p class="rc-tool-panel__subtitle">@L["Account_Settings_Subtitle"]</p>
-                </div>
-            </div>
-        </div>
-        </div>
-    </section>
+            }
+            else if (IsBugReportMode)
+            {
+                <div class="rc-tool-section">
+                    <div>
+                        <h4 class="rc-tool-panel__title">@L["Home_BugForm_Title"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["Home_BugForm_Subtitle"]</p>
+                    </div>
 
+                    <div class="rc-tool-form-grid">
+                        <div class="rc-form-field rc-form-field--full">
+                            <label>@L["Home_BugForm_PageLabel"]</label>
+                            <input @bind="BugReportedPage"
+                                   placeholder="@L["Home_BugForm_PagePlaceholder"]" />
+                        </div>
+
+                        <div class="rc-form-field rc-form-field--full">
+                            <label>@L["Home_BugForm_DescriptionLabel"]</label>
+                            <textarea rows="8"
+                                      @bind="BugDescription"
+                                      placeholder="@L["Home_BugForm_DescriptionPlaceholder"]"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="rc-tool-actions">
+                        <button type="button" @onclick="SubmitBugReportAsync" disabled="@IsSendingBugReport">
+                            @(IsSendingBugReport? L["Common_Loading"] : L["Home_BugForm_Send"])
+                        </button>
+                        <button type="button" @onclick="CancelBugReport" disabled="@IsSendingBugReport">@L["Common_Cancel"]</button>
+                    </div>
+                </div>
+            }
+            else if (ShowPlannedFeatures)
+            {
+                <div class="rc-tool-section">
+                    <div>
+                        <h4 class="rc-tool-panel__title">@L["Home_Planned_Title"]</h4>
+                    </div>
+
+                    <ul>
+                        @foreach (var featureResourceKey in PlannedFeatureResourceKeys)
+                        {
+                            <li>@L[featureResourceKey]</li>
+                        }
+                    </ul>
+                </div>
+            }
+            else
+            {
+                <div class="rc-tool-section">
+                    <div class="rc-form-field">
+                        <label>@L["Home_Project_SelectPatchnote"]</label>
+                        <select value="@SelectedPatchnoteKey" @onchange="OnPatchnoteChanged">
+                            @foreach (var patchnote in Patchnotes)
+                            {
+                                <option value="@patchnote.Key">@L[patchnote.SelectLabelResourceKey]</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div>
+                        <h4 class="rc-tool-panel__title">@L[SelectedPatchnote.TitleResourceKey]</h4>
+                        <p class="rc-tool-panel__subtitle">@L[SelectedPatchnote.IntroResourceKey]</p>
+                    </div>
+
+                    <ul>
+                        @foreach (var itemResourceKey in SelectedPatchnote.ItemResourceKeys)
+                        {
+                            <li>@L[itemResourceKey]</li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+
+        <div class="rc-tool-panel">
+            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                <div class="rc-tool-panel__header-main">
+                    <h3 class="rc-tool-panel__title">@L["Home_Thanks_Title"]</h3>
+                </div>
+            </div>
+
+            <div class="rc-tool-section">
+                <p>@L["Home_Thanks_Paragraph1"]</p>
+
+                <ul>
+                    <li>@L["Home_Thanks_TonyTruand"]</li>
+                    <li>@L["Home_Thanks_FibreTigre"]</li>
+                </ul>
+
+                <p>@L["Home_Thanks_Paragraph2"]</p>
+            </div>
+        </div>
+    </div>
+</section>
 
 @code {
+    private const string BugReportEmail = "rollocracy@lunelian.com";
+
+    private string SelectedVideoKey = "presentation";
+    private string SelectedPatchnoteKey = "current";
+    private bool ShowPlannedFeatures;
+    private bool IsBugReportMode;
+    private bool IsBugReportSent;
+    private bool IsSendingBugReport;
+
+    private string BugReportedPage = string.Empty;
+    private string BugDescription = string.Empty;
+
+    private string HomeMessage = string.Empty;
+    private string HomeErrorMessage = string.Empty;
+
+    private const string SupportRollocracyUrl = "https://ko-fi.com/lunelianjdr";
+
+    private readonly List<HomeVideoOption> Videos =
+    [
+        new(
+            "presentation",
+            "Home_Video_Presentation_Tab",
+            "Home_Video_Presentation_Description",
+            "https://www.youtube.com/embed/hKRUPYrAQoE"),
+        new(
+            "quickstart",
+            "Home_Video_QuickStart_Tab",
+            "Home_Video_QuickStart_Description",
+            "https://www.youtube.com/embed/SRXH9AbT280"),
+        new(
+            "advanced",
+            "Home_Video_Advanced_Tab",
+            "Home_Video_Advanced_Description",
+            "https://www.youtube.com/embed/d_HlPboLRL8")
+    ];
+
+    private readonly List<HomePatchnoteOption> Patchnotes =
+    [
+        new(
+            "current",
+            "Home_Patchnote_Current_Label",
+            "Home_Patchnote_Current_Title",
+            "Home_Patchnote_Current_Intro",
+            [
+                "Home_Patchnote_Current_Item1",
+                "Home_Patchnote_Current_Item2",
+                "Home_Patchnote_Current_Item3"
+            ]),
+        new(
+            "previous",
+            "Home_Patchnote_Previous_Label",
+            "Home_Patchnote_Previous_Title",
+            "Home_Patchnote_Previous_Intro",
+            [
+                "Home_Patchnote_Previous_Item1",
+                "Home_Patchnote_Previous_Item2",
+                "Home_Patchnote_Previous_Item3"
+            ])
+    ];
+
+    private readonly string[] PlannedFeatureResourceKeys =
+    [
+        "Home_Planned_Item1",
+        "Home_Planned_Item2",
+        "Home_Planned_Item3",
+        "Home_Planned_Item4"
+    ];
+
+    private HomeVideoOption SelectedVideo
+        => Videos.FirstOrDefault(v => v.Key == SelectedVideoKey) ?? Videos[0];
+
+    private HomePatchnoteOption SelectedPatchnote
+        => Patchnotes.FirstOrDefault(p => p.Key == SelectedPatchnoteKey) ?? Patchnotes[0];
+
     private void GoToLogin()
     {
         Navigation.NavigateTo("/login");
@@ -55,29 +317,139 @@
         Navigation.NavigateTo("/join");
     }
 
-    private void GoToCreateSession()
+    private void GoToAccountSettings()
     {
-        Navigation.NavigateTo("/mj/create-session");
+        Navigation.NavigateTo("/account/settings");
     }
 
-    private void GoToResumeSession()
+    private void SelectVideo(string key)
     {
-        Navigation.NavigateTo("/mj/sessions");
+        SelectedVideoKey = key;
     }
 
-    private void GoToGameSystems()
+    private void ShowPatchnotesView()
     {
-        Navigation.NavigateTo("/mj/gamesystems");
+        ShowPlannedFeatures = false;
+        IsBugReportMode = false;
+        IsBugReportSent = false;
+        IsSendingBugReport = false;
+        HomeMessage = string.Empty;
+        HomeErrorMessage = string.Empty;
     }
 
-    private void HandleLogout()
+    private void ShowPlannedFeaturesView()
     {
-        Navigation.NavigateTo("/auth/logout", forceLoad: true);
+        ShowPlannedFeatures = true;
+        IsBugReportMode = false;
+        IsBugReportSent = false;
+        IsSendingBugReport = false;
+        HomeMessage = string.Empty;
+        HomeErrorMessage = string.Empty;
     }
 
-    private bool IsGameMaster(System.Security.Claims.ClaimsPrincipal user)
+    private void OpenBugReportForm()
     {
-        var value = user.FindFirst("IsGameMaster")?.Value;
-        return !string.IsNullOrWhiteSpace(value) && bool.TryParse(value, out var result) && result;
+        IsBugReportMode = true;
+        IsBugReportSent = false;
+        IsSendingBugReport = false;
+        HomeMessage = string.Empty;
+        HomeErrorMessage = string.Empty;
     }
+
+    private void CancelBugReport()
+    {
+        IsBugReportMode = false;
+        IsBugReportSent = false;
+        IsSendingBugReport = false;
+        BugReportedPage = string.Empty;
+        BugDescription = string.Empty;
+        HomeMessage = string.Empty;
+        HomeErrorMessage = string.Empty;
+    }
+
+    private void ReportAnotherBug()
+    {
+        IsBugReportMode = true;
+        IsBugReportSent = false;
+        IsSendingBugReport = false;
+        BugReportedPage = string.Empty;
+        BugDescription = string.Empty;
+        HomeMessage = string.Empty;
+        HomeErrorMessage = string.Empty;
+    }
+
+    private void OnPatchnoteChanged(ChangeEventArgs args)
+    {
+        SelectedPatchnoteKey = args.Value?.ToString() ?? Patchnotes[0].Key;
+    }
+
+    private async Task SubmitBugReportAsync()
+    {
+        HomeMessage = string.Empty;
+        HomeErrorMessage = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(BugReportedPage) || string.IsNullOrWhiteSpace(BugDescription))
+        {
+            HomeErrorMessage = L["Home_BugForm_MissingFields"];
+            return;
+        }
+
+        try
+        {
+            IsSendingBugReport = true;
+
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            var username = user.Identity?.IsAuthenticated == true
+                ? user.Identity?.Name ?? string.Empty
+                : string.Empty;
+
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                username = L["Home_BugForm_GuestUser"];
+            }
+
+            var subject = $"Bug Report Rollocracy de {username}";
+
+            var bodyBuilder = new StringBuilder();
+            bodyBuilder.AppendLine(subject);
+            bodyBuilder.AppendLine();
+            bodyBuilder.AppendLine($"{L["Home_BugForm_PageLabel"]} : {BugReportedPage.Trim()}");
+            bodyBuilder.AppendLine();
+            bodyBuilder.AppendLine($"{L["Home_BugForm_DescriptionLabel"]} :");
+            bodyBuilder.AppendLine(BugDescription.Trim());
+
+            await EmailService.SendAsync(
+                BugReportEmail,
+                subject,
+                bodyBuilder.ToString());
+
+            IsBugReportMode = false;
+            IsBugReportSent = true;
+            BugReportedPage = string.Empty;
+            BugDescription = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            HomeErrorMessage = $"{L["Common_Error"]} : {ex.Message}";
+        }
+        finally
+        {
+            IsSendingBugReport = false;
+        }
+    }
+
+    private sealed record HomeVideoOption(
+        string Key,
+        string TabResourceKey,
+        string DescriptionResourceKey,
+        string EmbedUrl);
+
+    private sealed record HomePatchnoteOption(
+        string Key,
+        string SelectLabelResourceKey,
+        string TitleResourceKey,
+        string IntroResourceKey,
+        string[] ItemResourceKeys);
 }
