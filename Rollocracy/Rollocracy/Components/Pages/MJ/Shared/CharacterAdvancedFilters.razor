@@ -16,7 +16,7 @@
     @if (IsOpen)
     {
         <div class="rc-filter-groups">
-            
+
             <div class="rc-filter-group-card">
                 <div class="rc-tool-subsection__header">
                     <div class="rc-filter-group-card__title">@L["MassDistribution_ValueFilters"]</div>
@@ -82,6 +82,7 @@
                     </div>
                 }
             </div>
+
             <div class="rc-filter-group-card">
                 <div class="rc-filter-group-card__title">@L["MassDistribution_TraitOptionFilters"]</div>
 
@@ -176,22 +177,108 @@
                 </div>
             </div>
 
+            <div class="rc-advanced-filter-group">
+                <div class="rc-advanced-filter-group__title">@L["AdvancedFilter_PollSection"]</div>
+
+                <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                    <div class="rc-form-field">
+                        <label>@L["AdvancedFilter_Poll"]</label>
+                        <select value="@SelectedPollId" @onchange="async e => await OnPollChanged(e.Value?.ToString())">
+                            <option value="">@L["AdvancedFilter_None"]</option>
+                            @foreach (var poll in PollOptions)
+                            {
+                                <option value="@poll.Id">@poll.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="rc-form-field">
+                        <label>@L["AdvancedFilter_PollOption"]</label>
+                        <select value="@SelectedPollOptionId" @onchange="e => OnPollOptionChanged(e.Value?.ToString())">
+                            <option value="">@L["AdvancedFilter_None"]</option>
+                            @foreach (var option in SelectedPollOptionOptions)
+                            {
+                                <option value="@option.Id">@option.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rc-advanced-filter-group">
+                <div class="rc-advanced-filter-group__title">@L["AdvancedFilter_LastTestSection"]</div>
+
+                <div class="rc-tool-inline-actions">
+                    <button type="button"
+                            class="@GetLastTestFilterButtonClass(true)"
+                            @onclick="() => ToggleLastTestResultFilter(true)">
+                        @L["AdvancedFilter_LastTestSuccessOnly"]
+                    </button>
+
+                    <button type="button"
+                            class="@GetLastTestFilterButtonClass(false)"
+                            @onclick="() => ToggleLastTestResultFilter(false)">
+                        @L["AdvancedFilter_LastTestFailureOnly"]
+                    </button>
+                </div>
+            </div>
+
+            <div class="rc-advanced-filter-group">
+                <div class="rc-advanced-filter-group__title">@L["AdvancedFilter_NameSection"]</div>
+
+                <div class="rc-form-field">
+                    <label>@L["AdvancedFilter_NameStartsWith"]</label>
+                    <input value="@NameSearchInput" @oninput="OnNameSearchChanged" />
+                </div>
+
+                @{
+                    var visibleSuggestions = GetVisibleNameSuggestions();
+                }
+
+                @if (visibleSuggestions.Count > 0)
+                {
+                    <div class="rc-name-suggestion-list">
+                        @foreach (var suggestion in visibleSuggestions)
+                        {
+                            <button type="button"
+                                    class="rc-name-suggestion-item"
+                                    @onclick="() => AddNameSuggestion(suggestion)">
+                                [@suggestion.CharacterName | @suggestion.PlayerName]
+                            </button>
+                        }
+                    </div>
+                }
+
+                <div class="rc-inline-pill-list">
+                    @foreach (var selectedCharacterId in Filter.NameCharacterIds.ToList())
+                    {
+                        var selectedSuggestion = NameSuggestions.FirstOrDefault(x => x.CharacterId == selectedCharacterId);
+                        if (selectedSuggestion is not null)
+                        {
+                            <span class="rc-inline-pill rc-inline-pill--removable">
+                                [@selectedSuggestion.CharacterName | @selectedSuggestion.PlayerName]
+                                <button type="button" @onclick="() => RemoveNameSuggestion(selectedCharacterId)">×</button>
+                            </span>
+                        }
+                    }
+                </div>
+            </div>
+
             <div class="rc-filter-group-card">
                 <div class="rc-filter-group-card__title">@L["MassDistribution_FilterMode"]</div>
                 <div class="rc-filter-group-card__options">
-                <label class="rc-filter-toggle">
-                    <input type="radio" checked="@(!Filter.MatchAllConditions)" @onchange="@(() => SetMatchMode(false))" />
-                    <span>@L["MassDistribution_FilterModeAny"]</span>
-                </label>
+                    <label class="rc-filter-toggle">
+                        <input type="radio" checked="@(!Filter.MatchAllConditions)" @onchange="@(() => SetMatchMode(false))" />
+                        <span>@L["MassDistribution_FilterModeAny"]</span>
+                    </label>
 
-                <label class="rc-filter-toggle">
-                    <input type="radio" checked="@(Filter.MatchAllConditions)" @onchange="@(() => SetMatchMode(true))" />
-                    <span>@L["MassDistribution_FilterModeAll"]</span>
-                </label>
+                    <label class="rc-filter-toggle">
+                        <input type="radio" checked="@(Filter.MatchAllConditions)" @onchange="@(() => SetMatchMode(true))" />
+                        <span>@L["MassDistribution_FilterModeAll"]</span>
+                    </label>
                 </div>
             </div>
         </div>
-
     }
 </div>
 
@@ -205,12 +292,19 @@
     [Parameter] public List<CharacterFilterReferenceItem> GaugeTargets { get; set; } = new();
     [Parameter] public List<CharacterFilterReferenceItem> DerivedStatTargets { get; set; } = new();
     [Parameter] public List<CharacterFilterReferenceItem> MetricTargets { get; set; } = new();
+    [Parameter] public List<CharacterFilterReferenceItem> PollOptions { get; set; } = new();
+    [Parameter] public List<CharacterFilterReferenceItem> SelectedPollOptionOptions { get; set; } = new();
+    [Parameter] public List<CharacterNameSuggestionItem> NameSuggestions { get; set; } = new();
+    [Parameter] public EventCallback OnPollSelectionChanged { get; set; }
 
     private Dictionary<string, string> SelectedTraitOptionIdByGroup { get; set; } = new();
 
     private bool IsOpen;
     private string SelectedTalentId = string.Empty;
     private string SelectedItemId = string.Empty;
+    private string SelectedPollId = string.Empty;
+    private string SelectedPollOptionId = string.Empty;
+    private string NameSearchInput = string.Empty;
 
     protected override void OnParametersSet()
     {
@@ -221,6 +315,9 @@
                 SelectedTraitOptionIdByGroup[group.GroupName] = string.Empty;
             }
         }
+
+        SelectedPollId = Filter.PollId?.ToString() ?? string.Empty;
+        SelectedPollOptionId = Filter.PollSelectedOptionId?.ToString() ?? string.Empty;
     }
 
     private void Toggle() => IsOpen = !IsOpen;
@@ -311,5 +408,108 @@
             CharacterEffectTargetType.Metric => MetricTargets,
             _ => new List<CharacterFilterReferenceItem>()
         };
+    }
+
+    private async Task OnPollChanged(string? rawValue)
+    {
+        SelectedPollId = rawValue ?? string.Empty;
+
+        if (Guid.TryParse(SelectedPollId, out var pollId))
+        {
+            Filter.PollId = pollId;
+            Filter.FilterOnPollResponse = true;
+        }
+        else
+        {
+            Filter.PollId = null;
+            Filter.FilterOnPollResponse = false;
+        }
+
+        Filter.PollSelectedOptionId = null;
+        SelectedPollOptionId = string.Empty;
+
+        await OnPollSelectionChanged.InvokeAsync();
+    }
+
+    private void OnPollOptionChanged(string? rawValue)
+    {
+        SelectedPollOptionId = rawValue ?? string.Empty;
+
+        if (Guid.TryParse(SelectedPollOptionId, out var optionId))
+        {
+            Filter.PollSelectedOptionId = optionId;
+            Filter.FilterOnPollResponse = Filter.PollId.HasValue;
+        }
+        else
+        {
+            Filter.PollSelectedOptionId = null;
+            Filter.FilterOnPollResponse = false;
+        }
+    }
+
+    private void ToggleLastTestResultFilter(bool mustSucceed)
+    {
+        if (Filter.FilterOnLastTestResult && Filter.MustHaveSucceededLastTest == mustSucceed)
+        {
+            Filter.MustHaveSucceededLastTest = null;
+            Filter.FilterOnLastTestResult = false;
+            return;
+        }
+
+        Filter.MustHaveSucceededLastTest = mustSucceed;
+        Filter.FilterOnLastTestResult = true;
+    }
+
+    private string GetLastTestFilterButtonClass(bool mustSucceed)
+    {
+        var isSelected = Filter.FilterOnLastTestResult &&
+                         Filter.MustHaveSucceededLastTest == mustSucceed;
+
+        return isSelected
+            ? "rc-name-suggestion-item rc-name-suggestion-item--selected"
+            : "rc-name-suggestion-item";
+    }
+
+    private void OnNameSearchChanged(ChangeEventArgs args)
+    {
+        NameSearchInput = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private List<CharacterNameSuggestionItem> GetVisibleNameSuggestions()
+    {
+        var prefix = (NameSearchInput ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(prefix))
+            return new List<CharacterNameSuggestionItem>();
+
+        var selectedIds = Filter.NameCharacterIds.ToHashSet();
+
+        var matches = NameSuggestions
+            .Where(x => !selectedIds.Contains(x.CharacterId))
+            .Where(x =>
+                x.CharacterName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ||
+                x.PlayerName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(x => x.CharacterName)
+            .ThenBy(x => x.PlayerName)
+            .ToList();
+
+        return matches.Count <= 8
+            ? matches
+            : new List<CharacterNameSuggestionItem>();
+    }
+
+    private void AddNameSuggestion(CharacterNameSuggestionItem suggestion)
+    {
+        if (!Filter.NameCharacterIds.Contains(suggestion.CharacterId))
+        {
+            Filter.NameCharacterIds.Add(suggestion.CharacterId);
+        }
+
+        NameSearchInput = string.Empty;
+    }
+
+    private void RemoveNameSuggestion(Guid characterId)
+    {
+        Filter.NameCharacterIds.Remove(characterId);
     }
 }

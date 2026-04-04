@@ -90,7 +90,11 @@ else
                                               AttributeTargets="AttributeTargets"
                                               GaugeTargets="GaugeTargets"
                                               DerivedStatTargets="DerivedStatTargets"
-                                              MetricTargets="MetricTargets" />
+                                              MetricTargets="MetricTargets"
+                                              PollOptions="AdvancedPollOptions"
+                                              SelectedPollOptionOptions="AdvancedSelectedPollOptionOptions"
+                                              NameSuggestions="AdvancedNameSuggestions"
+                                              OnPollSelectionChanged="RefreshSelectedPollOptionOptionsAsync" />
 
                     <div class="rc-tool-subsection">
                         <div class="rc-tool-subsection__header">
@@ -408,6 +412,9 @@ else
     private List<CharacterFilterReferenceItem> GaugeTargets = new();
     private List<CharacterFilterReferenceItem> DerivedStatTargets = new();
     private List<CharacterFilterReferenceItem> MetricTargets = new();
+    private List<CharacterFilterReferenceItem> AdvancedPollOptions = new();
+    private List<CharacterFilterReferenceItem> AdvancedSelectedPollOptionOptions = new();
+    private List<CharacterNameSuggestionItem> AdvancedNameSuggestions = new();
 
     private bool ShowLivePollResults;
     private bool ShowPollVoteDetails;
@@ -627,6 +634,8 @@ else
         SessionGauges = await SessionService.GetSessionGaugesAsync(SessionId, CurrentUserId);
         await LoadCharacterSummariesAsync();
         await LoadLatestPoll();
+        await LoadAdvancedPollOptionsAsync();
+        await LoadAdvancedNameSuggestionsAsync();
     }
 
     private async Task LoadLatestPoll()
@@ -634,6 +643,7 @@ else
         LatestPoll = await PollService.GetLatestPollForGameMasterAsync(SessionId);
         RecentPolls = await PollService.GetRecentPollsForGameMasterAsync(SessionId, 5);
         ConfirmUndoPollConsequencesVisible = false;
+        await LoadAdvancedPollOptionsAsync();
     }
 
     private Task AddPollOption()
@@ -788,6 +798,12 @@ else
                     TraitOptionIds = AdvancedFilter.TraitOptionIds.ToList(),
                     TalentIds = AdvancedFilter.TalentIds.ToList(),
                     ItemIds = AdvancedFilter.ItemIds.ToList(),
+                    PollId = AdvancedFilter.PollId,
+                    PollSelectedOptionId = AdvancedFilter.PollSelectedOptionId,
+                    FilterOnPollResponse = AdvancedFilter.FilterOnPollResponse,
+                    MustHaveSucceededLastTest = AdvancedFilter.MustHaveSucceededLastTest,
+                    FilterOnLastTestResult = AdvancedFilter.FilterOnLastTestResult,
+                    NameCharacterIds = AdvancedFilter.NameCharacterIds.ToList(),
                     ValueFilters = AdvancedFilter.ValueFilters
             .Select(x => new CharacterValueFilterDto
             {
@@ -952,6 +968,66 @@ else
         CharacterSummariesById = characters.ToDictionary(x => x.CharacterId, x => x);
     }
 
+    private async Task LoadAdvancedPollOptionsAsync()
+    {
+        AdvancedPollOptions.Clear();
+
+        var polls = await PollService.GetRecentPollsForGameMasterAsync(SessionId, 20);
+
+        AdvancedPollOptions = polls
+            .Select(x => new CharacterFilterReferenceItem
+            {
+                Id = x.PollId,
+                Name = x.Question
+            })
+            .ToList();
+
+        await RefreshSelectedPollOptionOptionsAsync();
+    }
+
+    private async Task RefreshSelectedPollOptionOptionsAsync()
+    {
+        AdvancedSelectedPollOptionOptions.Clear();
+
+        if (!AdvancedFilter.PollId.HasValue)
+            return;
+
+        var poll = await PollService.GetPollByIdForGameMasterAsync(SessionId, AdvancedFilter.PollId.Value);
+        if (poll is null)
+            return;
+
+        AdvancedSelectedPollOptionOptions = poll.Options
+            .Select(x => new CharacterFilterReferenceItem
+            {
+                Id = x.OptionId,
+                Name = x.Label
+            })
+            .ToList();
+    }
+
+    private async Task LoadAdvancedNameSuggestionsAsync()
+    {
+        AdvancedNameSuggestions.Clear();
+
+        var summaries = await CharacterService.GetSessionCharacterSummariesAsync(
+            SessionId,
+            includeOffline: true,
+            includeDead: true,
+            includeNpcs: true);
+
+        AdvancedNameSuggestions = summaries
+            .Where(x => !string.IsNullOrWhiteSpace(x.CharacterName) || !string.IsNullOrWhiteSpace(x.PlayerName))
+            .Select(x => new CharacterNameSuggestionItem
+            {
+                CharacterId = x.CharacterId,
+                CharacterName = x.CharacterName ?? string.Empty,
+                PlayerName = x.PlayerName ?? string.Empty
+            })
+            .OrderBy(x => x.CharacterName)
+            .ThenBy(x => x.PlayerName)
+            .ToList();
+    }
+
     private string GetPollConsequenceOperationCssClass(SharedConsequenceRowModel consequence)
     {
         return consequence.OperationType switch
@@ -979,3 +1055,4 @@ else
             : "rc-consequence-pill rc-consequence-pill--negative";
     }
 }
+

@@ -248,6 +248,16 @@ namespace Rollocracy.Infrastructure.Services
 
             var characterIds = characters.Select(x => x.Id).ToList();
 
+            var userAccountIds = playerSessions
+    .Select(x => x.UserAccountId)
+    .Distinct()
+    .ToList();
+
+            var userAccounts = await context.UserAccounts
+                .AsNoTracking()
+                .Where(x => userAccountIds.Contains(x.Id))
+                .ToListAsync();
+
             var traitValues = await context.CharacterTraitValues
                 .AsNoTracking()
                 .Where(x => characterIds.Contains(x.CharacterId))
@@ -340,6 +350,58 @@ namespace Rollocracy.Infrastructure.Services
 
             var filtered = new List<Guid>();
 
+            var selectedNameCharacterIds = filter.NameCharacterIds
+                .Distinct()
+                .ToHashSet();
+
+            Guid? effectivePollId = null;
+            HashSet<Guid> pollMatchingCharacterIds = new();
+
+            if (filter.FilterOnPollResponse && filter.PollId.HasValue && filter.PollSelectedOptionId.HasValue)
+            {
+                effectivePollId = await context.SessionPolls
+                    .AsNoTracking()
+                    .Where(x => x.SessionId == sessionId && x.Id == filter.PollId.Value)
+                    .Select(x => (Guid?)x.Id)
+                    .FirstOrDefaultAsync();
+
+                if (effectivePollId.HasValue)
+                {
+                    pollMatchingCharacterIds = await context.SessionPollVotes
+                        .AsNoTracking()
+                        .Where(x =>
+                            x.SessionPollId == effectivePollId.Value &&
+                            x.SessionPollOptionId == filter.PollSelectedOptionId.Value)
+                        .Select(x => x.CharacterId)
+                        .ToHashSetAsync();
+                }
+            }
+
+            Guid? latestGameTestId = null;
+            HashSet<Guid> lastTestMatchingCharacterIds = new();
+
+            if (filter.FilterOnLastTestResult && filter.MustHaveSucceededLastTest.HasValue)
+            {
+                latestGameTestId = await context.GameTests
+                    .AsNoTracking()
+                    .Where(t => t.SessionId == sessionId)
+                    .OrderByDescending(t => t.CreatedAtUtc)
+                    .Select(t => (Guid?)t.Id)
+                    .FirstOrDefaultAsync();
+
+                if (latestGameTestId.HasValue)
+                {
+                    lastTestMatchingCharacterIds = await context.PlayerTestRolls
+                        .AsNoTracking()
+                        .Where(r =>
+                            r.GameTestId == latestGameTestId.Value &&
+                            r.IsSuccess == filter.MustHaveSucceededLastTest.Value)
+                        .Select(r => r.CharacterId)
+                        .ToHashSetAsync();
+                }
+            }
+
+
             foreach (var character in characters)
             {
                 if (filter.OnlyAlive && !character.IsAlive)
@@ -355,6 +417,10 @@ namespace Rollocracy.Infrastructure.Services
 
                 if (filter.OnlyOnline && !_presenceTracker.IsPlayerOnline(playerSession.Id))
                     continue;
+
+                var playerName = userAccounts
+                    .FirstOrDefault(x => x.Id == playerSession.UserAccountId)?
+                    .Username ?? string.Empty;
 
                 var advancedConditionResults = new List<bool>();
 
@@ -437,6 +503,31 @@ namespace Rollocracy.Infrastructure.Services
 
                     advancedConditionResults.Add(
                         CompareValue(currentValue, valueFilter.ComparisonType, valueFilter.Value));
+                }
+
+                if (selectedNameCharacterIds.Count > 0)
+                {
+                    advancedConditionResults.Add(selectedNameCharacterIds.Contains(character.Id));
+                }
+
+                if (filter.FilterOnPollResponse)
+                {
+                    var pollMatches =
+                        effectivePollId.HasValue &&
+                        filter.PollSelectedOptionId.HasValue &&
+                        pollMatchingCharacterIds.Contains(character.Id);
+
+                    advancedConditionResults.Add(pollMatches);
+                }
+
+                if (filter.FilterOnLastTestResult)
+                {
+                    var lastTestMatches =
+                        latestGameTestId.HasValue &&
+                        filter.MustHaveSucceededLastTest.HasValue &&
+                        lastTestMatchingCharacterIds.Contains(character.Id);
+
+                    advancedConditionResults.Add(lastTestMatches);
                 }
 
                 if (advancedConditionResults.Count > 0)

@@ -12,6 +12,7 @@
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject ICharacterService CharacterService
+@inject IPollService PollService
 @inject NavigationManager Navigation
 @inject IStringLocalizer<SharedTexts> L
 
@@ -65,21 +66,25 @@ else
 
                 <div class="rc-tool-subsection">
                     <CharacterAudienceFilters Title="@L["Test_TargetScope"]"
-                                                OnlyOnline="Request.Filter.OnlyOnline"
-                                                OnlyAlive="Request.Filter.OnlyAlive"
-                                                IncludeNpcs="Request.Filter.IncludeNpcs"
-                                                OnlyOnlineChanged="@(value => { Request.Filter.OnlyOnline = value; if (value) Request.Filter.OnlyAlive = false; })"
-                                                OnlyAliveChanged="@(value => { Request.Filter.OnlyAlive = value; if (value) Request.Filter.OnlyOnline = false; })"
-                                                IncludeNpcsChanged="@(value => Request.Filter.IncludeNpcs = value)" />
+                                              OnlyOnline="Request.Filter.OnlyOnline"
+                                              OnlyAlive="Request.Filter.OnlyAlive"
+                                              IncludeNpcs="Request.Filter.IncludeNpcs"
+                                              OnlyOnlineChanged="@(value => { Request.Filter.OnlyOnline = value; if (value) Request.Filter.OnlyAlive = false; })"
+                                              OnlyAliveChanged="@(value => { Request.Filter.OnlyAlive = value; if (value) Request.Filter.OnlyOnline = false; })"
+                                              IncludeNpcsChanged="@(value => Request.Filter.IncludeNpcs = value)" />
                         
                     <CharacterAdvancedFilters Filter="Request.Filter"
-                                                TraitOptionGroups="AdvancedTraitOptionGroups"
-                                                TalentOptions="AdvancedTalentOptions"
-                                                ItemOptions="AdvancedItemOptions"
-                                                AttributeTargets="AdvancedAttributeTargets"
-                                                GaugeTargets="AdvancedGaugeTargets"
-                                                DerivedStatTargets="AdvancedDerivedTargets"
-                                                MetricTargets="AdvancedMetricTargets" />
+                                              TraitOptionGroups="AdvancedTraitOptionGroups"
+                                              TalentOptions="AdvancedTalentOptions"
+                                              ItemOptions="AdvancedItemOptions"
+                                              AttributeTargets="AdvancedAttributeTargets"
+                                              GaugeTargets="AdvancedGaugeTargets"
+                                              DerivedStatTargets="AdvancedDerivedTargets"
+                                              MetricTargets="AdvancedMetricTargets"
+                                              PollOptions="AdvancedPollOptions"
+                                              SelectedPollOptionOptions="AdvancedSelectedPollOptionOptions"
+                                              NameSuggestions="AdvancedNameSuggestions"
+                                              OnPollSelectionChanged="RefreshSelectedPollOptionOptionsAsync" />
                 </div>
 
                 <div class="rc-tool-actions rc-tool-actions--right">
@@ -207,6 +212,10 @@ else
     private List<CharacterFilterReferenceItem> AdvancedMetricTargets
         => Editor?.Metrics.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
 
+    private List<CharacterFilterReferenceItem> AdvancedPollOptions = new();
+    private List<CharacterFilterReferenceItem> AdvancedSelectedPollOptionOptions = new();
+    private List<CharacterNameSuggestionItem> AdvancedNameSuggestions = new();
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
@@ -238,6 +247,8 @@ else
     {
         Editor = await CharacterService.GetRandomDrawEditorAsync(SessionId, CurrentUserId);
         await LoadCharacterSummariesAsync();
+        await LoadAdvancedPollOptionsAsync();
+        await LoadAdvancedNameSuggestionsAsync();
 
         if (Editor is not null)
         {
@@ -306,5 +317,65 @@ else
             includeNpcs: false);
 
         CharacterSummariesById = characters.ToDictionary(x => x.CharacterId, x => x);
+    }
+
+    private async Task LoadAdvancedPollOptionsAsync()
+    {
+        AdvancedPollOptions.Clear();
+
+        var polls = await PollService.GetRecentPollsForGameMasterAsync(SessionId, 20);
+
+        AdvancedPollOptions = polls
+            .Select(x => new CharacterFilterReferenceItem
+            {
+                Id = x.PollId,
+                Name = x.Question
+            })
+            .ToList();
+
+        await RefreshSelectedPollOptionOptionsAsync();
+    }
+
+    private async Task RefreshSelectedPollOptionOptionsAsync()
+    {
+        AdvancedSelectedPollOptionOptions.Clear();
+
+        if (!Request.Filter.PollId.HasValue)
+            return;
+
+        var poll = await PollService.GetPollByIdForGameMasterAsync(SessionId, Request.Filter.PollId.Value);
+        if (poll is null)
+            return;
+
+        AdvancedSelectedPollOptionOptions = poll.Options
+            .Select(x => new CharacterFilterReferenceItem
+            {
+                Id = x.OptionId,
+                Name = x.Label
+            })
+            .ToList();
+    }
+
+    private async Task LoadAdvancedNameSuggestionsAsync()
+    {
+        AdvancedNameSuggestions.Clear();
+
+        var summaries = await CharacterService.GetSessionCharacterSummariesAsync(
+            SessionId,
+            includeOffline: true,
+            includeDead: true,
+            includeNpcs: true);
+
+        AdvancedNameSuggestions = summaries
+            .Where(x => !string.IsNullOrWhiteSpace(x.CharacterName) || !string.IsNullOrWhiteSpace(x.PlayerName))
+            .Select(x => new CharacterNameSuggestionItem
+            {
+                CharacterId = x.CharacterId,
+                CharacterName = x.CharacterName ?? string.Empty,
+                PlayerName = x.PlayerName ?? string.Empty
+            })
+            .OrderBy(x => x.CharacterName)
+            .ThenBy(x => x.PlayerName)
+            .ToList();
     }
 }

@@ -26,12 +26,16 @@ namespace Rollocracy.Domain.Characters
 
         public List<CharacterValueFilterDto> ValueFilters { get; set; } = new();
 
-        public Guid? LastPollSelectedOptionId { get; set; }
+        // Nouveau : filtre par vote sur un sondage précis
+        public Guid? PollId { get; set; }
+        public Guid? PollSelectedOptionId { get; set; }
+        public bool FilterOnPollResponse { get; set; }
 
-        public bool FilterOnLastPollResponse { get; set; }
-
+        // Filtre sur le dernier test de la session
         public bool? MustHaveSucceededLastTest { get; set; }
-
         public bool FilterOnLastTestResult { get; set; }
+
+        // Nouveau : filtre texte sur nom de personnage ou de joueur
+        public List<Guid> NameCharacterIds { get; set; } = new();
     }
 }

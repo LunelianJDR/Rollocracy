@@ -3411,4 +3411,31 @@
 	<data name="Home_BugForm_GuestUser" xml:space="preserve">
   <value>invité</value>
 </data>
+	<data name="AdvancedFilter_PollSection" xml:space="preserve">
+  <value>Vote à un sondage</value>
+</data>
+	<data name="AdvancedFilter_Poll" xml:space="preserve">
+  <value>Sondage</value>
+</data>
+	<data name="AdvancedFilter_PollOption" xml:space="preserve">
+  <value>Option votée</value>
+</data>
+	<data name="AdvancedFilter_LastTestSection" xml:space="preserve">
+  <value>Dernier test</value>
+</data>
+	<data name="AdvancedFilter_LastTestSuccessOnly" xml:space="preserve">
+  <value>Uniquement les réussites</value>
+</data>
+	<data name="AdvancedFilter_LastTestFailureOnly" xml:space="preserve">
+  <value>Uniquement les échecs</value>
+</data>
+	<data name="AdvancedFilter_NameSection" xml:space="preserve">
+  <value>Nom du joueur ou du personnage</value>
+</data>
+	<data name="AdvancedFilter_NameStartsWith" xml:space="preserve">
+  <value>Commence par</value>
+</data>
+	<data name="AdvancedFilter_None" xml:space="preserve">
+  <value>-- Aucun --</value>
+</data>
 </root>

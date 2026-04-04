@@ -3318,3 +3318,30 @@ button.rc-global-threshold-slider__handle:focus-visible {
 .rc-journal-editor .ql-snow .ql-picker.ql-expanded .ql-picker-label {
     color: var(--rc-accent) !important;
 }
+
+.rc-name-suggestion-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.rc-name-suggestion-item {
+    border: 1px solid var(--rc-border);
+    background: var(--rc-surface);
+    color: var(--rc-text);
+    border-radius: 999px;
+    padding: 0.35rem 0.8rem;
+    cursor: pointer;
+}
+
+    .rc-name-suggestion-item:hover {
+        border-color: var(--rc-accent);
+        color: var(--rc-accent);
+    }
+
+.rc-name-suggestion-item--selected {
+    border-color: var(--rc-accent) !important;
+    color: var(--rc-accent) !important;
+    box-shadow: 0 0 0 1px var(--rc-accent) inset !important;
+}

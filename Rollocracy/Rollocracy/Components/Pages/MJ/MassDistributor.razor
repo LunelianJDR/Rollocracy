@@ -17,6 +17,7 @@
 @inject IStringLocalizer<SharedTexts> L
 @inject ISessionService SessionService
 @inject ICharacterService CharacterService
+@inject IPollService PollService
 
 
 @if (!IsLoaded)
@@ -88,7 +89,11 @@ else
                                               AttributeTargets="AdvancedAttributeTargets"
                                               GaugeTargets="AdvancedGaugeTargets"
                                               DerivedStatTargets="AdvancedDerivedTargets"
-                                              MetricTargets="AdvancedMetricTargets" />
+                                              MetricTargets="AdvancedMetricTargets"
+                                              PollOptions="AdvancedPollOptions"
+                                              SelectedPollOptionOptions="AdvancedSelectedPollOptionOptions"
+                                              NameSuggestions="AdvancedNameSuggestions"
+                                              OnPollSelectionChanged="RefreshSelectedPollOptionOptionsAsync" />
                 </div>
 
                 <Consequences Title="@L["MassDistribution_EffectsSection"]"
@@ -233,6 +238,10 @@ else
     private List<CharacterFilterReferenceItem> AdvancedMetricTargets
         => Editor?.Metrics.Select(x => new CharacterFilterReferenceItem { Id = x.Id, Name = x.Name }).ToList() ?? new();
 
+    private List<CharacterFilterReferenceItem> AdvancedPollOptions = new();
+    private List<CharacterFilterReferenceItem> AdvancedSelectedPollOptionOptions = new();
+    private List<CharacterNameSuggestionItem> AdvancedNameSuggestions = new();
+
     private string PreviewPanelTitle
         => HasAppliedDistribution
             ? L["MassDistribution_AffectedCharacters"]
@@ -258,6 +267,8 @@ else
         LastBatch = await MassDistributionService.GetLastBatchAsync(SessionId, CurrentUserId);
         SyncRowsFromRequestEffects();
         await LoadCharacterSummariesAsync();
+        await LoadAdvancedPollOptionsAsync();
+        await LoadAdvancedNameSuggestionsAsync();
 
         IsLoaded = true;
     }
@@ -430,4 +441,66 @@ else
 
         CharacterSummariesById = characters.ToDictionary(x => x.CharacterId, x => x);
     }
+
+    private async Task LoadAdvancedPollOptionsAsync()
+    {
+        AdvancedPollOptions.Clear();
+
+        var polls = await PollService.GetRecentPollsForGameMasterAsync(SessionId, 20);
+
+        AdvancedPollOptions = polls
+            .Select(x => new CharacterFilterReferenceItem
+            {
+                Id = x.PollId,
+                Name = x.Question
+            })
+            .ToList();
+
+        await RefreshSelectedPollOptionOptionsAsync();
+    }
+
+    private async Task RefreshSelectedPollOptionOptionsAsync()
+    {
+        AdvancedSelectedPollOptionOptions.Clear();
+
+        if (!Request.Filter.PollId.HasValue)
+            return;
+
+        var poll = await PollService.GetPollByIdForGameMasterAsync(SessionId, Request.Filter.PollId.Value);
+        if (poll is null)
+            return;
+
+        AdvancedSelectedPollOptionOptions = poll.Options
+            .Select(x => new CharacterFilterReferenceItem
+            {
+                Id = x.OptionId,
+                Name = x.Label
+            })
+            .ToList();
+    }
+
+    private async Task LoadAdvancedNameSuggestionsAsync()
+    {
+        AdvancedNameSuggestions.Clear();
+
+        var summaries = await CharacterService.GetSessionCharacterSummariesAsync(
+            SessionId,
+            includeOffline: true,
+            includeDead: true,
+            includeNpcs: true);
+
+        AdvancedNameSuggestions = summaries
+            .Where(x => !string.IsNullOrWhiteSpace(x.CharacterName) || !string.IsNullOrWhiteSpace(x.PlayerName))
+            .Select(x => new CharacterNameSuggestionItem
+            {
+                CharacterId = x.CharacterId,
+                CharacterName = x.CharacterName ?? string.Empty,
+                PlayerName = x.PlayerName ?? string.Empty
+            })
+            .OrderBy(x => x.CharacterName)
+            .ThenBy(x => x.PlayerName)
+            .ToList();
+    }
 }
+
+
