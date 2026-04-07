@@ -54,22 +54,17 @@
 
                 <div class="rc-tool-actions">
                     <button @onclick="HandleRegister">@L["Auth_Register_Submit"]</button>
-                    <a class="rc-auth-link-button" href="/login">@L["Auth_BackToLogin"]</a>
+                    <a class="rc-auth-link-button" href="@LoginUrl">@L["Auth_BackToLogin"]</a>
                 </div>
             </div>
         </article>
 
         <article class="rc-auth-panel">
-            <div class="rc-tool-panel__header-main">
-                <h2 class="rc-tool-panel__title">@L["Auth_Register_WhyEmailTitle"]</h2>
-                <p class="rc-tool-panel__subtitle">@L["Auth_Register_WhyEmailSubtitle"]</p>
-            </div>
+            <a class="rc-auth-link-button" href="/auth/twitch/login?language=fr">
+                @L["Auth_Login_WithTwitch"]
+            </a>
 
-            <div class="rc-auth-stack">
-                <div class="rc-readonly-value">@L["Auth_Register_WhyEmailLine1"]</div>
-                <div class="rc-readonly-value">@L["Auth_Register_WhyEmailLine2"]</div>
-                <div class="rc-readonly-value">@L["Auth_Register_WhyEmailLine3"]</div>
-            </div>
+            <p class="rc-tool-muted">@L["Auth_Login_TwitchDescription"]</p>
         </article>
     </div>
 </section>
@@ -80,6 +75,21 @@
     private string Password = string.Empty;
     private string SelectedLanguage = "fr";
     private string Message = string.Empty;
+    private string ReturnUrl = string.Empty;
+
+    private string LoginUrl =>
+        string.IsNullOrWhiteSpace(ReturnUrl)
+            ? "/login"
+            : $"/login?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
+
+    protected override void OnInitialized()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+
+        if (query.TryGetValue("returnUrl", out var returnUrlValue))
+            ReturnUrl = returnUrlValue.ToString();
+    }
 
     private async Task HandleRegister()
     {
@@ -111,7 +121,11 @@
 
             if (response.IsSuccessStatusCode)
             {
-                Navigation.NavigateTo("/login?registered=1", forceLoad: true);
+                var loginUrl = string.IsNullOrWhiteSpace(ReturnUrl)
+                    ? "/login?registered=1"
+                    : $"/login?registered=1&returnUrl={Uri.EscapeDataString(ReturnUrl)}";
+
+                Navigation.NavigateTo(loginUrl, forceLoad: true);
                 return;
             }
 

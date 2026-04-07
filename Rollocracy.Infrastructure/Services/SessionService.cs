@@ -6,6 +6,8 @@ using Rollocracy.Infrastructure.Persistence;
 using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.GameRules;
 using System.Text.RegularExpressions;
+using System.Net;
+using System.IO;
 
 namespace Rollocracy.Infrastructure.Services
 {
@@ -1352,7 +1354,54 @@ namespace Rollocracy.Infrastructure.Services
 
             value = Regex.Replace(value, @"javascript\s*:", string.Empty, RegexOptions.IgnoreCase);
 
+            value = Regex.Replace(
+                value,
+                @"<img\b[^>]*>",
+                match => SanitizeJournalImageTag(match.Value),
+                RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
             return value.Trim();
+        }
+
+        private static string SanitizeJournalImageTag(string imageTag)
+        {
+            var srcMatch = Regex.Match(
+                imageTag,
+                @"\bsrc\s*=\s*(?:""(?<src>[^""]+)""|'(?<src>[^']+)'|(?<src>[^\s>]+))",
+                RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+            if (!srcMatch.Success)
+                return string.Empty;
+
+            if (!TryNormalizeJournalImageUrl(srcMatch.Groups["src"].Value, out var normalizedImageUrl))
+                return string.Empty;
+
+            return $"<img src=\"{WebUtility.HtmlEncode(normalizedImageUrl)}\" alt=\"\" />";
+        }
+
+        private static bool TryNormalizeJournalImageUrl(string? rawUrl, out string normalizedImageUrl)
+        {
+            normalizedImageUrl = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(rawUrl))
+                return false;
+
+            var trimmed = rawUrl.Trim();
+
+            if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
+                return false;
+
+            if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var extension = Path.GetExtension(uri.AbsolutePath);
+            var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".avif" };
+
+            if (string.IsNullOrWhiteSpace(extension) || !allowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+                return false;
+
+            normalizedImageUrl = uri.ToString();
+            return true;
         }
 
         private static int NormalizeSessionCapacity(int rawValue) => Math.Clamp(rawValue, 0, 5000);
@@ -1375,4 +1424,3 @@ namespace Rollocracy.Infrastructure.Services
         }
     }
 }
-

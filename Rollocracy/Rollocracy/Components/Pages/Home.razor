@@ -65,7 +65,7 @@
                     <Authorized>
                         <div class="rc-tool-actions">
                             <button type="button" @onclick="GoToJoin">@L["Session_Join_Title"]</button>
-                            <button type="button" @onclick="GoToAccountSettings">@L["Account_Settings_Title"]</button>
+                            <button type="button" @onclick="GoToAccountSettings" disabled>@L["Account_Settings_Title"]</button> @* Bouton de paramètre de compte désactivé le temps de la démonstration de Rollocracy *@
                         </div>
                     </Authorized>
                 </AuthorizeView>
@@ -76,7 +76,6 @@
             <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                 <div class="rc-tool-panel__header-main">
                     <h3 class="rc-tool-panel__title">@L["Home_Videos_Title"]</h3>
-                    <p class="rc-tool-panel__subtitle">@L["Home_Videos_Subtitle"]</p>
                 </div>
             </div>
 
@@ -109,13 +108,12 @@
             <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                 <div class="rc-tool-panel__header-main">
                     <h3 class="rc-tool-panel__title">@L["Home_Project_Title"]</h3>
-                    <p class="rc-tool-panel__subtitle">@L["Home_Project_Subtitle"]</p>
                 </div>
 
                 <div class="rc-tool-actions">
                     <button type="button" @onclick="ShowPatchnotesView">@L["Home_Project_ViewPatchnotes"]</button>
                     <button type="button" @onclick="ShowPlannedFeaturesView">@L["Home_Project_ViewPlannedFeatures"]</button>
-                    <button type="button" @onclick="OpenBugReportForm">@L["Home_Project_ReportBug"]</button>
+                    <button type="button" @onclick="OpenBugReportForm" disabled>@L["Home_Project_ReportBug"]</button>
                 </div>
             </div>
 

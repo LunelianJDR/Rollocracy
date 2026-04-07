@@ -29,12 +29,15 @@ namespace Rollocracy.Controllers
             if (request.SessionId == Guid.Empty || request.PlayerSessionId == Guid.Empty)
                 return BadRequest();
 
-            _presenceTracker.TouchPlayerPresence(
+            var becameOnline = _presenceTracker.TouchPlayerPresence(
                 request.SessionId,
                 request.PlayerSessionId,
                 request.IsGameMaster);
 
-            await _hubContext.Clients.Group(request.SessionId.ToString()).SendAsync("PresenceChanged");
+            if (becameOnline)
+            {
+                await _hubContext.Clients.Group(request.SessionId.ToString()).SendAsync("PresenceChanged");
+            }
 
             return Ok();
         }

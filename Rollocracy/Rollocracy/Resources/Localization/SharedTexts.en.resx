@@ -3438,4 +3438,31 @@
 	<data name="AdvancedFilter_None" xml:space="preserve">
   <value>-- None --</value>
 </data>
+	<data name="Navigation_EnableAlertSound" xml:space="preserve">
+  <value>Enable alert sound</value>
+</data>
+	<data name="Navigation_DisableAlertSound" xml:space="preserve">
+  <value>Disable alert sound</value>
+</data>
+	<data name="Journal_InsertImageUrl" xml:space="preserve">
+  <value>Image URL</value>
+</data>
+	<data name="Journal_ImageUrlLabel" xml:space="preserve">
+  <value>Image URL</value>
+</data>
+	<data name="Journal_InsertImageAction" xml:space="preserve">
+  <value>Insert image</value>
+</data>
+	<data name="Journal_CurrentImages" xml:space="preserve">
+  <value>Page images</value>
+</data>
+	<data name="Journal_ImageAlt" xml:space="preserve">
+  <value>Journal image</value>
+</data>
+	<data name="Journal_InvalidImageUrl" xml:space="preserve">
+  <value>The link must be a valid https URL pointing to a supported image.</value>
+</data>
+	<data name="Journal_ImageInsertFailed" xml:space="preserve">
+  <value>Unable to insert the image into the journal.</value>
+</data>
 </root>

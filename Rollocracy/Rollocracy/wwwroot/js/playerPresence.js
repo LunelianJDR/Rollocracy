@@ -1,6 +1,6 @@
 ﻿let heartbeatIntervalId = null;
 let leaveHandler = null;
-let visibilityHandler = null;
+let alertAudio = null;
 
 function postJson(url, payload) {
     return fetch(url, {
@@ -11,6 +11,21 @@ function postJson(url, payload) {
         body: JSON.stringify(payload),
         keepalive: true
     }).catch(() => { });
+}
+
+function getAlertAudio() {
+    if (!alertAudio) {
+        alertAudio = new Audio("/sounds/alerte.mp3");
+        alertAudio.preload = "auto";
+    }
+
+    return alertAudio;
+}
+
+export function playAlertSound() {
+    const audio = getAlertAudio();
+    audio.currentTime = 0;
+    audio.play().catch(() => { });
 }
 
 export function registerPlayerPresence(sessionId, playerSessionId, isGameMaster) {
@@ -28,9 +43,7 @@ export function registerPlayerPresence(sessionId, playerSessionId, isGameMaster)
     };
 
     const sendHeartbeat = () => {
-        if (document.visibilityState === "visible") {
-            postJson("/api/presence/heartbeat", heartbeatPayload);
-        }
+        postJson("/api/presence/heartbeat", heartbeatPayload);
     };
 
     leaveHandler = () => {
@@ -42,18 +55,11 @@ export function registerPlayerPresence(sessionId, playerSessionId, isGameMaster)
         navigator.sendBeacon("/api/presence/disconnect", blob);
     };
 
-    visibilityHandler = () => {
-        if (document.visibilityState === "visible") {
-            sendHeartbeat();
-        }
-    };
-
     sendHeartbeat();
-    heartbeatIntervalId = window.setInterval(sendHeartbeat, 5000);
+    heartbeatIntervalId = window.setInterval(sendHeartbeat, 30000);
 
     window.addEventListener("pagehide", leaveHandler);
     window.addEventListener("beforeunload", leaveHandler);
-    document.addEventListener("visibilitychange", visibilityHandler);
 }
 
 export function unregisterPlayerPresence() {
@@ -66,10 +72,5 @@ export function unregisterPlayerPresence() {
         window.removeEventListener("pagehide", leaveHandler);
         window.removeEventListener("beforeunload", leaveHandler);
         leaveHandler = null;
-    }
-
-    if (visibilityHandler) {
-        document.removeEventListener("visibilitychange", visibilityHandler);
-        visibilityHandler = null;
     }
 }

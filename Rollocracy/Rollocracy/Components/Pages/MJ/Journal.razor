@@ -3,6 +3,7 @@
 
 @using System.Security.Claims
 @using System.Text.RegularExpressions
+@using System.IO
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components
 @using Microsoft.Extensions.Localization
@@ -38,7 +39,7 @@ else
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
                         <h4 class="rc-tool-panel__title">@L["Journal_Title"]</h4>
-                        <p class="rc-tool-panel__subtitle">@Editor.SessionName</p>
+                        @* <p class="rc-tool-panel__subtitle">@Editor.SessionName</p> *@
                     </div>
 
                     <div class="rc-tool-actions">
@@ -137,9 +138,50 @@ else
                                                 <button type="button" class="ql-list rc-journal-toolbar-button" value="ordered" title="@L["Journal_ListOrdered"]"><span>@L["Journal_ListOrdered"]</span></button>
                                                 <button type="button" class="ql-list rc-journal-toolbar-button" value="bullet" title="@L["Journal_ListBullet"]"><span>@L["Journal_ListBullet"]</span></button>
                                             </span>
+
+                                            <span class="ql-formats">
+                                                <button type="button" class="rc-journal-toolbar-button rc-journal-toolbar-button--image-url" @onclick="ToggleInsertImagePanel" title="@L["Journal_InsertImageUrl"]">
+                                                    <span>@L["Journal_InsertImageUrl"]</span>
+                                                </button>
+                                            </span>
                                         </ToolbarContent>
                                     </BlazoredTextEditor>
                                 </div>
+
+                                @if (ShowInsertImagePanel)
+                                {
+                                    <div class="rc-journal-image-url-panel">
+                                        <div class="rc-form-field rc-form-field--full">
+                                            <label>@L["Journal_ImageUrlLabel"]</label>
+                                            <input @bind="ImageUrlInput" placeholder="https://..." />
+                                        </div>
+
+                                        <div class="rc-tool-actions">
+                                            <button type="button" @onclick="InsertImageFromUrlAsync">@L["Journal_InsertImageAction"]</button>
+                                            <button type="button" @onclick="CancelInsertImage">@L["Common_Cancel"]</button>
+                                        </div>
+                                    </div>
+                                }
+
+                                @* @if (CurrentPageImages.Count > 0)
+                                {
+                                    <div class="rc-journal-image-list">
+                                        <div class="rc-detail-block__title">@L["Journal_CurrentImages"]</div>
+
+                                        <div class="rc-journal-image-list__items">
+                                            @foreach (var image in CurrentPageImages)
+                                            {
+                                                <div class="rc-journal-image-list__item">
+                                                    <img src="@image.Url" alt="@L["Journal_ImageAlt"]" />
+                                                    <div class="rc-journal-image-list__meta">@image.Url</div>
+                                                    <div class="rc-tool-actions">
+                                                        <button type="button" @onclick="() => RemoveImageAsync(image.Index)">@L["Common_Remove"]</button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                } *@
                             </div>
                         }
                     </div>
@@ -166,6 +208,8 @@ else
     private ElementReference EditorHost;
     private bool ShouldLoadCurrentPageIntoEditor;
     private bool WaitOneRenderBeforeLoadingEditorContent;
+    private bool ShowInsertImagePanel;
+    private string ImageUrlInput = string.Empty;
 
     private List<SessionJournalPageDto> CurrentPages
         => ShowPublicJournal
@@ -191,6 +235,9 @@ else
 
     private bool IsEditorVisible
     => CurrentPage is not null && (ShowPublicJournal || CurrentPage.IsVisible);
+
+    private List<JournalImageEntry> CurrentPageImages
+        => GetCurrentPageImages(CurrentPage?.ContentHtml);
 
     protected override async Task OnInitializedAsync()
     {
@@ -453,6 +500,149 @@ else
         text = text.Trim();
 
         return !string.IsNullOrWhiteSpace(text);
+    }
+
+
+    private void ToggleInsertImagePanel()
+    {
+        ShowInsertImagePanel = !ShowInsertImagePanel;
+
+        if (!ShowInsertImagePanel)
+        {
+            ImageUrlInput = string.Empty;
+        }
+    }
+
+    private void CancelInsertImage()
+    {
+        ShowInsertImagePanel = false;
+        ImageUrlInput = string.Empty;
+    }
+
+    private async Task InsertImageFromUrlAsync()
+    {
+        if (CurrentPage is null || !IsEditorVisible)
+            return;
+
+        Message = string.Empty;
+
+        if (!TryNormalizeImageUrl(ImageUrlInput, out var normalizedImageUrl))
+        {
+            Message = L["Journal_InvalidImageUrl"];
+            return;
+        }
+
+        try
+        {
+            var inserted = await JS.InvokeAsync<bool>(
+                "rollocracyJournal.insertImageByUrl",
+                EditorHost,
+                normalizedImageUrl);
+
+            if (!inserted)
+            {
+                Message = L["Journal_ImageInsertFailed"];
+                return;
+            }
+
+            await RefreshCurrentPageFromEditorAsync();
+            ShowInsertImagePanel = false;
+            ImageUrlInput = string.Empty;
+        }
+        catch
+        {
+            Message = L["Journal_ImageInsertFailed"];
+        }
+    }
+
+    private async Task RemoveImageAsync(int imageIndex)
+    {
+        if (CurrentPage is null || imageIndex < 0)
+            return;
+
+        Message = string.Empty;
+        await RefreshCurrentPageFromEditorAsync();
+
+        CurrentPage.ContentHtml = RemoveImageAtIndex(CurrentPage.ContentHtml, imageIndex);
+        JournalEditor = null;
+        ShouldLoadCurrentPageIntoEditor = true;
+        WaitOneRenderBeforeLoadingEditorContent = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static List<JournalImageEntry> GetCurrentPageImages(string? html)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+            return new List<JournalImageEntry>();
+
+        var results = new List<JournalImageEntry>();
+        var matches = Regex.Matches(
+            html,
+            @"<img\b[^>]*\bsrc\s*=\s*(?:""(?<src>[^""]+)""|'(?<src>[^']+)'|(?<src>[^\s>]+))[^>]*>",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        for (var i = 0; i < matches.Count; i++)
+        {
+            var src = matches[i].Groups["src"].Value;
+            if (TryNormalizeImageUrl(src, out var normalizedImageUrl))
+            {
+                results.Add(new JournalImageEntry
+                {
+                    Index = i,
+                    Url = normalizedImageUrl
+                });
+            }
+        }
+
+        return results;
+    }
+
+    private static string RemoveImageAtIndex(string? html, int imageIndex)
+    {
+        if (string.IsNullOrWhiteSpace(html))
+            return string.Empty;
+
+        var currentIndex = -1;
+        return Regex.Replace(
+            html,
+            @"<img\b[^>]*>",
+            match =>
+            {
+                currentIndex++;
+                return currentIndex == imageIndex ? string.Empty : match.Value;
+            },
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    }
+
+    private static bool TryNormalizeImageUrl(string? rawUrl, out string normalizedImageUrl)
+    {
+        normalizedImageUrl = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(rawUrl))
+            return false;
+
+        var trimmed = rawUrl.Trim();
+
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
+            return false;
+
+        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var extension = Path.GetExtension(uri.AbsolutePath);
+        var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".avif" };
+
+        if (string.IsNullOrWhiteSpace(extension) || !allowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+            return false;
+
+        normalizedImageUrl = uri.ToString();
+        return true;
+    }
+
+    private sealed class JournalImageEntry
+    {
+        public int Index { get; set; }
+        public string Url { get; set; } = string.Empty;
     }
 
     private void BackToSettings()

@@ -384,6 +384,25 @@ html[data-theme="dark"] .rc-support-link:focus {
     box-shadow: 0 0 0 3px rgba(196, 167, 231, 0.18);
 }
 
+.rc-topbar__quick-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.55rem;
+    flex-wrap: nowrap;
+}
+
+.rc-alert-sound-toggle {
+    flex-shrink: 0;
+}
+
+.rc-support-link__icon {
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+
 /* =========================================================
    MENU LATÉRAL DE NAVIGATION
    ---------------------------------------------------------
@@ -520,6 +539,13 @@ html[data-theme="dark"] .rc-support-link:focus {
         border-color: transparent;
         box-shadow: var(--rc-shadow);
     }
+
+        .rc-nav__link.active .rc-nav__label,
+        .rc-nav__link.active .rc-nav__icon,
+        .rc-nav__link.active .rc-nav__icon svg {
+            color: var(--rc-accent-contrast);
+            fill: currentColor;
+        }
 
 .rc-nav__link--disabled {
     opacity: 0.55;
@@ -1504,11 +1530,46 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
 @media (max-width: 960px) {
     .rc-shell,
     .rc-shell.sidebar-collapsed {
-        grid-template-columns: 1fr;
+        grid-template-columns: var(--rc-sidebar-width-collapsed) 1fr;
     }
 
     .rc-shell__sidebar {
+        display: block;
+    }
+
+    .rc-nav__welcome,
+    .rc-nav__section-title,
+    .rc-nav__label {
         display: none;
+    }
+
+    .rc-nav__header {
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding-left: 0.55rem;
+        padding-right: 0.55rem;
+    }
+
+    .rc-nav__header-actions {
+        flex-direction: column;
+    }
+
+    .rc-nav__sections {
+        align-items: center;
+        padding-left: 0.55rem;
+        padding-right: 0.55rem;
+    }
+
+    .rc-nav__section {
+        width: 100%;
+        align-items: center;
+    }
+
+    .rc-nav__link {
+        justify-content: center;
+        padding-left: 0.55rem;
+        padding-right: 0.55rem;
     }
 
     .rc-session-strip {
@@ -1518,11 +1579,44 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
     .rc-topbar {
         height: auto;
         min-height: var(--rc-topbar-height);
-        align-items: flex-start;
-        flex-direction: column;
-        justify-content: center;
+        align-items: center;
+        flex-direction: row;
+        justify-content: space-between;
         padding-top: 0.9rem;
         padding-bottom: 0.9rem;
+    }
+
+    .rc-topbar__left {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .rc-topbar__right {
+        flex: 0 0 auto;
+        min-width: auto;
+    }
+
+    .rc-brand {
+        max-width: 220px;
+    }
+
+    .rc-brand__logo {
+        height: 78%;
+        margin-left: 0;
+    }
+
+    .rc-support-link {
+        min-width: 42px;
+        width: 42px;
+        padding: 0;
+    }
+
+    .rc-support-link__text {
+        display: none;
+    }
+
+    .rc-support-link__icon {
+        display: inline-flex;
     }
 
     .rc-main {
@@ -1555,6 +1649,28 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
 
     .rc-test-stats-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+
+@media (max-width: 640px) {
+    .rc-brand {
+        max-width: 150px;
+        height: calc(var(--rc-topbar-height) - 22px);
+    }
+
+    .rc-brand__logo {
+        height: 72%;
+    }
+
+    .rc-topbar {
+        gap: 0.75rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .rc-topbar__quick-actions {
+        gap: 0.4rem;
     }
 }
 
@@ -1803,6 +1919,34 @@ html[data-theme="dark"] .rc-test-result-card.critical-success {
 .rc-empty-panel--small {
     min-height: 100px;
 }
+
+.rc-player-action-card {
+    position: relative;
+}
+
+.rc-player-action-card--highlight {
+    border-color: var(--rc-accent);
+    box-shadow: 0 0 0 2px var(--rc-accent), var(--rc-shadow);
+    animation: rcPlayerActionPulse 1.4s ease-in-out 2;
+}
+
+@keyframes rcPlayerActionPulse {
+    0% {
+        transform: translateY(0);
+        box-shadow: 0 0 0 0 rgba(0, 0, 0, 0), var(--rc-shadow);
+    }
+
+    50% {
+        transform: translateY(-1px);
+        box-shadow: 0 0 0 6px rgba(0, 0, 0, 0), var(--rc-shadow);
+    }
+
+    100% {
+        transform: translateY(0);
+        box-shadow: 0 0 0 2px var(--rc-accent), var(--rc-shadow);
+    }
+}
+
 
 /* =========================================================
    LIENS DE SESSION ET FILTRES COMMUNS
@@ -3319,6 +3463,68 @@ button.rc-global-threshold-slider__handle:focus-visible {
     color: var(--rc-accent) !important;
 }
 
+
+.rc-journal-editor .ql-editor img,
+.rc-journal-content img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    margin: 0.75rem auto;
+}
+
+.rc-journal-image-url-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.9rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 18px;
+    background: var(--rc-surface-2);
+}
+
+.rc-journal-image-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.rc-journal-image-list__items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.9rem;
+}
+
+.rc-journal-image-list__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.9rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 18px;
+    background: var(--rc-surface);
+}
+
+    .rc-journal-image-list__item img {
+        width: 100%;
+        max-height: 220px;
+        object-fit: contain;
+        background: var(--rc-bg-alt);
+    }
+
+.rc-journal-image-list__meta {
+    font-size: 0.85rem;
+    color: var(--rc-text-soft);
+    word-break: break-word;
+}
+
+.rc-journal-editor .rc-journal-toolbar-button--image-url::after {
+    content: "IMG";
+}
+
+
 .rc-name-suggestion-list {
     display: flex;
     flex-wrap: wrap;
@@ -3345,3 +3551,4 @@ button.rc-global-threshold-slider__handle:focus-visible {
     color: var(--rc-accent) !important;
     box-shadow: 0 0 0 1px var(--rc-accent) inset !important;
 }
+

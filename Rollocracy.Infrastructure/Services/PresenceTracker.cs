@@ -4,7 +4,7 @@ namespace Rollocracy.Infrastructure.Services
 {
     public class PresenceTracker : IPresenceTracker
     {
-        private static readonly TimeSpan PresenceTtl = TimeSpan.FromSeconds(20);
+        private static readonly TimeSpan PresenceTtl = TimeSpan.FromSeconds(180);
 
         private readonly object _lock = new();
 
@@ -61,11 +61,17 @@ namespace Rollocracy.Infrastructure.Services
             }
         }
 
-        public void TouchPlayerPresence(Guid sessionId, Guid playerSessionId, bool isGameMaster)
+        public bool TouchPlayerPresence(Guid sessionId, Guid playerSessionId, bool isGameMaster)
         {
             lock (_lock)
             {
+                CleanupExpiredPresenceInternal();
+
+                var becameOnline = !_presenceByPlayerSessionId.ContainsKey(playerSessionId);
+
                 TouchPlayerPresenceInternal(sessionId, playerSessionId, isGameMaster);
+
+                return becameOnline;
             }
         }
 
