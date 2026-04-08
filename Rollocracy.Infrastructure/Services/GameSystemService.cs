@@ -81,6 +81,8 @@ namespace Rollocracy.Infrastructure.Services
                 DefaultTestDiceSides = 100,
                 CriticalSuccessValue = null,
                 CriticalFailureValue = null,
+                StartingTalentChoices = 0,
+                StartingItemChoices = 0,
                 SourceGameSystemId = null,
                 LockedToSessionId = null,
                 IsGeneric = false
@@ -459,13 +461,15 @@ namespace Rollocracy.Infrastructure.Services
             {
                 Id = Guid.NewGuid(),
                 OwnerUserAccountId = sourceSystem.OwnerUserAccountId,
-                Name = $"{sourceSystem.Name} { _localizer["GameSystem_ForSession"] } {session.SessionName}",
+                Name = $"{sourceSystem.Name} {_localizer["GameSystem_ForSession"]} {session.SessionName}",
                 Description = sourceSystem.Description,
                 TestResolutionMode = sourceSystem.TestResolutionMode,
                 DefaultTestDiceCount = sourceSystem.DefaultTestDiceCount,
                 DefaultTestDiceSides = sourceSystem.DefaultTestDiceSides,
                 CriticalSuccessValue = sourceSystem.CriticalSuccessValue,
                 CriticalFailureValue = sourceSystem.CriticalFailureValue,
+                StartingTalentChoices = sourceSystem.StartingTalentChoices,
+                StartingItemChoices = sourceSystem.StartingItemChoices,
                 SourceGameSystemId = sourceSystem.Id,
                 LockedToSessionId = sessionId,
                 IsGeneric = false
@@ -503,6 +507,8 @@ namespace Rollocracy.Infrastructure.Services
                     MinValue = attribute.MinValue,
                     MaxValue = attribute.MaxValue,
                     DefaultValue = attribute.DefaultValue,
+                    CreationDistributionPoints = attribute.CreationDistributionPoints,
+                    MaxCreationDistributionPerCharacter = attribute.MaxCreationDistributionPerCharacter,
                     DefaultValueMode = attribute.DefaultValueMode,
                     DefaultValueDiceCount = attribute.DefaultValueDiceCount,
                     DefaultValueDiceSides = attribute.DefaultValueDiceSides,
@@ -590,7 +596,9 @@ namespace Rollocracy.Infrastructure.Services
                     MinValue = sourceDerivedStat.MinValue,
                     MaxValue = sourceDerivedStat.MaxValue,
                     RoundMode = sourceDerivedStat.RoundMode,
-                    DisplayOrder = sourceDerivedStat.DisplayOrder
+                    DisplayOrder = sourceDerivedStat.DisplayOrder,
+                    CreationDistributionPoints = sourceDerivedStat.CreationDistributionPoints,
+                    MaxCreationDistributionPerCharacter = sourceDerivedStat.MaxCreationDistributionPerCharacter
                 });
 
                 derivedStatMap[sourceDerivedStat.Id] = clonedDerivedStatId;
@@ -635,7 +643,8 @@ namespace Rollocracy.Infrastructure.Services
                     GameSystemId = clonedSystem.Id,
                     Name = sourceTalent.Name,
                     Description = sourceTalent.Description,
-                    DisplayOrder = sourceTalent.DisplayOrder
+                    DisplayOrder = sourceTalent.DisplayOrder,
+                    IsSelectableAtCharacterCreation = sourceTalent.IsSelectableAtCharacterCreation
                 });
 
                 talentMap[sourceTalent.Id] = clonedTalentId;
@@ -656,7 +665,8 @@ namespace Rollocracy.Infrastructure.Services
                     GameSystemId = clonedSystem.Id,
                     Name = sourceItem.Name,
                     Description = sourceItem.Description,
-                    DisplayOrder = sourceItem.DisplayOrder
+                    DisplayOrder = sourceItem.DisplayOrder,
+                    IsSelectableAtCharacterCreation = sourceItem.IsSelectableAtCharacterCreation
                 });
 
                 itemMap[sourceItem.Id] = clonedItemId;
@@ -989,6 +999,8 @@ namespace Rollocracy.Infrastructure.Services
                 CanUndoLastChange = hasSnapshot,
                 IsGeneric = system.IsGeneric,
                 CanEditGenericFlag = await CanUserPublishGenericSystemsAsync(context, ownerUserAccountId),
+                StartingTalentChoices = system.StartingTalentChoices,
+                StartingItemChoices = system.StartingItemChoices,
                 ImpactedSessions = impactedSessions.Select(s => new GameSystemImpactSessionDto
                 {
                     SessionId = s.Id,
@@ -1042,6 +1054,8 @@ namespace Rollocracy.Infrastructure.Services
                     MinValue = x.MinValue,
                     MaxValue = x.MaxValue,
                     DefaultValue = x.DefaultValue,
+                    CreationDistributionPoints = x.CreationDistributionPoints,
+                    MaxCreationDistributionPerCharacter = x.MaxCreationDistributionPerCharacter,
                     DefaultValueMode = x.DefaultValueMode,
                     DefaultValueDiceCount = x.DefaultValueDiceCount,
                     DefaultValueDiceSides = x.DefaultValueDiceSides,
@@ -1055,6 +1069,8 @@ namespace Rollocracy.Infrastructure.Services
                     MaxValue = d.MaxValue,
                     RoundMode = d.RoundMode,
                     DisplayOrder = d.DisplayOrder,
+                    CreationDistributionPoints = d.CreationDistributionPoints,
+                    MaxCreationDistributionPerCharacter = d.MaxCreationDistributionPerCharacter,
                     Components = derivedComponents
                         .Where(c => c.DerivedStatDefinitionId == d.Id)
                         .Select(c => new EditableDerivedStatComponentDto
@@ -1126,7 +1142,7 @@ namespace Rollocracy.Infrastructure.Services
                                 SourceMetricId = m.SourceMetricId
                             })
                             .ToList()
-                        })
+                     })
                         .ToList()
                 }).ToList(),
                 Gauges = gauges.Select(x => new EditableGaugeDefinitionDto
@@ -1144,6 +1160,7 @@ namespace Rollocracy.Infrastructure.Services
                     Name = t.Name,
                     Description = t.Description ?? "",
                     DisplayOrder = t.DisplayOrder,
+                    IsSelectableAtCharacterCreation = t.IsSelectableAtCharacterCreation,
                     Modifiers = talentModifiers
                     .Where(m => m.TalentDefinitionId == t.Id)
                     .Select(m => new EditableModifierDefinitionDto
@@ -1164,6 +1181,7 @@ namespace Rollocracy.Infrastructure.Services
                     Name = i.Name,
                     Description = i.Description ?? "",
                     DisplayOrder = i.DisplayOrder,
+                    IsSelectableAtCharacterCreation = i.IsSelectableAtCharacterCreation,
                     Modifiers = itemModifiers
                         .Where(m => m.ItemDefinitionId == i.Id)
                         .Select(m => new EditableModifierDefinitionDto
@@ -1208,8 +1226,8 @@ namespace Rollocracy.Infrastructure.Services
             ValidateMetrics(request.Metrics, request.Attributes, request.Gauges, request.DerivedStats);
             ValidateModifierDefinitions(request.Traits, request.Talents, request.Items, request.Attributes, request.DerivedStats, request.Metrics, request.Gauges);
             ValidateHealthGaugeRule(request.Gauges);
-            ValidateCatalogTalents(request.Talents);
-            ValidateCatalogItems(request.Items);
+            ValidateCatalogTalents(request.Talents, request.StartingTalentChoices);
+            ValidateCatalogItems(request.Items, request.StartingItemChoices);
 
             var affectedCharacters = await GetCharactersUsingSystemAsync(context, system.Id);
 
@@ -1225,6 +1243,8 @@ namespace Rollocracy.Infrastructure.Services
             system.DefaultTestDiceSides = request.DefaultTestDiceSides;
             system.CriticalSuccessValue = request.CriticalSuccessValue;
             system.CriticalFailureValue = request.CriticalFailureValue;
+            system.StartingTalentChoices = request.StartingTalentChoices;
+            system.StartingItemChoices = request.StartingItemChoices;
 
             if (system.LockedToSessionId.HasValue)
             {
@@ -1563,6 +1583,8 @@ namespace Rollocracy.Infrastructure.Services
                 entity.MinValue = item.MinValue;
                 entity.MaxValue = item.MaxValue;
                 entity.DefaultValue = item.DefaultValue;
+                entity.CreationDistributionPoints = item.CreationDistributionPoints;
+                entity.MaxCreationDistributionPerCharacter = item.MaxCreationDistributionPerCharacter;
                 entity.DefaultValueMode = item.DefaultValueMode;
                 entity.DefaultValueDiceCount = item.DefaultValueDiceCount;
                 entity.DefaultValueDiceSides = item.DefaultValueDiceSides;
@@ -1609,6 +1631,8 @@ namespace Rollocracy.Infrastructure.Services
                     MinValue = item.MinValue,
                     MaxValue = item.MaxValue,
                     DefaultValue = item.DefaultValue,
+                    CreationDistributionPoints = item.CreationDistributionPoints,
+                    MaxCreationDistributionPerCharacter = item.MaxCreationDistributionPerCharacter,
                     DefaultValueMode = item.DefaultValueMode,
                     DefaultValueDiceCount = item.DefaultValueDiceCount,
                     DefaultValueDiceSides = item.DefaultValueDiceSides,
@@ -1712,6 +1736,8 @@ namespace Rollocracy.Infrastructure.Services
                 entity.MaxValue = item.MaxValue;
                 entity.RoundMode = item.RoundMode;
                 entity.DisplayOrder = item.DisplayOrder;
+                entity.CreationDistributionPoints = item.CreationDistributionPoints;
+                entity.MaxCreationDistributionPerCharacter = item.MaxCreationDistributionPerCharacter;
 
                 var existingComponents = currentComponents
                     .Where(x => x.DerivedStatDefinitionId == entity.Id)
@@ -1776,7 +1802,9 @@ namespace Rollocracy.Infrastructure.Services
                     MinValue = item.MinValue,
                     MaxValue = item.MaxValue,
                     RoundMode = item.RoundMode,
-                    DisplayOrder = item.DisplayOrder
+                    DisplayOrder = item.DisplayOrder,
+                    CreationDistributionPoints = item.CreationDistributionPoints,
+                    MaxCreationDistributionPerCharacter = item.MaxCreationDistributionPerCharacter
                 };
 
                 context.DerivedStatDefinitions.Add(definition);
@@ -2605,6 +2633,36 @@ namespace Rollocracy.Infrastructure.Services
                         throw new Exception(_localizer["Backend_InvalidAttributeDefaultDiceExpression"]);
                 }
             }
+
+            ValidateAttributeCreationDistribution(attributes);
+        }
+
+        private void ValidateAttributeCreationDistribution(List<EditableAttributeDefinitionDto> attributes)
+        {
+            var activeAttributes = attributes.Where(x => !x.IsDeleted).ToList();
+            var distributionValues = activeAttributes
+                .Select(x => x.CreationDistributionPoints)
+                .Distinct()
+                .ToList();
+            var maxIncreaseValues = activeAttributes
+                .Select(x => x.MaxCreationDistributionPerCharacter)
+                .Distinct()
+                .ToList();
+
+            if (distributionValues.Count > 1 || maxIncreaseValues.Count > 1)
+                throw new Exception(_localizer["Backend_AttributeCreationDistributionMustBeConsistent"]);
+
+            var distribution = distributionValues.FirstOrDefault();
+            var maxIncrease = maxIncreaseValues.FirstOrDefault();
+
+            if (distribution < 0 || maxIncrease < 0)
+                throw new Exception(_localizer["Backend_AttributeCreationDistributionInvalid"]);
+
+            if (distribution > 0 && activeAttributes.Count == 0)
+                throw new Exception(_localizer["Backend_AttributeCreationDistributionRequiresAttributes"]);
+
+            if (distribution > 0 && maxIncrease <= 0)
+                throw new Exception(_localizer["Backend_AttributeCreationDistributionMaxIncreaseRequired"]);
         }
 
         private void ValidateDerivedStats(
@@ -2644,6 +2702,36 @@ namespace Rollocracy.Infrastructure.Services
                     }
                 }
             }
+
+            ValidateDerivedStatCreationDistribution(derivedStats);
+        }
+
+        private void ValidateDerivedStatCreationDistribution(List<EditableDerivedStatDefinitionDto> derivedStats)
+        {
+            var activeDerivedStats = derivedStats.Where(x => !x.IsDeleted).ToList();
+            var distributionValues = activeDerivedStats
+                .Select(x => x.CreationDistributionPoints)
+                .Distinct()
+                .ToList();
+            var maxIncreaseValues = activeDerivedStats
+                .Select(x => x.MaxCreationDistributionPerCharacter)
+                .Distinct()
+                .ToList();
+
+            if (distributionValues.Count > 1 || maxIncreaseValues.Count > 1)
+                throw new Exception(_localizer["Backend_DerivedStatCreationDistributionMustBeConsistent"]);
+
+            var distribution = distributionValues.FirstOrDefault();
+            var maxIncrease = maxIncreaseValues.FirstOrDefault();
+
+            if (distribution < 0 || maxIncrease < 0)
+                throw new Exception(_localizer["Backend_DerivedStatCreationDistributionInvalid"]);
+
+            if (distribution > 0 && activeDerivedStats.Count == 0)
+                throw new Exception(_localizer["Backend_DerivedStatCreationDistributionRequiresDerivedStats"]);
+
+            if (distribution > 0 && maxIncrease <= 0)
+                throw new Exception(_localizer["Backend_DerivedStatCreationDistributionMaxIncreaseRequired"]);
         }
 
 
@@ -3036,22 +3124,44 @@ namespace Rollocracy.Infrastructure.Services
             }
         }
 
-        private void ValidateCatalogTalents(List<EditableTalentDefinitionDto> requestTalents)
+        private void ValidateCatalogTalents(List<EditableTalentDefinitionDto> requestTalents, int startingTalentChoices)
         {
+            var availableForCreation = 0;
+
             foreach (var item in requestTalents.Where(x => !x.IsDeleted))
             {
                 if (string.IsNullOrWhiteSpace(item.Name))
                     throw new Exception(_localizer["Backend_TalentNameRequired"]);
+
+                if (item.IsSelectableAtCharacterCreation)
+                    availableForCreation++;
             }
+
+            if (startingTalentChoices < 0)
+                throw new Exception(_localizer["Backend_StartingTalentChoicesInvalid"]);
+
+            if (startingTalentChoices > availableForCreation)
+                throw new Exception(_localizer["Backend_StartingTalentChoicesExceedAvailable"]);
         }
 
-        private void ValidateCatalogItems(List<EditableItemDefinitionDto> requestItems)
+        private void ValidateCatalogItems(List<EditableItemDefinitionDto> requestItems, int startingItemChoices)
         {
+            var availableForCreation = 0;
+
             foreach (var item in requestItems.Where(x => !x.IsDeleted))
             {
                 if (string.IsNullOrWhiteSpace(item.Name))
                     throw new Exception(_localizer["Backend_ItemNameRequired"]);
+
+                if (item.IsSelectableAtCharacterCreation)
+                    availableForCreation++;
             }
+
+            if (startingItemChoices < 0)
+                throw new Exception(_localizer["Backend_StartingItemChoicesInvalid"]);
+
+            if (startingItemChoices > availableForCreation)
+                throw new Exception(_localizer["Backend_StartingItemChoicesExceedAvailable"]);
         }
 
         private async Task SyncTalentsAsync(
@@ -3097,6 +3207,7 @@ namespace Rollocracy.Infrastructure.Services
                 entity.Name = item.Name.Trim();
                 entity.Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim();
                 entity.DisplayOrder = item.DisplayOrder;
+                entity.IsSelectableAtCharacterCreation = item.IsSelectableAtCharacterCreation;
             }
 
             foreach (var item in requestTalents.Where(x => !x.TalentDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
@@ -3109,7 +3220,8 @@ namespace Rollocracy.Infrastructure.Services
                     GameSystemId = gameSystemId,
                     Name = item.Name.Trim(),
                     Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim(),
-                    DisplayOrder = item.DisplayOrder
+                    DisplayOrder = item.DisplayOrder,
+                    IsSelectableAtCharacterCreation = item.IsSelectableAtCharacterCreation
                 });
 
                 // Important : on remonte l'id gÃ©nÃ©rÃ© dans le DTO
@@ -3161,6 +3273,7 @@ namespace Rollocracy.Infrastructure.Services
                 entity.Name = item.Name.Trim();
                 entity.Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim();
                 entity.DisplayOrder = item.DisplayOrder;
+                entity.IsSelectableAtCharacterCreation = item.IsSelectableAtCharacterCreation;
             }
 
             foreach (var item in requestItems.Where(x => !x.ItemDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
@@ -3173,7 +3286,8 @@ namespace Rollocracy.Infrastructure.Services
                     GameSystemId = gameSystemId,
                     Name = item.Name.Trim(),
                     Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim(),
-                    DisplayOrder = item.DisplayOrder
+                    DisplayOrder = item.DisplayOrder,
+                    IsSelectableAtCharacterCreation = item.IsSelectableAtCharacterCreation
                 });
 
                 // Important : on remonte l'id gÃ©nÃ©rÃ© dans le DTO
@@ -3509,4 +3623,3 @@ namespace Rollocracy.Infrastructure.Services
         }
     }
 }
-

@@ -83,6 +83,32 @@ namespace Rollocracy.Domain.Characters
         public int MinValue { get; set; }
         public int MaxValue { get; set; }
         public int DefaultValue { get; set; }
+        public int AssignedBonus { get; set; }
+    }
+
+    public class CharacterCreationDerivedStatDto
+    {
+        public Guid DerivedStatDefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int MinValue { get; set; }
+        public int MaxValue { get; set; }
+        public int AssignedBonus { get; set; }
+    }
+
+    public class CharacterCreationTalentDto
+    {
+        public Guid TalentDefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public bool IsSelected { get; set; }
+    }
+
+    public class CharacterCreationItemDto
+    {
+        public Guid ItemDefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public bool IsSelected { get; set; }
     }
 
     public class CharacterCreationTraitOptionDto
@@ -106,8 +132,17 @@ namespace Rollocracy.Domain.Characters
         public Guid SessionId { get; set; }
         public Guid GameSystemId { get; set; }
         public string GameSystemName { get; set; } = string.Empty;
+        public int AttributePointsToDistribute { get; set; }
+        public int MaxAttributePointsPerAttribute { get; set; }
+        public int DerivedStatPointsToDistribute { get; set; }
+        public int MaxDerivedStatPointsPerStat { get; set; }
+        public int TalentChoicesToSelect { get; set; }
+        public int ItemChoicesToSelect { get; set; }
         public List<CharacterCreationAttributeDto> Attributes { get; set; } = new();
+        public List<CharacterCreationDerivedStatDto> DerivedStats { get; set; } = new();
         public List<CharacterCreationTraitDto> Traits { get; set; } = new();
+        public List<CharacterCreationTalentDto> Talents { get; set; } = new();
+        public List<CharacterCreationItemDto> Items { get; set; } = new();
     }
 
     public class PlayerRoomStateDto
@@ -218,7 +253,7 @@ namespace Rollocracy.Domain.Characters
 
     public class SessionGaugeDto
     {
-        public Guid SessionGaugeId {  get; set; }
+        public Guid SessionGaugeId { get; set; }
         public string Name { get; set; } = string.Empty;
         public int MinValue { get; set; }
         public int MaxValue { get; set; }

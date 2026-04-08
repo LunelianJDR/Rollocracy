@@ -167,19 +167,69 @@ namespace Rollocracy.Infrastructure.Services
                 .OrderBy(t => t.Name)
                 .ToListAsync();
 
+            var generatedAttributeDefaults = attributes.ToDictionary(a => a.Id, a => GenerateAttributeDefaultValue(a));
+
+            var derivedDefinitions = await context.DerivedStatDefinitions
+                .AsNoTracking()
+                .Where(d => d.GameSystemId == gameSystem.Id)
+                .OrderBy(d => d.DisplayOrder)
+                .ThenBy(d => d.Name)
+                .ToListAsync();
+
+            var talents = await context.TalentDefinitions
+                .AsNoTracking()
+                .Where(t => t.GameSystemId == gameSystem.Id && t.IsSelectableAtCharacterCreation)
+                .OrderBy(t => t.DisplayOrder)
+                .ThenBy(t => t.Name)
+                .ToListAsync();
+
+            var items = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(i => i.GameSystemId == gameSystem.Id && i.IsSelectableAtCharacterCreation)
+                .OrderBy(i => i.DisplayOrder)
+                .ThenBy(i => i.Name)
+                .ToListAsync();
+
             var result = new CharacterCreationTemplateDto
             {
                 PlayerSessionId = playerSessionId,
                 SessionId = session.Id,
                 GameSystemId = gameSystem.Id,
                 GameSystemName = gameSystem.Name,
+                AttributePointsToDistribute = attributes.FirstOrDefault()?.CreationDistributionPoints ?? 0,
+                MaxAttributePointsPerAttribute = attributes.FirstOrDefault()?.MaxCreationDistributionPerCharacter ?? 0,
+                DerivedStatPointsToDistribute = derivedDefinitions.FirstOrDefault()?.CreationDistributionPoints ?? 0,
+                MaxDerivedStatPointsPerStat = derivedDefinitions.FirstOrDefault()?.MaxCreationDistributionPerCharacter ?? 0,
+                TalentChoicesToSelect = gameSystem.StartingTalentChoices,
+                ItemChoicesToSelect = gameSystem.StartingItemChoices,
                 Attributes = attributes.Select(a => new CharacterCreationAttributeDto
                 {
                     AttributeDefinitionId = a.Id,
                     Name = a.Name,
                     MinValue = a.MinValue,
                     MaxValue = a.MaxValue,
-                    DefaultValue = GenerateAttributeDefaultValue(a)
+                    DefaultValue = generatedAttributeDefaults[a.Id],
+                    AssignedBonus = 0
+                }).ToList(),
+                DerivedStats = derivedDefinitions.Select(d => new CharacterCreationDerivedStatDto
+                {
+                    DerivedStatDefinitionId = d.Id,
+                    Name = d.Name,
+                    MinValue = d.MinValue,
+                    MaxValue = d.MaxValue,
+                    AssignedBonus = 0
+                }).ToList(),
+                Talents = talents.Select(t => new CharacterCreationTalentDto
+                {
+                    TalentDefinitionId = t.Id,
+                    Name = t.Name,
+                    Description = t.Description ?? string.Empty
+                }).ToList(),
+                Items = items.Select(i => new CharacterCreationItemDto
+                {
+                    ItemDefinitionId = i.Id,
+                    Name = i.Name,
+                    Description = i.Description ?? string.Empty
                 }).ToList()
             };
 
@@ -225,8 +275,11 @@ namespace Rollocracy.Infrastructure.Services
     Guid playerSessionId,
     string name,
     string biography,
-    Dictionary<Guid, int> attributeValues,
-    Dictionary<Guid, Guid> traitSelections)
+    Dictionary<Guid, int> attributeBonusValues,
+    Dictionary<Guid, Guid> traitSelections,
+    Dictionary<Guid, int> derivedStatBonusValues,
+    List<Guid> selectedTalentIds,
+    List<Guid> selectedItemIds)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -278,6 +331,21 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(g => g.GameSystemId == gameSystemId)
                 .ToListAsync();
 
+            var derivedStatDefinitions = await context.DerivedStatDefinitions
+                .AsNoTracking()
+                .Where(d => d.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var selectableTalents = await context.TalentDefinitions
+                .AsNoTracking()
+                .Where(t => t.GameSystemId == gameSystemId && t.IsSelectableAtCharacterCreation)
+                .ToListAsync();
+
+            var selectableItems = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(i => i.GameSystemId == gameSystemId && i.IsSelectableAtCharacterCreation)
+                .ToListAsync();
+
             var character = new Character
             {
                 Id = Guid.NewGuid(),
@@ -291,11 +359,33 @@ namespace Rollocracy.Infrastructure.Services
 
             context.Characters.Add(character);
 
+            var totalAttributeBonus = attributeBonusValues.Values.Sum();
+            var requiredAttributeBonus = attributeDefinitions.FirstOrDefault()?.CreationDistributionPoints ?? 0;
+            var maxAttributeBonusPerStat = attributeDefinitions.FirstOrDefault()?.MaxCreationDistributionPerCharacter ?? 0;
+
+            if (requiredAttributeBonus > 0)
+            {
+                if (attributeDefinitions.Count == 0)
+                    throw new Exception(_localizer["Backend_CharacterCreationNoAttributesForDistribution"]);
+
+                if (totalAttributeBonus != requiredAttributeBonus)
+                    throw new Exception(_localizer["Backend_CharacterCreationAttributePointsMustBeFullyDistributed"]);
+
+                foreach (var bonus in attributeBonusValues.Values)
+                {
+                    if (bonus < 0 || (maxAttributeBonusPerStat > 0 && bonus > maxAttributeBonusPerStat))
+                        throw new Exception(_localizer["Backend_CharacterCreationAttributeBonusExceedsLimit"]);
+                }
+            }
+
             foreach (var attributeDefinition in attributeDefinitions)
             {
-                // Les Attributes ne sont plus choisis par le joueur Ã  la crÃ©ation :
-                // on gÃ©nÃ¨re toujours la valeur depuis la dÃ©finition du systÃ¨me.
                 var value = GenerateAttributeDefaultValue(attributeDefinition);
+                var bonus = attributeBonusValues.TryGetValue(attributeDefinition.Id, out var requestedBonus)
+                    ? requestedBonus
+                    : 0;
+
+                value += bonus;
                 value = Math.Clamp(value, attributeDefinition.MinValue, attributeDefinition.MaxValue);
 
                 context.CharacterAttributeValues.Add(new CharacterAttributeValue
@@ -353,6 +443,101 @@ namespace Rollocracy.Infrastructure.Services
                     CharacterId = character.Id,
                     TraitDefinitionId = traitDefinition.Id,
                     TraitOptionId = selectedOptionIdFromPlayer
+                });
+            }
+
+
+            var requiredTalentChoices = session.GameSystemId.HasValue
+                ? await context.GameSystems.Where(gs => gs.Id == gameSystemId).Select(gs => gs.StartingTalentChoices).FirstAsync()
+                : 0;
+
+            var requiredItemChoices = session.GameSystemId.HasValue
+                ? await context.GameSystems.Where(gs => gs.Id == gameSystemId).Select(gs => gs.StartingItemChoices).FirstAsync()
+                : 0;
+
+            selectedTalentIds = (selectedTalentIds ?? new List<Guid>()).Distinct().ToList();
+            selectedItemIds = (selectedItemIds ?? new List<Guid>()).Distinct().ToList();
+            derivedStatBonusValues ??= new Dictionary<Guid, int>();
+
+            if (requiredTalentChoices > 0)
+            {
+                if (selectableTalents.Count < requiredTalentChoices)
+                    throw new Exception(_localizer["Backend_CharacterCreationTalentChoicesConfigurationInvalid"]);
+
+                if (selectedTalentIds.Count != requiredTalentChoices)
+                    throw new Exception(_localizer["Backend_CharacterCreationTalentChoicesRequired"]);
+
+                if (selectedTalentIds.Any(id => selectableTalents.All(t => t.Id != id)))
+                    throw new Exception(_localizer["Backend_CharacterCreationTalentChoiceInvalid"]);
+            }
+
+            if (requiredItemChoices > 0)
+            {
+                if (selectableItems.Count < requiredItemChoices)
+                    throw new Exception(_localizer["Backend_CharacterCreationItemChoicesConfigurationInvalid"]);
+
+                if (selectedItemIds.Count != requiredItemChoices)
+                    throw new Exception(_localizer["Backend_CharacterCreationItemChoicesRequired"]);
+
+                if (selectedItemIds.Any(id => selectableItems.All(i => i.Id != id)))
+                    throw new Exception(_localizer["Backend_CharacterCreationItemChoiceInvalid"]);
+            }
+
+            var requiredDerivedBonus = derivedStatDefinitions.FirstOrDefault()?.CreationDistributionPoints ?? 0;
+            var maxDerivedBonusPerStat = derivedStatDefinitions.FirstOrDefault()?.MaxCreationDistributionPerCharacter ?? 0;
+            var totalDerivedBonus = derivedStatBonusValues.Values.Sum();
+
+            if (requiredDerivedBonus > 0)
+            {
+                if (derivedStatDefinitions.Count == 0)
+                    throw new Exception(_localizer["Backend_CharacterCreationNoDerivedStatsForDistribution"]);
+
+                if (totalDerivedBonus != requiredDerivedBonus)
+                    throw new Exception(_localizer["Backend_CharacterCreationDerivedStatPointsMustBeFullyDistributed"]);
+
+                foreach (var bonus in derivedStatBonusValues.Values)
+                {
+                    if (bonus < 0 || (maxDerivedBonusPerStat > 0 && bonus > maxDerivedBonusPerStat))
+                        throw new Exception(_localizer["Backend_CharacterCreationDerivedStatBonusExceedsLimit"]);
+                }
+            }
+
+            foreach (var selectedTalentId in selectedTalentIds)
+            {
+                context.CharacterTalents.Add(new CharacterTalent
+                {
+                    Id = Guid.NewGuid(),
+                    CharacterId = character.Id,
+                    TalentDefinitionId = selectedTalentId
+                });
+            }
+
+            foreach (var selectedItemId in selectedItemIds)
+            {
+                context.CharacterItems.Add(new CharacterItem
+                {
+                    Id = Guid.NewGuid(),
+                    CharacterId = character.Id,
+                    ItemDefinitionId = selectedItemId
+                });
+            }
+
+            foreach (var derivedStatDefinition in derivedStatDefinitions)
+            {
+                var bonus = derivedStatBonusValues.TryGetValue(derivedStatDefinition.Id, out var requestedBonus)
+                    ? requestedBonus
+                    : 0;
+
+                if (bonus <= 0)
+                    continue;
+
+                context.CharacterModifiers.Add(new CharacterModifier
+                {
+                    Id = Guid.NewGuid(),
+                    CharacterId = character.Id,
+                    TargetType = CharacterEffectTargetType.DerivedStat,
+                    TargetId = derivedStatDefinition.Id,
+                    AddValue = bonus
                 });
             }
 
@@ -430,6 +615,21 @@ namespace Rollocracy.Infrastructure.Services
             var gaugeDefinitions = await context.GaugeDefinitions
                 .AsNoTracking()
                 .Where(g => g.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var derivedStatDefinitions = await context.DerivedStatDefinitions
+                .AsNoTracking()
+                .Where(d => d.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var selectableTalents = await context.TalentDefinitions
+                .AsNoTracking()
+                .Where(t => t.GameSystemId == gameSystemId && t.IsSelectableAtCharacterCreation)
+                .ToListAsync();
+
+            var selectableItems = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(i => i.GameSystemId == gameSystemId && i.IsSelectableAtCharacterCreation)
                 .ToListAsync();
 
             var character = new Character
@@ -993,6 +1193,21 @@ namespace Rollocracy.Infrastructure.Services
             var gaugeDefinitions = await context.GaugeDefinitions
                 .AsNoTracking()
                 .Where(g => g.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var derivedStatDefinitions = await context.DerivedStatDefinitions
+                .AsNoTracking()
+                .Where(d => d.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var selectableTalents = await context.TalentDefinitions
+                .AsNoTracking()
+                .Where(t => t.GameSystemId == gameSystemId && t.IsSelectableAtCharacterCreation)
+                .ToListAsync();
+
+            var selectableItems = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(i => i.GameSystemId == gameSystemId && i.IsSelectableAtCharacterCreation)
                 .ToListAsync();
 
             var traitDefinitions = await context.TraitDefinitions
@@ -2327,4 +2542,3 @@ namespace Rollocracy.Infrastructure.Services
         }
     }
 }
-

@@ -24,6 +24,8 @@ namespace Rollocracy.Domain.GameRules
         public int MinValue { get; set; }
         public int MaxValue { get; set; }
         public int DefaultValue { get; set; }
+        public int CreationDistributionPoints { get; set; }
+        public int MaxCreationDistributionPerCharacter { get; set; }
         public BaseValueGenerationMode DefaultValueMode { get; set; }
         public int DefaultValueDiceCount { get; set; }
         public int DefaultValueDiceSides { get; set; }
@@ -49,6 +51,8 @@ namespace Rollocracy.Domain.GameRules
         public int MaxValue { get; set; }
         public ComputedValueRoundMode RoundMode { get; set; }
         public int DisplayOrder { get; set; }
+        public int CreationDistributionPoints { get; set; }
+        public int MaxCreationDistributionPerCharacter { get; set; }
         public bool IsDeleted { get; set; }
         public List<EditableDerivedStatComponentDto> Components { get; set; } = new();
     }
@@ -137,6 +141,7 @@ namespace Rollocracy.Domain.GameRules
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public int DisplayOrder { get; set; }
+        public bool IsSelectableAtCharacterCreation { get; set; }
         public bool IsDeleted { get; set; }
         public List<EditableModifierDefinitionDto> Modifiers { get; set; } = new();
     }
@@ -147,6 +152,7 @@ namespace Rollocracy.Domain.GameRules
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public int DisplayOrder { get; set; }
+        public bool IsSelectableAtCharacterCreation { get; set; }
         public bool IsDeleted { get; set; }
         public List<EditableModifierDefinitionDto> Modifiers { get; set; } = new();
     }
@@ -165,6 +171,8 @@ namespace Rollocracy.Domain.GameRules
         public bool CanUndoLastChange { get; set; }
         public bool IsGeneric { get; set; }
         public bool CanEditGenericFlag { get; set; }
+        public int StartingTalentChoices { get; set; }
+        public int StartingItemChoices { get; set; }
 
         public List<GameSystemImpactSessionDto> ImpactedSessions { get; set; } = new();
         public List<BaseAttributeReferenceDto> AvailableBaseAttributes { get; set; } = new();
@@ -190,6 +198,8 @@ namespace Rollocracy.Domain.GameRules
         public int? CriticalFailureValue { get; set; }
         public bool ConfirmSharedSystemChanges { get; set; }
         public bool IsGeneric { get; set; }
+        public int StartingTalentChoices { get; set; }
+        public int StartingItemChoices { get; set; }
 
         public List<EditableAttributeDefinitionDto> Attributes { get; set; } = new();
         public List<EditableDerivedStatDefinitionDto> DerivedStats { get; set; } = new();

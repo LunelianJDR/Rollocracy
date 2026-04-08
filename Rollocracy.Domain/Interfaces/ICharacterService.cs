@@ -13,8 +13,11 @@ namespace Rollocracy.Domain.Interfaces
             Guid playerSessionId,
             string name,
             string biography,
-            Dictionary<Guid, int> attributeValues,
-            Dictionary<Guid, Guid> traitSelections);
+            Dictionary<Guid, int> attributeBonusValues,
+            Dictionary<Guid, Guid> traitSelections,
+            Dictionary<Guid, int> derivedStatBonusValues,
+            List<Guid> selectedTalentIds,
+            List<Guid> selectedItemIds);
 
         Task<Character> CreateNpcAsync(
             Guid playerSessionId,

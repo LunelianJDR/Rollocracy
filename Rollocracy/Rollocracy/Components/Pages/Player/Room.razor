@@ -13,6 +13,7 @@
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.JSInterop
+@using System.Text.RegularExpressions
 
 @inject ICharacterService CharacterService
 @inject IGameTestService GameTestService
@@ -252,7 +253,10 @@ else
                             <div class="rc-tool-form-grid">
                                 <div class="rc-form-field">
                                     <label>@L["Character_Edit_Name"]</label>
-                                    <input @bind="NewCharacterName" />
+                                    <input value="@NewCharacterName"
+                                           maxlength="22"
+                                           @ref="NewCharacterNameInputRef"
+                                           @oninput="OnNewCharacterNameInput" />
                                 </div>
 
                                 <div class="rc-form-field rc-form-field--full">
@@ -260,6 +264,50 @@ else
                                     <textarea rows="4" @bind="NewCharacterBiography"></textarea>
                                 </div>
                             </div>
+
+                            @if (CreationTemplate.AttributePointsToDistribute > 0 && CreationTemplate.Attributes.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["CharacterCreation_AttributeDistributionTitle"]</div>
+                                    <p class="rc-tool-muted">@L["CharacterCreation_PointsRemaining", RemainingCreationAttributePoints]</p>
+
+                                    <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                        @foreach (var typeattribute in CreationTemplate.Attributes)
+                                        {
+                                            <div class="rc-form-field">
+                                                <label>@typeattribute.Name (+@typeattribute.DefaultValue)</label>
+                                                <input type="number"
+                                                       min="0"
+                                                       max="@GetCreationAttributeInputMax(typeattribute.AttributeDefinitionId)"
+                                                       value="@CreationAttributeValues[typeattribute.AttributeDefinitionId]"
+                                                       @onchange="e => OnCreationAttributeBonusChanged(typeattribute.AttributeDefinitionId, e)" />
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (CreationTemplate.DerivedStatPointsToDistribute > 0 && CreationTemplate.DerivedStats.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["CharacterCreation_DerivedStatDistributionTitle"]</div>
+                                    <p class="rc-tool-muted">@L["CharacterCreation_PointsRemaining", RemainingCreationDerivedStatPoints]</p>
+
+                                    <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                        @foreach (var derivedStat in CreationTemplate.DerivedStats)
+                                        {
+                                            <div class="rc-form-field">
+                                                <label>@derivedStat.Name</label>
+                                                <input type="number"
+                                                       min="0"
+                                                       max="@GetCreationDerivedStatInputMax(derivedStat.DerivedStatDefinitionId)"
+                                                       value="@CreationDerivedStatValues[derivedStat.DerivedStatDefinitionId]"
+                                                       @onchange="e => OnCreationDerivedStatBonusChanged(derivedStat.DerivedStatDefinitionId, e)" />
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
 
                             @if (CreationTemplate.Traits.Count > 0)
                             {
@@ -290,8 +338,52 @@ else
                                 </div>
                             }
 
+                            @if (CreationTemplate.TalentChoicesToSelect > 0 && CreationTemplate.Talents.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["CharacterCreation_TalentChoicesTitle"]</div>
+                                    <p class="rc-tool-muted">@L["CharacterCreation_ChoicesSelected", SelectedCreationTalentIds.Count, CreationTemplate.TalentChoicesToSelect]</p>
+                                    <div class="rc-character-inline-list">
+                                        @foreach (var talent in CreationTemplate.Talents)
+                                        {
+                                            <label class="rc-filter-toggle">
+                                                <input type="checkbox"
+                                                       checked="@SelectedCreationTalentIds.Contains(talent.TalentDefinitionId)"
+                                                       disabled="@IsCreationTalentDisabled(talent.TalentDefinitionId)"
+                                                       @onchange="e => ToggleCreationTalent(talent.TalentDefinitionId, e.Value is bool value && value)" />
+                                                <span>@talent.Name</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (CreationTemplate.ItemChoicesToSelect > 0 && CreationTemplate.Items.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["CharacterCreation_ItemChoicesTitle"]</div>
+                                    <p class="rc-tool-muted">@L["CharacterCreation_ChoicesSelected", SelectedCreationItemIds.Count, CreationTemplate.ItemChoicesToSelect]</p>
+                                    <div class="rc-character-inline-list">
+                                        @foreach (var item in CreationTemplate.Items)
+                                        {
+                                            <label class="rc-filter-toggle">
+                                                <input type="checkbox"
+                                                       checked="@SelectedCreationItemIds.Contains(item.ItemDefinitionId)"
+                                                       disabled="@IsCreationItemDisabled(item.ItemDefinitionId)"
+                                                       @onchange="e => ToggleCreationItem(item.ItemDefinitionId, e.Value is bool value && value)" />
+                                                <span>@item.Name</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
                             <div class="rc-tool-actions">
-                                <button type="button" @onclick="HandleCreateCharacterInline">@L["Session_Player_CreateCharacter"]</button>
+                                <button type="button"
+                                        @onclick="HandleCreateCharacterInline"
+                                        disabled="@(!CanSubmitCharacterCreation() || !CanSubmitCharacterName())">
+                                    @L["Session_Player_CreateCharacter"]
+                                </button>
                                 <button type="button" @onclick="CancelInlineCharacterCreation">@L["Common_Cancel"]</button>
                             </div>
                         </div>
@@ -1057,13 +1149,19 @@ else
     private string NewCharacterName = string.Empty;
     private string NewCharacterBiography = string.Empty;
     private Dictionary<Guid, int> CreationAttributeValues = new();
+    private Dictionary<Guid, int> CreationDerivedStatValues = new();
     private Dictionary<Guid, Guid> CreationTraitSelections = new();
+    private HashSet<Guid> SelectedCreationTalentIds = new();
+    private HashSet<Guid> SelectedCreationItemIds = new();
 
     private bool IsCreatingCharacterInline;
     private bool IsEditingBiography;
     private string BiographyDraft = string.Empty;
     private bool ShowBiographyPanel;
     private bool IsViewingDeadCharacter => ViewedDeadCharacter is not null;
+
+    private ElementReference NewCharacterNameInputRef;
+    private bool IsNewCharacterNameInputFilterAttached;
 
     private bool IsTwitchEnabled = false;
     private bool ShowTwitchChat = true;
@@ -1203,6 +1301,23 @@ else
                 "./js/playerPresence.js");
 
             await RegisterBrowserPresenceIfNeededAsync();
+        }
+
+        if (IsCreatingCharacterInline && CreationTemplate is not null && !IsNewCharacterNameInputFilterAttached)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("rollocracyRoom.attachCharacterNameFilter", NewCharacterNameInputRef);
+                IsNewCharacterNameInputFilterAttached = true;
+            }
+            catch
+            {
+            }
+        }
+
+        if ((!IsCreatingCharacterInline || CreationTemplate is null) && IsNewCharacterNameInputFilterAttached)
+        {
+            IsNewCharacterNameInputFilterAttached = false;
         }
     }
 
@@ -1477,8 +1592,11 @@ else
             Message = string.Empty;
 
             CreationTemplate = await CharacterService.GetCharacterCreationTemplateAsync(PlayerSessionId);
-            CreationAttributeValues.Clear();
+            CreationAttributeValues = CreationTemplate.Attributes.ToDictionary(x => x.AttributeDefinitionId, x => 0);
+            CreationDerivedStatValues = CreationTemplate.DerivedStats.ToDictionary(x => x.DerivedStatDefinitionId, x => 0);
             CreationTraitSelections.Clear();
+            SelectedCreationTalentIds.Clear();
+            SelectedCreationItemIds.Clear();
 
             foreach (var trait in CreationTemplate.Traits)
             {
@@ -1509,7 +1627,10 @@ else
         NewCharacterName = string.Empty;
         NewCharacterBiography = string.Empty;
         CreationAttributeValues.Clear();
+        CreationDerivedStatValues.Clear();
         CreationTraitSelections.Clear();
+        SelectedCreationTalentIds.Clear();
+        SelectedCreationItemIds.Clear();
         return Task.CompletedTask;
     }
 
@@ -1520,14 +1641,20 @@ else
             if (CreationTemplate is null)
                 return;
 
+            if (!CanSubmitCharacterName())
+                return;
+
             Message = string.Empty;
 
             await CharacterService.CreateCharacterAsync(
                 PlayerSessionId,
                 NewCharacterName,
                 NewCharacterBiography,
-                new Dictionary<Guid, int>(),
-                CreationTraitSelections);
+                CreationAttributeValues,
+                CreationTraitSelections,
+                CreationDerivedStatValues,
+                SelectedCreationTalentIds.ToList(),
+                SelectedCreationItemIds.ToList());
 
             if (hubConnection is not null && !PresenceJoined && State is not null)
             {
@@ -1549,11 +1676,14 @@ else
             await LoadLatestPoll(allowArrivalAlert: false);
 
             IsCreatingCharacterInline = false;
-            CreationTemplate = null;
             NewCharacterName = string.Empty;
             NewCharacterBiography = string.Empty;
             CreationAttributeValues.Clear();
+            CreationDerivedStatValues.Clear();
             CreationTraitSelections.Clear();
+            SelectedCreationTalentIds.Clear();
+            SelectedCreationItemIds.Clear();
+            CreationTemplate = null;
         }
         catch (Exception ex)
         {
@@ -1916,6 +2046,193 @@ else
             return;
 
         Navigation.NavigateTo($"/mj/session/{State.SessionId}");
+    }
+
+
+    private int RemainingCreationAttributePoints
+        => CreationTemplate is null
+            ? 0
+            : CreationTemplate.AttributePointsToDistribute - CreationAttributeValues.Values.Sum();
+
+    private int RemainingCreationDerivedStatPoints
+        => CreationTemplate is null
+            ? 0
+            : CreationTemplate.DerivedStatPointsToDistribute - CreationDerivedStatValues.Values.Sum();
+
+            private int GetCreationAttributeInputMax(Guid attributeDefinitionId)
+{
+    if (CreationTemplate is null || !CreationAttributeValues.ContainsKey(attributeDefinitionId))
+        return 0;
+
+    var currentValue = CreationAttributeValues[attributeDefinitionId];
+    var remaining = RemainingCreationAttributePoints;
+
+    var maxPerAttribute = CreationTemplate.MaxAttributePointsPerAttribute > 0
+        ? CreationTemplate.MaxAttributePointsPerAttribute
+        : CreationTemplate.AttributePointsToDistribute;
+
+    return Math.Max(0, Math.Min(maxPerAttribute, currentValue + remaining));
+}
+
+private int GetCreationDerivedStatInputMax(Guid derivedStatDefinitionId)
+{
+    if (CreationTemplate is null || !CreationDerivedStatValues.ContainsKey(derivedStatDefinitionId))
+        return 0;
+
+    var currentValue = CreationDerivedStatValues[derivedStatDefinitionId];
+    var remaining = RemainingCreationDerivedStatPoints;
+
+    var maxPerStat = CreationTemplate.MaxDerivedStatPointsPerStat > 0
+        ? CreationTemplate.MaxDerivedStatPointsPerStat
+        : CreationTemplate.DerivedStatPointsToDistribute;
+
+    return Math.Max(0, Math.Min(maxPerStat, currentValue + remaining));
+}
+
+private bool IsCreationTalentDisabled(Guid talentDefinitionId)
+{
+    if (CreationTemplate is null || CreationTemplate.TalentChoicesToSelect <= 0)
+        return false;
+
+    if (SelectedCreationTalentIds.Contains(talentDefinitionId))
+        return false;
+
+    return SelectedCreationTalentIds.Count >= CreationTemplate.TalentChoicesToSelect;
+}
+
+private bool IsCreationItemDisabled(Guid itemDefinitionId)
+{
+    if (CreationTemplate is null || CreationTemplate.ItemChoicesToSelect <= 0)
+        return false;
+
+    if (SelectedCreationItemIds.Contains(itemDefinitionId))
+        return false;
+
+    return SelectedCreationItemIds.Count >= CreationTemplate.ItemChoicesToSelect;
+}
+
+    private void OnCreationAttributeBonusChanged(Guid attributeDefinitionId, ChangeEventArgs args)
+    {
+        if (CreationTemplate is null || !CreationAttributeValues.ContainsKey(attributeDefinitionId))
+            return;
+
+        var rawValue = args.Value?.ToString();
+        var parsed = 0;
+        int.TryParse(rawValue, out parsed);
+        parsed = Math.Max(0, parsed);
+
+        if (CreationTemplate.MaxAttributePointsPerAttribute > 0)
+            parsed = Math.Min(parsed, CreationTemplate.MaxAttributePointsPerAttribute);
+
+        CreationAttributeValues[attributeDefinitionId] = parsed;
+
+        var remaining = RemainingCreationAttributePoints;
+        if (remaining < 0)
+        {
+            CreationAttributeValues[attributeDefinitionId] = Math.Max(0, parsed + remaining);
+        }
+    }
+
+    private void OnCreationDerivedStatBonusChanged(Guid derivedStatDefinitionId, ChangeEventArgs args)
+    {
+        if (CreationTemplate is null || !CreationDerivedStatValues.ContainsKey(derivedStatDefinitionId))
+            return;
+
+        var rawValue = args.Value?.ToString();
+        var parsed = 0;
+        int.TryParse(rawValue, out parsed);
+        parsed = Math.Max(0, parsed);
+
+        if (CreationTemplate.MaxDerivedStatPointsPerStat > 0)
+            parsed = Math.Min(parsed, CreationTemplate.MaxDerivedStatPointsPerStat);
+
+        CreationDerivedStatValues[derivedStatDefinitionId] = parsed;
+
+        var remaining = RemainingCreationDerivedStatPoints;
+        if (remaining < 0)
+        {
+            CreationDerivedStatValues[derivedStatDefinitionId] = Math.Max(0, parsed + remaining);
+        }
+    }
+
+    private void ToggleCreationTalent(Guid talentDefinitionId, bool isSelected)
+    {
+        if (CreationTemplate is null)
+            return;
+
+        if (isSelected)
+        {
+            if (SelectedCreationTalentIds.Count >= CreationTemplate.TalentChoicesToSelect)
+                return;
+
+            SelectedCreationTalentIds.Add(talentDefinitionId);
+        }
+        else
+        {
+            SelectedCreationTalentIds.Remove(talentDefinitionId);
+        }
+    }
+
+    private void ToggleCreationItem(Guid itemDefinitionId, bool isSelected)
+    {
+        if (CreationTemplate is null)
+            return;
+
+        if (isSelected)
+        {
+            if (SelectedCreationItemIds.Count >= CreationTemplate.ItemChoicesToSelect)
+                return;
+
+            SelectedCreationItemIds.Add(itemDefinitionId);
+        }
+        else
+        {
+            SelectedCreationItemIds.Remove(itemDefinitionId);
+        }
+    }
+
+    private bool CanSubmitCharacterCreation()
+    {
+        if (CreationTemplate is null)
+            return false;
+
+        if (CreationTemplate.AttributePointsToDistribute > 0 && RemainingCreationAttributePoints != 0)
+            return false;
+
+        if (CreationTemplate.DerivedStatPointsToDistribute > 0 && RemainingCreationDerivedStatPoints != 0)
+            return false;
+
+        if (CreationTemplate.TalentChoicesToSelect > 0 && SelectedCreationTalentIds.Count != CreationTemplate.TalentChoicesToSelect)
+            return false;
+
+        if (CreationTemplate.ItemChoicesToSelect > 0 && SelectedCreationItemIds.Count != CreationTemplate.ItemChoicesToSelect)
+            return false;
+
+        return true;
+    }
+
+    private static readonly Regex CharacterNameAllowedCharactersRegex = new(@"[^\p{L}\p{N},'""/\- ]+", RegexOptions.Compiled);
+
+    private void OnNewCharacterNameInput(ChangeEventArgs args)
+    {
+        var rawValue = args.Value?.ToString() ?? string.Empty;
+
+        rawValue = CharacterNameAllowedCharactersRegex.Replace(rawValue, string.Empty);
+
+        if (rawValue.Length > 22)
+        {
+            rawValue = rawValue[..22];
+        }
+
+        if (!string.Equals(NewCharacterName, rawValue, StringComparison.Ordinal))
+        {
+            NewCharacterName = rawValue;
+        }
+    }
+
+    private bool CanSubmitCharacterName()
+    {
+        return !string.IsNullOrWhiteSpace(NewCharacterName);
     }
 
     private IEnumerable<CharacterCreationTraitOptionDto> GetSelectableCreationOptions(CharacterCreationTraitDto trait)
@@ -2439,3 +2756,4 @@ else
             : page.Title.Trim();
     }
 }
+

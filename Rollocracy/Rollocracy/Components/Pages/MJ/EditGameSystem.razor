@@ -206,17 +206,28 @@ else
                     <div class="rc-collapse-section__summary-text">
                         <div class="rc-collapse-section__title">@L["GameSystem_Editor_AttributesSection"]</div>
                         <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_AttributesSubtitle"]</div>
-                </div>
-                        <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
-                            <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
-                        </div>
                     </div>
+                    <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
+                        <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
+                    </div>
+                </div>
             </summary>
 
             <div class="rc-collapse-section__body">
                 <div class="rc-tool-panel">
                     <div class="rc-tool-actions">
                         <button type="button" @onclick="AddAttributeRow">@L["GameSystem_Editor_AddAttributeRow"]</button>
+                    </div>
+
+                    <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                        <div class="rc-form-field">
+                            <label>@L["GameSystem_Editor_AttributeCreationDistributionPoints"]</label>
+                            <input type="number" @bind="AttributeCreationDistributionPoints" disabled="@(CurrentSystem.Attributes.Count == 0)" />
+                        </div>
+                        <div class="rc-form-field">
+                            <label>@L["GameSystem_Editor_AttributeCreationDistributionMaxPerStat"]</label>
+                            <input type="number" @bind="AttributeCreationDistributionMax" disabled="@(CurrentSystem.Attributes.Count == 0)" />
+                        </div>
                     </div>
 
                     @if (CurrentSystem.Attributes.Count == 0)
@@ -332,6 +343,17 @@ else
                 <div class="rc-tool-panel">
                     <div class="rc-tool-actions">
                         <button type="button" @onclick="AddDerivedStatRow">@L["GameSystem_Editor_AddDerivedStatRow"]</button>
+                    </div>
+
+                    <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                        <div class="rc-form-field">
+                            <label>@L["GameSystem_Editor_DerivedCreationDistributionPoints"]</label>
+                            <input type="number" @bind="DerivedStatCreationDistributionPoints" disabled="@(CurrentSystem.DerivedStats.Count == 0)" />
+                        </div>
+                        <div class="rc-form-field">
+                            <label>@L["GameSystem_Editor_DerivedCreationDistributionMaxPerStat"]</label>
+                            <input type="number" @bind="DerivedStatCreationDistributionMax" disabled="@(CurrentSystem.DerivedStats.Count == 0)" />
+                        </div>
                     </div>
 
                     @if (CurrentSystem.DerivedStats.Count == 0)
@@ -1050,6 +1072,13 @@ else
                         <button type="button" @onclick="AddTalentRow">@L["GameSystem_Editor_AddTalentRow"]</button>
                     </div>
 
+                    <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                        <div class="rc-form-field">
+                            <label>@L["GameSystem_Editor_StartingTalentChoices"]</label>
+                            <input type="number" @bind="CurrentSystem.StartingTalentChoices" />
+                        </div>
+                    </div>
+
                     @if (CurrentSystem.Talents.Count == 0)
                     {
                         <div class="rc-empty-panel rc-empty-panel--small">
@@ -1088,6 +1117,14 @@ else
                                             <div class="rc-form-field rc-form-field--full">
                                                 <label>@L["Common_Description"]</label>
                                                 <textarea rows="3" @bind="talent.Description"></textarea>
+                                            </div>
+
+                                            <div class="rc-form-field">
+                                                <label></label>
+                                                <label class="rc-filter-toggle">
+                                                    <input type="checkbox" @bind="talent.IsSelectableAtCharacterCreation" />
+                                                    <span>@L["GameSystem_Editor_IsSelectableAtCharacterCreation"]</span>
+                                                </label>
                                             </div>
                                         </div>
 
@@ -1203,6 +1240,13 @@ else
                         <button type="button" @onclick="AddItemRow">@L["GameSystem_Editor_AddItemRow"]</button>
                     </div>
 
+                    <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                        <div class="rc-form-field">
+                            <label>@L["GameSystem_Editor_StartingItemChoices"]</label>
+                            <input type="number" @bind="CurrentSystem.StartingItemChoices" />
+                        </div>
+                    </div>
+
                     @if (CurrentSystem.Items.Count == 0)
                     {
                         <div class="rc-empty-panel rc-empty-panel--small">
@@ -1241,6 +1285,14 @@ else
                                             <div class="rc-form-field rc-form-field--full">
                                                 <label>@L["Common_Description"]</label>
                                                 <textarea rows="3" @bind="item.Description"></textarea>
+                                            </div>
+
+                                            <div class="rc-form-field">
+                                                <label></label>
+                                                <label class="rc-filter-toggle">
+                                                    <input type="checkbox" @bind="item.IsSelectableAtCharacterCreation" />
+                                                    <span>@L["GameSystem_Editor_IsSelectableAtCharacterCreation"]</span>
+                                                </label>
                                             </div>
                                         </div>
 
@@ -1473,11 +1525,11 @@ else
     }
 
     private string GetEditableBaseAttributesRenderKey()
-{
-    var attributes = GetEditableBaseAttributes();
+    {
+        var attributes = GetEditableBaseAttributes();
 
-    return string.Join("|", attributes.Select(x => $"{x.TemporaryKey}:{x.Name}"));
-}
+        return string.Join("|", attributes.Select(x => $"{x.TemporaryKey}:{x.Name}"));
+    }
 
     private void AddAttributeRow()
     {
@@ -1493,6 +1545,8 @@ else
             MinValue = 0,
             MaxValue = 20,
             DefaultValue = 10,
+            CreationDistributionPoints = 0,
+            MaxCreationDistributionPerCharacter = 0,
             DefaultValueMode = BaseValueGenerationMode.Fixed
         });
     }
@@ -1505,7 +1559,9 @@ else
             MinValue = 0,
             MaxValue = 100,
             RoundMode = ComputedValueRoundMode.Ceiling,
-            DisplayOrder = CurrentSystem.DerivedStats.Count
+            DisplayOrder = CurrentSystem.DerivedStats.Count,
+            CreationDistributionPoints = 0,
+            MaxCreationDistributionPerCharacter = 0
         });
     }
 
@@ -1736,7 +1792,8 @@ else
         {
             Name = string.Empty,
             Description = string.Empty,
-            DisplayOrder = CurrentSystem.Talents.Count
+            DisplayOrder = CurrentSystem.Talents.Count,
+            IsSelectableAtCharacterCreation = false
         });
     }
 
@@ -1760,7 +1817,8 @@ else
         {
             Name = string.Empty,
             Description = string.Empty,
-            DisplayOrder = CurrentSystem.Items.Count
+            DisplayOrder = CurrentSystem.Items.Count,
+            IsSelectableAtCharacterCreation = false
         });
     }
 
@@ -1907,6 +1965,88 @@ else
         return $"{L["GameSystem_Editor_CriticalFailureValue"]} {sign}";
     }
 
+    private int AttributeCreationDistributionPoints
+    {
+        get => CurrentSystem?.Attributes.FirstOrDefault(x => !x.IsDeleted)?.CreationDistributionPoints ?? 0;
+        set
+        {
+            if (CurrentSystem is null)
+                return;
+
+            foreach (var attribute in CurrentSystem.Attributes.Where(x => !x.IsDeleted))
+                attribute.CreationDistributionPoints = value;
+        }
+    }
+
+    private int AttributeCreationDistributionMax
+    {
+        get => CurrentSystem?.Attributes.FirstOrDefault(x => !x.IsDeleted)?.MaxCreationDistributionPerCharacter ?? 0;
+        set
+        {
+            if (CurrentSystem is null)
+                return;
+
+            foreach (var attribute in CurrentSystem.Attributes.Where(x => !x.IsDeleted))
+                attribute.MaxCreationDistributionPerCharacter = value;
+        }
+    }
+
+    private int DerivedStatCreationDistributionPoints
+    {
+        get => CurrentSystem?.DerivedStats.FirstOrDefault(x => !x.IsDeleted)?.CreationDistributionPoints ?? 0;
+        set
+        {
+            if (CurrentSystem is null)
+                return;
+
+            foreach (var derivedStat in CurrentSystem.DerivedStats.Where(x => !x.IsDeleted))
+                derivedStat.CreationDistributionPoints = value;
+        }
+    }
+
+    private int DerivedStatCreationDistributionMax
+    {
+        get => CurrentSystem?.DerivedStats.FirstOrDefault(x => !x.IsDeleted)?.MaxCreationDistributionPerCharacter ?? 0;
+        set
+        {
+            if (CurrentSystem is null)
+                return;
+
+            foreach (var derivedStat in CurrentSystem.DerivedStats.Where(x => !x.IsDeleted))
+                derivedStat.MaxCreationDistributionPerCharacter = value;
+        }
+    }
+
+    private void ApplyCreationConfigurationAcrossDefinitions()
+    {
+        if (CurrentSystem is null)
+            return;
+
+        if (CurrentSystem.Attributes.Count > 0)
+        {
+            var attributePoints = CurrentSystem.Attributes.First().CreationDistributionPoints;
+            var attributeMax = CurrentSystem.Attributes.First().MaxCreationDistributionPerCharacter;
+
+            foreach (var attribute in CurrentSystem.Attributes.Where(x => !x.IsDeleted))
+            {
+                attribute.CreationDistributionPoints = attributePoints;
+                attribute.MaxCreationDistributionPerCharacter = attributeMax;
+            }
+        }
+
+        if (CurrentSystem.DerivedStats.Count > 0)
+        {
+            var derivedPoints = CurrentSystem.DerivedStats.First().CreationDistributionPoints;
+            var derivedMax = CurrentSystem.DerivedStats.First().MaxCreationDistributionPerCharacter;
+
+            foreach (var derivedStat in CurrentSystem.DerivedStats.Where(x => !x.IsDeleted))
+            {
+                derivedStat.CreationDistributionPoints = derivedPoints;
+                derivedStat.MaxCreationDistributionPerCharacter = derivedMax;
+            }
+        }
+    }
+
     private async Task SaveChanges()
     {
         await SaveChangesInternal(false);
@@ -1949,6 +2089,8 @@ else
 
             PrepareMetricsForSave(CurrentSystem.Metrics);
 
+            ApplyCreationConfigurationAcrossDefinitions();
+
             var request = new GameSystemApplyChangesRequestDto
             {
                 Name = CurrentSystem.Name,
@@ -1960,6 +2102,8 @@ else
                 CriticalFailureValue = CurrentSystem.CriticalFailureValue,
                 ConfirmSharedSystemChanges = confirmShared,
                 IsGeneric = CurrentSystem.IsGeneric,
+                StartingTalentChoices = CurrentSystem.StartingTalentChoices,
+                StartingItemChoices = CurrentSystem.StartingItemChoices,
                 Attributes = CurrentSystem.Attributes,
                 DerivedStats = CurrentSystem.DerivedStats,
                 Metrics = CurrentSystem.Metrics,

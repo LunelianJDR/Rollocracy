@@ -17,6 +17,7 @@ namespace Rollocracy.Domain.GameRules
         public string? Description { get; set; }
 
         public int DisplayOrder { get; set; }
+        public bool IsSelectableAtCharacterCreation { get; set; }
 
         public ICollection<ItemModifierDefinition> Modifiers { get; set; } = new List<ItemModifierDefinition>();
     }

@@ -3465,4 +3465,115 @@
 	<data name="Journal_ImageInsertFailed" xml:space="preserve">
   <value>Impossible d'insérer l'image dans le journal.</value>
 </data>
+	<data name="GameSystem_Editor_AttributeCreationDistributionPoints" xml:space="preserve">
+  <value>Distribution au choix à la création</value>
+</data>
+	<data name="GameSystem_Editor_AttributeCreationDistributionMaxPerStat" xml:space="preserve">
+  <value>Augmentation max dans une seule caractéristique</value>
+</data>
+	<data name="GameSystem_Editor_DerivedCreationDistributionPoints" xml:space="preserve">
+  <value>Distribution au choix à la création</value>
+</data>
+	<data name="GameSystem_Editor_DerivedCreationDistributionMaxPerStat" xml:space="preserve">
+  <value>Augmentation max dans une seule compétence</value>
+</data>
+	<data name="GameSystem_Editor_StartingTalentChoices" xml:space="preserve">
+  <value>Talents de départ</value>
+</data>
+	<data name="GameSystem_Editor_StartingItemChoices" xml:space="preserve">
+  <value>Objets de départ</value>
+</data>
+	<data name="GameSystem_Editor_IsSelectableAtCharacterCreation" xml:space="preserve">
+  <value>Choix à la création</value>
+</data>
+	<data name="CharacterCreation_AttributeDistributionTitle" xml:space="preserve">
+  <value>Répartition des caractéristiques</value>
+</data>
+	<data name="CharacterCreation_DerivedStatDistributionTitle" xml:space="preserve">
+  <value>Répartition des compétences</value>
+</data>
+	<data name="CharacterCreation_PointsRemaining" xml:space="preserve">
+  <value>Points restants : {0}</value>
+</data>
+	<data name="CharacterCreation_TalentChoicesTitle" xml:space="preserve">
+  <value>Talents de départ</value>
+</data>
+	<data name="CharacterCreation_ItemChoicesTitle" xml:space="preserve">
+  <value>Objets de départ</value>
+</data>
+	<data name="CharacterCreation_ChoicesSelected" xml:space="preserve">
+  <value>Sélection : {0} / {1}</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionMustBeConsistent" xml:space="preserve">
+  <value>La configuration de distribution des caractéristiques doit être identique pour toutes les caractéristiques du système.</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionInvalid" xml:space="preserve">
+  <value>La configuration de distribution des caractéristiques est invalide.</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionRequiresAttributes" xml:space="preserve">
+  <value>Impossible de distribuer des points de caractéristiques sans caractéristique définie.</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionMaxIncreaseRequired" xml:space="preserve">
+  <value>Une augmentation maximale par caractéristique doit être définie si des points de caractéristiques sont distribués à la création.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionMustBeConsistent" xml:space="preserve">
+  <value>La configuration de distribution des compétences doit être identique pour toutes les compétences du système.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionInvalid" xml:space="preserve">
+  <value>La configuration de distribution des compétences est invalide.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionRequiresDerivedStats" xml:space="preserve">
+  <value>Impossible de distribuer des points de compétences sans compétence définie.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionMaxIncreaseRequired" xml:space="preserve">
+  <value>Une augmentation maximale par compétence doit être définie si des points de compétences sont distribués à la création.</value>
+</data>
+	<data name="Backend_StartingTalentChoicesInvalid" xml:space="preserve">
+  <value>Le nombre de talents de départ est invalide.</value>
+</data>
+	<data name="Backend_StartingTalentChoicesExceedAvailable" xml:space="preserve">
+  <value>Le nombre de talents de départ ne peut pas dépasser le nombre de talents marqués comme choix à la création.</value>
+</data>
+	<data name="Backend_StartingItemChoicesInvalid" xml:space="preserve">
+  <value>Le nombre d'objets de départ est invalide.</value>
+</data>
+	<data name="Backend_StartingItemChoicesExceedAvailable" xml:space="preserve">
+  <value>Le nombre d'objets de départ ne peut pas dépasser le nombre d'objets marqués comme choix à la création.</value>
+</data>
+	<data name="Backend_CharacterCreationNoAttributesForDistribution" xml:space="preserve">
+  <value>Aucune caractéristique n'est disponible pour la répartition des points.</value>
+</data>
+	<data name="Backend_CharacterCreationAttributePointsMustBeFullyDistributed" xml:space="preserve">
+  <value>Tous les points de caractéristiques doivent être répartis avant de créer le personnage.</value>
+</data>
+	<data name="Backend_CharacterCreationAttributeBonusExceedsLimit" xml:space="preserve">
+  <value>La répartition des points de caractéristiques dépasse la limite autorisée pour une caractéristique.</value>
+</data>
+	<data name="Backend_CharacterCreationNoDerivedStatsForDistribution" xml:space="preserve">
+  <value>Aucune compétence n'est disponible pour la répartition des points.</value>
+</data>
+	<data name="Backend_CharacterCreationDerivedStatPointsMustBeFullyDistributed" xml:space="preserve">
+  <value>Tous les points de compétences doivent être répartis avant de créer le personnage.</value>
+</data>
+	<data name="Backend_CharacterCreationDerivedStatBonusExceedsLimit" xml:space="preserve">
+  <value>La répartition des points de compétences dépasse la limite autorisée pour une compétence.</value>
+</data>
+	<data name="Backend_CharacterCreationTalentChoicesRequired" xml:space="preserve">
+  <value>Le nombre requis de talents de départ doit être sélectionné.</value>
+</data>
+	<data name="Backend_CharacterCreationTalentChoiceInvalid" xml:space="preserve">
+  <value>Un talent sélectionné à la création est invalide.</value>
+</data>
+	<data name="Backend_CharacterCreationTalentChoicesConfigurationInvalid" xml:space="preserve">
+  <value>La configuration des talents de départ est invalide pour ce système.</value>
+</data>
+	<data name="Backend_CharacterCreationItemChoicesRequired" xml:space="preserve">
+  <value>Le nombre requis d'objets de départ doit être sélectionné.</value>
+</data>
+	<data name="Backend_CharacterCreationItemChoiceInvalid" xml:space="preserve">
+  <value>Un objet sélectionné à la création est invalide.</value>
+</data>
+	<data name="Backend_CharacterCreationItemChoicesConfigurationInvalid" xml:space="preserve">
+  <value>La configuration des objets de départ est invalide pour ce système.</value>
+</data>
 </root>

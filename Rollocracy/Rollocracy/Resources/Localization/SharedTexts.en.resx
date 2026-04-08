@@ -3465,4 +3465,115 @@
 	<data name="Journal_ImageInsertFailed" xml:space="preserve">
   <value>Unable to insert the image into the journal.</value>
 </data>
+	<data name="GameSystem_Editor_AttributeCreationDistributionPoints" xml:space="preserve">
+  <value>Creation bonus points</value>
+</data>
+	<data name="GameSystem_Editor_AttributeCreationDistributionMaxPerStat" xml:space="preserve">
+  <value>Max increase in a single attribute</value>
+</data>
+	<data name="GameSystem_Editor_DerivedCreationDistributionPoints" xml:space="preserve">
+  <value>Creation bonus points</value>
+</data>
+	<data name="GameSystem_Editor_DerivedCreationDistributionMaxPerStat" xml:space="preserve">
+  <value>Max increase in a single skill</value>
+</data>
+	<data name="GameSystem_Editor_StartingTalentChoices" xml:space="preserve">
+  <value>Starting talents</value>
+</data>
+	<data name="GameSystem_Editor_StartingItemChoices" xml:space="preserve">
+  <value>Starting items</value>
+</data>
+	<data name="GameSystem_Editor_IsSelectableAtCharacterCreation" xml:space="preserve">
+  <value>Selectable at creation</value>
+</data>
+	<data name="CharacterCreation_AttributeDistributionTitle" xml:space="preserve">
+  <value>Attribute distribution</value>
+</data>
+	<data name="CharacterCreation_DerivedStatDistributionTitle" xml:space="preserve">
+  <value>Skill distribution</value>
+</data>
+	<data name="CharacterCreation_PointsRemaining" xml:space="preserve">
+  <value>Remaining points: {0}</value>
+</data>
+	<data name="CharacterCreation_TalentChoicesTitle" xml:space="preserve">
+  <value>Starting talents</value>
+</data>
+	<data name="CharacterCreation_ItemChoicesTitle" xml:space="preserve">
+  <value>Starting items</value>
+</data>
+	<data name="CharacterCreation_ChoicesSelected" xml:space="preserve">
+  <value>Selected: {0} / {1}</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionMustBeConsistent" xml:space="preserve">
+  <value>The attribute distribution configuration must be identical across all attributes.</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionInvalid" xml:space="preserve">
+  <value>The attribute distribution configuration is invalid.</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionRequiresAttributes" xml:space="preserve">
+  <value>You cannot distribute attribute points without any defined attributes.</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionMaxIncreaseRequired" xml:space="preserve">
+  <value>A max increase per attribute must be defined when attribute points are distributed at creation.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionMustBeConsistent" xml:space="preserve">
+  <value>The skill distribution configuration must be identical across all skills.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionInvalid" xml:space="preserve">
+  <value>The skill distribution configuration is invalid.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionRequiresDerivedStats" xml:space="preserve">
+  <value>You cannot distribute skill points without any defined skills.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionMaxIncreaseRequired" xml:space="preserve">
+  <value>A max increase per skill must be defined when skill points are distributed at creation.</value>
+</data>
+	<data name="Backend_StartingTalentChoicesInvalid" xml:space="preserve">
+  <value>The number of starting talents is invalid.</value>
+</data>
+	<data name="Backend_StartingTalentChoicesExceedAvailable" xml:space="preserve">
+  <value>The number of starting talents cannot exceed the number of talents marked as selectable at creation.</value>
+</data>
+	<data name="Backend_StartingItemChoicesInvalid" xml:space="preserve">
+  <value>The number of starting items is invalid.</value>
+</data>
+	<data name="Backend_StartingItemChoicesExceedAvailable" xml:space="preserve">
+  <value>The number of starting items cannot exceed the number of items marked as selectable at creation.</value>
+</data>
+	<data name="Backend_CharacterCreationNoAttributesForDistribution" xml:space="preserve">
+  <value>No attributes are available for point distribution.</value>
+</data>
+	<data name="Backend_CharacterCreationAttributePointsMustBeFullyDistributed" xml:space="preserve">
+  <value>All attribute points must be distributed before creating the character.</value>
+</data>
+	<data name="Backend_CharacterCreationAttributeBonusExceedsLimit" xml:space="preserve">
+  <value>The attribute point distribution exceeds the allowed limit for one attribute.</value>
+</data>
+	<data name="Backend_CharacterCreationNoDerivedStatsForDistribution" xml:space="preserve">
+  <value>No skills are available for point distribution.</value>
+</data>
+	<data name="Backend_CharacterCreationDerivedStatPointsMustBeFullyDistributed" xml:space="preserve">
+  <value>All skill points must be distributed before creating the character.</value>
+</data>
+	<data name="Backend_CharacterCreationDerivedStatBonusExceedsLimit" xml:space="preserve">
+  <value>The skill point distribution exceeds the allowed limit for one skill.</value>
+</data>
+	<data name="Backend_CharacterCreationTalentChoicesRequired" xml:space="preserve">
+  <value>The required number of starting talents must be selected.</value>
+</data>
+	<data name="Backend_CharacterCreationTalentChoiceInvalid" xml:space="preserve">
+  <value>A selected starting talent is invalid.</value>
+</data>
+	<data name="Backend_CharacterCreationTalentChoicesConfigurationInvalid" xml:space="preserve">
+  <value>The starting talent configuration is invalid for this system.</value>
+</data>
+	<data name="Backend_CharacterCreationItemChoicesRequired" xml:space="preserve">
+  <value>The required number of starting items must be selected.</value>
+</data>
+	<data name="Backend_CharacterCreationItemChoiceInvalid" xml:space="preserve">
+  <value>A selected starting item is invalid.</value>
+</data>
+	<data name="Backend_CharacterCreationItemChoicesConfigurationInvalid" xml:space="preserve">
+  <value>The starting item configuration is invalid for this system.</value>
+</data>
 </root>

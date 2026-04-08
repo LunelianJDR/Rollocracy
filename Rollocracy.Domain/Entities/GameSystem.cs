@@ -32,5 +32,7 @@ namespace Rollocracy.Domain.Entities
 
         // Si ce système est générique (utilisable par tous)
         public bool IsGeneric { get; set; }
+        public int StartingTalentChoices { get; set; }
+        public int StartingItemChoices { get; set; }
     }
 }

@@ -74,3 +74,57 @@ export function unregisterPlayerPresence() {
         leaveHandler = null;
     }
 }
+
+window.rollocracyRoom = window.rollocracyRoom || {};
+
+window.rollocracyRoom.attachCharacterNameFilter = function (element) {
+    if (!element) {
+        return;
+    }
+
+    if (element.dataset.rollocracyNameFilterAttached === "1") {
+        return;
+    }
+
+    const allowedCharRegex = /^[\p{L}\p{N},'"\/\- ]$/u;
+
+    element.addEventListener("beforeinput", function (e) {
+        if (e.inputType && e.inputType.startsWith("delete")) {
+            return;
+        }
+
+        if (!e.data) {
+            return;
+        }
+
+        if (!allowedCharRegex.test(e.data)) {
+            e.preventDefault();
+        }
+    });
+
+    element.addEventListener("paste", function (e) {
+        const pastedText = (e.clipboardData || window.clipboardData)?.getData("text") ?? "";
+
+        const filtered = Array.from(pastedText)
+            .filter(char => allowedCharRegex.test(char))
+            .join("")
+            .slice(0, 22);
+
+        e.preventDefault();
+
+        const start = element.selectionStart ?? element.value.length;
+        const end = element.selectionEnd ?? element.value.length;
+
+        const currentValue = element.value ?? "";
+        const nextValue =
+            (currentValue.substring(0, start) + filtered + currentValue.substring(end)).slice(0, 22);
+
+        element.value = nextValue;
+        element.dispatchEvent(new Event("input", { bubbles: true }));
+
+        const newCaretPosition = Math.min(start + filtered.length, nextValue.length);
+        element.setSelectionRange(newCaretPosition, newCaretPosition);
+    });
+
+    element.dataset.rollocracyNameFilterAttached = "1";
+};
