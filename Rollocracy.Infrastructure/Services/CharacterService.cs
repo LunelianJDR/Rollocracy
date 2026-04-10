@@ -229,7 +229,9 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     ItemDefinitionId = i.Id,
                     Name = i.Name,
-                    Description = i.Description ?? string.Empty
+                    Description = i.Description ?? string.Empty,
+                    IsConsumable = i.IsConsumable,
+                    MaxQuantityPerCharacter = i.MaxQuantityPerCharacter
                 }).ToList()
             };
 
@@ -514,11 +516,13 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var selectedItemId in selectedItemIds)
             {
+                var selectedItemDefinition = selectableItems.First(x => x.Id == selectedItemId);
                 context.CharacterItems.Add(new CharacterItem
                 {
                     Id = Guid.NewGuid(),
                     CharacterId = character.Id,
-                    ItemDefinitionId = selectedItemId
+                    ItemDefinitionId = selectedItemId,
+                    Quantity = selectedItemDefinition.IsConsumable ? 1 : 1
                 });
             }
 
@@ -1327,10 +1331,16 @@ namespace Rollocracy.Infrastructure.Services
              .Where(id => talentDefinitions.Any(t => t.Id == id))
              .ToHashSet();
 
-            var selectedItemIds = request.SelectedItemIds
-                .Distinct()
-                .Where(id => itemDefinitions.Any(i => i.Id == id))
-                .ToHashSet();
+            var requestedItemStates = (request.Items?.Count > 0
+                    ? request.Items
+                    : itemDefinitions.Select(i => new EditableCharacterGrantDto
+                    {
+                        DefinitionId = i.Id,
+                        IsSelected = request.SelectedItemIds.Contains(i.Id),
+                        Quantity = request.SelectedItemIds.Contains(i.Id) ? 1 : 0
+                    }).ToList())
+                .Where(x => itemDefinitions.Any(i => i.Id == x.DefinitionId))
+                .ToDictionary(x => x.DefinitionId, x => x);
 
             var existingTalentIds = characterTalents.Select(x => x.TalentDefinitionId).ToHashSet();
             var existingItemIds = characterItems.Select(x => x.ItemDefinitionId).ToHashSet();
@@ -1341,9 +1351,13 @@ namespace Rollocracy.Infrastructure.Services
                 .Select(x => x.TalentDefinitionId)
                 .ToList();
 
-            var itemIdsToAdd = selectedItemIds.Except(existingItemIds).ToList();
+            var itemIdsToAdd = requestedItemStates
+                .Where(x => x.Value.IsSelected && !existingItemIds.Contains(x.Key))
+                .Select(x => x.Key)
+                .ToList();
+
             var itemIdsToRemove = characterItems
-                .Where(x => !selectedItemIds.Contains(x.ItemDefinitionId))
+                .Where(x => !requestedItemStates.TryGetValue(x.ItemDefinitionId, out var state) || !state.IsSelected || (state.IsConsumable && state.Quantity <= 0))
                 .Select(x => x.ItemDefinitionId)
                 .ToList();
 
@@ -1364,17 +1378,44 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var itemIdToAdd in itemIdsToAdd)
             {
+                var itemDefinition = itemDefinitions.First(x => x.Id == itemIdToAdd);
+                var requestedItem = requestedItemStates[itemIdToAdd];
+                var quantity = itemDefinition.IsConsumable
+                    ? Math.Clamp(requestedItem.Quantity, 0, itemDefinition.MaxQuantityPerCharacter)
+                    : (requestedItem.IsSelected ? 1 : 0);
+
+                if (quantity <= 0 && itemDefinition.IsConsumable)
+                    continue;
+
                 context.CharacterItems.Add(new CharacterItem
                 {
                     Id = Guid.NewGuid(),
                     CharacterId = row.character.Id,
-                    ItemDefinitionId = itemIdToAdd
+                    ItemDefinitionId = itemIdToAdd,
+                    Quantity = quantity <= 0 ? 1 : quantity
                 });
             }
 
             foreach (var itemToRemove in characterItems.Where(x => itemIdsToRemove.Contains(x.ItemDefinitionId)).ToList())
             {
                 context.CharacterItems.Remove(itemToRemove);
+            }
+
+            foreach (var existingItem in characterItems.Where(x => !itemIdsToRemove.Contains(x.ItemDefinitionId)))
+            {
+                if (!requestedItemStates.TryGetValue(existingItem.ItemDefinitionId, out var requestedItem))
+                    continue;
+
+                var itemDefinition = itemDefinitions.First(x => x.Id == existingItem.ItemDefinitionId);
+
+                if (itemDefinition.IsConsumable)
+                {
+                    existingItem.Quantity = Math.Clamp(requestedItem.Quantity, 0, itemDefinition.MaxQuantityPerCharacter);
+                }
+                else
+                {
+                    existingItem.Quantity = requestedItem.IsSelected ? 1 : 0;
+                }
             }
 
             await context.SaveChangesAsync();
@@ -1757,11 +1798,12 @@ namespace Rollocracy.Infrastructure.Services
                 .Select(x => x.TalentDefinitionId)
                 .ToListAsync();
 
-            var characterItemIds = await context.CharacterItems
+            var characterItems = await context.CharacterItems
                 .AsNoTracking()
                 .Where(x => x.CharacterId == character.Id)
-                .Select(x => x.ItemDefinitionId)
                 .ToListAsync();
+
+            var characterItemIds = characterItems.Select(x => x.ItemDefinitionId).ToList();
 
             var computed = await ComputeCharacterContextAsync(context, playerSession.Id, gameSystemId, character.Id);
 
@@ -1841,11 +1883,18 @@ namespace Rollocracy.Infrastructure.Services
                     })
                     .ToList(),
                 Items = itemDefinitions
-                    .Select(i => new EditableCharacterGrantDto
+                    .Select(i =>
                     {
-                        DefinitionId = i.Id,
-                        Name = i.Name,
-                        IsSelected = characterItemIds.Contains(i.Id)
+                        var ownedItem = characterItems.FirstOrDefault(x => x.ItemDefinitionId == i.Id);
+                        return new EditableCharacterGrantDto
+                        {
+                            DefinitionId = i.Id,
+                            Name = i.Name,
+                            IsSelected = ownedItem is not null,
+                            IsConsumable = i.IsConsumable,
+                            Quantity = ownedItem?.Quantity ?? (i.IsConsumable ? 0 : 1),
+                            MaxQuantityPerCharacter = i.MaxQuantityPerCharacter
+                        };
                     })
                     .ToList()
             };
@@ -2088,11 +2137,25 @@ namespace Rollocracy.Infrastructure.Services
                 .Select(x => x.TalentDefinitionId)
                 .ToListAsync();
 
-            var directCharacterItemIds = await context.CharacterItems
+            var directCharacterItems = await context.CharacterItems
                 .AsNoTracking()
                 .Where(x => x.CharacterId == characterId)
-                .Select(x => x.ItemDefinitionId)
                 .ToListAsync();
+
+            var ownedItemDefinitionIds = directCharacterItems
+                .Select(x => x.ItemDefinitionId)
+                .Distinct()
+                .ToList();
+
+            var ownedItemDefinitions = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(i => ownedItemDefinitionIds.Contains(i.Id))
+                .ToListAsync();
+
+            var passiveDirectCharacterItemIds = directCharacterItems
+                .Where(x => !(ownedItemDefinitions.FirstOrDefault(i => i.Id == x.ItemDefinitionId)?.IsConsumable ?? false))
+                .Select(x => x.ItemDefinitionId)
+                .ToList();
 
             var effectiveTalentIds = BuildEffectiveOwnedDefinitionIds(
                 directCharacterTalentIds,
@@ -2100,7 +2163,7 @@ namespace Rollocracy.Infrastructure.Services
                 ModifierTargetType.Talent);
 
             var effectiveItemIds = BuildEffectiveOwnedDefinitionIds(
-                directCharacterItemIds,
+                passiveDirectCharacterItemIds,
                 choiceOptionModifiers,
                 ModifierTargetType.Item);
 
@@ -2115,16 +2178,23 @@ namespace Rollocracy.Infrastructure.Services
                 })
                 .ToListAsync();
 
-            var itemLines = await context.ItemDefinitions
-                .AsNoTracking()
-                .Where(i => effectiveItemIds.Contains(i.Id))
+            var itemLines = ownedItemDefinitions
                 .OrderBy(i => i.DisplayOrder).ThenBy(i => i.Name)
-                .Select(i => new CharacterNameLineDto
+                .Select(i =>
                 {
-                    Id = i.Id,
-                    Name = i.Name
+                    var ownedItem = directCharacterItems.FirstOrDefault(x => x.ItemDefinitionId == i.Id);
+                    var quantity = ownedItem?.Quantity ?? (i.IsConsumable ? 0 : 1);
+
+                    return new CharacterNameLineDto
+                    {
+                        Id = i.Id,
+                        Name = i.IsConsumable ? $"{i.Name} ({quantity})" : i.Name,
+                        IsConsumable = i.IsConsumable,
+                        Quantity = quantity,
+                        MaxQuantityPerCharacter = i.MaxQuantityPerCharacter
+                    };
                 })
-                .ToListAsync();
+                .ToList();
 
             var talentModifiers = await context.TalentModifierDefinitions
                 .AsNoTracking()
@@ -2142,7 +2212,8 @@ namespace Rollocracy.Infrastructure.Services
                     m.CharacterId == characterId &&
                     (m.TargetType == CharacterEffectTargetType.BaseAttribute ||
                      m.TargetType == CharacterEffectTargetType.DerivedStat ||
-                     m.TargetType == CharacterEffectTargetType.Metric))
+                     m.TargetType == CharacterEffectTargetType.Metric ||
+                     m.TargetType == CharacterEffectTargetType.Gauge))
                 .ToListAsync();
 
             var rawModifiers = choiceOptionModifiers
@@ -2178,6 +2249,7 @@ namespace Rollocracy.Infrastructure.Services
                         CharacterEffectTargetType.BaseAttribute => ModifierTargetType.BaseAttribute,
                         CharacterEffectTargetType.DerivedStat => ModifierTargetType.DerivedStat,
                         CharacterEffectTargetType.Metric => ModifierTargetType.Metric,
+                        CharacterEffectTargetType.Gauge => ModifierTargetType.Gauge,
                         _ => ModifierTargetType.BaseAttribute
                     },
                     TargetId = m.TargetId,
@@ -2540,5 +2612,221 @@ namespace Rollocracy.Infrastructure.Services
             public List<CharacterNameLineDto> ItemLines { get; set; } = new();
             public Dictionary<Guid, int> MetricValues { get; set; } = new();
         }
+        public async Task ConsumeItemAsync(Guid playerSessionId, Guid itemDefinitionId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ps => ps.Id == playerSessionId);
+
+            if (playerSession == null)
+                throw new Exception(_localizer["Backend_PlayerSessionNotFound"]);
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == playerSession.SessionId);
+
+            if (session == null)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            if (!session.GameSystemId.HasValue)
+                throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
+
+            var character = await context.Characters
+                .FirstOrDefaultAsync(c => c.PlayerSessionId == playerSessionId && c.IsAlive);
+
+            if (character == null)
+                throw new Exception(_localizer["Backend_CharacterNotFound"]);
+
+            var characterItem = await context.CharacterItems
+                .FirstOrDefaultAsync(x => x.CharacterId == character.Id && x.ItemDefinitionId == itemDefinitionId);
+
+            if (characterItem == null)
+                throw new Exception(_localizer["Backend_CharacterItemNotOwned"]);
+
+            var itemDefinition = await context.ItemDefinitions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == itemDefinitionId && (i.GameSystemId == session.GameSystemId.Value || i.SessionId == session.Id));
+
+            if (itemDefinition == null)
+                throw new Exception(_localizer["Backend_InvalidCharacterItemSelection"]);
+
+            if (!itemDefinition.IsConsumable)
+                throw new Exception(_localizer["Backend_CharacterItemNotConsumable"]);
+
+            if (characterItem.Quantity <= 0)
+                throw new Exception(_localizer["Backend_CharacterItemOutOfStock"]);
+
+            var itemModifiers = await context.ItemModifierDefinitions
+                .AsNoTracking()
+                .Where(x => x.ItemDefinitionId == itemDefinitionId)
+                .ToListAsync();
+
+            var gaugeDefinitions = await context.GaugeDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                .ToListAsync();
+
+            var attributeDefinitions = await context.AttributeDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                .ToListAsync();
+
+            var derivedDefinitions = await context.DerivedStatDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                .ToListAsync();
+
+            var metricDefinitions = await context.MetricDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                .ToListAsync();
+
+            foreach (var modifier in itemModifiers)
+            {
+                if (modifier.OperationType == ModifierOperationType.Grant)
+                {
+                    if (modifier.TargetType == ModifierTargetType.Talent)
+                    {
+                        var alreadyHas = await context.CharacterTalents.AnyAsync(
+                            x => x.CharacterId == character.Id && x.TalentDefinitionId == modifier.TargetId);
+
+                        if (!alreadyHas)
+                        {
+                            context.CharacterTalents.Add(new CharacterTalent
+                            {
+                                Id = Guid.NewGuid(),
+                                CharacterId = character.Id,
+                                TalentDefinitionId = modifier.TargetId
+                            });
+                        }
+                    }
+                    else if (modifier.TargetType == ModifierTargetType.Item)
+                    {
+                        var targetItemDefinition = await context.ItemDefinitions
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(x => x.Id == modifier.TargetId);
+
+                        if (targetItemDefinition != null)
+                        {
+                            var existingTargetItem = await context.CharacterItems
+                                .FirstOrDefaultAsync(x => x.CharacterId == character.Id && x.ItemDefinitionId == modifier.TargetId);
+
+                            if (existingTargetItem == null)
+                            {
+                                context.CharacterItems.Add(new CharacterItem
+                                {
+                                    Id = Guid.NewGuid(),
+                                    CharacterId = character.Id,
+                                    ItemDefinitionId = modifier.TargetId,
+                                    Quantity = 1
+                                });
+                            }
+                            else if (targetItemDefinition.IsConsumable)
+                            {
+                                existingTargetItem.Quantity = Math.Clamp(
+                                    existingTargetItem.Quantity + 1,
+                                    0,
+                                    targetItemDefinition.MaxQuantityPerCharacter);
+                            }
+                        }
+                    }
+
+                    continue;
+                }
+
+                var resolvedValue = await ResolveInventoryGaugeModifierDeltaAsync(
+                    context,
+                    session.GameSystemId.Value,
+                    character.Id,
+                    modifier.AddValue,
+                    modifier.ValueMode,
+                    modifier.SourceMetricId);
+
+                if (modifier.TargetType == ModifierTargetType.Gauge)
+                {
+                    if (modifier.FillGaugeCurrentValueOnly)
+                    {
+                        await ApplyGaugeDeltaForInventoryChangeAsync(
+                            context,
+                            session.GameSystemId.Value,
+                            character.Id,
+                            modifier.TargetId,
+                            resolvedValue);
+                    }
+                    else
+                    {
+                        var existingGaugeModifier = await context.CharacterModifiers.FirstOrDefaultAsync(x =>
+                            x.CharacterId == character.Id &&
+                            x.TargetType == CharacterEffectTargetType.Gauge &&
+                            x.TargetId == modifier.TargetId &&
+                            x.SourceType == CharacterEffectSourceType.Item &&
+                            x.SourceId == itemDefinitionId &&
+                            x.SourceNameSnapshot == itemDefinition.Name);
+
+                        if (existingGaugeModifier == null)
+                        {
+                            context.CharacterModifiers.Add(new CharacterModifier
+                            {
+                                Id = Guid.NewGuid(),
+                                CharacterId = character.Id,
+                                TargetType = CharacterEffectTargetType.Gauge,
+                                TargetId = modifier.TargetId,
+                                AddValue = resolvedValue,
+                                SourceType = CharacterEffectSourceType.Item,
+                                SourceId = itemDefinitionId,
+                                SourceNameSnapshot = itemDefinition.Name,
+                                CreatedAtUtc = DateTime.UtcNow
+                            });
+                        }
+                        else
+                        {
+                            existingGaugeModifier.AddValue += resolvedValue;
+                        }
+                    }
+
+                    continue;
+                }
+
+                if (modifier.TargetType == ModifierTargetType.BaseAttribute ||
+                    modifier.TargetType == ModifierTargetType.DerivedStat ||
+                    modifier.TargetType == ModifierTargetType.Metric)
+                {
+                    var targetType = modifier.TargetType switch
+                    {
+                        ModifierTargetType.BaseAttribute => CharacterEffectTargetType.BaseAttribute,
+                        ModifierTargetType.DerivedStat => CharacterEffectTargetType.DerivedStat,
+                        ModifierTargetType.Metric => CharacterEffectTargetType.Metric,
+                        _ => CharacterEffectTargetType.BaseAttribute
+                    };
+
+                    context.CharacterModifiers.Add(new CharacterModifier
+                    {
+                        Id = Guid.NewGuid(),
+                        CharacterId = character.Id,
+                        TargetType = targetType,
+                        TargetId = modifier.TargetId,
+                        AddValue = resolvedValue,
+                        SourceType = CharacterEffectSourceType.Item,
+                        SourceId = itemDefinitionId,
+                        SourceNameSnapshot = itemDefinition.Name,
+                        CreatedAtUtc = DateTime.UtcNow
+                    });
+                }
+            }
+
+            characterItem.Quantity -= 1;
+
+            if (characterItem.Quantity <= 0)
+                context.CharacterItems.Remove(characterItem);
+
+            await context.SaveChangesAsync();
+
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(session.Id);
+            await _sessionNotifier.NotifyPresenceChangedAsync(session.Id);
+        }
+
     }
 }
+

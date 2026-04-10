@@ -3552,3 +3552,20 @@ button.rc-global-threshold-slider__handle:focus-visible {
     box-shadow: 0 0 0 1px var(--rc-accent) inset !important;
 }
 
+.rc-consumable-edit-line {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.rc-consumable-qty-input {
+    width: 88px;
+    min-width: 88px;
+}
+
+.rc-player-pill--item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}

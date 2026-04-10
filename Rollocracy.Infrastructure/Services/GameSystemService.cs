@@ -666,7 +666,9 @@ namespace Rollocracy.Infrastructure.Services
                     Name = sourceItem.Name,
                     Description = sourceItem.Description,
                     DisplayOrder = sourceItem.DisplayOrder,
-                    IsSelectableAtCharacterCreation = sourceItem.IsSelectableAtCharacterCreation
+                    IsSelectableAtCharacterCreation = sourceItem.IsSelectableAtCharacterCreation,
+                    IsConsumable = sourceItem.IsConsumable,
+                    MaxQuantityPerCharacter = sourceItem.MaxQuantityPerCharacter
                 });
 
                 itemMap[sourceItem.Id] = clonedItemId;
@@ -1182,18 +1184,21 @@ namespace Rollocracy.Infrastructure.Services
                     Description = i.Description ?? "",
                     DisplayOrder = i.DisplayOrder,
                     IsSelectableAtCharacterCreation = i.IsSelectableAtCharacterCreation,
+                    IsConsumable = i.IsConsumable,
+                    MaxQuantityPerCharacter = i.MaxQuantityPerCharacter,
                     Modifiers = itemModifiers
                         .Where(m => m.ItemDefinitionId == i.Id)
                         .Select(m => new EditableModifierDefinitionDto
                         {
                             Id = m.Id,
-                            OperationType = ModifierOperationType.AddValue,
+                            OperationType = m.OperationType,
                             TargetType = m.TargetType,
                             TargetId = m.TargetId,
                             TargetNameSnapshot = ResolveModifierTargetName(m.TargetType, m.TargetId, attributes, derivedStats, metricDefinitions, talents, items),
                             Value = m.AddValue,
                             ValueMode = m.ValueMode,
-                            SourceMetricId = m.SourceMetricId
+                            SourceMetricId = m.SourceMetricId,
+                            FillGaugeCurrentValueOnly = m.FillGaugeCurrentValueOnly
                         }).ToList()
                 }).ToList()
             };
@@ -2438,7 +2443,8 @@ namespace Rollocracy.Infrastructure.Services
             GameSystemId = x.GameSystemId,
             Name = x.Name,
             Description = x.Description,
-            DisplayOrder = x.DisplayOrder
+            DisplayOrder = x.DisplayOrder,
+            IsSelectableAtCharacterCreation = x.IsSelectableAtCharacterCreation
         };
 
         private static TalentModifierDefinition CloneTalentModifier(TalentModifierDefinition x) => new()
@@ -2458,18 +2464,23 @@ namespace Rollocracy.Infrastructure.Services
             GameSystemId = x.GameSystemId,
             Name = x.Name,
             Description = x.Description,
-            DisplayOrder = x.DisplayOrder
+            DisplayOrder = x.DisplayOrder,
+            IsSelectableAtCharacterCreation = x.IsSelectableAtCharacterCreation,
+            IsConsumable = x.IsConsumable,
+            MaxQuantityPerCharacter = x.MaxQuantityPerCharacter
         };
 
         private static ItemModifierDefinition CloneItemModifier(ItemModifierDefinition x) => new()
         {
             Id = x.Id,
             ItemDefinitionId = x.ItemDefinitionId,
+            OperationType = x.OperationType,
             TargetType = x.TargetType,
             TargetId = x.TargetId,
             AddValue = x.AddValue,
             ValueMode = x.ValueMode,
-            SourceMetricId = x.SourceMetricId
+            SourceMetricId = x.SourceMetricId,
+            FillGaugeCurrentValueOnly = x.FillGaugeCurrentValueOnly
         };
 
         private static ChoiceOptionModifierDefinition CloneChoiceOptionModifier(ChoiceOptionModifierDefinition x) => new()
@@ -2520,7 +2531,8 @@ namespace Rollocracy.Infrastructure.Services
         {
             Id = x.Id,
             CharacterId = x.CharacterId,
-            ItemDefinitionId = x.ItemDefinitionId
+            ItemDefinitionId = x.ItemDefinitionId,
+            Quantity = x.Quantity
         };
 
         private async Task<List<Session>> GetSessionsUsingSystemAsync(RollocracyDbContext context, Guid gameSystemId)
@@ -3221,7 +3233,7 @@ namespace Rollocracy.Infrastructure.Services
                     Name = item.Name.Trim(),
                     Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim(),
                     DisplayOrder = item.DisplayOrder,
-                    IsSelectableAtCharacterCreation = item.IsSelectableAtCharacterCreation
+                    IsSelectableAtCharacterCreation = item.IsSelectableAtCharacterCreation,
                 });
 
                 // Important : on remonte l'id gÃ©nÃ©rÃ© dans le DTO
@@ -3274,6 +3286,8 @@ namespace Rollocracy.Infrastructure.Services
                 entity.Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim();
                 entity.DisplayOrder = item.DisplayOrder;
                 entity.IsSelectableAtCharacterCreation = item.IsSelectableAtCharacterCreation;
+                entity.IsConsumable = item.IsConsumable;
+                entity.MaxQuantityPerCharacter = item.IsConsumable ? item.MaxQuantityPerCharacter : 0;
             }
 
             foreach (var item in requestItems.Where(x => !x.ItemDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
@@ -3287,7 +3301,9 @@ namespace Rollocracy.Infrastructure.Services
                     Name = item.Name.Trim(),
                     Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim(),
                     DisplayOrder = item.DisplayOrder,
-                    IsSelectableAtCharacterCreation = item.IsSelectableAtCharacterCreation
+                    IsSelectableAtCharacterCreation = item.IsSelectableAtCharacterCreation,
+                    IsConsumable = item.IsConsumable,
+                    MaxQuantityPerCharacter = item.IsConsumable ? item.MaxQuantityPerCharacter : 0
                 });
 
                 // Important : on remonte l'id gÃ©nÃ©rÃ© dans le DTO
@@ -3389,11 +3405,13 @@ namespace Rollocracy.Infrastructure.Services
 
                     if (existing is not null)
                     {
+                        existing.OperationType = modifier.OperationType;
                         existing.TargetType = modifier.TargetType;
                         existing.TargetId = modifier.TargetId;
                         existing.AddValue = modifier.Value;
                         existing.ValueMode = modifier.ValueMode;
                         existing.SourceMetricId = sourceMetricId;
+                        existing.FillGaugeCurrentValueOnly = modifier.FillGaugeCurrentValueOnly;
                     }
                     else
                     {
@@ -3401,11 +3419,13 @@ namespace Rollocracy.Infrastructure.Services
                         {
                             Id = modifier.Id == Guid.Empty ? Guid.NewGuid() : modifier.Id,
                             ItemDefinitionId = item.ItemDefinitionId.Value,
+                            OperationType = modifier.OperationType,
                             TargetType = modifier.TargetType,
                             TargetId = modifier.TargetId,
                             AddValue = modifier.Value,
                             ValueMode = modifier.ValueMode,
-                            SourceMetricId = sourceMetricId
+                            SourceMetricId = sourceMetricId,
+                            FillGaugeCurrentValueOnly = modifier.FillGaugeCurrentValueOnly
                         });
                     }
                 }
@@ -3623,3 +3643,5 @@ namespace Rollocracy.Infrastructure.Services
         }
     }
 }
+
+

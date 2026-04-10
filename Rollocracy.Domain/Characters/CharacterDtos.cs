@@ -57,6 +57,9 @@ namespace Rollocracy.Domain.Characters
     {
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public bool IsConsumable { get; set; }
+        public int Quantity { get; set; }
+        public int MaxQuantityPerCharacter { get; set; }
     }
 
     public class CharacterSheetDto
@@ -109,6 +112,8 @@ namespace Rollocracy.Domain.Characters
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public bool IsSelected { get; set; }
+        public bool IsConsumable { get; set; }
+        public int MaxQuantityPerCharacter { get; set; }
     }
 
     public class CharacterCreationTraitOptionDto
@@ -220,6 +225,9 @@ namespace Rollocracy.Domain.Characters
         public Guid DefinitionId { get; set; }
         public string Name { get; set; } = string.Empty;
         public bool IsSelected { get; set; }
+        public bool IsConsumable { get; set; }
+        public int Quantity { get; set; }
+        public int MaxQuantityPerCharacter { get; set; }
     }
 
     public class EditableCharacterDto
@@ -249,6 +257,7 @@ namespace Rollocracy.Domain.Characters
         public List<EditableCharacterGaugeDto> Gauges { get; set; } = new();
         public List<Guid> SelectedTalentIds { get; set; } = new();
         public List<Guid> SelectedItemIds { get; set; } = new();
+        public List<EditableCharacterGrantDto> Items { get; set; } = new();
     }
 
     public class SessionGaugeDto
@@ -323,3 +332,5 @@ namespace Rollocracy.Domain.Characters
         public List<RandomDrawResultCharacterDto> Results { get; set; } = new();
     }
 }
+
+

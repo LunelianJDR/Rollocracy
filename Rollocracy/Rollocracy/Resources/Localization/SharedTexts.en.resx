@@ -3576,4 +3576,37 @@
 	<data name="Backend_CharacterCreationItemChoicesConfigurationInvalid" xml:space="preserve">
   <value>The starting item configuration is invalid for this system.</value>
 </data>
+	<data name="GameSystem_Editor_ItemIsConsumable" xml:space="preserve">
+  <value>Consumable</value>
+</data>
+	<data name="GameSystem_Editor_ItemMaxQuantityPerCharacter" xml:space="preserve">
+  <value>Max quantity per character</value>
+</data>
+	<data name="GameSystem_Editor_ItemModifierFillGaugeOnly" xml:space="preserve">
+  <value>Fill gauge only</value>
+</data>
+	<data name="Character_Item_Consume" xml:space="preserve">
+  <value>Consume</value>
+</data>
+	<data name="Backend_ConsumableItemMaxQuantityInvalid" xml:space="preserve">
+  <value>A consumable item's max quantity must be greater than 0.</value>
+</data>
+	<data name="Backend_CharacterItemNotOwned" xml:space="preserve">
+  <value>The character does not own this item.</value>
+</data>
+	<data name="Backend_InvalidCharacterItemSelection" xml:space="preserve">
+  <value>The selected item is invalid.</value>
+</data>
+	<data name="Backend_CharacterItemNotConsumable" xml:space="preserve">
+  <value>This item is not consumable.</value>
+</data>
+	<data name="Backend_CharacterItemOutOfStock" xml:space="preserve">
+  <value>This item is out of stock.</value>
+</data>
+	<data name="GameSystem_Editor_ItemModifierAffectsMaximum" xml:space="preserve">
+  <value>Affect maximum value</value>
+</data>
+	<data name="Character_Item_ConfirmConsume" xml:space="preserve">
+  <value>Consume?</value>
+</data>
 </root>

@@ -373,6 +373,22 @@ else
                                 </div>
                             </div>
 
+                            <div class="rc-form-field">
+                                <label></label>
+                                <label class="rc-filter-toggle">
+                                    <input type="checkbox" @bind="item.IsConsumable" />
+                                    <span>@L["GameSystem_Editor_ItemIsConsumable"]</span>
+                                </label>
+                            </div>
+
+                            @if (item.IsConsumable)
+                            {
+                                <div class="rc-form-field">
+                                    <label>@L["GameSystem_Editor_ItemMaxQuantityPerCharacter"]</label>
+                                    <input type="number" min="1" @bind="item.MaxQuantityPerCharacter" />
+                                </div>
+                            }
+
                             <div class="rc-tool-actions">
                                 <button type="button" @onclick="() => AddSessionItemModifierRow(item)">
                                     @L["GameSystem_Editor_AddItemModifierRow"]
@@ -405,6 +421,19 @@ else
                                             }
                                         </select>
                                     </div>
+
+                                    @if (modifier.TargetType == ModifierTargetType.Gauge && item.IsConsumable)
+                                    {
+                                        <div class="rc-form-field">
+                                            <label>@L["GameSystem_Editor_ItemModifierAffectsMaximum"]</label>
+                                            <label class="rc-filter-toggle">
+                                                <input type="checkbox"
+                                                       checked="@SessionItemGaugeModifierAffectsMaximum(modifier)"
+                                                       @onchange="e => SetSessionItemGaugeModifierAffectsMaximum(modifier, e.Value is bool value && value)" />
+                                                <span>@L["GameSystem_Editor_ItemModifierAffectsMaximum"]</span>
+                                            </label>
+                                        </div>
+                                    }
 
                                     <div class="rc-form-field">
                                         <label>@L["GameSystem_Editor_ModifierValueMode"]</label>
@@ -1001,7 +1030,9 @@ else
             TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
             Value = 0,
             ValueMode = ModifierValueMode.Fixed,
-            SourceMetricId = CurrentSystemEditor?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId
+            SourceMetricId = CurrentSystemEditor?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId,
+            OperationType = ModifierOperationType.AddValue,
+            FillGaugeCurrentValueOnly = false
         });
     }
 
@@ -1063,5 +1094,15 @@ else
         {
             Message = $"{L["Common_Error"]} : {ex.Message}";
         }
+    }
+
+    private bool SessionItemGaugeModifierAffectsMaximum(EditableModifierDefinitionDto modifier)
+    {
+        return !modifier.FillGaugeCurrentValueOnly;
+    }
+
+    private void SetSessionItemGaugeModifierAffectsMaximum(EditableModifierDefinitionDto modifier, bool affectsMaximum)
+    {
+        modifier.FillGaugeCurrentValueOnly = !affectsMaximum;
     }
 }

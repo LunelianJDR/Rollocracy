@@ -133,6 +133,7 @@ namespace Rollocracy.Domain.GameRules
         public ModifierValueMode ValueMode { get; set; }
         public int Value { get; set; }
         public Guid? SourceMetricId { get; set; }
+        public bool FillGaugeCurrentValueOnly { get; set; }
     }
 
     public class EditableTalentDefinitionDto
@@ -142,6 +143,8 @@ namespace Rollocracy.Domain.GameRules
         public string Description { get; set; } = string.Empty;
         public int DisplayOrder { get; set; }
         public bool IsSelectableAtCharacterCreation { get; set; }
+        public bool IsConsumable { get; set; }
+        public int MaxQuantityPerCharacter { get; set; }
         public bool IsDeleted { get; set; }
         public List<EditableModifierDefinitionDto> Modifiers { get; set; } = new();
     }
@@ -153,6 +156,8 @@ namespace Rollocracy.Domain.GameRules
         public string Description { get; set; } = string.Empty;
         public int DisplayOrder { get; set; }
         public bool IsSelectableAtCharacterCreation { get; set; }
+        public bool IsConsumable { get; set; }
+        public int MaxQuantityPerCharacter { get; set; }
         public bool IsDeleted { get; set; }
         public List<EditableModifierDefinitionDto> Modifiers { get; set; } = new();
     }

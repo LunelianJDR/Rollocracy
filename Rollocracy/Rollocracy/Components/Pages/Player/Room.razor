@@ -902,10 +902,20 @@ else
                                                     <div class="rc-character-inline-list">
                                                         @foreach (var item in ObservedEditableCharacter.Items)
                                                         {
-                                                            <label class="rc-filter-toggle">
-                                                                <input type="checkbox" @bind="item.IsSelected" />
-                                                                <span>@item.Name</span>
-                                                            </label>
+                                                            <div class="rc-consumable-edit-line">
+                                                                <label class="rc-filter-toggle">
+                                                                    <input type="checkbox" @bind="item.IsSelected" />
+                                                                    <span>@item.Name</span>
+                                                                </label>
+                                                                @if (item.IsConsumable && item.IsSelected)
+                                                                {
+                                                                    <input type="number"
+                                                                           min="0"
+                                                                           max="@item.MaxQuantityPerCharacter"
+                                                                           @bind="item.Quantity"
+                                                                           class="rc-consumable-qty-input" />
+                                                                }
+                                                            </div>
                                                         }
                                                     </div>
                                                 }
@@ -1162,6 +1172,8 @@ else
 
     private ElementReference NewCharacterNameInputRef;
     private bool IsNewCharacterNameInputFilterAttached;
+
+    private Guid? PendingConsumableItemDefinitionId;
 
     private bool IsTwitchEnabled = false;
     private bool ShowTwitchChat = true;
@@ -1927,7 +1939,8 @@ else
                     SelectedItemIds = ObservedEditableCharacter.Items
                         .Where(x => x.IsSelected)
                         .Select(x => x.DefinitionId)
-                        .ToList()
+                        .ToList(),
+                    Items = ObservedEditableCharacter.Items
                 });
 
             await LoadSpecialRoleCharacters();
@@ -1985,7 +1998,8 @@ else
                     SelectedItemIds = ObservedEditableCharacter.Items
                         .Where(x => x.IsSelected)
                         .Select(x => x.DefinitionId)
-                        .ToList()
+                        .ToList(),
+                    Items = ObservedEditableCharacter.Items
                 });
 
             await LoadSpecialRoleCharacters();
@@ -2059,57 +2073,57 @@ else
             ? 0
             : CreationTemplate.DerivedStatPointsToDistribute - CreationDerivedStatValues.Values.Sum();
 
-            private int GetCreationAttributeInputMax(Guid attributeDefinitionId)
-{
-    if (CreationTemplate is null || !CreationAttributeValues.ContainsKey(attributeDefinitionId))
-        return 0;
+    private int GetCreationAttributeInputMax(Guid attributeDefinitionId)
+    {
+        if (CreationTemplate is null || !CreationAttributeValues.ContainsKey(attributeDefinitionId))
+            return 0;
 
-    var currentValue = CreationAttributeValues[attributeDefinitionId];
-    var remaining = RemainingCreationAttributePoints;
+        var currentValue = CreationAttributeValues[attributeDefinitionId];
+        var remaining = RemainingCreationAttributePoints;
 
-    var maxPerAttribute = CreationTemplate.MaxAttributePointsPerAttribute > 0
-        ? CreationTemplate.MaxAttributePointsPerAttribute
-        : CreationTemplate.AttributePointsToDistribute;
+        var maxPerAttribute = CreationTemplate.MaxAttributePointsPerAttribute > 0
+            ? CreationTemplate.MaxAttributePointsPerAttribute
+            : CreationTemplate.AttributePointsToDistribute;
 
-    return Math.Max(0, Math.Min(maxPerAttribute, currentValue + remaining));
-}
+        return Math.Max(0, Math.Min(maxPerAttribute, currentValue + remaining));
+    }
 
-private int GetCreationDerivedStatInputMax(Guid derivedStatDefinitionId)
-{
-    if (CreationTemplate is null || !CreationDerivedStatValues.ContainsKey(derivedStatDefinitionId))
-        return 0;
+    private int GetCreationDerivedStatInputMax(Guid derivedStatDefinitionId)
+    {
+        if (CreationTemplate is null || !CreationDerivedStatValues.ContainsKey(derivedStatDefinitionId))
+            return 0;
 
-    var currentValue = CreationDerivedStatValues[derivedStatDefinitionId];
-    var remaining = RemainingCreationDerivedStatPoints;
+        var currentValue = CreationDerivedStatValues[derivedStatDefinitionId];
+        var remaining = RemainingCreationDerivedStatPoints;
 
-    var maxPerStat = CreationTemplate.MaxDerivedStatPointsPerStat > 0
-        ? CreationTemplate.MaxDerivedStatPointsPerStat
-        : CreationTemplate.DerivedStatPointsToDistribute;
+        var maxPerStat = CreationTemplate.MaxDerivedStatPointsPerStat > 0
+            ? CreationTemplate.MaxDerivedStatPointsPerStat
+            : CreationTemplate.DerivedStatPointsToDistribute;
 
-    return Math.Max(0, Math.Min(maxPerStat, currentValue + remaining));
-}
+        return Math.Max(0, Math.Min(maxPerStat, currentValue + remaining));
+    }
 
-private bool IsCreationTalentDisabled(Guid talentDefinitionId)
-{
-    if (CreationTemplate is null || CreationTemplate.TalentChoicesToSelect <= 0)
-        return false;
+    private bool IsCreationTalentDisabled(Guid talentDefinitionId)
+    {
+        if (CreationTemplate is null || CreationTemplate.TalentChoicesToSelect <= 0)
+            return false;
 
-    if (SelectedCreationTalentIds.Contains(talentDefinitionId))
-        return false;
+        if (SelectedCreationTalentIds.Contains(talentDefinitionId))
+            return false;
 
-    return SelectedCreationTalentIds.Count >= CreationTemplate.TalentChoicesToSelect;
-}
+        return SelectedCreationTalentIds.Count >= CreationTemplate.TalentChoicesToSelect;
+    }
 
-private bool IsCreationItemDisabled(Guid itemDefinitionId)
-{
-    if (CreationTemplate is null || CreationTemplate.ItemChoicesToSelect <= 0)
-        return false;
+    private bool IsCreationItemDisabled(Guid itemDefinitionId)
+    {
+        if (CreationTemplate is null || CreationTemplate.ItemChoicesToSelect <= 0)
+            return false;
 
-    if (SelectedCreationItemIds.Contains(itemDefinitionId))
-        return false;
+        if (SelectedCreationItemIds.Contains(itemDefinitionId))
+            return false;
 
-    return SelectedCreationItemIds.Count >= CreationTemplate.ItemChoicesToSelect;
-}
+        return SelectedCreationItemIds.Count >= CreationTemplate.ItemChoicesToSelect;
+    }
 
     private void OnCreationAttributeBonusChanged(Guid attributeDefinitionId, ChangeEventArgs args)
     {
@@ -2188,6 +2202,36 @@ private bool IsCreationItemDisabled(Guid itemDefinitionId)
         else
         {
             SelectedCreationItemIds.Remove(itemDefinitionId);
+        }
+    }
+
+    private void BeginConsumeItemConfirmation(Guid itemDefinitionId)
+    {
+        Message = string.Empty;
+        PendingConsumableItemDefinitionId = itemDefinitionId;
+    }
+
+    private void CancelConsumeItemConfirmation()
+    {
+        PendingConsumableItemDefinitionId = null;
+    }
+
+    private async Task ConsumeItemAsync(Guid itemDefinitionId)
+    {
+        try
+        {
+            Message = string.Empty;
+            PendingConsumableItemDefinitionId = null;
+
+            await CharacterService.ConsumeItemAsync(PlayerSessionId, itemDefinitionId);
+            await LoadState(refreshJournal: false);
+            await LoadActiveTest(allowArrivalAlert: false);
+            await LoadLatestPoll(allowArrivalAlert: false);
+        }
+        catch (Exception ex)
+        {
+            PendingConsumableItemDefinitionId = null;
+            Message = $"{L["Common_Error"]} : {ex.Message}";
         }
     }
 
@@ -2455,8 +2499,48 @@ private bool IsCreationItemDisabled(Guid itemDefinitionId)
         foreach (var item in sheet.Items)
         {
             Open("div");
-            builder.AddAttribute(seq++, "class", "rc-player-pill");
+            builder.AddAttribute(seq++, "class", "rc-player-pill rc-player-pill--item");
+            Open("span");
             Text(item.Name);
+            Close();
+
+            if (!isDeadView && item.IsConsumable && item.Quantity > 0)
+            {
+                if (PendingConsumableItemDefinitionId == item.Id)
+                {
+                    Open("span");
+                    builder.AddAttribute(seq++, "class", "rc-tool-muted");
+                    Text(L["Character_Item_ConfirmConsume"]);
+                    Close();
+
+                    Open("button");
+                    builder.AddAttribute(seq++, "type", "button");
+                    builder.AddAttribute(seq++, "class", "rc-round-icon-button");
+                    builder.AddAttribute(seq++, "title", L["Common_Yes"]);
+                    builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(this, () => ConsumeItemAsync(item.Id)));
+                    Text("✓");
+                    Close();
+
+                    Open("button");
+                    builder.AddAttribute(seq++, "type", "button");
+                    builder.AddAttribute(seq++, "class", "rc-round-icon-button");
+                    builder.AddAttribute(seq++, "title", L["Common_Cancel"]);
+                    builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(this, CancelConsumeItemConfirmation));
+                    Text("✕");
+                    Close();
+                }
+                else
+                {
+                    Open("button");
+                    builder.AddAttribute(seq++, "type", "button");
+                    builder.AddAttribute(seq++, "class", "rc-round-icon-button");
+                    builder.AddAttribute(seq++, "title", L["Character_Item_Consume"]);
+                    builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(this, () => BeginConsumeItemConfirmation(item.Id)));
+                    Text("⌁");
+                    Close();
+                }
+            }
+
             Close();
         }
         Close();
@@ -2756,4 +2840,6 @@ private bool IsCreationItemDisabled(Guid itemDefinitionId)
             : page.Title.Trim();
     }
 }
+
+
 

@@ -18,7 +18,11 @@ namespace Rollocracy.Domain.GameRules
 
         public int DisplayOrder { get; set; }
         public bool IsSelectableAtCharacterCreation { get; set; }
+        public bool IsConsumable { get; set; }
+        public int MaxQuantityPerCharacter { get; set; }
 
         public ICollection<ItemModifierDefinition> Modifiers { get; set; } = new List<ItemModifierDefinition>();
     }
 }
+
+

@@ -342,8 +342,8 @@ namespace Rollocracy.Infrastructure.Persistence
                     .HasColumnType("text");
 
                 entity.Property(x => x.ResultSnapshotJson)
-                   
-                
+
+
                 .HasColumnType("text");
             });
 
@@ -408,3 +408,5 @@ namespace Rollocracy.Infrastructure.Persistence
         }
     }
 }
+
+

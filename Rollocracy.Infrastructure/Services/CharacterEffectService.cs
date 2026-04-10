@@ -879,39 +879,68 @@ namespace Rollocracy.Infrastructure.Services
 
                 case CharacterEffectOperationType.GrantItem:
                     {
-                        if (!characterItems.Any(x => x.ItemDefinitionId == effect.TargetId))
+                        var itemDefinition = itemDefinitions.First(x => x.Id == effect.TargetId);
+                        var existingItem = characterItems.FirstOrDefault(x => x.ItemDefinitionId == effect.TargetId);
+
+                        if (itemDefinition.IsConsumable)
                         {
-                            var entity = new CharacterItem
+                            if (existingItem is null)
                             {
-                                Id = Guid.NewGuid(),
-                                CharacterId = character.Id,
-                                ItemDefinitionId = effect.TargetId
-                            };
+                                var entity = new CharacterItem
+                                {
+                                    Id = Guid.NewGuid(),
+                                    CharacterId = character.Id,
+                                    ItemDefinitionId = effect.TargetId,
+                                    Quantity = 1
+                                };
 
-                            context.CharacterItems.Add(entity);
-                            characterItems.Add(entity);
+                                context.CharacterItems.Add(entity);
+                                characterItems.Add(entity);
+                            }
+                            else
+                            {
+                                existingItem.Quantity = Math.Min(
+                                    existingItem.Quantity + 1,
+                                    Math.Max(1, itemDefinition.MaxQuantityPerCharacter));
+                            }
+                        }
+                        else
+                        {
+                            if (existingItem is null)
+                            {
+                                var entity = new CharacterItem
+                                {
+                                    Id = Guid.NewGuid(),
+                                    CharacterId = character.Id,
+                                    ItemDefinitionId = effect.TargetId,
+                                    Quantity = 1
+                                };
 
-                            await ApplyGaugeModifiersFromItemAsync(
-                                context,
-                                character,
-                                effect.TargetId,
-                                true,
-                                gaugeDefinitions,
-                                attributeDefinitions,
-                                derivedDefinitions,
-                                metricDefinitions,
-                                derivedComponents,
-                                metricComponents,
-                                metricFormulaSteps,
-                                traitValues,
-                                choiceModifiers,
-                                talentModifiers,
-                                itemModifiers,
-                                attributeValues,
-                                gaugeValues,
-                                characterTalents,
-                                characterItems,
-                                characterModifiers);
+                                context.CharacterItems.Add(entity);
+                                characterItems.Add(entity);
+
+                                await ApplyGaugeModifiersFromItemAsync(
+                                    context,
+                                    character,
+                                    effect.TargetId,
+                                    true,
+                                    gaugeDefinitions,
+                                    attributeDefinitions,
+                                    derivedDefinitions,
+                                    metricDefinitions,
+                                    derivedComponents,
+                                    metricComponents,
+                                    metricFormulaSteps,
+                                    traitValues,
+                                    choiceModifiers,
+                                    talentModifiers,
+                                    itemModifiers,
+                                    attributeValues,
+                                    gaugeValues,
+                                    characterTalents,
+                                    characterItems,
+                                    characterModifiers);
+                            }
                         }
 
                         break;
@@ -919,33 +948,48 @@ namespace Rollocracy.Infrastructure.Services
 
                 case CharacterEffectOperationType.RevokeItem:
                     {
+                        var itemDefinition = itemDefinitions.First(x => x.Id == effect.TargetId);
                         var item = characterItems.FirstOrDefault(x => x.ItemDefinitionId == effect.TargetId);
+
                         if (item != null)
                         {
-                            await ApplyGaugeModifiersFromItemAsync(
-                                context,
-                                character,
-                                effect.TargetId,
-                                false,
-                                gaugeDefinitions,
-                                attributeDefinitions,
-                                derivedDefinitions,
-                                metricDefinitions,
-                                derivedComponents,
-                                metricComponents,
-                                metricFormulaSteps,
-                                traitValues,
-                                choiceModifiers,
-                                talentModifiers,
-                                itemModifiers,
-                                attributeValues,
-                                gaugeValues,
-                                characterTalents,
-                                characterItems,
-                                characterModifiers);
+                            if (itemDefinition.IsConsumable)
+                            {
+                                item.Quantity -= 1;
 
-                            context.CharacterItems.Remove(item);
-                            characterItems.Remove(item);
+                                if (item.Quantity <= 0)
+                                {
+                                    context.CharacterItems.Remove(item);
+                                    characterItems.Remove(item);
+                                }
+                            }
+                            else
+                            {
+                                await ApplyGaugeModifiersFromItemAsync(
+                                    context,
+                                    character,
+                                    effect.TargetId,
+                                    false,
+                                    gaugeDefinitions,
+                                    attributeDefinitions,
+                                    derivedDefinitions,
+                                    metricDefinitions,
+                                    derivedComponents,
+                                    metricComponents,
+                                    metricFormulaSteps,
+                                    traitValues,
+                                    choiceModifiers,
+                                    talentModifiers,
+                                    itemModifiers,
+                                    attributeValues,
+                                    gaugeValues,
+                                    characterTalents,
+                                    characterItems,
+                                    characterModifiers);
+
+                                context.CharacterItems.Remove(item);
+                                characterItems.Remove(item);
+                            }
                         }
 
                         break;

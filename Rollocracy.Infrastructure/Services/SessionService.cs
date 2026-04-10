@@ -919,6 +919,8 @@ namespace Rollocracy.Infrastructure.Services
                 Description = item.Description ?? string.Empty,
                 DisplayOrder = item.DisplayOrder,
                 IsDeleted = false,
+                IsConsumable = item.IsConsumable,
+                MaxQuantityPerCharacter = item.MaxQuantityPerCharacter,
                 Modifiers = modifiers
                     .Where(x => x.ItemDefinitionId == item.Id)
                     .Select(x => new EditableModifierDefinitionDto
@@ -928,6 +930,7 @@ namespace Rollocracy.Infrastructure.Services
                         TargetType = x.TargetType,
                         TargetId = x.TargetId,
                         Value = x.AddValue,
+                        FillGaugeCurrentValueOnly = x.FillGaugeCurrentValueOnly,
                         ValueMode = x.ValueMode,
                         SourceMetricId = x.SourceMetricId
                     })
@@ -962,6 +965,12 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => x.playerSession.SessionId == sessionId)
                 .Select(x => x.character.Id)
                 .ToListAsync();
+
+            foreach (var item in requestItems.Where(x => !x.IsDeleted))
+            {
+                if (item.IsConsumable && item.MaxQuantityPerCharacter <= 0)
+                    throw new Exception(_localizer["Backend_ConsumableItemMaxQuantityInvalid"]);
+            }
 
             await ValidateSessionItemNamesAsync(context, sessionId, gameSystemId, requestItems);
             await SyncSessionItemsAsync(context, sessionId, affectedCharacterIds, requestItems);
@@ -1038,6 +1047,10 @@ namespace Rollocracy.Infrastructure.Services
                 entity.Name = item.Name.Trim();
                 entity.Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim();
                 entity.DisplayOrder = item.DisplayOrder;
+                entity.IsConsumable = item.IsConsumable;
+                entity.MaxQuantityPerCharacter = item.IsConsumable
+                    ? Math.Max(1, item.MaxQuantityPerCharacter)
+                    : 1;
             }
 
             foreach (var item in requestItems.Where(x => !x.ItemDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
@@ -1051,6 +1064,10 @@ namespace Rollocracy.Infrastructure.Services
                     SessionId = sessionId,
                     Name = item.Name.Trim(),
                     Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim(),
+                    IsConsumable = item.IsConsumable,
+                    MaxQuantityPerCharacter = item.IsConsumable
+                        ? Math.Max(1, item.MaxQuantityPerCharacter)
+                        : 1,
                     DisplayOrder = item.DisplayOrder
                 });
 
@@ -1095,6 +1112,7 @@ namespace Rollocracy.Infrastructure.Services
                         entity.TargetType = modifier.TargetType;
                         entity.TargetId = modifier.TargetId;
                         entity.AddValue = modifier.Value;
+                        entity.FillGaugeCurrentValueOnly = modifier.FillGaugeCurrentValueOnly;
                         entity.ValueMode = modifier.ValueMode;
                         entity.SourceMetricId = sourceMetricId;
                     }
@@ -1107,6 +1125,7 @@ namespace Rollocracy.Infrastructure.Services
                             TargetType = modifier.TargetType,
                             TargetId = modifier.TargetId,
                             AddValue = modifier.Value,
+                            FillGaugeCurrentValueOnly = modifier.FillGaugeCurrentValueOnly,
                             ValueMode = modifier.ValueMode,
                             SourceMetricId = sourceMetricId
                         });

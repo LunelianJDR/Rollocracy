@@ -1294,6 +1294,22 @@ else
                                                     <span>@L["GameSystem_Editor_IsSelectableAtCharacterCreation"]</span>
                                                 </label>
                                             </div>
+
+                                            <div class="rc-form-field">
+                                                <label></label>
+                                                <label class="rc-filter-toggle">
+                                                    <input type="checkbox" @bind="item.IsConsumable" />
+                                                    <span>@L["GameSystem_Editor_ItemIsConsumable"]</span>
+                                                </label>
+                                            </div>
+
+                                            @if (item.IsConsumable)
+                                            {
+                                                <div class="rc-form-field">
+                                                    <label>@L["GameSystem_Editor_ItemMaxQuantityPerCharacter"]</label>
+                                                    <input type="number" min="1" @bind="item.MaxQuantityPerCharacter" />
+                                                </div>
+                                            }
                                         </div>
 
                                         <div class="rc-tool-subsection">
@@ -1329,6 +1345,21 @@ else
                                                                 }
                                                             </select>
                                                         </div>
+
+                                                        @if (modifier.OperationType == ModifierOperationType.AddValue &&
+                                                             modifier.TargetType == ModifierTargetType.Gauge &&
+                                                             item.IsConsumable)
+                                                        {
+                                                            <div class="rc-form-field">
+                                                                <label>@L["GameSystem_Editor_ItemModifierAffectsMaximum"]</label>
+                                                                <label class="rc-filter-toggle">
+                                                                    <input type="checkbox"
+                                                                           checked="@ItemGaugeModifierAffectsMaximum(modifier)"
+                                                                           @onchange="e => SetItemGaugeModifierAffectsMaximum(modifier, e.Value is bool value && value)" />
+                                                                    <span>@L["GameSystem_Editor_ItemModifierAffectsMaximum"]</span>
+                                                                </label>
+                                                            </div>
+                                                        }
 
                                                         <div class="rc-form-field">
                                                             <label>@L["GameSystem_Editor_ModifierValueMode"]</label>
@@ -1832,7 +1863,9 @@ else
             TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
             Value = 0,
             ValueMode = ModifierValueMode.Fixed,
-            SourceMetricId = CurrentSystem?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId
+            SourceMetricId = CurrentSystem?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId,
+            OperationType = ModifierOperationType.AddValue,
+            FillGaugeCurrentValueOnly = false
         });
     }
 
@@ -2157,5 +2190,15 @@ else
     private async Task ScrollToTopAsync()
     {
         await JS.InvokeVoidAsync("window.scrollTo", 0, 0);
+    }
+
+    private bool ItemGaugeModifierAffectsMaximum(EditableModifierDefinitionDto modifier)
+    {
+        return !modifier.FillGaugeCurrentValueOnly;
+    }
+
+    private void SetItemGaugeModifierAffectsMaximum(EditableModifierDefinitionDto modifier, bool affectsMaximum)
+    {
+        modifier.FillGaugeCurrentValueOnly = !affectsMaximum;
     }
 }
