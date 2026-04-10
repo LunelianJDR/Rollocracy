@@ -50,6 +50,34 @@ else
                     @if (LatestPoll is null || LatestPoll.IsClosed)
                     {
                         <div class="rc-tool-inline-actions">
+                            <button type="button" @onclick="ShowSavePollPreset">@L["Poll_SavePreset"]</button>
+
+                            @if (PollPresets.Count > 0)
+                            {
+                                <select @bind="SelectedPollPresetId" @bind:after="ApplySelectedPollPreset">
+                                    <option value="">@L["Poll_SelectPreset"]</option>
+                                    @foreach (var preset in PollPresets)
+                                    {
+                                        <option value="@preset.PresetId">@preset.Name</option>
+                                    }
+                                </select>
+
+                                @if (SelectedPollPresetId.HasValue)
+                                {
+                                    @if (!ConfirmDeletePollPresetVisible)
+                                    {
+                                        <button type="button" @onclick="ShowDeletePollPresetConfirmation">
+                                            @L["Poll_DeletePreset"]
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" @onclick="DeleteSelectedPollPresetConfirmed">@L["Common_Yes"]</button>
+                                        <button type="button" @onclick="CancelDeletePollPreset">@L["Common_No"]</button>
+                                    }
+                                }
+                            }
+
                             <button @onclick="CreatePoll">@L["Poll_Create"]</button>
                         </div>
                     }
@@ -58,6 +86,34 @@ else
                 @if (!string.IsNullOrWhiteSpace(Message))
                 {
                     <div class="rc-inline-error">@Message</div>
+                }
+
+                @if (ShowSavePollPresetPanel)
+                {
+                    <div class="rc-filter-group-card">
+                        <div class="rc-form-field">
+                            <label>@L["Poll_PresetName"]</label>
+                            <input @bind="NewPollPresetName" />
+                        </div>
+
+                        @if (ConfirmOverwritePollPresetVisible)
+                        {
+                            <div class="rc-inline-warning">@L["Poll_PresetOverwriteConfirm"]</div>
+                        }
+
+                        <div class="rc-tool-inline-actions">
+                            @if (!ConfirmOverwritePollPresetVisible)
+                            {
+                                <button type="button" @onclick="SavePollPresetConfirmed">@L["Common_Yes"]</button>
+                                <button type="button" @onclick="CancelSavePollPreset">@L["Common_No"]</button>
+                            }
+                            else
+                            {
+                                <button type="button" @onclick="OverwritePollPresetConfirmed">@L["Common_Yes"]</button>
+                                <button type="button" @onclick="CancelOverwritePollPreset">@L["Common_No"]</button>
+                            }
+                        </div>
+                    </div>
                 }
 
                 @if (RecentPolls.Count > 0)
@@ -390,6 +446,14 @@ else
     private PollForGameMasterDto? LatestPoll;
     private List<PollForGameMasterDto> RecentPolls = new();
 
+    private List<SessionPollPresetDto> PollPresets = new();
+private Guid? SelectedPollPresetId;
+private string NewPollPresetName = string.Empty;
+
+private bool ShowSavePollPresetPanel;
+private bool ConfirmOverwritePollPresetVisible;
+private bool ConfirmDeletePollPresetVisible;
+
     private Guid CurrentUserId;
     private bool IsLoaded;
     private bool RedirectToHome;
@@ -632,6 +696,7 @@ else
         }
 
         SessionGauges = await SessionService.GetSessionGaugesAsync(SessionId, CurrentUserId);
+        PollPresets = await PollService.GetSessionPresetsAsync(SessionId, CurrentUserId);
         await LoadCharacterSummariesAsync();
         await LoadLatestPoll();
         await LoadAdvancedPollOptionsAsync();
@@ -1053,6 +1118,233 @@ else
         return consequence.Value >= 0
             ? "rc-consequence-pill rc-consequence-pill--positive"
             : "rc-consequence-pill rc-consequence-pill--negative";
+    }
+
+    private Task ShowSavePollPreset()
+    {
+        ShowSavePollPresetPanel = true;
+        ConfirmOverwritePollPresetVisible = false;
+        NewPollPresetName = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelSavePollPreset()
+    {
+        ShowSavePollPresetPanel = false;
+        ConfirmOverwritePollPresetVisible = false;
+        NewPollPresetName = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private Task ShowDeletePollPresetConfirmation()
+    {
+        ConfirmDeletePollPresetVisible = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelDeletePollPreset()
+    {
+        ConfirmDeletePollPresetVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task SavePollPresetConfirmed()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            var request = BuildPollPresetRequest();
+
+            await PollService.SaveSessionPresetAsync(
+                SessionId,
+                CurrentUserId,
+                NewPollPresetName,
+                request,
+                overwrite: false);
+
+            PollPresets = await PollService.GetSessionPresetsAsync(SessionId, CurrentUserId);
+            SelectedPollPresetId = PollPresets.FirstOrDefault(x => x.Name == NewPollPresetName.Trim())?.PresetId;
+
+            ShowSavePollPresetPanel = false;
+            ConfirmOverwritePollPresetVisible = false;
+            NewPollPresetName = string.Empty;
+
+            Message = L["Poll_PresetSaved"];
+        }
+        catch (Exception ex)
+        {
+            if (ex.Message == L["Backend_PollPresetAlreadyExists"])
+            {
+                ConfirmOverwritePollPresetVisible = true;
+                return;
+            }
+
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task OverwritePollPresetConfirmed()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            var request = BuildPollPresetRequest();
+
+            await PollService.SaveSessionPresetAsync(
+                SessionId,
+                CurrentUserId,
+                NewPollPresetName,
+                request,
+                overwrite: true);
+
+            PollPresets = await PollService.GetSessionPresetsAsync(SessionId, CurrentUserId);
+            SelectedPollPresetId = PollPresets.FirstOrDefault(x => x.Name == NewPollPresetName.Trim())?.PresetId;
+
+            ShowSavePollPresetPanel = false;
+            ConfirmOverwritePollPresetVisible = false;
+            NewPollPresetName = string.Empty;
+
+            Message = L["Poll_PresetSaved"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task DeleteSelectedPollPresetConfirmed()
+    {
+        try
+        {
+            if (!SelectedPollPresetId.HasValue)
+                return;
+
+            Message = string.Empty;
+
+            await PollService.DeleteSessionPresetAsync(SessionId, CurrentUserId, SelectedPollPresetId.Value);
+
+            PollPresets = await PollService.GetSessionPresetsAsync(SessionId, CurrentUserId);
+            SelectedPollPresetId = null;
+            ConfirmDeletePollPresetVisible = false;
+
+            Message = L["Poll_PresetDeleted"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ApplySelectedPollPreset()
+    {
+        if (!SelectedPollPresetId.HasValue)
+            return;
+
+        var preset = PollPresets.FirstOrDefault(x => x.PresetId == SelectedPollPresetId.Value);
+        if (preset is null)
+            return;
+
+        ApplyPollPresetRequest(preset.Request);
+
+        ConfirmDeletePollPresetVisible = false;
+        await RefreshSelectedPollOptionOptionsAsync();
+        StateHasChanged();
+    }
+
+    private Task CancelOverwritePollPreset()
+    {
+        ConfirmOverwritePollPresetVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private PollCreateRequestDto BuildPollPresetRequest()
+    {
+        return new PollCreateRequestDto
+        {
+            Question = NewPollQuestion,
+            VoteWeightMode = PollVoteWeightMode.Metric,
+            MetricDefinitionId = VoteWeightMetricId,
+            AdvancedFilter = ClonePollAdvancedFilter(AdvancedFilter),
+            Options = NewPollOptions.Select(o => new PollOptionDraftDto
+            {
+                Label = o.Label,
+                Consequences = o.Consequences
+                    .Where(c => c.TargetDefinitionId != Guid.Empty)
+                    .Where(c => c.OperationType != TestConsequenceOperationType.AddValue
+                        || c.ValueMode != ModifierValueMode.Metric
+                        || c.SourceMetricId.HasValue)
+                    .Select(c => new PollOptionConsequenceInlineDraftDto
+                    {
+                        TargetKind = c.TargetKind,
+                        TargetDefinitionId = c.TargetDefinitionId,
+                        ModifierMode = c.ValueMode == ModifierValueMode.Metric ? c.ModifierMode : TestModifierMode.Bonus,
+                        Value = c.ValueMode == ModifierValueMode.Metric ? 0 : c.Value,
+                        ValueMode = c.ValueMode,
+                        SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null,
+                        OperationType = c.OperationType
+                    })
+                    .ToList()
+            }).ToList()
+        };
+    }
+
+    private void ApplyPollPresetRequest(PollCreateRequestDto request)
+    {
+        NewPollQuestion = request.Question;
+        VoteWeightMetricId = request.MetricDefinitionId;
+        AdvancedFilter = ClonePollAdvancedFilter(request.AdvancedFilter ?? new CharacterTargetFilterDto());
+
+        NewPollOptions = request.Options.Select(o => new PollOptionRowModel
+        {
+            Label = o.Label,
+            Consequences = o.Consequences.Select(c => new SharedConsequenceRowModel
+            {
+                RowId = Guid.NewGuid(),
+                OperationType = c.OperationType,
+                TargetKind = c.TargetKind,
+                TargetDefinitionId = c.TargetDefinitionId,
+                ModifierMode = c.ValueMode == ModifierValueMode.Metric ? c.ModifierMode : TestModifierMode.Bonus,
+                Value = c.Value,
+                ValueMode = c.ValueMode,
+                SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null
+            }).ToList()
+        }).ToList();
+
+        if (NewPollOptions.Count == 0)
+        {
+            NewPollOptions = new List<PollOptionRowModel> { new(), new() };
+        }
+    }
+
+    private CharacterTargetFilterDto ClonePollAdvancedFilter(CharacterTargetFilterDto source)
+    {
+        return new CharacterTargetFilterDto
+        {
+            OnlyAlive = source.OnlyAlive,
+            OnlyDead = source.OnlyDead,
+            OnlyOnline = source.OnlyOnline,
+            IncludeNpcs = source.IncludeNpcs,
+            MatchAllConditions = source.MatchAllConditions,
+            TraitOptionIds = source.TraitOptionIds.ToList(),
+            TalentIds = source.TalentIds.ToList(),
+            ItemIds = source.ItemIds.ToList(),
+            PollId = source.PollId,
+            PollSelectedOptionId = source.PollSelectedOptionId,
+            FilterOnPollResponse = source.FilterOnPollResponse,
+            MustHaveSucceededLastTest = source.MustHaveSucceededLastTest,
+            FilterOnLastTestResult = source.FilterOnLastTestResult,
+            NameCharacterIds = source.NameCharacterIds.ToList(),
+            ValueFilters = source.ValueFilters.Select(x => new CharacterValueFilterDto
+            {
+                TargetType = x.TargetType,
+                TargetId = x.TargetId,
+                TargetName = x.TargetName,
+                ComparisonType = x.ComparisonType,
+                Value = x.Value
+            }).ToList()
+        };
     }
 }
 

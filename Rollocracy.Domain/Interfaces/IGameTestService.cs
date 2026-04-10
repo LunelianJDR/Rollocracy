@@ -17,6 +17,19 @@ namespace Rollocracy.Domain.Interfaces
 
         Task AutoRollPendingAsync(Guid gameTestId);
 
+        Task<List<SessionGameTestPresetDto>> GetSessionPresetsAsync(Guid sessionId, Guid gameMasterUserAccountId);
+
+        Task SaveSessionPresetAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            string presetName,
+            GameTestCreateRequestDto request,
+            bool overwrite);
+
+        Task DeleteSessionPresetAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid presetId);
+
+        Task RollbackLatestTestConsequencesOnlyAsync(Guid sessionId, Guid gameMasterUserAccountId);
+
         Task RollbackLatestTestAsync(Guid sessionId, Guid gameMasterUserAccountId);
     }
 }

@@ -49,5 +49,6 @@ namespace Rollocracy.Domain.GameTests
         public int? GlobalSuccessThreshold2Percent { get; set; }
         public int? GlobalSuccessThreshold3Percent { get; set; }
         public bool GlobalConsequencesApplied { get; set; }
+        public bool ConsequencesCancelled { get; set; }
     }
 }

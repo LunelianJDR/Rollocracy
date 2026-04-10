@@ -213,6 +213,8 @@ namespace Rollocracy.Domain.GameTests
         public int? GlobalSuccessThreshold2Percent { get; set; }
         public int? GlobalSuccessThreshold3Percent { get; set; }
         public GameTestGlobalOutcome GlobalOutcome { get; set; }
+        public bool HasConsequences { get; set; }
+        public bool ConsequencesCancelled { get; set; }
 
         public int? BestDiceTotal { get; set; }
 
@@ -221,5 +223,20 @@ namespace Rollocracy.Domain.GameTests
         public double? AverageDiceTotal { get; set; }
 
         public List<GameMasterGameTestResultLineDto> Results { get; set; } = new();
+    }
+
+    public class SessionGameTestPresetDto
+    {
+        public Guid PresetId { get; set; }
+
+        public Guid SessionId { get; set; }
+
+        public string Name { get; set; } = string.Empty;
+
+        public DateTime CreatedAtUtc { get; set; }
+
+        public DateTime UpdatedAtUtc { get; set; }
+
+        public GameTestCreateRequestDto Request { get; set; } = new();
     }
 }

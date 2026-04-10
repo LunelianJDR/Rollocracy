@@ -3609,4 +3609,83 @@
 	<data name="Character_Item_ConfirmConsume" xml:space="preserve">
   <value>Consommer ?</value>
 </data>
+	<data name="Backend_TestPresetNameRequired" xml:space="preserve">
+  <value>Le nom du preset de test est requis.</value>
+</data>
+	<data name="Backend_TestPresetAlreadyExists" xml:space="preserve">
+  <value>Un preset de test avec ce nom existe déjà.</value>
+</data>
+	<data name="Backend_TestPresetNotFound" xml:space="preserve">
+  <value>Preset de test introuvable.</value>
+</data>
+	<data name="Backend_PollPresetNameRequired" xml:space="preserve">
+  <value>Le nom du preset de sondage est requis.</value>
+</data>
+	<data name="Backend_PollPresetAlreadyExists" xml:space="preserve">
+  <value>Un preset de sondage avec ce nom existe déjà.</value>
+</data>
+	<data name="Backend_PollPresetNotFound" xml:space="preserve">
+  <value>Preset de sondage introuvable.</value>
+</data>
+	<data name="Test_SavePreset" xml:space="preserve">
+  <value>Enregistrer preset</value>
+</data>
+	<data name="Test_SelectPreset" xml:space="preserve">
+  <value>Sélectionner un preset</value>
+</data>
+	<data name="Test_DeletePreset" xml:space="preserve">
+  <value>Supprimer le preset</value>
+</data>
+	<data name="Test_PresetName" xml:space="preserve">
+  <value>Nom du preset</value>
+</data>
+	<data name="Test_PresetOverwriteConfirm" xml:space="preserve">
+  <value>Remplacer preset existant ?</value>
+</data>
+	<data name="Test_PresetSaved" xml:space="preserve">
+  <value>Preset de test enregistré.</value>
+</data>
+	<data name="Test_PresetDeleted" xml:space="preserve">
+  <value>Preset de test supprimé.</value>
+</data>
+
+	<data name="Poll_SavePreset" xml:space="preserve">
+  <value>Enregistrer preset</value>
+</data>
+	<data name="Poll_SelectPreset" xml:space="preserve">
+  <value>Sélectionner un preset</value>
+</data>
+	<data name="Poll_DeletePreset" xml:space="preserve">
+  <value>Supprimer le preset</value>
+</data>
+	<data name="Poll_PresetName" xml:space="preserve">
+  <value>Nom du preset</value>
+</data>
+	<data name="Poll_PresetOverwriteConfirm" xml:space="preserve">
+  <value>Remplacer preset existant ?</value>
+</data>
+	<data name="Poll_PresetSaved" xml:space="preserve">
+  <value>Preset de sondage enregistré.</value>
+</data>
+	<data name="Poll_PresetDeleted" xml:space="preserve">
+  <value>Preset de sondage supprimé.</value>
+</data>
+	<data name="Backend_TestConsequencesAlreadyCancelled" xml:space="preserve">
+  <value>Les conséquences de ce test ont déjà été annulées.</value>
+</data>
+	<data name="Backend_TestHasNoConsequencesToRollback" xml:space="preserve">
+  <value>Ce test n'a aucune conséquence à annuler.</value>
+</data>
+	<data name="Test_RollbackConsequencesOnly" xml:space="preserve">
+  <value>Annuler uniquement les conséquences</value>
+</data>
+	<data name="Test_RollbackConsequencesOnlyConfirmQuestion" xml:space="preserve">
+  <value>Annuler uniquement les conséquences du dernier test et conserver les résultats ?</value>
+</data>
+	<data name="Test_RollbackConsequencesOnlySuccess" xml:space="preserve">
+  <value>Les conséquences du dernier test ont été annulées.</value>
+</data>
+	<data name="Test_ConsequencesCancelled" xml:space="preserve">
+  <value>Conséquences annulées</value>
+</data>
 </root>

@@ -6,6 +6,7 @@ using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Domain.Polls;
 using Rollocracy.Infrastructure.Persistence;
+using System.Text.Json;
 
 namespace Rollocracy.Infrastructure.Services
 {
@@ -442,8 +443,6 @@ namespace Rollocracy.Infrastructure.Services
                     .Select(x => x.consequence)
                     .ToList();
 
-                // 1) Legacy : Attribute / Gauge restent sur l'ancien mécanisme
-                // pour conserver le rollback actuel jusqu'à 5D.3.
                 var legacyConsequences = voteConsequences
                     .Where(c =>
                         c.OperationType == TestConsequenceOperationType.AddValue &&
@@ -669,6 +668,104 @@ namespace Rollocracy.Infrastructure.Services
 
             await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
             await _sessionNotifier.NotifyPollChangedAsync(sessionId);
+        }
+
+        public async Task<List<SessionPollPresetDto>> GetSessionPresetsAsync(Guid sessionId, Guid gameMasterUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var sessionExists = await context.Sessions
+                .AsNoTracking()
+                .AnyAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (!sessionExists)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var presets = await context.SessionPollPresets
+                .AsNoTracking()
+                .Where(x => x.SessionId == sessionId)
+                .OrderBy(x => x.Name)
+                .ToListAsync();
+
+            return presets.Select(x => new SessionPollPresetDto
+            {
+                PresetId = x.Id,
+                SessionId = x.SessionId,
+                Name = x.Name,
+                CreatedAtUtc = x.CreatedAtUtc,
+                UpdatedAtUtc = x.UpdatedAtUtc,
+                Request = DeserializePollPresetPayload(x.PayloadJson)
+            }).ToList();
+        }
+
+        public async Task SaveSessionPresetAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            string presetName,
+            PollCreateRequestDto request,
+            bool overwrite)
+        {
+            var normalizedName = (presetName ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalizedName))
+                throw new Exception(_localizer["Backend_PollPresetNameRequired"]);
+
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var sessionExists = await context.Sessions
+                .AsNoTracking()
+                .AnyAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (!sessionExists)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var existing = await context.SessionPollPresets
+                .FirstOrDefaultAsync(x => x.SessionId == sessionId && x.Name == normalizedName);
+
+            var payloadJson = JsonSerializer.Serialize(request);
+
+            if (existing is null)
+            {
+                context.SessionPollPresets.Add(new SessionPollPreset
+                {
+                    Id = Guid.NewGuid(),
+                    SessionId = sessionId,
+                    Name = normalizedName,
+                    PayloadJson = payloadJson,
+                    CreatedAtUtc = DateTime.UtcNow,
+                    UpdatedAtUtc = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                if (!overwrite)
+                    throw new Exception(_localizer["Backend_PollPresetAlreadyExists"]);
+
+                existing.PayloadJson = payloadJson;
+                existing.UpdatedAtUtc = DateTime.UtcNow;
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        public async Task DeleteSessionPresetAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid presetId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var sessionExists = await context.Sessions
+                .AsNoTracking()
+                .AnyAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (!sessionExists)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var preset = await context.SessionPollPresets
+                .FirstOrDefaultAsync(x => x.Id == presetId && x.SessionId == sessionId);
+
+            if (preset is null)
+                throw new Exception(_localizer["Backend_PollPresetNotFound"]);
+
+            context.SessionPollPresets.Remove(preset);
+            await context.SaveChangesAsync();
         }
 
         public async Task UndoLatestPollConsequencesAsync(Guid sessionId, Guid gameMasterUserAccountId)
@@ -1635,6 +1732,21 @@ namespace Rollocracy.Infrastructure.Services
                 TestConsequenceOperationType.RevokeItem => consequence.TargetDefinitionId != Guid.Empty,
                 _ => false
             };
+        }
+
+        private static PollCreateRequestDto DeserializePollPresetPayload(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new PollCreateRequestDto();
+
+            try
+            {
+                return JsonSerializer.Deserialize<PollCreateRequestDto>(json) ?? new PollCreateRequestDto();
+            }
+            catch
+            {
+                return new PollCreateRequestDto();
+            }
         }
     }
 }

@@ -136,4 +136,19 @@ namespace Rollocracy.Domain.Polls
         public List<PollOptionResultDto> Options { get; set; } = new();
     }
 
+    public class SessionPollPresetDto
+    {
+        public Guid PresetId { get; set; }
+
+        public Guid SessionId { get; set; }
+
+        public string Name { get; set; } = string.Empty;
+
+        public DateTime CreatedAtUtc { get; set; }
+
+        public DateTime UpdatedAtUtc { get; set; }
+
+        public PollCreateRequestDto Request { get; set; } = new();
+    }
+
 }

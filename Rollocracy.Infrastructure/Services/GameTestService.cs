@@ -466,6 +466,146 @@ namespace Rollocracy.Infrastructure.Services
             await _sessionNotifier.NotifyTestChangedAsync(test.SessionId);
         }
 
+        public async Task<List<SessionGameTestPresetDto>> GetSessionPresetsAsync(Guid sessionId, Guid gameMasterUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var sessionExists = await context.Sessions
+                .AsNoTracking()
+                .AnyAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (!sessionExists)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var presets = await context.SessionGameTestPresets
+                .AsNoTracking()
+                .Where(x => x.SessionId == sessionId)
+                .OrderBy(x => x.Name)
+                .ToListAsync();
+
+            return presets.Select(x => new SessionGameTestPresetDto
+            {
+                PresetId = x.Id,
+                SessionId = x.SessionId,
+                Name = x.Name,
+                CreatedAtUtc = x.CreatedAtUtc,
+                UpdatedAtUtc = x.UpdatedAtUtc,
+                Request = DeserializeGameTestPresetPayload(x.PayloadJson)
+            }).ToList();
+        }
+
+        public async Task SaveSessionPresetAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            string presetName,
+            GameTestCreateRequestDto request,
+            bool overwrite)
+        {
+            ValidateCreateRequest(request);
+
+            var normalizedName = (presetName ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalizedName))
+                throw new Exception(_localizer["Backend_TestPresetNameRequired"]);
+
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var sessionExists = await context.Sessions
+                .AsNoTracking()
+                .AnyAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (!sessionExists)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var existing = await context.SessionGameTestPresets
+                .FirstOrDefaultAsync(x => x.SessionId == sessionId && x.Name == normalizedName);
+
+            var payloadJson = JsonSerializer.Serialize(request);
+
+            if (existing is null)
+            {
+                context.SessionGameTestPresets.Add(new SessionGameTestPreset
+                {
+                    Id = Guid.NewGuid(),
+                    SessionId = sessionId,
+                    Name = normalizedName,
+                    PayloadJson = payloadJson,
+                    CreatedAtUtc = DateTime.UtcNow,
+                    UpdatedAtUtc = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                if (!overwrite)
+                    throw new Exception(_localizer["Backend_TestPresetAlreadyExists"]);
+
+                existing.PayloadJson = payloadJson;
+                existing.UpdatedAtUtc = DateTime.UtcNow;
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        public async Task DeleteSessionPresetAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid presetId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var sessionExists = await context.Sessions
+                .AsNoTracking()
+                .AnyAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (!sessionExists)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var preset = await context.SessionGameTestPresets
+                .FirstOrDefaultAsync(x => x.Id == presetId && x.SessionId == sessionId);
+
+            if (preset is null)
+                throw new Exception(_localizer["Backend_TestPresetNotFound"]);
+
+            context.SessionGameTestPresets.Remove(preset);
+            await context.SaveChangesAsync();
+        }
+
+        public async Task RollbackLatestTestConsequencesOnlyAsync(Guid sessionId, Guid gameMasterUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (session == null)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var latestTest = await context.GameTests
+                .FirstOrDefaultAsync(t => t.SessionId == sessionId);
+
+            if (latestTest == null)
+                throw new Exception(_localizer["Backend_TestNotFound"]);
+
+            if (latestTest.ConsequencesCancelled)
+                throw new Exception(_localizer["Backend_TestConsequencesAlreadyCancelled"]);
+
+            var appliedEffects = await context.GameTestAppliedEffects
+                .Where(e => e.GameTestId == latestTest.Id)
+                .OrderByDescending(e => e.AppliedAtUtc)
+                .ToListAsync();
+
+            if (appliedEffects.Count == 0)
+                throw new Exception(_localizer["Backend_TestHasNoConsequencesToRollback"]);
+
+            await RollbackTestAppliedEffectsAsync(context, sessionId, latestTest.Id, appliedEffects);
+
+            latestTest.ConsequencesCancelled = true;
+            latestTest.GlobalConsequencesApplied = false;
+
+            context.GameTestAppliedEffects.RemoveRange(appliedEffects);
+
+            await context.SaveChangesAsync();
+
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
+            await _sessionNotifier.NotifyTestChangedAsync(sessionId);
+        }
         public async Task RollbackLatestTestAsync(Guid sessionId, Guid gameMasterUserAccountId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -490,166 +630,7 @@ namespace Rollocracy.Infrastructure.Services
                 .OrderByDescending(e => e.AppliedAtUtc)
                 .ToListAsync();
 
-            var testCharacterModifiers = await context.CharacterModifiers
-                .Where(x => x.SourceType == CharacterEffectSourceType.Test && x.SourceId == latestTest.Id)
-                .ToListAsync();
-
-            // Liste des personnages qui seraient ressuscités par le rollback
-            var charactersThatWouldBeResurrected = appliedEffects
-                .Where(e => e.PreviousIsAlive && !e.NewIsAlive)
-                .Select(e => e.CharacterId)
-                .Distinct()
-                .ToList();
-
-            // Parmi eux, on exclut ceux dont le joueur a déjà un autre personnage vivant
-            var charactersToKeepDead = new HashSet<Guid>();
-
-            foreach (var characterId in charactersThatWouldBeResurrected)
-            {
-                var character = await context.Characters
-                    .FirstOrDefaultAsync(c => c.Id == characterId);
-
-                if (character == null)
-                    continue;
-
-                var otherAliveCharacterExists = await context.Characters
-                    .AnyAsync(c =>
-                        c.PlayerSessionId == character.PlayerSessionId &&
-                        c.Id != character.Id &&
-                        c.IsAlive);
-
-                if (otherAliveCharacterExists)
-                {
-                    charactersToKeepDead.Add(characterId);
-                }
-            }
-
-            var modifiersToRemove = testCharacterModifiers
-                .Where(x => !charactersToKeepDead.Contains(x.CharacterId))
-                .ToList();
-
-            if (modifiersToRemove.Count > 0)
-            {
-                context.CharacterModifiers.RemoveRange(modifiersToRemove);
-            }
-
-            foreach (var effect in appliedEffects)
-            {
-                var character = await context.Characters
-                    .FirstOrDefaultAsync(c => c.Id == effect.CharacterId);
-
-                if (character == null)
-                    continue;
-
-                // Si ce personnage doit rester mort, on n'annule aucun effet le concernant.
-                // On laisse donc son état actuel intact.
-                if (charactersToKeepDead.Contains(effect.CharacterId))
-                {
-                    continue;
-                }
-
-                if (effect.TargetKind == TestConsequenceTargetKind.Talent)
-                {
-                    var existingTalent = await context.CharacterTalents
-                        .FirstOrDefaultAsync(x =>
-                            x.CharacterId == effect.CharacterId &&
-                            x.TalentDefinitionId == effect.TargetDefinitionId);
-
-                    if (effect.PreviousHasTargetLink)
-                    {
-                        if (existingTalent == null)
-                        {
-                            context.CharacterTalents.Add(new CharacterTalent
-                            {
-                                Id = Guid.NewGuid(),
-                                CharacterId = effect.CharacterId,
-                                TalentDefinitionId = effect.TargetDefinitionId
-                            });
-                        }
-                    }
-                    else
-                    {
-                        if (existingTalent != null)
-                        {
-                            context.CharacterTalents.Remove(existingTalent);
-                        }
-                    }
-
-                    character.IsAlive = effect.PreviousIsAlive;
-                    character.DiedAtUtc = effect.PreviousDiedAtUtc;
-                    continue;
-                }
-
-                if (effect.TargetKind == TestConsequenceTargetKind.Item)
-                {
-                    var existingItem = await context.CharacterItems
-                        .FirstOrDefaultAsync(x =>
-                            x.CharacterId == effect.CharacterId &&
-                            x.ItemDefinitionId == effect.TargetDefinitionId);
-
-                    if (effect.PreviousHasTargetLink)
-                    {
-                        if (existingItem == null)
-                        {
-                            context.CharacterItems.Add(new CharacterItem
-                            {
-                                Id = Guid.NewGuid(),
-                                CharacterId = effect.CharacterId,
-                                ItemDefinitionId = effect.TargetDefinitionId
-                            });
-                        }
-                    }
-                    else
-                    {
-                        if (existingItem != null)
-                        {
-                            context.CharacterItems.Remove(existingItem);
-                        }
-                    }
-
-                    character.IsAlive = effect.PreviousIsAlive;
-                    character.DiedAtUtc = effect.PreviousDiedAtUtc;
-                    continue;
-                }
-
-                if (effect.TargetKind == TestConsequenceTargetKind.Gauge)
-                {
-                    var gaugeValue = await context.CharacterGaugeValues
-                        .FirstOrDefaultAsync(v =>
-                            v.CharacterId == effect.CharacterId &&
-                            v.GaugeDefinitionId == effect.TargetDefinitionId);
-
-                    if (gaugeValue != null)
-                    {
-                        gaugeValue.Value = effect.PreviousValue;
-                    }
-                }
-                else if (effect.TargetKind == TestConsequenceTargetKind.SessionGauge)
-                {
-                    var sessionGauge = await context.SessionGauges
-                        .FirstOrDefaultAsync(g => g.Id == effect.TargetDefinitionId && g.SessionId == sessionId);
-
-                    if (sessionGauge != null)
-                    {
-                        sessionGauge.CurrentValue = effect.PreviousValue;
-                    }
-                }
-                else
-                {
-                    var attributeValue = await context.CharacterAttributeValues
-                        .FirstOrDefaultAsync(v =>
-                            v.CharacterId == effect.CharacterId &&
-                            v.AttributeDefinitionId == effect.TargetDefinitionId);
-
-                    if (attributeValue != null)
-                    {
-                        attributeValue.Value = effect.PreviousValue;
-                    }
-                }
-
-                character.IsAlive = effect.PreviousIsAlive;
-                character.DiedAtUtc = effect.PreviousDiedAtUtc;
-            }
+            await RollbackTestAppliedEffectsAsync(context, sessionId, latestTest.Id, appliedEffects);
 
             var rollRows = await context.PlayerTestRolls
                 .Where(r => r.GameTestId == latestTest.Id)
@@ -1337,6 +1318,10 @@ namespace Rollocracy.Infrastructure.Services
             var totalCount = rolledRows.Count;
             var successCount = rolledRows.Count(r => r.Outcome == GameTestOutcome.Success || r.Outcome == GameTestOutcome.CriticalSuccess);
 
+            var hasConsequences = await context.GameTestConsequences
+                .AsNoTracking()
+                .AnyAsync(x => x.GameTestId == gameTestId);
+
             return new GameMasterActiveGameTestDto
             {
                 GameTestId = test.Id,
@@ -1366,6 +1351,8 @@ namespace Rollocracy.Infrastructure.Services
                 GlobalSuccessThreshold2Percent = test.GlobalSuccessThreshold2Percent,
                 GlobalSuccessThreshold3Percent = test.GlobalSuccessThreshold3Percent,
                 GlobalOutcome = ComputeGlobalOutcome(test, successCount, totalCount),
+                HasConsequences = hasConsequences,
+                ConsequencesCancelled = test.ConsequencesCancelled,
                 BestDiceTotal = rolledRows.Count == 0 ? null : rolledRows.Max(r => r.DiceTotal),
                 WorstDiceTotal = rolledRows.Count == 0 ? null : rolledRows.Min(r => r.DiceTotal),
                 AverageDiceTotal = allIndividualDice.Count == 0 ? null : allIndividualDice.Average(),
@@ -2135,6 +2122,186 @@ namespace Rollocracy.Infrastructure.Services
             public Rollocracy.Domain.Entities.Character Character { get; set; } = new();
 
             public Rollocracy.Domain.Entities.PlayerSession PlayerSession { get; set; } = new();
+        }
+
+        private static GameTestCreateRequestDto DeserializeGameTestPresetPayload(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new GameTestCreateRequestDto();
+
+            try
+            {
+                return JsonSerializer.Deserialize<GameTestCreateRequestDto>(json) ?? new GameTestCreateRequestDto();
+            }
+            catch
+            {
+                return new GameTestCreateRequestDto();
+            }
+        }
+
+        private async Task RollbackTestAppliedEffectsAsync(
+    RollocracyDbContext context,
+    Guid sessionId,
+    Guid gameTestId,
+    List<GameTestAppliedEffect> appliedEffects)
+        {
+            var testCharacterModifiers = await context.CharacterModifiers
+                .Where(x => x.SourceType == CharacterEffectSourceType.Test && x.SourceId == gameTestId)
+                .ToListAsync();
+
+            var charactersThatWouldBeResurrected = appliedEffects
+                .Where(e => e.PreviousIsAlive && !e.NewIsAlive)
+                .Select(e => e.CharacterId)
+                .Distinct()
+                .ToList();
+
+            var charactersToKeepDead = new HashSet<Guid>();
+
+            foreach (var characterId in charactersThatWouldBeResurrected)
+            {
+                var character = await context.Characters
+                    .FirstOrDefaultAsync(c => c.Id == characterId);
+
+                if (character == null)
+                    continue;
+
+                var otherAliveCharacterExists = await context.Characters
+                    .AnyAsync(c =>
+                        c.PlayerSessionId == character.PlayerSessionId &&
+                        c.Id != character.Id &&
+                        c.IsAlive);
+
+                if (otherAliveCharacterExists)
+                {
+                    charactersToKeepDead.Add(characterId);
+                }
+            }
+
+            var modifiersToRemove = testCharacterModifiers
+                .Where(x => !charactersToKeepDead.Contains(x.CharacterId))
+                .ToList();
+
+            if (modifiersToRemove.Count > 0)
+            {
+                context.CharacterModifiers.RemoveRange(modifiersToRemove);
+            }
+
+            foreach (var effect in appliedEffects)
+            {
+                var character = await context.Characters
+                    .FirstOrDefaultAsync(c => c.Id == effect.CharacterId);
+
+                if (character == null)
+                    continue;
+
+                if (charactersToKeepDead.Contains(effect.CharacterId))
+                {
+                    continue;
+                }
+
+                if (effect.TargetKind == TestConsequenceTargetKind.Talent)
+                {
+                    var existingTalent = await context.CharacterTalents
+                        .FirstOrDefaultAsync(x =>
+                            x.CharacterId == effect.CharacterId &&
+                            x.TalentDefinitionId == effect.TargetDefinitionId);
+
+                    if (effect.PreviousHasTargetLink)
+                    {
+                        if (existingTalent == null)
+                        {
+                            context.CharacterTalents.Add(new CharacterTalent
+                            {
+                                Id = Guid.NewGuid(),
+                                CharacterId = effect.CharacterId,
+                                TalentDefinitionId = effect.TargetDefinitionId
+                            });
+                        }
+                    }
+                    else
+                    {
+                        if (existingTalent != null)
+                        {
+                            context.CharacterTalents.Remove(existingTalent);
+                        }
+                    }
+
+                    character.IsAlive = effect.PreviousIsAlive;
+                    character.DiedAtUtc = effect.PreviousDiedAtUtc;
+                    continue;
+                }
+
+                if (effect.TargetKind == TestConsequenceTargetKind.Item)
+                {
+                    var existingItem = await context.CharacterItems
+                        .FirstOrDefaultAsync(x =>
+                            x.CharacterId == effect.CharacterId &&
+                            x.ItemDefinitionId == effect.TargetDefinitionId);
+
+                    if (effect.PreviousHasTargetLink)
+                    {
+                        if (existingItem == null)
+                        {
+                            context.CharacterItems.Add(new CharacterItem
+                            {
+                                Id = Guid.NewGuid(),
+                                CharacterId = effect.CharacterId,
+                                ItemDefinitionId = effect.TargetDefinitionId,
+                                Quantity = 1
+                            });
+                        }
+                    }
+                    else
+                    {
+                        if (existingItem != null)
+                        {
+                            context.CharacterItems.Remove(existingItem);
+                        }
+                    }
+
+                    character.IsAlive = effect.PreviousIsAlive;
+                    character.DiedAtUtc = effect.PreviousDiedAtUtc;
+                    continue;
+                }
+
+                if (effect.TargetKind == TestConsequenceTargetKind.Gauge)
+                {
+                    var gaugeValue = await context.CharacterGaugeValues
+                        .FirstOrDefaultAsync(v =>
+                            v.CharacterId == effect.CharacterId &&
+                            v.GaugeDefinitionId == effect.TargetDefinitionId);
+
+                    if (gaugeValue != null)
+                    {
+                        gaugeValue.Value = effect.PreviousValue;
+                    }
+                }
+                else if (effect.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                {
+                    var sessionGauge = await context.SessionGauges
+                        .FirstOrDefaultAsync(g => g.Id == effect.TargetDefinitionId && g.SessionId == sessionId);
+
+                    if (sessionGauge != null)
+                    {
+                        sessionGauge.CurrentValue = effect.PreviousValue;
+                    }
+                }
+                else
+                {
+                    var attributeValue = await context.CharacterAttributeValues
+                        .FirstOrDefaultAsync(v =>
+                            v.CharacterId == effect.CharacterId &&
+                            v.AttributeDefinitionId == effect.TargetDefinitionId);
+
+                    if (attributeValue != null)
+                    {
+                        attributeValue.Value = effect.PreviousValue;
+                    }
+                }
+
+                character.IsAlive = effect.PreviousIsAlive;
+                character.DiedAtUtc = effect.PreviousDiedAtUtc;
+            }
         }
     }
 }

@@ -64,6 +64,34 @@ else
                         @if (ActiveTest is null || ActiveTest.IsClosed)
                         {
                             <div class="rc-tool-inline-actions">
+                                <button type="button" @onclick="ShowSaveTestPreset">@L["Test_SavePreset"]</button>
+
+                                @if (TestPresets.Count > 0)
+                                {
+                                    <select @bind="SelectedTestPresetId" @bind:after="ApplySelectedTestPreset">
+                                        <option value="">@L["Test_SelectPreset"]</option>
+                                        @foreach (var preset in TestPresets)
+                                        {
+                                            <option value="@preset.PresetId">@preset.Name</option>
+                                        }
+                                    </select>
+
+                                    @if (SelectedTestPresetId.HasValue)
+                                    {
+                                        @if (!ConfirmDeleteTestPresetVisible)
+                                        {
+                                            <button type="button" @onclick="ShowDeleteTestPresetConfirmation">
+                                                @L["Test_DeletePreset"]
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" @onclick="DeleteSelectedTestPresetConfirmed">@L["Common_Yes"]</button>
+                                            <button type="button" @onclick="CancelDeleteTestPreset">@L["Common_No"]</button>
+                                        }
+                                    }
+                                }
+
                                 <button @onclick="CreateGameTest">@L["Test_Create"]</button>
                             </div>
                         }
@@ -72,6 +100,34 @@ else
                     @if (!string.IsNullOrWhiteSpace(Message))
                     {
                         <div class="rc-inline-error">@Message</div>
+                    }
+
+                    @if (ShowSaveTestPresetPanel)
+                    {
+                        <div class="rc-filter-group-card">
+                            <div class="rc-form-field">
+                                <label>@L["Test_PresetName"]</label>
+                                <input @bind="NewTestPresetName" />
+                            </div>
+
+                            @if (ConfirmOverwriteTestPresetVisible)
+                            {
+                                <div class="rc-inline-warning">@L["Test_PresetOverwriteConfirm"]</div>
+                            }
+
+                            <div class="rc-tool-inline-actions">
+                                @if (!ConfirmOverwriteTestPresetVisible)
+                                {
+                                    <button type="button" @onclick="SaveTestPresetConfirmed">@L["Common_Yes"]</button>
+                                    <button type="button" @onclick="CancelSaveTestPreset">@L["Common_No"]</button>
+                                }
+                                else
+                                {
+                                    <button type="button" @onclick="OverwriteTestPresetConfirmed">@L["Common_Yes"]</button>
+                                    <button type="button" @onclick="CancelOverwriteTestPreset">@L["Common_No"]</button>
+                                }
+                            </div>
+                        </div>
                     }
 
                     <div class="rc-tool-form-grid">
@@ -297,12 +353,32 @@ else
                                     <button @onclick="RollbackLatestTestConfirmed">@L["Common_Yes"]</button>
                                     <button @onclick="CancelRollback">@L["Common_No"]</button>
                                 }
+
+                                @if (CanRollbackLatestTestConsequencesOnly)
+                                {
+                                    @if (!ConfirmRollbackConsequencesOnlyVisible)
+                                    {
+                                        <button @onclick="ShowRollbackConsequencesOnlyConfirmation">
+                                            @L["Test_RollbackConsequencesOnly"]
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button @onclick="RollbackLatestTestConsequencesOnlyConfirmed">@L["Common_Yes"]</button>
+                                        <button @onclick="CancelRollbackConsequencesOnly">@L["Common_No"]</button>
+                                    }
+                                }
                             </div>
                         </div>
 
                         @if (ConfirmRollbackVisible)
                         {
                             <div class="rc-inline-warning">@L["Test_RollbackConfirmQuestion"]</div>
+                        }
+
+                        @if (ConfirmRollbackConsequencesOnlyVisible)
+                        {
+                            <div class="rc-inline-warning">@L["Test_RollbackConsequencesOnlyConfirmQuestion"]</div>
                         }
 
                         <div class="rc-test-stats-grid">
@@ -346,6 +422,11 @@ else
                                 <div class="rc-stat-card__value">@(ActiveTest.AverageDiceTotal?.ToString("F2") ?? "-")</div>
                             </div>
                         </div>
+
+                        @if (ActiveTest.ConsequencesCancelled)
+                        {
+                            <div class="rc-inline-warning">@L["Test_ConsequencesCancelled"]</div>
+                        }
 
                         <div class="rc-tool-subsection">
                             <div class="rc-tool-subsection__title">@L["Test_IndividualResults"]</div>
@@ -414,6 +495,16 @@ else
     private bool IsLoaded;
     private bool RedirectToHome;
     private string Message = string.Empty;
+
+    private List<SessionGameTestPresetDto> TestPresets = new();
+    private Guid? SelectedTestPresetId;
+    private string NewTestPresetName = string.Empty;
+
+    private bool ShowSaveTestPresetPanel;
+    private bool ConfirmOverwriteTestPresetVisible;
+    private bool ConfirmDeleteTestPresetVisible;
+
+    private bool ConfirmRollbackConsequencesOnlyVisible;
 
     private string SelectedAttributeId = string.Empty;
     private GameTestTargetKind NewTargetKind = GameTestTargetKind.BaseAttribute;
@@ -726,16 +817,21 @@ else
         RebuildDifficultyScale();
         EnsureSuccessThresholdDefault();
         OnTestTargetKindChanged();
-
+        
+        TestPresets = await GameTestService.GetSessionPresetsAsync(SessionId, CurrentUserId);
         await LoadCharacterSummariesAsync();
         await LoadActiveTest();
         await LoadAdvancedPollOptionsAsync();
         await LoadAdvancedNameSuggestionsAsync();
+
     }
 
     private async Task LoadActiveTest()
     {
         ActiveTest = await GameTestService.GetActiveGameTestForSessionAsync(SessionId);
+
+        ConfirmRollbackVisible = false;
+        ConfirmRollbackConsequencesOnlyVisible = false;
     }
 
     private async Task LoadCharacterSummariesAsync()
@@ -1494,6 +1590,7 @@ else
     private Task CancelRollback()
     {
         ConfirmRollbackVisible = false;
+        ConfirmRollbackConsequencesOnlyVisible = false;
         return Task.CompletedTask;
     }
 
@@ -1572,6 +1669,309 @@ else
         return row.Value >= 0
             ? "rc-consequence-pill rc-consequence-pill--positive"
             : "rc-consequence-pill rc-consequence-pill--negative";
+    }
+
+    private Task ShowSaveTestPreset()
+    {
+        ShowSaveTestPresetPanel = true;
+        ConfirmOverwriteTestPresetVisible = false;
+        NewTestPresetName = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelSaveTestPreset()
+    {
+        ShowSaveTestPresetPanel = false;
+        ConfirmOverwriteTestPresetVisible = false;
+        NewTestPresetName = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private Task ShowDeleteTestPresetConfirmation()
+    {
+        ConfirmDeleteTestPresetVisible = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelDeleteTestPreset()
+    {
+        ConfirmDeleteTestPresetVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveTestPresetConfirmed()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            var request = BuildGameTestPresetRequest();
+
+            await GameTestService.SaveSessionPresetAsync(
+                SessionId,
+                CurrentUserId,
+                NewTestPresetName,
+                request,
+                overwrite: false);
+
+            TestPresets = await GameTestService.GetSessionPresetsAsync(SessionId, CurrentUserId);
+            SelectedTestPresetId = TestPresets.FirstOrDefault(x => x.Name == NewTestPresetName.Trim())?.PresetId;
+
+            ShowSaveTestPresetPanel = false;
+            ConfirmOverwriteTestPresetVisible = false;
+            NewTestPresetName = string.Empty;
+
+            Message = L["Test_PresetSaved"];
+        }
+        catch (Exception ex)
+        {
+            if (ex.Message == L["Backend_TestPresetAlreadyExists"])
+            {
+                ConfirmOverwriteTestPresetVisible = true;
+                return;
+            }
+
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task OverwriteTestPresetConfirmed()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            var request = BuildGameTestPresetRequest();
+
+            await GameTestService.SaveSessionPresetAsync(
+                SessionId,
+                CurrentUserId,
+                NewTestPresetName,
+                request,
+                overwrite: true);
+
+            TestPresets = await GameTestService.GetSessionPresetsAsync(SessionId, CurrentUserId);
+            SelectedTestPresetId = TestPresets.FirstOrDefault(x => x.Name == NewTestPresetName.Trim())?.PresetId;
+
+            ShowSaveTestPresetPanel = false;
+            ConfirmOverwriteTestPresetVisible = false;
+            NewTestPresetName = string.Empty;
+
+            Message = L["Test_PresetSaved"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task DeleteSelectedTestPresetConfirmed()
+    {
+        try
+        {
+            if (!SelectedTestPresetId.HasValue)
+                return;
+
+            Message = string.Empty;
+
+            await GameTestService.DeleteSessionPresetAsync(SessionId, CurrentUserId, SelectedTestPresetId.Value);
+
+            TestPresets = await GameTestService.GetSessionPresetsAsync(SessionId, CurrentUserId);
+            SelectedTestPresetId = null;
+            ConfirmDeleteTestPresetVisible = false;
+
+            Message = L["Test_PresetDeleted"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ApplySelectedTestPreset()
+    {
+        if (!SelectedTestPresetId.HasValue)
+            return;
+
+        var preset = TestPresets.FirstOrDefault(x => x.PresetId == SelectedTestPresetId.Value);
+        if (preset is null)
+            return;
+
+        ApplyGameTestPresetRequest(preset.Request);
+
+        ConfirmDeleteTestPresetVisible = false;
+        await RefreshSelectedPollOptionOptionsAsync();
+        StateHasChanged();
+    }
+
+    private Task CancelOverwriteTestPreset()
+    {
+        ConfirmOverwriteTestPresetVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private GameTestCreateRequestDto BuildGameTestPresetRequest()
+    {
+        var difficultyValue = DifficultyScaleValues.ElementAtOrDefault(SelectedDifficultyIndex);
+        var autoRollDelay = AutoRollDelayOptions.ElementAtOrDefault(SelectedAutoRollDelayIndex);
+
+        return new GameTestCreateRequestDto
+        {
+            TargetKind = NewTargetKind,
+            TargetDefinitionId = ParseSelectedAttributeId(),
+            UseSystemDefaultDice = UseSystemDefaultDice,
+            DiceCount = NewDiceCount,
+            DiceSides = NewDiceSides,
+            SuccessThreshold = NewSuccessThreshold,
+            ModifierMode = difficultyValue >= 0 ? TestModifierMode.Bonus : TestModifierMode.Malus,
+            DifficultyValue = Math.Abs(difficultyValue),
+            TargetScope = NewTargetScope,
+            TraitFilterMode = NewTraitFilterMode,
+            IncludeNpcs = IncludeNpcsInTest,
+            AutoRollDelaySeconds = autoRollDelay,
+            GlobalSuccessThreshold1Percent = GlobalSuccessThresholds.Count > 0 ? GlobalSuccessThresholds[0] : null,
+            GlobalSuccessThreshold2Percent = GlobalSuccessThresholds.Count > 1 ? GlobalSuccessThresholds[1] : null,
+            GlobalSuccessThreshold3Percent = GlobalSuccessThresholds.Count > 2 ? GlobalSuccessThresholds[2] : null,
+            AdvancedFilter = CloneAdvancedFilter(AdvancedFilter),
+            TraitFilters = new List<GameTestTraitFilterGroupDto>(),
+            Consequences = ConsequenceRows.Select(MapConsequenceRowToDto).ToList()
+        };
+    }
+
+    private void ApplyGameTestPresetRequest(GameTestCreateRequestDto request)
+    {
+        NewTargetKind = request.TargetKind;
+        SelectedAttributeId = request.TargetDefinitionId == Guid.Empty
+            ? string.Empty
+            : request.TargetDefinitionId.ToString();
+
+        UseSystemDefaultDice = request.UseSystemDefaultDice;
+        NewDiceCount = request.DiceCount;
+        NewDiceSides = request.DiceSides;
+        NewSuccessThreshold = request.SuccessThreshold;
+        NewTargetScope = request.TargetScope;
+        NewTraitFilterMode = request.TraitFilterMode;
+        IncludeNpcsInTest = request.IncludeNpcs;
+
+        var signedDifficultyValue = request.ModifierMode == TestModifierMode.Malus
+            ? -request.DifficultyValue
+            : request.DifficultyValue;
+
+        SelectedDifficultyIndex = DifficultyScaleValues.FindIndex(x => x == signedDifficultyValue);
+        if (SelectedDifficultyIndex < 0)
+            SelectedDifficultyIndex = 0;
+
+        SelectedAutoRollDelayIndex = AutoRollDelayOptions.FindIndex(x => x == request.AutoRollDelaySeconds);
+        if (SelectedAutoRollDelayIndex < 0)
+            SelectedAutoRollDelayIndex = 0;
+
+        GlobalSuccessThresholds = new List<int>();
+        if (request.GlobalSuccessThreshold1Percent.HasValue) GlobalSuccessThresholds.Add(request.GlobalSuccessThreshold1Percent.Value);
+        if (request.GlobalSuccessThreshold2Percent.HasValue) GlobalSuccessThresholds.Add(request.GlobalSuccessThreshold2Percent.Value);
+        if (request.GlobalSuccessThreshold3Percent.HasValue) GlobalSuccessThresholds.Add(request.GlobalSuccessThreshold3Percent.Value);
+
+        AdvancedFilter = CloneAdvancedFilter(request.AdvancedFilter ?? new CharacterTargetFilterDto());
+        ConsequenceRows = request.Consequences.Select(MapConsequenceDtoToRow).ToList();
+    }
+
+    private Guid ParseSelectedAttributeId()
+    {
+        return Guid.TryParse(SelectedAttributeId, out var id) ? id : Guid.Empty;
+    }
+
+    private CharacterTargetFilterDto CloneAdvancedFilter(CharacterTargetFilterDto source)
+    {
+        return new CharacterTargetFilterDto
+        {
+            OnlyAlive = source.OnlyAlive,
+            OnlyDead = source.OnlyDead,
+            OnlyOnline = source.OnlyOnline,
+            IncludeNpcs = source.IncludeNpcs,
+            MatchAllConditions = source.MatchAllConditions,
+            TraitOptionIds = source.TraitOptionIds.ToList(),
+            TalentIds = source.TalentIds.ToList(),
+            ItemIds = source.ItemIds.ToList(),
+            PollId = source.PollId,
+            PollSelectedOptionId = source.PollSelectedOptionId,
+            FilterOnPollResponse = source.FilterOnPollResponse,
+            MustHaveSucceededLastTest = source.MustHaveSucceededLastTest,
+            FilterOnLastTestResult = source.FilterOnLastTestResult,
+            NameCharacterIds = source.NameCharacterIds.ToList(),
+            ValueFilters = source.ValueFilters.Select(x => new CharacterValueFilterDto
+            {
+                TargetType = x.TargetType,
+                TargetId = x.TargetId,
+                TargetName = x.TargetName,
+                ComparisonType = x.ComparisonType,
+                Value = x.Value
+            }).ToList()
+        };
+    }
+
+    private GameTestConsequenceDraftDto MapConsequenceRowToDto(SharedConsequenceRowModel row)
+    {
+        return new GameTestConsequenceDraftDto
+        {
+            ApplyOn = row.ApplyOn,
+            OperationType = row.OperationType,
+            TargetKind = row.TargetKind,
+            TargetDefinitionId = row.TargetDefinitionId,
+            ModifierMode = row.ValueMode == ModifierValueMode.Metric ? row.ModifierMode : TestModifierMode.Bonus,
+            Value = row.Value,
+            ValueMode = row.ValueMode,
+            SourceMetricId = row.ValueMode == ModifierValueMode.Metric ? row.SourceMetricId : null
+        };
+    }
+
+    private SharedConsequenceRowModel MapConsequenceDtoToRow(GameTestConsequenceDraftDto dto)
+    {
+        return new SharedConsequenceRowModel
+        {
+            RowId = Guid.NewGuid(),
+            ApplyOn = dto.ApplyOn,
+            OperationType = dto.OperationType,
+            TargetKind = dto.TargetKind,
+            TargetDefinitionId = dto.TargetDefinitionId,
+            ModifierMode = dto.ValueMode == ModifierValueMode.Metric ? dto.ModifierMode : TestModifierMode.Bonus,
+            Value = dto.Value,
+            ValueMode = dto.ValueMode,
+            SourceMetricId = dto.ValueMode == ModifierValueMode.Metric ? dto.SourceMetricId : null
+        };
+    }
+
+    private bool CanRollbackLatestTestConsequencesOnly =>
+    ActiveTest is not null &&
+    ActiveTest.HasConsequences &&
+    !ActiveTest.ConsequencesCancelled;
+
+    private Task ShowRollbackConsequencesOnlyConfirmation()
+    {
+        ConfirmRollbackConsequencesOnlyVisible = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelRollbackConsequencesOnly()
+    {
+        ConfirmRollbackConsequencesOnlyVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task RollbackLatestTestConsequencesOnlyConfirmed()
+    {
+        try
+        {
+            Message = string.Empty;
+            ConfirmRollbackConsequencesOnlyVisible = false;
+
+            await GameTestService.RollbackLatestTestConsequencesOnlyAsync(SessionId, CurrentUserId);
+            ActiveTest = await GameTestService.GetActiveGameTestForSessionAsync(SessionId);
+
+            Message = L["Test_RollbackConsequencesOnlySuccess"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
     }
 }
 
