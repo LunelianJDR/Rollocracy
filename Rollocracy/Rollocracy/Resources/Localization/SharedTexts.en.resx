@@ -3811,4 +3811,13 @@
 	<data name="Character_Tooltip_Revoke" xml:space="preserve">
   <value>Removes {0}</value>
 </data>
+	<data name="CharacterCreation_SelectOptionPlaceholder" xml:space="preserve">
+  <value>Choose...</value>
+</data>
+	<data name="CharacterCreation_RequiredTraits" xml:space="preserve">
+  <value>Required traits</value>
+</data>
+	<data name="CharacterCreation_RandomizeRemaining" xml:space="preserve">
+  <value>Random</value>
+</data>
 </root>

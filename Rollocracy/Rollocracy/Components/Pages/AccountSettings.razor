@@ -17,6 +17,7 @@
 @inject NavigationManager Navigation
 @inject HttpClient Http
 @inject IStringLocalizer<SharedTexts> L
+@inject IJSRuntime JS
 
 <PageTitle>@L["Account_Settings_Title"]</PageTitle>
 
@@ -412,11 +413,17 @@ else
                                             </button>
                                         }
                                     }
-                                    else
+                                    else if(plan.Code == "heros" || plan.Code =="champion")
                                     {
                                         <button type="button" @onclick="() => SelectSubscriptionPlan(plan.PlanId)">
                                             @GetPlanActionLabel(plan)
                                         </button>
+                                    }
+                                    else
+                                    {
+                                    <button type="button" @onclick="() => SelectSubscriptionPlan(plan.PlanId)" disabled> @* On désactive les abonnements trops gros pour l'instant *@
+                                        @GetPlanActionLabel(plan)
+                                    </button>
                                     }
                                 </div>
                             </div>
@@ -698,6 +705,8 @@ else
 
             await LoadSettingsAsync();
             Message = L["Account_Settings_SubscriptionActionCompleted"];
+
+            await JS.InvokeVoidAsync("open", "https://ko-fi.com/lunelianjdr/tiers", "_blank");
         }
         catch (Exception ex)
         {

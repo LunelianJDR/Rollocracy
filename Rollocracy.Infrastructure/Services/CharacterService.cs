@@ -273,6 +273,101 @@ namespace Rollocracy.Infrastructure.Services
             return eligible[Random.Shared.Next(eligible.Count)].Id;
         }
 
+        private static Dictionary<Guid, int> CompleteRandomPointDistribution(
+            IReadOnlyCollection<Guid> targetIds,
+            IReadOnlyDictionary<Guid, int>? currentValues,
+            int requiredTotal,
+            int maxPerTarget)
+        {
+            var result = targetIds.ToDictionary(
+                id => id,
+                id => currentValues is not null && currentValues.TryGetValue(id, out var value) ? Math.Max(0, value) : 0);
+
+            if (requiredTotal <= 0)
+                return result;
+
+            var currentTotal = result.Values.Sum();
+            if (currentTotal > requiredTotal)
+                return result;
+
+            var remaining = requiredTotal - currentTotal;
+
+            while (remaining > 0)
+            {
+                var eligibleTargets = result
+                    .Where(x => maxPerTarget <= 0 || x.Value < maxPerTarget)
+                    .Select(x => x.Key)
+                    .ToList();
+
+                if (eligibleTargets.Count == 0)
+                    break;
+
+                var selectedTargetId = eligibleTargets[Random.Shared.Next(eligibleTargets.Count)];
+                result[selectedTargetId]++;
+                remaining--;
+            }
+
+            return result;
+        }
+
+        private static Dictionary<Guid, Guid> CompleteRandomTraitSelections(
+    IEnumerable<TraitDefinition> traitDefinitions,
+    IReadOnlyDictionary<Guid, Guid>? currentSelections,
+    IReadOnlyCollection<TraitOption> allTraitOptions)
+        {
+            var result = currentSelections?
+                .Where(x => x.Value != Guid.Empty)
+                .ToDictionary(x => x.Key, x => x.Value)
+                ?? new Dictionary<Guid, Guid>();
+
+            foreach (var traitDefinition in traitDefinitions)
+            {
+                if (traitDefinition.IsRandomSelectionGroup)
+                    continue;
+
+                if (result.TryGetValue(traitDefinition.Id, out var selected) && selected != Guid.Empty)
+                    continue;
+
+                var optionsForTrait = allTraitOptions
+                    .Where(x => x.TraitDefinitionId == traitDefinition.Id && !x.IsLockedForCharacterCreation)
+                    .ToList();
+
+                if (optionsForTrait.Count == 0)
+                    continue;
+
+                result[traitDefinition.Id] = optionsForTrait[Random.Shared.Next(optionsForTrait.Count)].Id;
+            }
+
+            return result;
+        }
+
+        private static List<Guid> CompleteRandomSelections(
+            IEnumerable<Guid> currentSelections,
+            IReadOnlyCollection<Guid> eligibleIds,
+            int requiredCount)
+        {
+            var result = currentSelections
+                .Where(id => eligibleIds.Contains(id))
+                .Distinct()
+                .ToList();
+
+            if (requiredCount <= 0)
+                return result;
+
+            var remainingPool = eligibleIds
+                .Where(id => !result.Contains(id))
+                .ToList();
+
+            while (result.Count < requiredCount && remainingPool.Count > 0)
+            {
+                var index = Random.Shared.Next(remainingPool.Count);
+                result.Add(remainingPool[index]);
+                remainingPool.RemoveAt(index);
+            }
+
+            return result;
+        }
+
         public async Task<Character> CreateCharacterAsync(
     Guid playerSessionId,
     string name,
@@ -361,9 +456,27 @@ namespace Rollocracy.Infrastructure.Services
 
             context.Characters.Add(character);
 
-            var totalAttributeBonus = attributeBonusValues.Values.Sum();
+            attributeBonusValues ??= new Dictionary<Guid, int>();
+            derivedStatBonusValues ??= new Dictionary<Guid, int>();
+            selectedTalentIds = (selectedTalentIds ?? new List<Guid>()).Distinct().ToList();
+            selectedItemIds = (selectedItemIds ?? new List<Guid>()).Distinct().ToList();
+            traitSelections ??= new Dictionary<Guid, Guid>();
+
+            traitSelections = CompleteRandomTraitSelections(
+                traitDefinitions,
+                traitSelections,
+                traitOptions);
+
             var requiredAttributeBonus = attributeDefinitions.FirstOrDefault()?.CreationDistributionPoints ?? 0;
             var maxAttributeBonusPerStat = attributeDefinitions.FirstOrDefault()?.MaxCreationDistributionPerCharacter ?? 0;
+
+            attributeBonusValues = CompleteRandomPointDistribution(
+                attributeDefinitions.Select(x => x.Id).ToList(),
+                attributeBonusValues,
+                requiredAttributeBonus,
+                maxAttributeBonusPerStat);
+
+            var totalAttributeBonus = attributeBonusValues.Values.Sum();
 
             if (requiredAttributeBonus > 0)
             {
@@ -427,8 +540,11 @@ namespace Rollocracy.Infrastructure.Services
                     continue;
                 }
 
-                if (!traitSelections.TryGetValue(traitDefinition.Id, out var selectedOptionIdFromPlayer))
+                if (!traitSelections.TryGetValue(traitDefinition.Id, out var selectedOptionIdFromPlayer) ||
+                    selectedOptionIdFromPlayer == Guid.Empty)
+                {
                     throw new Exception(_localizer["Backend_MissingTraitSelection"]);
+                }
 
                 var selectedOption = optionsForTrait
                     .FirstOrDefault(o => o.Id == selectedOptionIdFromPlayer);
@@ -457,36 +573,25 @@ namespace Rollocracy.Infrastructure.Services
                 ? await context.GameSystems.Where(gs => gs.Id == gameSystemId).Select(gs => gs.StartingItemChoices).FirstAsync()
                 : 0;
 
-            selectedTalentIds = (selectedTalentIds ?? new List<Guid>()).Distinct().ToList();
-            selectedItemIds = (selectedItemIds ?? new List<Guid>()).Distinct().ToList();
-            derivedStatBonusValues ??= new Dictionary<Guid, int>();
+            selectedTalentIds = CompleteRandomSelections(
+                selectedTalentIds,
+                selectableTalents.Select(x => x.Id).ToList(),
+                requiredTalentChoices);
 
-            if (requiredTalentChoices > 0)
-            {
-                if (selectableTalents.Count < requiredTalentChoices)
-                    throw new Exception(_localizer["Backend_CharacterCreationTalentChoicesConfigurationInvalid"]);
-
-                if (selectedTalentIds.Count != requiredTalentChoices)
-                    throw new Exception(_localizer["Backend_CharacterCreationTalentChoicesRequired"]);
-
-                if (selectedTalentIds.Any(id => selectableTalents.All(t => t.Id != id)))
-                    throw new Exception(_localizer["Backend_CharacterCreationTalentChoiceInvalid"]);
-            }
-
-            if (requiredItemChoices > 0)
-            {
-                if (selectableItems.Count < requiredItemChoices)
-                    throw new Exception(_localizer["Backend_CharacterCreationItemChoicesConfigurationInvalid"]);
-
-                if (selectedItemIds.Count != requiredItemChoices)
-                    throw new Exception(_localizer["Backend_CharacterCreationItemChoicesRequired"]);
-
-                if (selectedItemIds.Any(id => selectableItems.All(i => i.Id != id)))
-                    throw new Exception(_localizer["Backend_CharacterCreationItemChoiceInvalid"]);
-            }
+            selectedItemIds = CompleteRandomSelections(
+                selectedItemIds,
+                selectableItems.Select(x => x.Id).ToList(),
+                requiredItemChoices);
 
             var requiredDerivedBonus = derivedStatDefinitions.FirstOrDefault()?.CreationDistributionPoints ?? 0;
             var maxDerivedBonusPerStat = derivedStatDefinitions.FirstOrDefault()?.MaxCreationDistributionPerCharacter ?? 0;
+
+            derivedStatBonusValues = CompleteRandomPointDistribution(
+                derivedStatDefinitions.Select(x => x.Id).ToList(),
+                derivedStatBonusValues,
+                requiredDerivedBonus,
+                maxDerivedBonusPerStat);
+
             var totalDerivedBonus = derivedStatBonusValues.Values.Sum();
 
             if (requiredDerivedBonus > 0)

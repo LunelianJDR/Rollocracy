@@ -417,6 +417,7 @@ else
                                                 else
                                                 {
                                                     <select @bind="CreationTraitSelections[trait.TraitDefinitionId]">
+                                                        <option value="">@L["CharacterCreation_SelectOptionPlaceholder"]</option>
                                                         @foreach (var option in GetSelectableCreationOptions(trait))
                                                         {
                                                             <option value="@option.TraitOptionId">@option.Name</option>
@@ -469,7 +470,17 @@ else
                                 </div>
                             }
 
+                            @if (!IsRandomCharacterCreationEnabled && !AreRequiredCreationTraitsSelected())
+                            {
+                                <p class="rc-inline-warning">@L["CharacterCreation_RequiredTraits"]</p>
+                            }
+
                             <div class="rc-tool-actions">
+                                <label class="rc-filter-toggle">
+                                    <input type="checkbox" @bind="IsRandomCharacterCreationEnabled" />
+                                    <span>@L["CharacterCreation_RandomizeRemaining"]</span>
+                                </label>
+
                                 <button type="button"
                                         @onclick="HandleCreateCharacterInline"
                                         disabled="@(!CanSubmitCharacterCreation() || !CanSubmitCharacterName())">
@@ -1251,7 +1262,8 @@ else
     private string NewCharacterBiography = string.Empty;
     private Dictionary<Guid, int> CreationAttributeValues = new();
     private Dictionary<Guid, int> CreationDerivedStatValues = new();
-    private Dictionary<Guid, Guid> CreationTraitSelections = new();
+    private Dictionary<Guid, Guid?> CreationTraitSelections = new();
+    private bool IsRandomCharacterCreationEnabled;
     private HashSet<Guid> SelectedCreationTalentIds = new();
     private HashSet<Guid> SelectedCreationItemIds = new();
 
@@ -1731,15 +1743,12 @@ else
                 if (trait.IsRandomSelectionGroup)
                     continue;
 
-                var firstUnlockedOption = trait.Options.FirstOrDefault(x => !x.IsLockedForCharacterCreation);
-                if (firstUnlockedOption is not null)
-                {
-                    CreationTraitSelections[trait.TraitDefinitionId] = firstUnlockedOption.TraitOptionId;
-                }
+                CreationTraitSelections[trait.TraitDefinitionId] = null;
             }
 
             NewCharacterName = string.Empty;
             NewCharacterBiography = string.Empty;
+            IsRandomCharacterCreationEnabled = false;
             IsCreatingCharacterInline = true;
         }
         catch (Exception ex)
@@ -1759,6 +1768,7 @@ else
         CreationTraitSelections.Clear();
         SelectedCreationTalentIds.Clear();
         SelectedCreationItemIds.Clear();
+        IsRandomCharacterCreationEnabled = false;
         return Task.CompletedTask;
     }
 
@@ -1779,7 +1789,9 @@ else
                 NewCharacterName,
                 NewCharacterBiography,
                 CreationAttributeValues,
-                CreationTraitSelections,
+                CreationTraitSelections
+                    .Where(x => x.Value.HasValue)
+                    .ToDictionary(x => x.Key, x => x.Value!.Value),
                 CreationDerivedStatValues,
                 SelectedCreationTalentIds.ToList(),
                 SelectedCreationItemIds.ToList());
@@ -1811,6 +1823,7 @@ else
             CreationTraitSelections.Clear();
             SelectedCreationTalentIds.Clear();
             SelectedCreationItemIds.Clear();
+            IsRandomCharacterCreationEnabled = false;
             CreationTemplate = null;
         }
         catch (Exception ex)
@@ -2442,15 +2455,39 @@ else
         }
     }
 
+    private bool AreRequiredCreationTraitsSelected()
+    {
+        if (CreationTemplate is null)
+            return false;
+
+        foreach (var trait in CreationTemplate.Traits.Where(x => !x.IsRandomSelectionGroup))
+        {
+            if (!CreationTraitSelections.TryGetValue(trait.TraitDefinitionId, out var selectedOptionId) ||
+                !selectedOptionId.HasValue ||
+                selectedOptionId.Value == Guid.Empty)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private bool CanSubmitCharacterCreation()
     {
         if (CreationTemplate is null)
             return false;
 
+        if (IsRandomCharacterCreationEnabled)
+            return true;
+
         if (CreationTemplate.AttributePointsToDistribute > 0 && RemainingCreationAttributePoints != 0)
             return false;
 
         if (CreationTemplate.DerivedStatPointsToDistribute > 0 && RemainingCreationDerivedStatPoints != 0)
+            return false;
+
+        if (!AreRequiredCreationTraitsSelected())
             return false;
 
         if (CreationTemplate.TalentChoicesToSelect > 0 && SelectedCreationTalentIds.Count != CreationTemplate.TalentChoicesToSelect)
