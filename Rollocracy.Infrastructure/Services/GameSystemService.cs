@@ -60,6 +60,15 @@ namespace Rollocracy.Infrastructure.Services
                     (gs.OwnerUserAccountId == ownerUserAccountId || gs.IsGeneric));
         }
 
+        private void ValidateDefaultSuccessThreshold(TestResolutionMode testResolutionMode, int? defaultSuccessThreshold)
+        {
+            if (testResolutionMode != TestResolutionMode.SuccessThreshold)
+                return;
+
+            if (!defaultSuccessThreshold.HasValue || defaultSuccessThreshold.Value < 1)
+                throw new Exception(_localizer["Backend_DefaultSuccessThresholdInvalid"]);
+        }
+
         public async Task<GameSystem> CreateGameSystemAsync(
             Guid ownerUserAccountId,
             string name,
@@ -81,6 +90,7 @@ namespace Rollocracy.Infrastructure.Services
                 DefaultTestDiceSides = 100,
                 CriticalSuccessValue = null,
                 CriticalFailureValue = null,
+                DefaultSuccessThreshold = null,
                 StartingTalentChoices = 0,
                 StartingItemChoices = 0,
                 SourceGameSystemId = null,
@@ -468,6 +478,7 @@ namespace Rollocracy.Infrastructure.Services
                 DefaultTestDiceSides = sourceSystem.DefaultTestDiceSides,
                 CriticalSuccessValue = sourceSystem.CriticalSuccessValue,
                 CriticalFailureValue = sourceSystem.CriticalFailureValue,
+                DefaultSuccessThreshold = sourceSystem.DefaultSuccessThreshold,
                 StartingTalentChoices = sourceSystem.StartingTalentChoices,
                 StartingItemChoices = sourceSystem.StartingItemChoices,
                 SourceGameSystemId = sourceSystem.Id,
@@ -997,6 +1008,7 @@ namespace Rollocracy.Infrastructure.Services
                 DefaultTestDiceSides = system.DefaultTestDiceSides,
                 CriticalSuccessValue = system.CriticalSuccessValue,
                 CriticalFailureValue = system.CriticalFailureValue,
+                DefaultSuccessThreshold = system.DefaultSuccessThreshold,
                 IsLockedToSessionCopy = system.LockedToSessionId.HasValue,
                 CanUndoLastChange = hasSnapshot,
                 IsGeneric = system.IsGeneric,
@@ -1226,6 +1238,7 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             ValidateGameTestSettings(request.TestResolutionMode, request.DefaultTestDiceCount, request.DefaultTestDiceSides, request.CriticalSuccessValue, request.CriticalFailureValue);
+            ValidateDefaultSuccessThreshold(request.TestResolutionMode, request.DefaultSuccessThreshold);
             ValidateBaseAttributes(request.Attributes);
             ValidateDerivedStats(request.DerivedStats, request.Attributes);
             ValidateMetrics(request.Metrics, request.Attributes, request.Gauges, request.DerivedStats);
@@ -1248,6 +1261,7 @@ namespace Rollocracy.Infrastructure.Services
             system.DefaultTestDiceSides = request.DefaultTestDiceSides;
             system.CriticalSuccessValue = request.CriticalSuccessValue;
             system.CriticalFailureValue = request.CriticalFailureValue;
+            system.DefaultSuccessThreshold = request.TestResolutionMode == TestResolutionMode.SuccessThreshold ? request.DefaultSuccessThreshold : null;
             system.StartingTalentChoices = request.StartingTalentChoices;
             system.StartingItemChoices = request.StartingItemChoices;
 
@@ -1307,6 +1321,7 @@ namespace Rollocracy.Infrastructure.Services
             system.DefaultTestDiceSides = payload.System.DefaultTestDiceSides;
             system.CriticalSuccessValue = payload.System.CriticalSuccessValue;
             system.CriticalFailureValue = payload.System.CriticalFailureValue;
+            system.DefaultSuccessThreshold = payload.System.DefaultSuccessThreshold;
             system.SourceGameSystemId = payload.System.SourceGameSystemId;
             system.LockedToSessionId = payload.System.LockedToSessionId;
 
@@ -2289,6 +2304,7 @@ namespace Rollocracy.Infrastructure.Services
                     DefaultTestDiceSides = system.DefaultTestDiceSides,
                     CriticalSuccessValue = system.CriticalSuccessValue,
                     CriticalFailureValue = system.CriticalFailureValue,
+                    DefaultSuccessThreshold = system.DefaultSuccessThreshold,
                     SourceGameSystemId = system.SourceGameSystemId,
                     LockedToSessionId = system.LockedToSessionId
                 },
@@ -3631,6 +3647,7 @@ namespace Rollocracy.Infrastructure.Services
             public int DefaultTestDiceSides { get; set; }
             public int? CriticalSuccessValue { get; set; }
             public int? CriticalFailureValue { get; set; }
+            public int? DefaultSuccessThreshold { get; set; }
             public Guid? SourceGameSystemId { get; set; }
             public Guid? LockedToSessionId { get; set; }
         }
@@ -3643,5 +3660,3 @@ namespace Rollocracy.Infrastructure.Services
         }
     }
 }
-
-

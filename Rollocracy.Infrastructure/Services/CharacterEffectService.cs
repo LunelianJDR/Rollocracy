@@ -5,6 +5,7 @@ using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
+using System.Text.Json;
 
 namespace Rollocracy.Infrastructure.Services
 {
@@ -401,14 +402,44 @@ namespace Rollocracy.Infrastructure.Services
                 }
             }
 
+            var selectedRandomDrawIds = filter.RandomDrawIds
+                .Distinct()
+                .ToList();
+
+            var randomDrawMatchingCharacterIds = new HashSet<Guid>();
+
+            if (selectedRandomDrawIds.Count > 0)
+            {
+                var selectedDraws = await context.SessionRandomDraws
+                    .AsNoTracking()
+                    .Where(x => x.SessionId == sessionId && selectedRandomDrawIds.Contains(x.Id))
+                    .ToListAsync();
+
+                foreach (var draw in selectedDraws)
+                {
+                    foreach (var result in DeserializeRandomDrawResults(draw.ResultSnapshotJson))
+                    {
+                        randomDrawMatchingCharacterIds.Add(result.CharacterId);
+                    }
+                }
+            }
+
 
             foreach (var character in characters)
             {
-                if (filter.OnlyAlive && !character.IsAlive)
-                    continue;
+                if (filter.OnlyOnline)
+                {
+                    if (!character.IsAlive)
+                        continue;
+                }
+                else
+                {
+                    if (filter.OnlyAlive && !character.IsAlive)
+                        continue;
 
-                if (filter.OnlyDead && character.IsAlive)
-                    continue;
+                    if (filter.OnlyDead && character.IsAlive)
+                        continue;
+                }
 
                 if (!filter.IncludeNpcs && character.IsNpc)
                     continue;
@@ -510,6 +541,16 @@ namespace Rollocracy.Infrastructure.Services
                     advancedConditionResults.Add(selectedNameCharacterIds.Contains(character.Id));
                 }
 
+                if (selectedRandomDrawIds.Count > 0)
+                {
+                    advancedConditionResults.Add(randomDrawMatchingCharacterIds.Contains(character.Id));
+                }
+
+                if (filter.BiographyNotEmpty)
+                {
+                    advancedConditionResults.Add(!string.IsNullOrWhiteSpace(character.Biography));
+                }
+
                 if (filter.FilterOnPollResponse)
                 {
                     var pollMatches =
@@ -544,6 +585,23 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             return filtered;
+        }
+
+
+        private static List<RandomDrawResultCharacterDto> DeserializeRandomDrawResults(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new List<RandomDrawResultCharacterDto>();
+
+            try
+            {
+                return JsonSerializer.Deserialize<List<RandomDrawResultCharacterDto>>(json)
+                    ?? new List<RandomDrawResultCharacterDto>();
+            }
+            catch
+            {
+                return new List<RandomDrawResultCharacterDto>();
+            }
         }
 
         public async Task<List<Character>> GetTargetCharactersAsync(Guid sessionId, CharacterTargetFilterDto filter)
@@ -1056,7 +1114,20 @@ namespace Rollocracy.Infrastructure.Services
                 if (!isGrant)
                     delta = -delta;
 
-                await ApplyGaugeDeltaAsync(context, character.Id, modifier.TargetId, delta, gaugeDefinitions, gaugeValues);
+                await ApplyGaugeDeltaAsync(
+                    context,
+                    character.Id,
+                    modifier.TargetId,
+                    delta,
+                    gaugeDefinitions,
+                    gaugeValues,
+                    traitValues,
+                    characterTalents,
+                    characterItems,
+                    choiceModifiers,
+                    talentModifiers,
+                    itemModifiers,
+                    characterModifiers);
             }
         }
 
@@ -1114,7 +1185,20 @@ namespace Rollocracy.Infrastructure.Services
                 if (!isGrant)
                     delta = -delta;
 
-                await ApplyGaugeDeltaAsync(context, character.Id, modifier.TargetId, delta, gaugeDefinitions, gaugeValues);
+                await ApplyGaugeDeltaAsync(
+                    context,
+                    character.Id,
+                    modifier.TargetId,
+                    delta,
+                    gaugeDefinitions,
+                    gaugeValues,
+                    traitValues,
+                    characterTalents,
+                    characterItems,
+                    choiceModifiers,
+                    talentModifiers,
+                    itemModifiers,
+                    characterModifiers);
             }
         }
 
@@ -1169,13 +1253,83 @@ namespace Rollocracy.Infrastructure.Services
             return metricValue * sign;
         }
 
+        private int ComputeEffectiveGaugeMax(
+            Guid characterId,
+            Guid gaugeDefinitionId,
+            List<GaugeDefinition> gaugeDefinitions,
+            List<CharacterTraitValue> traitValues,
+            List<CharacterTalent> characterTalents,
+            List<CharacterItem> characterItems,
+            List<ChoiceOptionModifierDefinition> choiceModifiers,
+            List<TalentModifierDefinition> talentModifiers,
+            List<ItemModifierDefinition> itemModifiers,
+            List<CharacterModifier> characterModifiers)
+        {
+            var definition = gaugeDefinitions.First(x => x.Id == gaugeDefinitionId);
+
+            var characterTraitOptionIds = traitValues
+                .Where(tv => tv.CharacterId == characterId)
+                .Select(tv => tv.TraitOptionId)
+                .ToHashSet();
+
+            var choiceBonus = choiceModifiers
+                .Where(x =>
+                    x.TargetType == ModifierTargetType.Gauge &&
+                    x.TargetId == gaugeDefinitionId &&
+                    x.ValueMode != ModifierValueMode.Metric &&
+                    characterTraitOptionIds.Contains(x.ChoiceOptionDefinitionId))
+                .Sum(x => x.Value);
+
+            var talentIds = characterTalents
+                .Where(x => x.CharacterId == characterId)
+                .Select(x => x.TalentDefinitionId)
+                .ToHashSet();
+
+            var talentBonus = talentModifiers
+                .Where(x =>
+                    x.TargetType == ModifierTargetType.Gauge &&
+                    x.TargetId == gaugeDefinitionId &&
+                    x.ValueMode != ModifierValueMode.Metric &&
+                    talentIds.Contains(x.TalentDefinitionId))
+                .Sum(x => x.AddValue);
+
+            var itemIds = characterItems
+                .Where(x => x.CharacterId == characterId)
+                .Select(x => x.ItemDefinitionId)
+                .ToHashSet();
+
+            var itemBonus = itemModifiers
+                .Where(x =>
+                    x.TargetType == ModifierTargetType.Gauge &&
+                    x.TargetId == gaugeDefinitionId &&
+                    x.ValueMode != ModifierValueMode.Metric &&
+                    itemIds.Contains(x.ItemDefinitionId))
+                .Sum(x => x.AddValue);
+
+            var persistentBonus = characterModifiers
+                .Where(x =>
+                    x.CharacterId == characterId &&
+                    x.TargetType == CharacterEffectTargetType.Gauge &&
+                    x.TargetId == gaugeDefinitionId)
+                .Sum(x => x.AddValue);
+
+            return Math.Max(definition.MinValue, definition.MaxValue + choiceBonus + talentBonus + itemBonus + persistentBonus);
+        }
+
         private async Task ApplyGaugeDeltaAsync(
             RollocracyDbContext context,
             Guid characterId,
             Guid gaugeDefinitionId,
             int delta,
             List<GaugeDefinition> gaugeDefinitions,
-            List<CharacterGaugeValue> gaugeValues)
+            List<CharacterGaugeValue> gaugeValues,
+            List<CharacterTraitValue> traitValues,
+            List<CharacterTalent> characterTalents,
+            List<CharacterItem> characterItems,
+            List<ChoiceOptionModifierDefinition> choiceModifiers,
+            List<TalentModifierDefinition> talentModifiers,
+            List<ItemModifierDefinition> itemModifiers,
+            List<CharacterModifier> characterModifiers)
         {
             var definition = gaugeDefinitions.First(x => x.Id == gaugeDefinitionId);
             var gaugeValue = gaugeValues.FirstOrDefault(x => x.GaugeDefinitionId == gaugeDefinitionId);
@@ -1194,10 +1348,22 @@ namespace Rollocracy.Infrastructure.Services
                 gaugeValues.Add(gaugeValue);
             }
 
+            var effectiveMax = ComputeEffectiveGaugeMax(
+                characterId,
+                gaugeDefinitionId,
+                gaugeDefinitions,
+                traitValues,
+                characterTalents,
+                characterItems,
+                choiceModifiers,
+                talentModifiers,
+                itemModifiers,
+                characterModifiers);
+
             gaugeValue.Value = Math.Clamp(
                 gaugeValue.Value + delta,
                 definition.MinValue,
-                definition.MaxValue);
+                effectiveMax);
         }
 
         private void UpdateCharacterAliveState(

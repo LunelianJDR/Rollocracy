@@ -2059,6 +2059,7 @@ namespace Rollocracy.Infrastructure.Services
                 effectiveMax);
         }
 
+
         private async Task<ComputedCharacterContext> ComputeCharacterContextAsync(
             RollocracyDbContext context,
             Guid playerSessionId,
@@ -2076,8 +2077,6 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(v => v.CharacterId == characterId)
                 .ToListAsync();
 
-            List<CharacterGaugeLineDto> gaugeLines;
-
             var gaugeDefinitions = await context.GaugeDefinitions
                 .AsNoTracking()
                 .Where(g => g.GameSystemId == gameSystemId)
@@ -2089,39 +2088,19 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(v => v.CharacterId == characterId)
                 .ToListAsync();
 
-            Dictionary<Guid, int> effectiveGaugeValues = gaugeDefinitions.ToDictionary(
-                definition => definition.Id,
-                definition =>
-                {
-                    var baseValue = rawGaugeValues.FirstOrDefault(v => v.GaugeDefinitionId == definition.Id)?.Value
-                        ?? definition.DefaultValue;
+            var traitDefinitions = await context.TraitDefinitions
+                .AsNoTracking()
+                .Where(t => t.GameSystemId == gameSystemId)
+                .ToListAsync();
 
-                    return Math.Clamp(baseValue, definition.MinValue, definition.MaxValue);
-                });
+            var traitOptions = await context.TraitOptions
+                .AsNoTracking()
+                .Where(o => traitDefinitions.Select(t => t.Id).Contains(o.TraitDefinitionId))
+                .ToListAsync();
 
             var traitValues = await context.CharacterTraitValues
                 .AsNoTracking()
                 .Where(v => v.CharacterId == characterId)
-                .ToListAsync();
-
-            var traitLines = await context.CharacterTraitValues
-                .AsNoTracking()
-                .Where(v => v.CharacterId == characterId)
-                .Join(
-                    context.TraitDefinitions,
-                    value => value.TraitDefinitionId,
-                    definition => definition.Id,
-                    (value, definition) => new { value, definition })
-                .Join(
-                    context.TraitOptions,
-                    left => left.value.TraitOptionId,
-                    option => option.Id,
-                    (left, option) => new CharacterTraitLineDto
-                    {
-                        TraitName = left.definition.Name,
-                        OptionName = option.Name
-                    })
-                .OrderBy(x => x.TraitName)
                 .ToListAsync();
 
             var traitOptionIds = traitValues.Select(v => v.TraitOptionId).Distinct().ToList();
@@ -2167,34 +2146,11 @@ namespace Rollocracy.Infrastructure.Services
                 choiceOptionModifiers,
                 ModifierTargetType.Item);
 
-            var talentLines = await context.TalentDefinitions
+            var talentDefinitions = await context.TalentDefinitions
                 .AsNoTracking()
                 .Where(t => effectiveTalentIds.Contains(t.Id))
                 .OrderBy(t => t.DisplayOrder).ThenBy(t => t.Name)
-                .Select(t => new CharacterNameLineDto
-                {
-                    Id = t.Id,
-                    Name = t.Name
-                })
                 .ToListAsync();
-
-            var itemLines = ownedItemDefinitions
-                .OrderBy(i => i.DisplayOrder).ThenBy(i => i.Name)
-                .Select(i =>
-                {
-                    var ownedItem = directCharacterItems.FirstOrDefault(x => x.ItemDefinitionId == i.Id);
-                    var quantity = ownedItem?.Quantity ?? (i.IsConsumable ? 0 : 1);
-
-                    return new CharacterNameLineDto
-                    {
-                        Id = i.Id,
-                        Name = i.IsConsumable ? $"{i.Name} ({quantity})" : i.Name,
-                        IsConsumable = i.IsConsumable,
-                        Quantity = quantity,
-                        MaxQuantityPerCharacter = i.MaxQuantityPerCharacter
-                    };
-                })
-                .ToList();
 
             var talentModifiers = await context.TalentModifierDefinitions
                 .AsNoTracking()
@@ -2203,7 +2159,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var itemModifiers = await context.ItemModifierDefinitions
                 .AsNoTracking()
-                .Where(m => effectiveItemIds.Contains(m.ItemDefinitionId))
+                .Where(m => ownedItemDefinitionIds.Contains(m.ItemDefinitionId))
                 .ToListAsync();
 
             var characterModifiers = await context.CharacterModifiers
@@ -2234,14 +2190,16 @@ namespace Rollocracy.Infrastructure.Services
                     ValueMode = m.ValueMode,
                     SourceMetricId = m.SourceMetricId
                 }))
-                .Concat(itemModifiers.Select(m => new RuntimeModifier
-                {
-                    TargetType = m.TargetType,
-                    TargetId = m.TargetId,
-                    AddValue = m.AddValue,
-                    ValueMode = m.ValueMode,
-                    SourceMetricId = m.SourceMetricId
-                }))
+                .Concat(itemModifiers
+                    .Where(m => !(ownedItemDefinitions.FirstOrDefault(i => i.Id == m.ItemDefinitionId)?.IsConsumable ?? true))
+                    .Select(m => new RuntimeModifier
+                    {
+                        TargetType = m.TargetType,
+                        TargetId = m.TargetId,
+                        AddValue = m.AddValue,
+                        ValueMode = m.ValueMode,
+                        SourceMetricId = m.SourceMetricId
+                    }))
                 .Concat(characterModifiers.Select(m => new RuntimeModifier
                 {
                     TargetType = m.TargetType switch
@@ -2258,7 +2216,17 @@ namespace Rollocracy.Infrastructure.Services
                 }))
                 .ToList();
 
-            Dictionary<Guid, int> effectiveAttributeValues = attributeDefinitions.ToDictionary(
+            var effectiveGaugeValues = gaugeDefinitions.ToDictionary(
+                definition => definition.Id,
+                definition =>
+                {
+                    var baseValue = rawGaugeValues.FirstOrDefault(v => v.GaugeDefinitionId == definition.Id)?.Value
+                        ?? definition.DefaultValue;
+
+                    return Math.Clamp(baseValue, definition.MinValue, definition.MaxValue);
+                });
+
+            var effectiveAttributeValues = attributeDefinitions.ToDictionary(
                 definition => definition.Id,
                 definition =>
                 {
@@ -2266,20 +2234,14 @@ namespace Rollocracy.Infrastructure.Services
                         ?? definition.DefaultValue;
 
                     var modifier = rawModifiers
-                        .Where(m => m.ValueMode != ModifierValueMode.Metric && m.TargetType == ModifierTargetType.BaseAttribute && m.TargetId == definition.Id)
+                        .Where(m => m.ValueMode != ModifierValueMode.Metric &&
+                                    m.TargetType == ModifierTargetType.BaseAttribute &&
+                                    m.TargetId == definition.Id)
                         .Sum(m => m.AddValue);
 
                     var effectiveValue = baseValue + modifier;
                     return Math.Clamp(effectiveValue, definition.MinValue, definition.MaxValue);
                 });
-
-            List<CharacterAttributeLineDto> attributeLines = attributeDefinitions
-                .Select(definition => new CharacterAttributeLineDto
-                {
-                    Name = definition.Name,
-                    Value = effectiveAttributeValues[definition.Id]
-                })
-                .ToList();
 
             var derivedDefinitions = await context.DerivedStatDefinitions
                 .AsNoTracking()
@@ -2312,7 +2274,9 @@ namespace Rollocracy.Infrastructure.Services
                     definition.RoundMode);
 
                 value += rawModifiers
-                    .Where(m => m.ValueMode != ModifierValueMode.Metric && m.TargetType == ModifierTargetType.DerivedStat && m.TargetId == definition.Id)
+                    .Where(m => m.ValueMode != ModifierValueMode.Metric &&
+                                m.TargetType == ModifierTargetType.DerivedStat &&
+                                m.TargetId == definition.Id)
                     .Sum(m => m.AddValue);
 
                 preliminaryDerivedValues[definition.Id] = Math.Clamp(value, definition.MinValue, definition.MaxValue);
@@ -2360,19 +2324,12 @@ namespace Rollocracy.Infrastructure.Services
                     return Math.Clamp(effectiveValue, definition.MinValue, definition.MaxValue);
                 });
 
-            attributeLines = attributeDefinitions
-                .Select(definition => new CharacterAttributeLineDto
-                {
-                    Name = definition.Name,
-                    Value = effectiveAttributeValues[definition.Id]
-                })
-                .ToList();
-
+            var derivedBaseValues = new Dictionary<Guid, int>();
             var derivedStatValues = new Dictionary<Guid, int>();
 
             foreach (var definition in derivedDefinitions)
             {
-                var value = ComputeWeightedValue(
+                var baseComputedValue = ComputeWeightedValue(
                     derivedComponents.Where(c => c.DerivedStatDefinitionId == definition.Id)
                         .Select(c => new WeightedSourceValue
                         {
@@ -2385,21 +2342,15 @@ namespace Rollocracy.Infrastructure.Services
                     definition.MaxValue,
                     definition.RoundMode);
 
-                value += resolvedModifiers
+                derivedBaseValues[definition.Id] = baseComputedValue;
+
+                var value = baseComputedValue + resolvedModifiers
                     .Where(m => m.TargetType == ModifierTargetType.DerivedStat && m.TargetId == definition.Id)
                     .Sum(m => m.AddValue);
 
                 value = Math.Clamp(value, definition.MinValue, definition.MaxValue);
                 derivedStatValues[definition.Id] = value;
             }
-
-            var derivedLines = derivedDefinitions
-                .Select(definition => new CharacterDerivedStatLineDto
-                {
-                    Name = definition.Name,
-                    Value = derivedStatValues[definition.Id]
-                })
-                .ToList();
 
             var metricValues = MetricFormulaEngine.ComputeAll(new MetricFormulaEngine.MetricComputationRequest
             {
@@ -2419,6 +2370,92 @@ namespace Rollocracy.Infrastructure.Services
                     .ToList()
             });
 
+            var modifierTalentTargetIds = choiceOptionModifiers
+                .Where(x => x.TargetType == ModifierTargetType.Talent)
+                .Select(x => x.TargetId)
+                .Concat(itemModifiers.Where(x => x.TargetType == ModifierTargetType.Talent).Select(x => x.TargetId))
+                .Distinct()
+                .ToList();
+
+            var modifierItemTargetIds = choiceOptionModifiers
+                .Where(x => x.TargetType == ModifierTargetType.Item)
+                .Select(x => x.TargetId)
+                .Concat(itemModifiers.Where(x => x.TargetType == ModifierTargetType.Item).Select(x => x.TargetId))
+                .Distinct()
+                .ToList();
+
+            var referencedTalentNames = await context.TalentDefinitions
+                .AsNoTracking()
+                .Where(x => modifierTalentTargetIds.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, x => x.Name);
+
+            var referencedItemNames = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(x => modifierItemTargetIds.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, x => x.Name);
+
+            var attributeNames = attributeDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var derivedNames = derivedDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var metricNames = metricDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var gaugeNames = gaugeDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var talentNames = talentDefinitions
+                .Select(x => new KeyValuePair<Guid, string>(x.Id, x.Name))
+                .Concat(referencedTalentNames.Where(x => !talentDefinitions.Any(t => t.Id == x.Key)))
+                .ToDictionary(x => x.Key, x => x.Value);
+            var itemNames = ownedItemDefinitions
+                .Select(x => new KeyValuePair<Guid, string>(x.Id, x.Name))
+                .Concat(referencedItemNames.Where(x => !ownedItemDefinitions.Any(i => i.Id == x.Key)))
+                .ToDictionary(x => x.Key, x => x.Value);
+
+            var attributeLines = attributeDefinitions
+                .Select(definition =>
+                {
+                    var baseValue = attributeValues.FirstOrDefault(v => v.AttributeDefinitionId == definition.Id)?.Value
+                        ?? definition.DefaultValue;
+
+                    var contributions = BuildAttributeBreakdownContributions(
+                        definition.Id,
+                        traitOptions,
+                        choiceOptionModifiers,
+                        talentModifiers,
+                        talentNames,
+                        itemModifiers,
+                        ownedItemDefinitions,
+                        characterModifiers,
+                        metricValues);
+
+                    return new CharacterAttributeLineDto
+                    {
+                        Name = definition.Name,
+                        Value = effectiveAttributeValues[definition.Id],
+                        Tooltip = BuildBreakdownTooltip(baseValue, contributions)
+                    };
+                })
+                .ToList();
+
+            var derivedLines = derivedDefinitions
+                .Select(definition =>
+                {
+                    var contributions = BuildDerivedBreakdownContributions(
+                        definition.Id,
+                        traitOptions,
+                        choiceOptionModifiers,
+                        talentModifiers,
+                        talentNames,
+                        itemModifiers,
+                        ownedItemDefinitions,
+                        characterModifiers,
+                        metricValues);
+
+                    return new CharacterDerivedStatLineDto
+                    {
+                        Name = definition.Name,
+                        Value = derivedStatValues[definition.Id],
+                        Tooltip = BuildBreakdownTooltip(derivedBaseValues[definition.Id], contributions)
+                    };
+                })
+                .ToList();
+
             var metricLines = metricDefinitions
                 .Select(definition => new CharacterMetricLineDto
                 {
@@ -2427,7 +2464,74 @@ namespace Rollocracy.Infrastructure.Services
                 })
                 .ToList();
 
-            gaugeLines = gaugeDefinitions
+            var traitLines = traitValues
+                .Select(value =>
+                {
+                    var optionName = traitOptions.FirstOrDefault(x => x.Id == value.TraitOptionId)?.Name ?? string.Empty;
+                    var tooltip = BuildChoiceOptionEffectTooltip(
+                        choiceOptionModifiers.Where(x => x.ChoiceOptionDefinitionId == value.TraitOptionId).ToList(),
+                        attributeNames,
+                        derivedNames,
+                        metricNames,
+                        gaugeNames,
+                        talentNames,
+                        itemNames,
+                        metricValues);
+
+                    return new CharacterTraitLineDto
+                    {
+                        TraitName = traitDefinitions.FirstOrDefault(x => x.Id == value.TraitDefinitionId)?.Name ?? string.Empty,
+                        OptionName = optionName,
+                        Tooltip = tooltip
+                    };
+                })
+                .OrderBy(x => x.TraitName)
+                .ToList();
+
+            var talentLines = talentDefinitions
+                .Select(t => new CharacterNameLineDto
+                {
+                    Id = t.Id,
+                    Name = t.Name,
+                    Tooltip = BuildTalentEffectTooltip(
+                        talentModifiers.Where(x => x.TalentDefinitionId == t.Id).ToList(),
+                        attributeNames,
+                        derivedNames,
+                        metricNames,
+                        gaugeNames,
+                        metricValues)
+                })
+                .ToList();
+
+            var itemLines = ownedItemDefinitions
+                .OrderBy(i => i.DisplayOrder).ThenBy(i => i.Name)
+                .Select(i =>
+                {
+                    var ownedItem = directCharacterItems.FirstOrDefault(x => x.ItemDefinitionId == i.Id);
+                    var quantity = ownedItem?.Quantity ?? (i.IsConsumable ? 0 : 1);
+
+                    return new CharacterNameLineDto
+                    {
+                        Id = i.Id,
+                        Name = i.IsConsumable ? $"{i.Name} ({quantity})" : i.Name,
+                        IsConsumable = i.IsConsumable,
+                        Quantity = quantity,
+                        MaxQuantityPerCharacter = i.MaxQuantityPerCharacter,
+                        Tooltip = BuildItemEffectTooltip(
+                            itemModifiers.Where(x => x.ItemDefinitionId == i.Id).ToList(),
+                            attributeNames,
+                            derivedNames,
+                            metricNames,
+                            gaugeNames,
+                            talentNames,
+                            itemNames,
+                            metricValues,
+                            i.IsConsumable)
+                    };
+                })
+                .ToList();
+
+            var gaugeLines = gaugeDefinitions
                 .Select(definition =>
                 {
                     var gaugeBonus = resolvedModifiers
@@ -2465,6 +2569,415 @@ namespace Rollocracy.Infrastructure.Services
             };
         }
 
+        private sealed class BreakdownContribution
+        {
+            public string SourceName { get; set; } = string.Empty;
+            public int Value { get; set; }
+        }
+
+        private int ResolveModifierValue(int value, ModifierValueMode valueMode, Guid? sourceMetricId, Dictionary<Guid, int>? metricValues)
+        {
+            if (valueMode == ModifierValueMode.Metric && sourceMetricId.HasValue && metricValues is not null && metricValues.TryGetValue(sourceMetricId.Value, out var metricValue))
+                return metricValue;
+
+            return value;
+        }
+
+        private string BuildBreakdownTooltip(int baseValue, List<BreakdownContribution> contributions)
+        {
+            var lines = new List<string>
+            {
+                $"{baseValue} ({_localizer["Character_Tooltip_Base"]})"
+            };
+
+            foreach (var contribution in contributions.Where(x => x.Value != 0))
+            {
+                lines.Add($"{FormatSignedValue(contribution.Value)} ({contribution.SourceName})");
+            }
+
+            return string.Join("\n", lines);
+        }
+
+        private List<BreakdownContribution> BuildAttributeBreakdownContributions(
+            Guid attributeDefinitionId,
+            List<TraitOption> traitOptions,
+            List<ChoiceOptionModifierDefinition> choiceOptionModifiers,
+            List<TalentModifierDefinition> talentModifiers,
+            Dictionary<Guid, string> talentNames,
+            List<ItemModifierDefinition> itemModifiers,
+            List<ItemDefinition> ownedItemDefinitions,
+            List<CharacterModifier> characterModifiers,
+            Dictionary<Guid, int> metricValues)
+        {
+            var results = new List<BreakdownContribution>();
+
+            foreach (var modifier in choiceOptionModifiers.Where(x =>
+                         x.OperationType == ModifierOperationType.AddValue &&
+                         x.TargetType == ModifierTargetType.BaseAttribute &&
+                         x.TargetId == attributeDefinitionId))
+            {
+                var optionName = traitOptions.FirstOrDefault(x => x.Id == modifier.ChoiceOptionDefinitionId)?.Name
+                                 ?? modifier.TargetNameSnapshot;
+
+                var resolvedValue = ResolveModifierValue(modifier.Value, modifier.ValueMode, modifier.SourceMetricId, metricValues);
+                if (resolvedValue != 0)
+                {
+                    results.Add(new BreakdownContribution
+                    {
+                        SourceName = optionName,
+                        Value = resolvedValue
+                    });
+                }
+            }
+
+            foreach (var modifier in talentModifiers.Where(x =>
+                         x.TargetType == ModifierTargetType.BaseAttribute &&
+                         x.TargetId == attributeDefinitionId))
+            {
+                var resolvedValue = ResolveModifierValue(modifier.AddValue, modifier.ValueMode, modifier.SourceMetricId, metricValues);
+                if (resolvedValue != 0)
+                {
+                    results.Add(new BreakdownContribution
+                    {
+                        SourceName = talentNames.GetValueOrDefault(modifier.TalentDefinitionId, string.Empty),
+                        Value = resolvedValue
+                    });
+                }
+            }
+
+            foreach (var modifier in itemModifiers.Where(x =>
+                         x.OperationType == ModifierOperationType.AddValue &&
+                         x.TargetType == ModifierTargetType.BaseAttribute &&
+                         x.TargetId == attributeDefinitionId))
+            {
+                var itemDefinition = ownedItemDefinitions.FirstOrDefault(x => x.Id == modifier.ItemDefinitionId);
+                if (itemDefinition?.IsConsumable == true)
+                    continue;
+
+                var resolvedValue = ResolveModifierValue(modifier.AddValue, modifier.ValueMode, modifier.SourceMetricId, metricValues);
+                if (resolvedValue != 0)
+                {
+                    results.Add(new BreakdownContribution
+                    {
+                        SourceName = itemDefinition?.Name ?? string.Empty,
+                        Value = resolvedValue
+                    });
+                }
+            }
+
+            foreach (var modifier in characterModifiers.Where(x =>
+                         x.TargetType == CharacterEffectTargetType.BaseAttribute &&
+                         x.TargetId == attributeDefinitionId &&
+                         x.AddValue != 0))
+            {
+                results.Add(new BreakdownContribution
+                {
+                    SourceName = string.IsNullOrWhiteSpace(modifier.SourceNameSnapshot)
+                        ? _localizer["Character_Tooltip_Augmentations"]
+                        : modifier.SourceNameSnapshot,
+                    Value = modifier.AddValue
+                });
+            }
+
+            return results;
+        }
+
+        private List<BreakdownContribution> BuildDerivedBreakdownContributions(
+            Guid derivedDefinitionId,
+            List<TraitOption> traitOptions,
+            List<ChoiceOptionModifierDefinition> choiceOptionModifiers,
+            List<TalentModifierDefinition> talentModifiers,
+            Dictionary<Guid, string> talentNames,
+            List<ItemModifierDefinition> itemModifiers,
+            List<ItemDefinition> ownedItemDefinitions,
+            List<CharacterModifier> characterModifiers,
+            Dictionary<Guid, int> metricValues)
+        {
+            var results = new List<BreakdownContribution>();
+
+            foreach (var modifier in choiceOptionModifiers.Where(x =>
+                         x.OperationType == ModifierOperationType.AddValue &&
+                         x.TargetType == ModifierTargetType.DerivedStat &&
+                         x.TargetId == derivedDefinitionId))
+            {
+                var optionName = traitOptions.FirstOrDefault(x => x.Id == modifier.ChoiceOptionDefinitionId)?.Name
+                                 ?? modifier.TargetNameSnapshot;
+
+                var resolvedValue = ResolveModifierValue(modifier.Value, modifier.ValueMode, modifier.SourceMetricId, metricValues);
+                if (resolvedValue != 0)
+                {
+                    results.Add(new BreakdownContribution
+                    {
+                        SourceName = optionName,
+                        Value = resolvedValue
+                    });
+                }
+            }
+
+            foreach (var modifier in talentModifiers.Where(x =>
+                         x.TargetType == ModifierTargetType.DerivedStat &&
+                         x.TargetId == derivedDefinitionId))
+            {
+                var resolvedValue = ResolveModifierValue(modifier.AddValue, modifier.ValueMode, modifier.SourceMetricId, metricValues);
+                if (resolvedValue != 0)
+                {
+                    results.Add(new BreakdownContribution
+                    {
+                        SourceName = talentNames.GetValueOrDefault(modifier.TalentDefinitionId, string.Empty),
+                        Value = resolvedValue
+                    });
+                }
+            }
+
+            foreach (var modifier in itemModifiers.Where(x =>
+                         x.OperationType == ModifierOperationType.AddValue &&
+                         x.TargetType == ModifierTargetType.DerivedStat &&
+                         x.TargetId == derivedDefinitionId))
+            {
+                var itemDefinition = ownedItemDefinitions.FirstOrDefault(x => x.Id == modifier.ItemDefinitionId);
+                if (itemDefinition?.IsConsumable == true)
+                    continue;
+
+                var resolvedValue = ResolveModifierValue(modifier.AddValue, modifier.ValueMode, modifier.SourceMetricId, metricValues);
+                if (resolvedValue != 0)
+                {
+                    results.Add(new BreakdownContribution
+                    {
+                        SourceName = itemDefinition?.Name ?? string.Empty,
+                        Value = resolvedValue
+                    });
+                }
+            }
+
+            foreach (var modifier in characterModifiers.Where(x =>
+                         x.TargetType == CharacterEffectTargetType.DerivedStat &&
+                         x.TargetId == derivedDefinitionId &&
+                         x.AddValue != 0))
+            {
+                results.Add(new BreakdownContribution
+                {
+                    SourceName = string.IsNullOrWhiteSpace(modifier.SourceNameSnapshot)
+                        ? _localizer["Character_Tooltip_Augmentations"]
+                        : modifier.SourceNameSnapshot,
+                    Value = modifier.AddValue
+                });
+            }
+
+            return results;
+        }
+
+        private string BuildChoiceOptionEffectTooltip(
+            List<ChoiceOptionModifierDefinition> modifiers,
+            Dictionary<Guid, string> attributeNames,
+            Dictionary<Guid, string> derivedNames,
+            Dictionary<Guid, string> metricNames,
+            Dictionary<Guid, string> gaugeNames,
+            Dictionary<Guid, string> talentNames,
+            Dictionary<Guid, string> itemNames,
+            Dictionary<Guid, int> metricValues)
+        {
+            var parts = modifiers
+                .Select(modifier => FormatChoiceOptionModifierTooltipPart(
+                    modifier,
+                    attributeNames,
+                    derivedNames,
+                    metricNames,
+                    gaugeNames,
+                    talentNames,
+                    itemNames,
+                    metricValues))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+
+            return string.Join(", ", parts);
+        }
+
+        private string BuildTalentEffectTooltip(
+            List<TalentModifierDefinition> modifiers,
+            Dictionary<Guid, string> attributeNames,
+            Dictionary<Guid, string> derivedNames,
+            Dictionary<Guid, string> metricNames,
+            Dictionary<Guid, string> gaugeNames,
+            Dictionary<Guid, int> metricValues)
+        {
+            var parts = modifiers
+                .Select(modifier => FormatAddValueTooltipPart(
+                    modifier.TargetType,
+                    modifier.TargetId,
+                    ResolveModifierValue(modifier.AddValue, modifier.ValueMode, modifier.SourceMetricId, metricValues),
+                    attributeNames,
+                    derivedNames,
+                    metricNames,
+                    gaugeNames,
+                    includeGaugeMaxLabel: true))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+
+            return string.Join(", ", parts);
+        }
+
+        private string BuildItemEffectTooltip(
+            List<ItemModifierDefinition> modifiers,
+            Dictionary<Guid, string> attributeNames,
+            Dictionary<Guid, string> derivedNames,
+            Dictionary<Guid, string> metricNames,
+            Dictionary<Guid, string> gaugeNames,
+            Dictionary<Guid, string> talentNames,
+            Dictionary<Guid, string> itemNames,
+            Dictionary<Guid, int> metricValues,
+            bool isConsumable)
+        {
+            var parts = modifiers
+                .Select(modifier => FormatItemModifierTooltipPart(
+                    modifier,
+                    attributeNames,
+                    derivedNames,
+                    metricNames,
+                    gaugeNames,
+                    talentNames,
+                    itemNames,
+                    metricValues))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+
+            if (parts.Count == 0)
+                return string.Empty;
+
+            var text = string.Join(", ", parts);
+            return isConsumable
+                ? $"{_localizer["Character_Tooltip_OnUsePrefix"]} {text}"
+                : text;
+        }
+
+        private string FormatChoiceOptionModifierTooltipPart(
+            ChoiceOptionModifierDefinition modifier,
+            Dictionary<Guid, string> attributeNames,
+            Dictionary<Guid, string> derivedNames,
+            Dictionary<Guid, string> metricNames,
+            Dictionary<Guid, string> gaugeNames,
+            Dictionary<Guid, string> talentNames,
+            Dictionary<Guid, string> itemNames,
+            Dictionary<Guid, int> metricValues)
+        {
+            return modifier.OperationType switch
+            {
+                ModifierOperationType.AddValue => FormatAddValueTooltipPart(
+                    modifier.TargetType,
+                    modifier.TargetId,
+                    ResolveModifierValue(modifier.Value, modifier.ValueMode, modifier.SourceMetricId, metricValues),
+                    attributeNames,
+                    derivedNames,
+                    metricNames,
+                    gaugeNames,
+                    includeGaugeMaxLabel: true),
+                ModifierOperationType.Grant => FormatGrantRevokeTooltipPart(
+                    true,
+                    modifier.TargetType,
+                    modifier.TargetId,
+                    talentNames,
+                    itemNames),
+                ModifierOperationType.Revoke => FormatGrantRevokeTooltipPart(
+                    false,
+                    modifier.TargetType,
+                    modifier.TargetId,
+                    talentNames,
+                    itemNames),
+                _ => string.Empty
+            };
+        }
+
+        private string FormatItemModifierTooltipPart(
+            ItemModifierDefinition modifier,
+            Dictionary<Guid, string> attributeNames,
+            Dictionary<Guid, string> derivedNames,
+            Dictionary<Guid, string> metricNames,
+            Dictionary<Guid, string> gaugeNames,
+            Dictionary<Guid, string> talentNames,
+            Dictionary<Guid, string> itemNames,
+            Dictionary<Guid, int> metricValues)
+        {
+            return modifier.OperationType switch
+            {
+                ModifierOperationType.AddValue => FormatAddValueTooltipPart(
+                    modifier.TargetType,
+                    modifier.TargetId,
+                    ResolveModifierValue(modifier.AddValue, modifier.ValueMode, modifier.SourceMetricId, metricValues),
+                    attributeNames,
+                    derivedNames,
+                    metricNames,
+                    gaugeNames,
+                    includeGaugeMaxLabel: !modifier.FillGaugeCurrentValueOnly),
+                ModifierOperationType.Grant => FormatGrantRevokeTooltipPart(
+                    true,
+                    modifier.TargetType,
+                    modifier.TargetId,
+                    talentNames,
+                    itemNames),
+                ModifierOperationType.Revoke => FormatGrantRevokeTooltipPart(
+                    false,
+                    modifier.TargetType,
+                    modifier.TargetId,
+                    talentNames,
+                    itemNames),
+                _ => string.Empty
+            };
+        }
+
+        private string FormatAddValueTooltipPart(
+            ModifierTargetType targetType,
+            Guid targetId,
+            int value,
+            Dictionary<Guid, string> attributeNames,
+            Dictionary<Guid, string> derivedNames,
+            Dictionary<Guid, string> metricNames,
+            Dictionary<Guid, string> gaugeNames,
+            bool includeGaugeMaxLabel)
+        {
+            if (value == 0)
+                return string.Empty;
+
+            var targetName = targetType switch
+            {
+                ModifierTargetType.BaseAttribute => attributeNames.GetValueOrDefault(targetId, string.Empty),
+                ModifierTargetType.DerivedStat => derivedNames.GetValueOrDefault(targetId, string.Empty),
+                ModifierTargetType.Metric => metricNames.GetValueOrDefault(targetId, string.Empty),
+                ModifierTargetType.Gauge => gaugeNames.GetValueOrDefault(targetId, string.Empty),
+                _ => string.Empty
+            };
+
+            if (string.IsNullOrWhiteSpace(targetName))
+                return string.Empty;
+
+            if (targetType == ModifierTargetType.Gauge && includeGaugeMaxLabel)
+                targetName = $"{targetName} {_localizer["Common_Max"]}";
+
+            return $"{targetName} {FormatSignedValue(value)}";
+        }
+
+        private string FormatGrantRevokeTooltipPart(
+            bool isGrant,
+            ModifierTargetType targetType,
+            Guid targetId,
+            Dictionary<Guid, string> talentNames,
+            Dictionary<Guid, string> itemNames)
+        {
+            var targetName = targetType switch
+            {
+                ModifierTargetType.Talent => talentNames.GetValueOrDefault(targetId, string.Empty),
+                ModifierTargetType.Item => itemNames.GetValueOrDefault(targetId, string.Empty),
+                _ => string.Empty
+            };
+
+            if (string.IsNullOrWhiteSpace(targetName))
+                return string.Empty;
+
+            return string.Format(
+                isGrant ? _localizer["Character_Tooltip_Grant"].Value : _localizer["Character_Tooltip_Revoke"].Value,
+                targetName);
+        }
+
+        private static string FormatSignedValue(int value)
+            => value >= 0 ? $"+{value}" : value.ToString();
         private static int GenerateAttributeDefaultValue(AttributeDefinition definition)
         {
             if (definition.DefaultValueMode == BaseValueGenerationMode.Fixed)
@@ -2612,6 +3125,7 @@ namespace Rollocracy.Infrastructure.Services
             public List<CharacterNameLineDto> ItemLines { get; set; } = new();
             public Dictionary<Guid, int> MetricValues { get; set; } = new();
         }
+
         public async Task ConsumeItemAsync(Guid playerSessionId, Guid itemDefinitionId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -2827,6 +3341,128 @@ namespace Rollocracy.Infrastructure.Services
             await _sessionNotifier.NotifyPresenceChangedAsync(session.Id);
         }
 
+        public async Task PurchaseSessionStoreOfferAsync(Guid playerSessionId, Guid offerId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var playerSession = await context.PlayerSessions
+                .FirstOrDefaultAsync(x => x.Id == playerSessionId);
+
+            if (playerSession == null)
+                throw new Exception(_localizer["Backend_PlayerSessionNotFound"]);
+
+            var session = await context.Sessions
+                .FirstOrDefaultAsync(x => x.Id == playerSession.SessionId);
+
+            if (session == null)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var character = await context.Characters
+                .FirstOrDefaultAsync(x => x.PlayerSessionId == playerSessionId && x.IsAlive);
+
+            if (character == null)
+                throw new Exception(_localizer["Backend_PlayerAlreadyHasNoAliveCharacter"]);
+
+            var store = await context.SessionStores
+                .FirstOrDefaultAsync(x => x.SessionId == session.Id);
+
+            if (store == null || !store.IsEnabled)
+                throw new Exception(_localizer["Backend_SessionStoreDisabled"]);
+
+            var offer = await context.SessionStoreOffers
+                .FirstOrDefaultAsync(x => x.Id == offerId && x.SessionStoreId == store.Id);
+
+            if (offer == null)
+                throw new Exception(_localizer["Backend_SessionStoreOfferNotFound"]);
+
+            var gaugeValue = await context.CharacterGaugeValues
+                .FirstOrDefaultAsync(x => x.CharacterId == character.Id && x.GaugeDefinitionId == offer.CurrencyGaugeDefinitionId);
+
+            if (gaugeValue == null)
+                throw new Exception(_localizer["Backend_SessionStoreInvalidGauge"]);
+
+            var gaugeDefinition = await context.GaugeDefinitions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == offer.CurrencyGaugeDefinitionId);
+
+            if (gaugeDefinition == null)
+                throw new Exception(_localizer["Backend_SessionStoreInvalidGauge"]);
+
+            if (gaugeValue.Value < offer.Cost)
+                throw new Exception(_localizer["Backend_SessionStoreNotEnoughCurrency"]);
+
+            if (offer.OfferType == SessionStoreOfferType.Talent)
+            {
+                var alreadyHas = await context.CharacterTalents.AnyAsync(x =>
+                    x.CharacterId == character.Id &&
+                    x.TalentDefinitionId == offer.TargetDefinitionId);
+
+                if (alreadyHas)
+                    throw new Exception(_localizer["Backend_SessionStoreOfferAlreadyOwned"]);
+
+                context.CharacterTalents.Add(new CharacterTalent
+                {
+                    Id = Guid.NewGuid(),
+                    CharacterId = character.Id,
+                    TalentDefinitionId = offer.TargetDefinitionId
+                });
+            }
+            else
+            {
+                var itemDefinition = await context.ItemDefinitions
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == offer.TargetDefinitionId);
+
+                if (itemDefinition == null)
+                    throw new Exception(_localizer["Backend_SessionStoreInvalidTarget"]);
+
+                var existingItem = await context.CharacterItems
+                    .FirstOrDefaultAsync(x => x.CharacterId == character.Id && x.ItemDefinitionId == itemDefinition.Id);
+
+                if (!itemDefinition.IsConsumable)
+                {
+                    if (existingItem != null)
+                        throw new Exception(_localizer["Backend_SessionStoreOfferAlreadyOwned"]);
+
+                    context.CharacterItems.Add(new CharacterItem
+                    {
+                        Id = Guid.NewGuid(),
+                        CharacterId = character.Id,
+                        ItemDefinitionId = itemDefinition.Id,
+                        Quantity = 1
+                    });
+                }
+                else
+                {
+                    if (existingItem is null)
+                    {
+                        context.CharacterItems.Add(new CharacterItem
+                        {
+                            Id = Guid.NewGuid(),
+                            CharacterId = character.Id,
+                            ItemDefinitionId = itemDefinition.Id,
+                            Quantity = 1
+                        });
+                    }
+                    else
+                    {
+                        if (existingItem.Quantity >= itemDefinition.MaxQuantityPerCharacter)
+                            throw new Exception(_localizer["Backend_SessionStoreConsumableLimitReached"]);
+
+                        existingItem.Quantity += 1;
+                    }
+                }
+            }
+
+            gaugeValue.Value = Math.Clamp(
+                gaugeValue.Value - offer.Cost,
+                gaugeDefinition.MinValue,
+                gaugeDefinition.MaxValue);
+
+            await context.SaveChangesAsync();
+
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(session.Id);
+            await _sessionNotifier.NotifyPresenceChangedAsync(session.Id);
+        }
     }
 }
-

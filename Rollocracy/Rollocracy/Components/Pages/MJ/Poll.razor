@@ -149,6 +149,7 @@ else
                                               MetricTargets="MetricTargets"
                                               PollOptions="AdvancedPollOptions"
                                               SelectedPollOptionOptions="AdvancedSelectedPollOptionOptions"
+                                              RandomDrawOptions="AdvancedRandomDrawOptions"
                                               NameSuggestions="AdvancedNameSuggestions"
                                               OnPollSelectionChanged="RefreshSelectedPollOptionOptionsAsync" />
 
@@ -447,12 +448,12 @@ else
     private List<PollForGameMasterDto> RecentPolls = new();
 
     private List<SessionPollPresetDto> PollPresets = new();
-private Guid? SelectedPollPresetId;
-private string NewPollPresetName = string.Empty;
+    private Guid? SelectedPollPresetId;
+    private string NewPollPresetName = string.Empty;
 
-private bool ShowSavePollPresetPanel;
-private bool ConfirmOverwritePollPresetVisible;
-private bool ConfirmDeletePollPresetVisible;
+    private bool ShowSavePollPresetPanel;
+    private bool ConfirmOverwritePollPresetVisible;
+    private bool ConfirmDeletePollPresetVisible;
 
     private Guid CurrentUserId;
     private bool IsLoaded;
@@ -478,6 +479,7 @@ private bool ConfirmDeletePollPresetVisible;
     private List<CharacterFilterReferenceItem> MetricTargets = new();
     private List<CharacterFilterReferenceItem> AdvancedPollOptions = new();
     private List<CharacterFilterReferenceItem> AdvancedSelectedPollOptionOptions = new();
+    private List<CharacterFilterReferenceItem> AdvancedRandomDrawOptions = new();
     private List<CharacterNameSuggestionItem> AdvancedNameSuggestions = new();
 
     private bool ShowLivePollResults;
@@ -700,6 +702,7 @@ private bool ConfirmDeletePollPresetVisible;
         await LoadCharacterSummariesAsync();
         await LoadLatestPoll();
         await LoadAdvancedPollOptionsAsync();
+        await LoadAdvancedRandomDrawOptionsAsync();
         await LoadAdvancedNameSuggestionsAsync();
     }
 
@@ -869,6 +872,7 @@ private bool ConfirmDeletePollPresetVisible;
                     MustHaveSucceededLastTest = AdvancedFilter.MustHaveSucceededLastTest,
                     FilterOnLastTestResult = AdvancedFilter.FilterOnLastTestResult,
                     NameCharacterIds = AdvancedFilter.NameCharacterIds.ToList(),
+                    RandomDrawIds = AdvancedFilter.RandomDrawIds.ToList(),
                     ValueFilters = AdvancedFilter.ValueFilters
             .Select(x => new CharacterValueFilterDto
             {
@@ -1066,6 +1070,23 @@ private bool ConfirmDeletePollPresetVisible;
             {
                 Id = x.OptionId,
                 Name = x.Label
+            })
+            .ToList();
+    }
+
+    private async Task LoadAdvancedRandomDrawOptionsAsync()
+    {
+        AdvancedRandomDrawOptions.Clear();
+
+        var editor = await CharacterService.GetRandomDrawEditorAsync(SessionId, CurrentUserId);
+        if (editor is null)
+            return;
+
+        AdvancedRandomDrawOptions = editor.RecentDraws
+            .Select(x => new CharacterFilterReferenceItem
+            {
+                Id = x.DrawId,
+                Name = x.Name
             })
             .ToList();
     }
@@ -1336,6 +1357,8 @@ private bool ConfirmDeletePollPresetVisible;
             MustHaveSucceededLastTest = source.MustHaveSucceededLastTest,
             FilterOnLastTestResult = source.FilterOnLastTestResult,
             NameCharacterIds = source.NameCharacterIds.ToList(),
+            RandomDrawIds = source.RandomDrawIds.ToList(),
+            BiographyNotEmpty = source.BiographyNotEmpty,
             ValueFilters = source.ValueFilters.Select(x => new CharacterValueFilterDto
             {
                 TargetType = x.TargetType,
@@ -1347,4 +1370,3 @@ private bool ConfirmDeletePollPresetVisible;
         };
     }
 }
-

@@ -224,6 +224,7 @@ html[data-theme="dark"] .rc-main a.btn:focus {
     min-width: 0;
     overflow: hidden;
     box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.02);
+    z-index: 10;
 }
 
 .rc-shell__main {
@@ -3569,3 +3570,123 @@ button.rc-global-threshold-slider__handle:focus-visible {
     align-items: center;
     gap: 0.45rem;
 }
+
+.rc-session-store-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    margin-top: 0.75rem;
+}
+
+.rc-session-store-offer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 16px;
+    background: var(--rc-surface);
+}
+
+.rc-session-store-offer__main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.rc-session-store-offer__title {
+    font-weight: 700;
+    color: var(--rc-text);
+    word-break: break-word;
+}
+
+.rc-session-store-offer__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    font-size: 0.92rem;
+    color: var(--rc-text-soft);
+}
+
+.rc-player-tooltip-surface {
+    position: relative;
+    z-index: 1; /* important pour créer une base propre */
+    transition: box-shadow var(--rc-transition), border-color var(--rc-transition), background var(--rc-transition);
+}
+
+    .rc-player-tooltip-surface[data-tooltip] {
+        cursor: none;
+    }
+
+    /* Curseur rond */
+    .rc-player-tooltip-surface::after {
+        content: "";
+        position: fixed;
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: radial-gradient(circle, var(--rc-accent) 60%, transparent 100%);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--rc-accent) 20%, transparent);
+        pointer-events: none;
+        opacity: 0;
+        z-index: 9999;
+        left: var(--rc-tooltip-cursor-x, -999px);
+        top: var(--rc-tooltip-cursor-y, -999px);
+        transform: translate(-50%, -50%);
+        transition: opacity 120ms ease;
+    }
+
+    .rc-player-tooltip-surface[data-tooltip]:hover::after,
+    .rc-player-tooltip-surface[data-tooltip]:focus-visible::after {
+        opacity: 1;
+    }
+
+    /* Infobulle (FIX PRINCIPAL ICI) */
+    .rc-player-tooltip-surface[data-tooltip]::before {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 0.6rem);
+        transform: translateX(-50%) translateY(6px);
+        min-width: 140px;
+        max-width: min(420px, 80vw);
+        padding: 0.65rem 0.8rem;
+        border-radius: 16px;
+        border: 1px solid color-mix(in srgb, var(--rc-accent) 28%, var(--rc-border));
+        background: linear-gradient( 180deg, color-mix(in srgb, var(--rc-surface-2) 94%, var(--rc-accent) 6%), var(--rc-surface) );
+        color: var(--rc-text);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18), 0 0 0 1px color-mix(in srgb, var(--rc-accent) 10%, transparent) inset;
+        white-space: pre-line;
+        line-height: 1.35;
+        font-size: 0.9rem;
+        font-weight: 500;
+        z-index: 9999; /* clé du fix */
+
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--rc-transition), transform var(--rc-transition);
+        backdrop-filter: blur(8px);
+    }
+
+    /* Affichage */
+    .rc-player-tooltip-surface[data-tooltip]:hover::before,
+    .rc-player-tooltip-surface[data-tooltip]:focus-visible::before {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+
+    /* Hover bloc */
+    .rc-player-tooltip-surface[data-tooltip]:hover {
+        z-index: 9998; /* IMPORTANT : élève le bloc lui-même */
+        border-color: color-mix(in srgb, var(--rc-accent) 38%, var(--rc-border));
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--rc-accent) 20%, transparent) inset, 0 10px 26px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Couleurs */
+    .rc-player-tooltip-surface .rc-player-stat-card__label,
+    .rc-player-tooltip-surface .rc-player-stat-card__value,
+    .rc-player-tooltip-surface {
+        color: var(--rc-text);
+    }

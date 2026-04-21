@@ -39,10 +39,10 @@ else
                         <h4 class="rc-tool-panel__title">@L["Session_Settings_Title"]</h4>
                         <p class="rc-tool-panel__subtitle">@L["Session_Settings_Subtitle"]</p>
                     </div>
-
+@* 
                     <div class="rc-tool-actions">
-                        <button type="button" @onclick="BackToSession">@L["Session_BackToSession"]</button>
-                    </div>
+                        <button type="button" @onclick="GoToStore">@L["Session_Settings_ManageStore"]</button>
+                    </div> *@
                 </div>
 
                 @if (!string.IsNullOrWhiteSpace(Message))
@@ -1104,5 +1104,10 @@ else
     private void SetSessionItemGaugeModifierAffectsMaximum(EditableModifierDefinitionDto modifier, bool affectsMaximum)
     {
         modifier.FillGaugeCurrentValueOnly = !affectsMaximum;
+    }
+
+    private void GoToStore()
+    {
+        Navigation.NavigateTo($"/mj/session/{SessionId}/store");
     }
 }

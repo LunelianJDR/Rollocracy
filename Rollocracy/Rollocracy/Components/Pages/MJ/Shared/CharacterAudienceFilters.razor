@@ -23,6 +23,11 @@
             <input type="checkbox" checked="@IncludeNpcs" @onchange="OnNpcChanged" />
             <span>@L["AudienceFilter_IncludeNPCs"]</span>
         </label>
+
+        <label class="rc-filter-toggle">
+            <input type="checkbox" checked="@BiographyNotEmpty" @onchange="OnBiographyChanged" />
+            <span>@L["Audience_BiographyNotEmpty"]</span>
+        </label>
     </div>
 </div>
 
@@ -31,10 +36,12 @@
     [Parameter] public bool OnlyOnline { get; set; }
     [Parameter] public bool OnlyAlive { get; set; }
     [Parameter] public bool IncludeNpcs { get; set; }
+    [Parameter] public bool BiographyNotEmpty { get; set; }
 
     [Parameter] public EventCallback<bool> OnlyOnlineChanged { get; set; }
     [Parameter] public EventCallback<bool> OnlyAliveChanged { get; set; }
     [Parameter] public EventCallback<bool> IncludeNpcsChanged { get; set; }
+    [Parameter] public EventCallback<bool> BiographyNotEmptyChanged { get; set; }
 
     private async Task SetOnline()
     {
@@ -51,5 +58,10 @@
     private async Task OnNpcChanged(ChangeEventArgs e)
     {
         await IncludeNpcsChanged.InvokeAsync((bool)e.Value!);
+    }
+
+    private async Task OnBiographyChanged(ChangeEventArgs e)
+    {
+        await BiographyNotEmptyChanged.InvokeAsync((bool)e.Value!);
     }
 }

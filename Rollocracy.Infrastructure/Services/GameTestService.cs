@@ -76,6 +76,11 @@ namespace Rollocracy.Infrastructure.Services
                 request.TargetDefinitionId);
 
             if (gameSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold && !request.SuccessThreshold.HasValue)
+            {
+                request.SuccessThreshold = gameSystem.DefaultSuccessThreshold;
+            }
+
+            if (gameSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold && !request.SuccessThreshold.HasValue)
                 throw new Exception(_localizer["Backend_SuccessThresholdRequired"]);
 
             var diceCount = request.UseSystemDefaultDice ? gameSystem.DefaultTestDiceCount : request.DiceCount;

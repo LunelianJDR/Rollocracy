@@ -1,0 +1,246 @@
+﻿@page "/mj/session/{SessionId:guid}/store"
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Entities
+@using Rollocracy.Domain.Interfaces
+@using Rollocracy.Localization
+
+@inject ISessionService SessionService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
+
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToHome)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (Editor is null)
+{
+    <p>@L["Session_NotFound"]</p>
+}
+else
+{
+    <section class="rc-tool-section">
+        <div class="rc-tool-layout">
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["Session_Store_Title"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["Session_Store_Subtitle"]</p>
+                    </div>
+
+                    <div class="rc-tool-actions">
+                        <button type="button" @onclick="BackToSettings">@L["Common_Back"]</button>
+                        <button type="button" @onclick="Save">@L["Common_Save"]</button>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Message))
+                {
+                    <div class="rc-inline-warning">@Message</div>
+                }
+
+                <label class="rc-filter-toggle">
+                    <input type="checkbox" @bind="Editor.IsEnabled" />
+                    <span>@L["Session_Store_Enabled"]</span>
+                </label>
+
+                <div class="rc-detail-block">
+                    <div class="rc-detail-block__title">@L["Session_Store_Offers"]</div>
+
+                    <div class="rc-tool-inline-actions">
+                        @* <button type="button" @onclick="AddTalentOffer">@L["Session_Store_AddTalentOffer"]</button> *@
+                        <button type="button" @onclick="AddItemOffer">@L["Session_Store_AddItemOffer"]</button>
+                    </div>
+
+                    @foreach (var offer in Editor.Offers.Where(x => !x.IsDeleted).OrderBy(x => x.DisplayOrder).ThenBy(x => x.OfferType))
+                    {
+                        <div class="rc-consequence-card">
+                            <div class="rc-consequence-card__grid">
+                                <div class="rc-form-field">
+                                    <label>@L["Session_Store_OfferType"]</label>
+                                    <select @bind="offer.OfferType" @bind:after="@(() => ResetOfferTarget(offer))">
+                                        <option value="@SessionStoreOfferType.Talent">@L["Character_Edit_Talents"]</option>
+                                        <option value="@SessionStoreOfferType.Item">@L["Character_Edit_Items"]</option>
+                                    </select>
+                                </div>
+
+                                <div class="rc-form-field">
+                                    <label>@L["Session_Store_Target"]</label>
+                                    <select @bind="offer.TargetDefinitionId">
+                                        @foreach (var option in GetOfferTargets(offer.OfferType))
+                                        {
+                                            <option value="@option.Id">@option.Name</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="rc-form-field">
+                                    <label>@L["Session_Store_CurrencyGauge"]</label>
+                                    <select @bind="offer.CurrencyGaugeDefinitionId">
+                                        @foreach (var gauge in Editor.AvailableGauges)
+                                        {
+                                            <option value="@gauge.GaugeDefinitionId">@gauge.Name</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="rc-form-field">
+                                    <label>@L["Session_Store_Cost"]</label>
+                                    <input type="number" min="0" @bind="offer.Cost" />
+                                </div>
+
+                                @* <div class="rc-form-field">
+                                    <label>@L["Common_Order"]</label>
+                                    <input type="number" @bind="offer.DisplayOrder" />
+                                </div> *@
+                            </div>
+
+                            <div class="rc-tool-inline-actions">
+                                <button type="button" @onclick="@(() => RemoveOffer(offer))">@L["Common_Remove"]</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter] public Guid SessionId { get; set; }
+
+    private Guid CurrentUserId;
+    private bool IsLoaded;
+    private bool RedirectToHome;
+    private SessionStoreEditorDto? Editor;
+    private string Message = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrWhiteSpace(userIdValue))
+        {
+            RedirectToHome = true;
+            IsLoaded = true;
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+        Editor = await SessionService.GetSessionStoreEditorAsync(SessionId, CurrentUserId);
+        RedirectToHome = Editor is null;
+        IsLoaded = true;
+    }
+
+    private void BackToSettings()
+    {
+        Navigation.NavigateTo($"/mj/session/{SessionId}/settings");
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            Message = string.Empty;
+            if (Editor is null)
+                return;
+
+            await SessionService.SaveSessionStoreAsync(SessionId, CurrentUserId, Editor);
+            Editor = await SessionService.GetSessionStoreEditorAsync(SessionId, CurrentUserId);
+            Message = L["Session_Store_Saved"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void AddTalentOffer()
+    {
+        if (Editor is null)
+            return;
+
+        if (Editor.AvailableGauges.Count == 0)
+        {
+            Message = L["Session_Store_NoGaugeAvailable"];
+            return;
+        }
+
+        if (Editor.AvailableTalents.Count == 0)
+        {
+            Message = L["Session_Store_NoTalentAvailable"];
+            return;
+        }
+
+        Message = string.Empty;
+
+        Editor.Offers.Add(new SessionStoreOfferEditorDto
+        {
+            OfferType = SessionStoreOfferType.Talent,
+            TargetDefinitionId = Editor.AvailableTalents[0].Id,
+            CurrencyGaugeDefinitionId = Editor.AvailableGauges[0].GaugeDefinitionId,
+            Cost = 0,
+            DisplayOrder = Editor.Offers.Count
+        });
+    }
+
+    private void AddItemOffer()
+    {
+        if (Editor is null)
+            return;
+
+        if (Editor.AvailableGauges.Count == 0)
+        {
+            Message = L["Session_Store_NoGaugeAvailable"];
+            return;
+        }
+
+        if (Editor.AvailableItems.Count == 0)
+        {
+            Message = L["Session_Store_NoItemAvailable"];
+            return;
+        }
+
+        Message = string.Empty;
+
+        Editor.Offers.Add(new SessionStoreOfferEditorDto
+        {
+            OfferType = SessionStoreOfferType.Item,
+            TargetDefinitionId = Editor.AvailableItems[0].Id,
+            CurrencyGaugeDefinitionId = Editor.AvailableGauges[0].GaugeDefinitionId,
+            Cost = 0,
+            DisplayOrder = Editor.Offers.Count
+        });
+    }
+
+    private List<SessionStoreReferenceOptionDto> GetOfferTargets(SessionStoreOfferType type)
+    {
+        if (Editor is null)
+            return new();
+
+        return type == SessionStoreOfferType.Talent
+            ? Editor.AvailableTalents
+            : Editor.AvailableItems;
+    }
+
+    private void ResetOfferTarget(SessionStoreOfferEditorDto offer)
+    {
+        var targets = GetOfferTargets(offer.OfferType);
+        offer.TargetDefinitionId = targets.FirstOrDefault()?.Id ?? Guid.Empty;
+    }
+
+    private void RemoveOffer(SessionStoreOfferEditorDto offer)
+    {
+        offer.IsDeleted = true;
+    }
+}

@@ -69,9 +69,11 @@ else
                                               OnlyOnline="Request.Filter.OnlyOnline"
                                               OnlyAlive="Request.Filter.OnlyAlive"
                                               IncludeNpcs="Request.Filter.IncludeNpcs"
-                                              OnlyOnlineChanged="@(value => { Request.Filter.OnlyOnline = value; if (value) Request.Filter.OnlyAlive = false; })"
-                                              OnlyAliveChanged="@(value => { Request.Filter.OnlyAlive = value; if (value) Request.Filter.OnlyOnline = false; })"
-                                              IncludeNpcsChanged="@(value => Request.Filter.IncludeNpcs = value)" />
+                                              BiographyNotEmpty="Request.Filter.BiographyNotEmpty"
+                                              OnlyOnlineChanged="@(value => { Request.Filter.OnlyOnline = value; if (value) Request.Filter.OnlyAlive = true; })"
+                                              OnlyAliveChanged="@(value => { Request.Filter.OnlyAlive = true; if (!value) Request.Filter.OnlyOnline = false; })"
+                                              IncludeNpcsChanged="@(value => Request.Filter.IncludeNpcs = value)"
+                                              BiographyNotEmptyChanged="@(value => Request.Filter.BiographyNotEmpty = value)" />
                         
                     <CharacterAdvancedFilters Filter="Request.Filter"
                                               TraitOptionGroups="AdvancedTraitOptionGroups"
@@ -83,6 +85,7 @@ else
                                               MetricTargets="AdvancedMetricTargets"
                                               PollOptions="AdvancedPollOptions"
                                               SelectedPollOptionOptions="AdvancedSelectedPollOptionOptions"
+                                              RandomDrawOptions="AdvancedRandomDrawOptions"
                                               NameSuggestions="AdvancedNameSuggestions"
                                               OnPollSelectionChanged="RefreshSelectedPollOptionOptionsAsync" />
                 </div>
@@ -165,7 +168,7 @@ else
     {
         Filter = new CharacterTargetFilterDto
         {
-            OnlyAlive = false,
+            OnlyAlive = true,
             OnlyDead = false,
             OnlyOnline = true,
             IncludeNpcs = false,
@@ -214,6 +217,7 @@ else
 
     private List<CharacterFilterReferenceItem> AdvancedPollOptions = new();
     private List<CharacterFilterReferenceItem> AdvancedSelectedPollOptionOptions = new();
+    private List<CharacterFilterReferenceItem> AdvancedRandomDrawOptions = new();
     private List<CharacterNameSuggestionItem> AdvancedNameSuggestions = new();
 
     protected override async Task OnInitializedAsync()
@@ -248,6 +252,7 @@ else
         Editor = await CharacterService.GetRandomDrawEditorAsync(SessionId, CurrentUserId);
         await LoadCharacterSummariesAsync();
         await LoadAdvancedPollOptionsAsync();
+        await LoadAdvancedRandomDrawOptionsAsync();
         await LoadAdvancedNameSuggestionsAsync();
 
         if (Editor is not null)
@@ -258,7 +263,7 @@ else
                 Request.DrawCount = 1;
 
             Request.Filter.OnlyOnline = true;
-            Request.Filter.OnlyAlive = false;
+            Request.Filter.OnlyAlive = true;
             Request.Filter.OnlyDead = false;
             Request.Filter.IncludeNpcs = false;
         }
@@ -286,6 +291,7 @@ else
 
             var requestedCount = Request.DrawCount;
 
+            NormalizeAudienceFilter();
             LastDraw = await CharacterService.ExecuteRandomDrawAsync(SessionId, CurrentUserId, Request);
 
             if (LastDraw.Results.Count < requestedCount)
@@ -317,6 +323,17 @@ else
             includeNpcs: false);
 
         CharacterSummariesById = characters.ToDictionary(x => x.CharacterId, x => x);
+    }
+
+    private void NormalizeAudienceFilter()
+    {
+        Request.Filter.OnlyDead = false;
+        Request.Filter.OnlyAlive = true;
+
+        if (Request.Filter.OnlyOnline)
+        {
+            Request.Filter.OnlyAlive = true;
+        }
     }
 
     private async Task LoadAdvancedPollOptionsAsync()
@@ -352,6 +369,22 @@ else
             {
                 Id = x.OptionId,
                 Name = x.Label
+            })
+            .ToList();
+    }
+
+    private async Task LoadAdvancedRandomDrawOptionsAsync()
+    {
+        AdvancedRandomDrawOptions.Clear();
+
+        if (Editor is null)
+            return;
+
+        AdvancedRandomDrawOptions = Editor.RecentDraws
+            .Select(x => new CharacterFilterReferenceItem
+            {
+                Id = x.DrawId,
+                Name = x.Name
             })
             .ToList();
     }

@@ -171,6 +171,14 @@ else
                         <input type="number" @bind="CurrentSystem.DefaultTestDiceSides" />
                     </div>
 
+                    @if (CurrentSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold)
+                    {
+                        <div class="rc-form-field">
+                            <label>@L["GameSystem_Editor_DefaultSuccessThreshold"]</label>
+                            <input type="number" min="1" @bind="CurrentSystem.DefaultSuccessThreshold" />
+                        </div>
+                    }
+
                     <div class="rc-form-field">
                         <label>@GetCriticalSuccessLabel()</label>
                         <input type="number" @bind="CurrentSystem.CriticalSuccessValue" />
@@ -2133,6 +2141,7 @@ else
                 DefaultTestDiceSides = CurrentSystem.DefaultTestDiceSides,
                 CriticalSuccessValue = CurrentSystem.CriticalSuccessValue,
                 CriticalFailureValue = CurrentSystem.CriticalFailureValue,
+                DefaultSuccessThreshold = CurrentSystem.DefaultSuccessThreshold,
                 ConfirmSharedSystemChanges = confirmShared,
                 IsGeneric = CurrentSystem.IsGeneric,
                 StartingTalentChoices = CurrentSystem.StartingTalentChoices,

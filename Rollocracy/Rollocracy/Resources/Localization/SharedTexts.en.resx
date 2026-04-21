@@ -3688,4 +3688,127 @@
 	<data name="Test_ConsequencesCancelled" xml:space="preserve">
   <value>Consequences cancelled</value>
 </data>
+	<data name="Session_Settings_ManageStore" xml:space="preserve">
+  <value>Manage Store</value>
+</data>
+	<data name="Session_Store_Title" xml:space="preserve">
+  <value>Session Store</value>
+</data>
+	<data name="Session_Store_Subtitle" xml:space="preserve">
+  <value>Configure the store and purchasable offers</value>
+</data>
+	<data name="Session_Store_PlayerSubtitle" xml:space="preserve">
+  <value>Buy talents and items using your session gauges</value>
+</data>
+	<data name="Session_Store_Enabled" xml:space="preserve">
+  <value>Store enabled</value>
+</data>
+	<data name="Session_Store_Offers" xml:space="preserve">
+  <value>Store offers</value>
+</data>
+	<data name="Session_Store_AddTalentOffer" xml:space="preserve">
+  <value>Add talent offer</value>
+</data>
+	<data name="Session_Store_AddItemOffer" xml:space="preserve">
+  <value>Add offer</value>
+</data>
+	<data name="Session_Store_OfferType" xml:space="preserve">
+  <value>Type</value>
+</data>
+	<data name="Session_Store_Target" xml:space="preserve">
+  <value>Target</value>
+</data>
+	<data name="Session_Store_CurrencyGauge" xml:space="preserve">
+  <value>Payment gauge</value>
+</data>
+	<data name="Session_Store_Cost" xml:space="preserve">
+  <value>Cost</value>
+</data>
+	<data name="Session_Store_Saved" xml:space="preserve">
+  <value>Store saved.</value>
+</data>
+	<data name="Session_Store_Button" xml:space="preserve">
+  <value>Store</value>
+</data>
+	<data name="Session_Store_FilterGauge" xml:space="preserve">
+  <value>Filter by gauge</value>
+</data>
+	<data name="Session_Store_FilterAll" xml:space="preserve">
+  <value>Show all</value>
+</data>
+	<data name="Session_Store_Buy" xml:space="preserve">
+  <value>Buy</value>
+</data>
+	<data name="Session_Store_BuyConfirm" xml:space="preserve">
+  <value>Buy?</value>
+</data>
+	<data name="Backend_SessionStoreInvalidGauge" xml:space="preserve">
+  <value>The selected payment gauge is invalid.</value>
+</data>
+	<data name="Backend_SessionStoreInvalidTarget" xml:space="preserve">
+  <value>The selected store offer target is invalid.</value>
+</data>
+	<data name="Backend_SessionStoreInvalidCost" xml:space="preserve">
+  <value>An offer cost cannot be negative.</value>
+</data>
+	<data name="Backend_SessionStoreDisabled" xml:space="preserve">
+  <value>The store is disabled.</value>
+</data>
+	<data name="Backend_SessionStoreOfferNotFound" xml:space="preserve">
+  <value>Store offer not found.</value>
+</data>
+	<data name="Backend_SessionStoreNotEnoughCurrency" xml:space="preserve">
+  <value>The selected gauge does not have enough value for this purchase.</value>
+</data>
+	<data name="Backend_SessionStoreOfferAlreadyOwned" xml:space="preserve">
+  <value>This offer is already owned.</value>
+</data>
+	<data name="Backend_SessionStoreConsumableLimitReached" xml:space="preserve">
+  <value>The maximum quantity for this consumable item has already been reached.</value>
+</data>
+	<data name="Session_Store_NoGaugeAvailable" xml:space="preserve">
+  <value>No session gauge is available for the store.</value>
+</data>
+	<data name="Session_Store_NoTalentAvailable" xml:space="preserve">
+  <value>No talent is available to create an offer.</value>
+</data>
+	<data name="Session_Store_NoItemAvailable" xml:space="preserve">
+  <value>No item is available to create an offer.</value>
+</data>
+	<data name="Session_Store_HideOwned" xml:space="preserve">
+  <value>Hide owned</value>
+</data>
+	<data name="Session_Store_HideTooExpensive" xml:space="preserve">
+  <value>Hide too expensive</value>
+</data>
+	<data name="Session_Store_ConsumablesOnly" xml:space="preserve">
+  <value>Consumables only</value>
+</data>
+	<data name="GameSystem_Editor_DefaultSuccessThreshold" xml:space="preserve">
+  <value>Default success threshold</value>
+</data>
+	<data name="Backend_DefaultSuccessThresholdInvalid" xml:space="preserve">
+  <value>The default success threshold must be greater than or equal to 1.</value>
+</data>
+	<data name="Audience_BiographyNotEmpty" xml:space="preserve">
+  <value>Biography not empty</value>
+</data>
+	<data name="AdvancedFilter_RandomDrawSection" xml:space="preserve">
+  <value>Previous random draws</value>
+</data>
+	<data name="Character_Tooltip_Base" xml:space="preserve">
+  <value>base</value>
+</data>
+	<data name="Character_Tooltip_Augmentations" xml:space="preserve">
+  <value>modifier</value>
+</data>
+	<data name="Character_Tooltip_OnUsePrefix" xml:space="preserve">
+  <value>On use:</value>
+</data>
+	<data name="Character_Tooltip_Grant" xml:space="preserve">
+  <value>Grants {0}</value>
+</data>
+	<data name="Character_Tooltip_Revoke" xml:space="preserve">
+  <value>Removes {0}</value>
+</data>
 </root>

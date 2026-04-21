@@ -897,7 +897,7 @@
 		<value>Attributs</value>
 	</data>
 	<data name="Session_Player_ViewBiography" xml:space="preserve">
-		<value>Voir la biographie</value>
+		<value>Biographie</value>
 	</data>
 	<data name="Session_Player_ViewDeadCharacter" xml:space="preserve">
 		<value>Voir la fiche</value>
@@ -3687,5 +3687,128 @@
 </data>
 	<data name="Test_ConsequencesCancelled" xml:space="preserve">
   <value>Conséquences annulées</value>
+</data>
+	<data name="Session_Settings_ManageStore" xml:space="preserve">
+  <value>Gérer le Magasin</value>
+</data>
+	<data name="Session_Store_Title" xml:space="preserve">
+  <value>Magasin de Session</value>
+</data>
+	<data name="Session_Store_Subtitle" xml:space="preserve">
+  <value>Configuration du magasin et des offres achetables</value>
+</data>
+	<data name="Session_Store_PlayerSubtitle" xml:space="preserve">
+  <value>Achetez des talents et objets avec vos jauges de session</value>
+</data>
+	<data name="Session_Store_Enabled" xml:space="preserve">
+  <value>Magasin activé</value>
+</data>
+	<data name="Session_Store_Offers" xml:space="preserve">
+  <value>Offres du magasin</value>
+</data>
+	<data name="Session_Store_AddTalentOffer" xml:space="preserve">
+  <value>Ajouter une offre de talent</value>
+</data>
+	<data name="Session_Store_AddItemOffer" xml:space="preserve">
+  <value>Ajouter une offre</value>
+</data>
+	<data name="Session_Store_OfferType" xml:space="preserve">
+  <value>Type</value>
+</data>
+	<data name="Session_Store_Target" xml:space="preserve">
+  <value>Cible</value>
+</data>
+	<data name="Session_Store_CurrencyGauge" xml:space="preserve">
+  <value>Jauge de paiement</value>
+</data>
+	<data name="Session_Store_Cost" xml:space="preserve">
+  <value>Coût</value>
+</data>
+	<data name="Session_Store_Saved" xml:space="preserve">
+  <value>Magasin sauvegardé.</value>
+</data>
+	<data name="Session_Store_Button" xml:space="preserve">
+  <value>Magasin</value>
+</data>
+	<data name="Session_Store_FilterGauge" xml:space="preserve">
+  <value>Filtrer par jauge</value>
+</data>
+	<data name="Session_Store_FilterAll" xml:space="preserve">
+  <value>Afficher tout</value>
+</data>
+	<data name="Session_Store_Buy" xml:space="preserve">
+  <value>Acheter</value>
+</data>
+	<data name="Session_Store_BuyConfirm" xml:space="preserve">
+  <value>Acheter ?</value>
+</data>
+	<data name="Backend_SessionStoreInvalidGauge" xml:space="preserve">
+  <value>La jauge de paiement sélectionnée est invalide.</value>
+</data>
+	<data name="Backend_SessionStoreInvalidTarget" xml:space="preserve">
+  <value>La cible sélectionnée pour l'offre est invalide.</value>
+</data>
+	<data name="Backend_SessionStoreInvalidCost" xml:space="preserve">
+  <value>Le coût d'une offre ne peut pas être négatif.</value>
+</data>
+	<data name="Backend_SessionStoreDisabled" xml:space="preserve">
+  <value>Le magasin est désactivé.</value>
+</data>
+	<data name="Backend_SessionStoreOfferNotFound" xml:space="preserve">
+  <value>Offre de magasin introuvable.</value>
+</data>
+	<data name="Backend_SessionStoreNotEnoughCurrency" xml:space="preserve">
+  <value>La jauge sélectionnée n'a pas assez de valeur pour cet achat.</value>
+</data>
+	<data name="Backend_SessionStoreOfferAlreadyOwned" xml:space="preserve">
+  <value>Cette offre est déjà possédée.</value>
+</data>
+	<data name="Backend_SessionStoreConsumableLimitReached" xml:space="preserve">
+  <value>La quantité maximale de cet objet consommable est déjà atteinte.</value>
+</data>
+	<data name="Session_Store_NoGaugeAvailable" xml:space="preserve">
+  <value>Aucune jauge de session n'est disponible pour le magasin.</value>
+</data>
+	<data name="Session_Store_NoTalentAvailable" xml:space="preserve">
+  <value>Aucun talent n'est disponible pour créer une offre.</value>
+</data>
+	<data name="Session_Store_NoItemAvailable" xml:space="preserve">
+  <value>Aucun objet n'est disponible pour créer une offre.</value>
+</data>
+	<data name="Session_Store_HideOwned" xml:space="preserve">
+  <value>Masquer possédé</value>
+</data>
+	<data name="Session_Store_HideTooExpensive" xml:space="preserve">
+  <value>Masquer trop cher</value>
+</data>
+	<data name="Session_Store_ConsumablesOnly" xml:space="preserve">
+  <value>Consommables</value>
+</data>
+	<data name="GameSystem_Editor_DefaultSuccessThreshold" xml:space="preserve">
+  <value>Seuil de réussite par défaut</value>
+</data>
+	<data name="Backend_DefaultSuccessThresholdInvalid" xml:space="preserve">
+  <value>Le seuil de réussite par défaut doit être supérieur ou égal à 1.</value>
+</data>
+	<data name="Audience_BiographyNotEmpty" xml:space="preserve">
+  <value>Biographie non vide</value>
+</data>
+	<data name="AdvancedFilter_RandomDrawSection" xml:space="preserve">
+  <value>Tirages au sort précédents</value>
+</data>
+	<data name="Character_Tooltip_Base" xml:space="preserve">
+  <value>base</value>
+</data>
+	<data name="Character_Tooltip_Augmentations" xml:space="preserve">
+  <value>modification</value>
+</data>
+	<data name="Character_Tooltip_OnUsePrefix" xml:space="preserve">
+  <value>À l’utilisation :</value>
+</data>
+	<data name="Character_Tooltip_Grant" xml:space="preserve">
+  <value>Octroie {0}</value>
+</data>
+	<data name="Character_Tooltip_Revoke" xml:space="preserve">
+  <value>Retire {0}</value>
 </data>
 </root>

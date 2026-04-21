@@ -29,6 +29,8 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<CharacterModifier> CharacterModifiers => Set<CharacterModifier>();
 
         public DbSet<SessionJournalPage> SessionJournalPages => Set<SessionJournalPage>();
+        public DbSet<SessionStore> SessionStores => Set<SessionStore>();
+        public DbSet<SessionStoreOffer> SessionStoreOffers => Set<SessionStoreOffer>();
 
         public DbSet<AttributeDefinition> AttributeDefinitions => Set<AttributeDefinition>();
         public DbSet<DerivedStatDefinition> DerivedStatDefinitions => Set<DerivedStatDefinition>();
@@ -443,8 +445,16 @@ namespace Rollocracy.Infrastructure.Persistence
                 entity.Property(x => x.UpdatedAtUtc)
                     .HasColumnType("timestamp with time zone");
             });
+            modelBuilder.Entity<SessionStore>(entity =>
+            {
+                entity.HasIndex(x => x.SessionId).IsUnique();
+            });
+
+            modelBuilder.Entity<SessionStoreOffer>(entity =>
+            {
+                entity.HasIndex(x => x.SessionStoreId);
+                entity.HasIndex(x => new { x.SessionStoreId, x.DisplayOrder });
+            });
         }
     }
 }
-
-

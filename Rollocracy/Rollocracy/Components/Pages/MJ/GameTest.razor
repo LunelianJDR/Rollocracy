@@ -287,9 +287,11 @@ else
                                               OnlyOnline="@(NewTargetScope == TestTargetScope.OnlineLivingCharacters)"
                                               OnlyAlive="@(NewTargetScope == TestTargetScope.AllLivingCharacters)"
                                               IncludeNpcs="IncludeNpcsInTest"
+                                              BiographyNotEmpty="AdvancedFilter.BiographyNotEmpty"
                                               OnlyOnlineChanged="@(value => NewTargetScope = value ? TestTargetScope.OnlineLivingCharacters : NewTargetScope)"
                                               OnlyAliveChanged="@(value => NewTargetScope = value ? TestTargetScope.AllLivingCharacters : NewTargetScope)"
-                                              IncludeNpcsChanged="@(value => IncludeNpcsInTest = value)" />
+                                              IncludeNpcsChanged="@(value => IncludeNpcsInTest = value)"
+                                              BiographyNotEmptyChanged="@(value => AdvancedFilter.BiographyNotEmpty = value)" />
                             
                     <CharacterAdvancedFilters Filter="AdvancedFilter"
                                               TraitOptionGroups="AdvancedTraitOptionGroups"
@@ -301,6 +303,7 @@ else
                                               MetricTargets="AdvancedMetricTargets"
                                               PollOptions="AdvancedPollOptions"
                                               SelectedPollOptionOptions="AdvancedSelectedPollOptionOptions"
+                                              RandomDrawOptions="AdvancedRandomDrawOptions"
                                               NameSuggestions="AdvancedNameSuggestions"
                                               OnPollSelectionChanged="RefreshSelectedPollOptionOptionsAsync" />
                     
@@ -702,6 +705,7 @@ else
 
     private List<CharacterFilterReferenceItem> AdvancedPollOptions = new();
     private List<CharacterFilterReferenceItem> AdvancedSelectedPollOptionOptions = new();
+    private List<CharacterFilterReferenceItem> AdvancedRandomDrawOptions = new();
     private List<CharacterNameSuggestionItem> AdvancedNameSuggestions = new();
 
     protected override async Task OnInitializedAsync()
@@ -822,6 +826,7 @@ else
         await LoadCharacterSummariesAsync();
         await LoadActiveTest();
         await LoadAdvancedPollOptionsAsync();
+        await LoadAdvancedRandomDrawOptionsAsync();
         await LoadAdvancedNameSuggestionsAsync();
 
     }
@@ -878,6 +883,23 @@ else
             {
                 Id = x.OptionId,
                 Name = x.Label
+            })
+            .ToList();
+    }
+
+    private async Task LoadAdvancedRandomDrawOptionsAsync()
+    {
+        AdvancedRandomDrawOptions.Clear();
+
+        var editor = await CharacterService.GetRandomDrawEditorAsync(SessionId, CurrentUserId);
+        if (editor is null)
+            return;
+
+        AdvancedRandomDrawOptions = editor.RecentDraws
+            .Select(x => new CharacterFilterReferenceItem
+            {
+                Id = x.DrawId,
+                Name = x.Name
             })
             .ToList();
     }
@@ -943,7 +965,7 @@ else
             return;
 
         var average = diceCount * (diceSides + 1) / 2.0;
-        NewSuccessThreshold = (int)Math.Ceiling(average);
+        NewSuccessThreshold = AssignedGameSystem.DefaultSuccessThreshold ?? (int)Math.Ceiling(average);
     }
 
     private void RebuildDifficultyScale()
@@ -1092,6 +1114,7 @@ else
                     MustHaveSucceededLastTest = AdvancedFilter.MustHaveSucceededLastTest,
                     FilterOnLastTestResult = AdvancedFilter.FilterOnLastTestResult,
                     NameCharacterIds = AdvancedFilter.NameCharacterIds.ToList(),
+                    RandomDrawIds = AdvancedFilter.RandomDrawIds.ToList(),
                     ValueFilters = AdvancedFilter.ValueFilters
                         .Select(x => new CharacterValueFilterDto
                         {
@@ -1101,7 +1124,8 @@ else
                             ComparisonType = x.ComparisonType,
                             Value = x.Value
                         })
-                        .ToList()
+                        .ToList(),
+                    BiographyNotEmpty = AdvancedFilter.BiographyNotEmpty
                 },
                 Consequences = ConsequenceRows
                     .Where(row => row.TargetDefinitionId != Guid.Empty)
@@ -1897,6 +1921,8 @@ else
             MustHaveSucceededLastTest = source.MustHaveSucceededLastTest,
             FilterOnLastTestResult = source.FilterOnLastTestResult,
             NameCharacterIds = source.NameCharacterIds.ToList(),
+            RandomDrawIds = source.RandomDrawIds.ToList(),
+            BiographyNotEmpty = source.BiographyNotEmpty,
             ValueFilters = source.ValueFilters.Select(x => new CharacterValueFilterDto
             {
                 TargetType = x.TargetType,
@@ -1974,4 +2000,3 @@ else
         }
     }
 }
-

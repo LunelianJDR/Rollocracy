@@ -34,10 +34,10 @@ namespace Rollocracy.Infrastructure.Services
         }
 
         public async Task<Session> CreateSessionAsync(
-    Guid gameMasterUserAccountId,
-    Guid gameSystemId,
-    string sessionName,
-    string sessionPassword)
+            Guid gameMasterUserAccountId,
+            Guid gameSystemId,
+            string sessionName,
+            string sessionPassword)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -978,6 +978,386 @@ namespace Rollocracy.Infrastructure.Services
 
             await context.SaveChangesAsync();
             await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
+        }
+
+        public async Task<SessionStoreEditorDto?> GetSessionStoreEditorAsync(Guid sessionId, Guid gameMasterUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == sessionId && x.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (session == null)
+                return null;
+
+            var availableGaugeDefinitions = session.GameSystemId.HasValue
+                ? await context.GaugeDefinitions
+                    .AsNoTracking()
+                    .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                    .OrderBy(x => x.Name)
+                    .ToListAsync()
+                : new List<GaugeDefinition>();
+
+            var store = await context.SessionStores
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.SessionId == sessionId);
+
+            var offers = new List<SessionStoreOffer>();
+
+            if (store is not null)
+            {
+                offers = await context.SessionStoreOffers
+                    .AsNoTracking()
+                    .Where(x => x.SessionStoreId == store.Id)
+                    .OrderBy(x => x.DisplayOrder)
+                    .ToListAsync();
+            }
+
+            var availableTalents = new List<SessionStoreReferenceOptionDto>();
+            if (session.GameSystemId.HasValue)
+            {
+                availableTalents = await context.TalentDefinitions
+                    .AsNoTracking()
+                    .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                    .OrderBy(x => x.DisplayOrder)
+                    .ThenBy(x => x.Name)
+                    .Select(x => new SessionStoreReferenceOptionDto
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
+                        IsConsumable = false,
+                        MaxQuantityPerCharacter = 1
+                    })
+                    .ToListAsync();
+            }
+
+            var availableItems = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(x =>
+                    (session.GameSystemId.HasValue && x.GameSystemId == session.GameSystemId.Value) ||
+                    x.SessionId == sessionId)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.Name)
+                .Select(x => new SessionStoreReferenceOptionDto
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    IsConsumable = x.IsConsumable,
+                    MaxQuantityPerCharacter = x.MaxQuantityPerCharacter
+                })
+                .ToListAsync();
+
+            return new SessionStoreEditorDto
+            {
+                SessionId = sessionId,
+                IsEnabled = store?.IsEnabled ?? false,
+                AvailableGauges = availableGaugeDefinitions.Select(x => new SessionStoreGaugeOptionDto
+                {
+                    GaugeDefinitionId = x.Id,
+                    Name = x.Name
+                }).ToList(),
+                AvailableTalents = availableTalents,
+                AvailableItems = availableItems,
+                Offers = offers.Select(x => new SessionStoreOfferEditorDto
+                {
+                    OfferId = x.Id,
+                    OfferType = x.OfferType,
+                    TargetDefinitionId = x.TargetDefinitionId,
+                    CurrencyGaugeDefinitionId = x.CurrencyGaugeDefinitionId,
+                    Cost = x.Cost,
+                    DisplayOrder = x.DisplayOrder
+                }).ToList()
+            };
+        }
+
+        public async Task SaveSessionStoreAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            SessionStoreEditorDto request)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == sessionId && x.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (session == null)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var validGaugeDefinitionIds = session.GameSystemId.HasValue
+                ? (await context.GaugeDefinitions
+                    .AsNoTracking()
+                    .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                    .Select(x => x.Id)
+                    .ToListAsync()).ToHashSet()
+                : new HashSet<Guid>();
+
+            var validTalentIds = session.GameSystemId.HasValue
+                ? await context.TalentDefinitions
+                    .AsNoTracking()
+                    .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                    .Select(x => x.Id)
+                    .ToListAsync()
+                : new List<Guid>();
+
+            var validItemIds = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(x =>
+                    (session.GameSystemId.HasValue && x.GameSystemId == session.GameSystemId.Value) ||
+                    x.SessionId == sessionId)
+                .Select(x => x.Id)
+                .ToListAsync();
+
+            var validTalentIdSet = validTalentIds.ToHashSet();
+            var validItemIdSet = validItemIds.ToHashSet();
+
+            var activeOffers = request.Offers
+                .Where(x => !x.IsDeleted)
+                .ToList();
+
+            foreach (var offer in activeOffers)
+            {
+                if (!validGaugeDefinitionIds.Contains(offer.CurrencyGaugeDefinitionId))
+                    throw new Exception(_localizer["Backend_SessionStoreInvalidGauge"]);
+
+                if (offer.Cost < 0)
+                    throw new Exception(_localizer["Backend_SessionStoreInvalidCost"]);
+
+                var targetIsValid = offer.OfferType switch
+                {
+                    SessionStoreOfferType.Talent => validTalentIdSet.Contains(offer.TargetDefinitionId),
+                    SessionStoreOfferType.Item => validItemIdSet.Contains(offer.TargetDefinitionId),
+                    _ => false
+                };
+
+                if (!targetIsValid)
+                    throw new Exception(_localizer["Backend_SessionStoreInvalidTarget"]);
+            }
+
+            var store = await context.SessionStores
+                .FirstOrDefaultAsync(x => x.SessionId == sessionId);
+
+            if (store is null)
+            {
+                store = new SessionStore
+                {
+                    Id = Guid.NewGuid(),
+                    SessionId = sessionId,
+                    IsEnabled = request.IsEnabled
+                };
+
+                context.SessionStores.Add(store);
+                await context.SaveChangesAsync();
+            }
+            else
+            {
+                store.IsEnabled = request.IsEnabled;
+            }
+
+            var existingOffers = await context.SessionStoreOffers
+                .Where(x => x.SessionStoreId == store.Id)
+                .ToListAsync();
+
+            var requestIds = activeOffers
+                .Where(x => x.OfferId.HasValue)
+                .Select(x => x.OfferId!.Value)
+                .ToHashSet();
+
+            var toRemove = existingOffers
+                .Where(x => !requestIds.Contains(x.Id))
+                .ToList();
+
+            if (toRemove.Count > 0)
+            {
+                context.SessionStoreOffers.RemoveRange(toRemove);
+            }
+
+            foreach (var offer in activeOffers.Where(x => x.OfferId.HasValue))
+            {
+                var entity = existingOffers.First(x => x.Id == offer.OfferId!.Value);
+                entity.OfferType = offer.OfferType;
+                entity.TargetDefinitionId = offer.TargetDefinitionId;
+                entity.CurrencyGaugeDefinitionId = offer.CurrencyGaugeDefinitionId;
+                entity.Cost = offer.Cost;
+                entity.DisplayOrder = offer.DisplayOrder;
+            }
+
+            foreach (var offer in activeOffers.Where(x => !x.OfferId.HasValue))
+            {
+                context.SessionStoreOffers.Add(new SessionStoreOffer
+                {
+                    Id = Guid.NewGuid(),
+                    SessionStoreId = store.Id,
+                    OfferType = offer.OfferType,
+                    TargetDefinitionId = offer.TargetDefinitionId,
+                    CurrencyGaugeDefinitionId = offer.CurrencyGaugeDefinitionId,
+                    Cost = offer.Cost,
+                    DisplayOrder = offer.DisplayOrder
+                });
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        public async Task<PlayerSessionStoreDto> GetPlayerSessionStoreAsync(Guid playerSessionId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == playerSessionId);
+
+            if (playerSession == null)
+                throw new Exception(_localizer["Backend_PlayerSessionNotFound"]);
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == playerSession.SessionId);
+
+            if (session == null)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var store = await context.SessionStores
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.SessionId == session.Id);
+
+            if (store is null)
+            {
+                return new PlayerSessionStoreDto
+                {
+                    Exists = false,
+                    IsEnabled = false
+                };
+            }
+
+            var offers = await context.SessionStoreOffers
+                .AsNoTracking()
+                .Where(x => x.SessionStoreId == store.Id)
+                .OrderBy(x => x.DisplayOrder)
+                .ToListAsync();
+
+            var gaugeDefinitions = session.GameSystemId.HasValue
+                ? await context.GaugeDefinitions
+                    .AsNoTracking()
+                    .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                    .ToListAsync()
+                : new List<GaugeDefinition>();
+
+            var aliveCharacter = await context.Characters
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.PlayerSessionId == playerSessionId && x.IsAlive);
+
+            var characterGaugeValues = aliveCharacter is null
+                ? new List<CharacterGaugeValue>()
+                : await context.CharacterGaugeValues
+                    .AsNoTracking()
+                    .Where(x => x.CharacterId == aliveCharacter.Id)
+                    .ToListAsync();
+
+            var talentIds = offers.Where(x => x.OfferType == SessionStoreOfferType.Talent).Select(x => x.TargetDefinitionId).Distinct().ToList();
+            var itemIds = offers.Where(x => x.OfferType == SessionStoreOfferType.Item).Select(x => x.TargetDefinitionId).Distinct().ToList();
+
+            var talents = await context.TalentDefinitions
+                .AsNoTracking()
+                .Where(x => talentIds.Contains(x.Id))
+                .ToListAsync();
+
+            var items = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(x => itemIds.Contains(x.Id))
+                .ToListAsync();
+
+            var ownedTalentIds = aliveCharacter is null
+                ? new HashSet<Guid>()
+                : (await context.CharacterTalents
+                    .AsNoTracking()
+                    .Where(x => x.CharacterId == aliveCharacter.Id)
+                    .Select(x => x.TalentDefinitionId)
+                    .ToListAsync()).ToHashSet();
+
+            var ownedItems = aliveCharacter is null
+                ? new List<CharacterItem>()
+                : await context.CharacterItems
+                    .AsNoTracking()
+                    .Where(x => x.CharacterId == aliveCharacter.Id)
+                    .ToListAsync();
+
+            return new PlayerSessionStoreDto
+            {
+                Exists = true,
+                IsEnabled = store.IsEnabled,
+                AvailableGauges = gaugeDefinitions
+                    .Where(g => offers.Any(o => o.CurrencyGaugeDefinitionId == g.Id))
+                    .OrderBy(g => g.Name)
+                    .Select(g => new SessionStoreGaugeOptionDto
+                    {
+                        GaugeDefinitionId = g.Id,
+                        Name = g.Name
+                    })
+                    .ToList(),
+                Offers = offers.Select(offer =>
+                {
+                    var gaugeDefinition = gaugeDefinitions.First(x => x.Id == offer.CurrencyGaugeDefinitionId);
+                    var characterGaugeValue = aliveCharacter is null
+                        ? null
+                        : characterGaugeValues.FirstOrDefault(x => x.GaugeDefinitionId == gaugeDefinition.Id);
+                    var hasEnoughCurrency = characterGaugeValue is not null && characterGaugeValue.Value >= offer.Cost;
+
+                    if (offer.OfferType == SessionStoreOfferType.Talent)
+                    {
+                        var talent = talents.First(x => x.Id == offer.TargetDefinitionId);
+                        var owned = aliveCharacter is not null && ownedTalentIds.Contains(talent.Id);
+
+                        return new PlayerSessionStoreOfferDto
+                        {
+                            OfferId = offer.Id,
+                            OfferType = offer.OfferType,
+                            TargetDefinitionId = talent.Id,
+                            TargetName = talent.Name,
+                            CurrencyGaugeName = gaugeDefinition.Name,
+                            CurrencyGaugeDefinitionId = gaugeDefinition.Id,
+                            Cost = offer.Cost,
+                            IsOwned = owned,
+                            IsPurchasable = store.IsEnabled && aliveCharacter is not null && !owned && hasEnoughCurrency,
+                            IsConsumable = false,
+                            CurrentQuantity = 0,
+                            MaxQuantityPerCharacter = 1
+                        };
+                    }
+
+                    var item = items.First(x => x.Id == offer.TargetDefinitionId);
+                    var ownedItem = aliveCharacter is null
+                        ? null
+                        : ownedItems.FirstOrDefault(x => x.ItemDefinitionId == item.Id);
+
+                    var ownedQuantity = ownedItem?.Quantity ?? 0;
+                    var itemOwned = item.IsConsumable ? ownedQuantity > 0 : ownedItem is not null;
+
+                    var canBuy = store.IsEnabled &&
+                                 aliveCharacter is not null &&
+                                 hasEnoughCurrency &&
+                                 (item.IsConsumable
+                                    ? ownedQuantity < item.MaxQuantityPerCharacter
+                                    : ownedItem is null);
+
+                    return new PlayerSessionStoreOfferDto
+                    {
+                        OfferId = offer.Id,
+                        OfferType = offer.OfferType,
+                        TargetDefinitionId = item.Id,
+                        TargetName = item.Name,
+                        CurrencyGaugeName = gaugeDefinition.Name,
+                        CurrencyGaugeDefinitionId = gaugeDefinition.Id,
+                        Cost = offer.Cost,
+                        IsOwned = itemOwned,
+                        IsPurchasable = canBuy,
+                        IsConsumable = item.IsConsumable,
+                        CurrentQuantity = ownedQuantity,
+                        MaxQuantityPerCharacter = item.MaxQuantityPerCharacter
+                    };
+                }).ToList()
+            };
         }
 
         private async Task ValidateSessionItemNamesAsync(

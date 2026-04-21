@@ -24,12 +24,14 @@ namespace Rollocracy.Domain.Characters
     {
         public string Name { get; set; } = string.Empty;
         public int Value { get; set; }
+        public string Tooltip { get; set; } = string.Empty;
     }
 
     public class CharacterDerivedStatLineDto
     {
         public string Name { get; set; } = string.Empty;
         public int Value { get; set; }
+        public string Tooltip { get; set; } = string.Empty;
     }
 
     public class CharacterMetricLineDto
@@ -42,6 +44,7 @@ namespace Rollocracy.Domain.Characters
     {
         public string TraitName { get; set; } = string.Empty;
         public string OptionName { get; set; } = string.Empty;
+        public string Tooltip { get; set; } = string.Empty;
     }
 
     public class CharacterGaugeLineDto
@@ -60,6 +63,7 @@ namespace Rollocracy.Domain.Characters
         public bool IsConsumable { get; set; }
         public int Quantity { get; set; }
         public int MaxQuantityPerCharacter { get; set; }
+        public string Tooltip { get; set; } = string.Empty;
     }
 
     public class CharacterSheetDto
@@ -332,5 +336,3 @@ namespace Rollocracy.Domain.Characters
         public List<RandomDrawResultCharacterDto> Results { get; set; } = new();
     }
 }
-
-

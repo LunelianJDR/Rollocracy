@@ -24,6 +24,8 @@ namespace Rollocracy.Domain.Entities
         public int? CriticalSuccessValue { get; set; }
         public int? CriticalFailureValue { get; set; }
 
+        public int? DefaultSuccessThreshold { get; set; }
+
         // Si ce système est une copie, référence vers le système d'origine
         public Guid? SourceGameSystemId { get; set; }
 

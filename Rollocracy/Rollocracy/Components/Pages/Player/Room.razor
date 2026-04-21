@@ -10,6 +10,7 @@
 @using Rollocracy.Domain.Interfaces
 @using Rollocracy.Localization
 @using Rollocracy.Domain.Polls
+@using Rollocracy.Domain.Entities
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.JSInterop
@@ -61,10 +62,20 @@ else
                                 <button type="button" @onclick="BeginBiographyEdit">@L["Session_Player_EditBiography"]</button>
                                 <button type="button" @onclick="ShowStatsView">@L["Session_Player_Statistics"]</button>
                             }
+                            else if (ShowStorePanel)
+                            {
+                                <button type="button" @onclick="CloseStorePanel">@L["Session_Player_Statistics"]</button>
+                            }
                             else
                             {
                                 <button type="button" @onclick="ShowBiographyView">@L["Session_Player_ViewBiography"]</button>
+                                @if (SessionStore?.Exists == true)
+                                {
+                                    <button type="button" disabled="@(!SessionStore.IsEnabled)" @onclick="ToggleStorePanel">@L["Session_Store_Button"]</button>
+                                }
                             }
+
+                            
                         }
                     </div>
                 </div>
@@ -162,20 +173,17 @@ else
                                 <p>@L["Poll_VoteRegistered"]</p>
                             }
 
-                            <ul class="rc-detail-list">
-                                @foreach (var option in LatestPoll.Options)
-                                {
-                                    var isSelected = LatestPoll.SelectedOptionId == option.OptionId;
+                            @if (LatestPoll.SelectedOptionId.HasValue)
+                            {
+                                var selectedOption = LatestPoll.Options
+                                    .FirstOrDefault(x => x.OptionId == LatestPoll.SelectedOptionId.Value);
 
-                                    <li>
-                                        @option.Label : @option.VoteCount / @option.WeightedVoteTotal.ToString("F2")
-                                        @if (isSelected)
-                                        {
-                                            <span>(@L["Poll_YourVote"])</span>
-                                        }
-                                    </li>
+                                @if (selectedOption is not null)
+                                {
+                                    <p>@L["Poll_YourVote"] : @selectedOption.Label</p>
                                 }
-                            </ul>
+                            }
+                            
                         }
                     </div>
                 }
@@ -229,6 +237,89 @@ else
                                 else
                                 {
                                     <div class="rc-player-character-sheet__biography">@State.AliveCharacter.Biography</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (ShowStorePanel && SessionStore?.Exists == true)
+                    {
+                        <div class="rc-filter-group-card">
+                            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                                <div class="rc-tool-panel__header-main">
+                                    <h5 class="rc-tool-panel__title">@L["Session_Store_Title"]</h5>
+                                    @* <p class="rc-tool-panel__subtitle">@L["Session_Store_PlayerSubtitle"]</p> *@
+                                </div>
+
+                                @* <div class="rc-tool-actions">
+                                    <button type="button" @onclick="CloseStorePanel">@L["Common_Close"]</button>
+                                </div> *@
+                            </div>
+
+                            <div class="rc-form-field">
+                                <label>@L["Session_Store_FilterGauge"]</label>
+                                <select @bind="StoreGaugeFilterIdString" @bind:after="OnStoreGaugeFilterChanged">
+                                    <option value="">@L["Session_Store_FilterAll"]</option>
+                                    @foreach (var gauge in SessionStore.AvailableGauges)
+                                    {
+                                        <option value="@gauge.GaugeDefinitionId.ToString()">@gauge.Name</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                <label class="rc-filter-toggle">
+                                    <input type="checkbox" @bind="HideOwnedStoreOffers" @bind:after="OnStoreOfferVisibilityFilterChanged" />
+                                    <span>@L["Session_Store_HideOwned"]</span>
+                                </label>@*
+
+                                <label class="rc-filter-toggle">
+                                    <input type="checkbox" @bind="HideTooExpensiveStoreOffers" @bind:after="OnStoreOfferVisibilityFilterChanged" />
+                                    <span>@L["Session_Store_HideTooExpensive"]</span>
+                                </label> *@
+
+                                <label class="rc-filter-toggle">
+                                    <input type="checkbox" @bind="ShowConsumableStoreOffersOnly" @bind:after="OnStoreOfferVisibilityFilterChanged" />
+                                    <span>@L["Session_Store_ConsumablesOnly"]</span>
+                                </label>
+                            </div>
+
+                            <div class="rc-session-store-list">
+                                @foreach (var offer in GetVisibleStoreOffers())
+                                {
+                                    <div class="rc-session-store-offer">
+                                        <div class="rc-session-store-offer__main">
+                                            <div class="rc-session-store-offer__title">@offer.TargetName</div>
+                                            <div class="rc-session-store-offer__meta">
+                                                <span>@(offer.OfferType == SessionStoreOfferType.Talent ? L["Character_Edit_Talents"] : L["Character_Edit_Items"])</span>
+                                                <span>·</span>
+                                                <span>@offer.CurrencyGaugeName</span>
+                                                <span>·</span>
+                                                <span>@offer.Cost</span>
+                                                @if (offer.IsConsumable)
+                                                {
+                                                    <span>·</span>
+                                                    <span>@($"{offer.CurrentQuantity}/{offer.MaxQuantityPerCharacter}")</span>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="rc-tool-inline-actions">
+                                            @if (PendingStoreOfferId == offer.OfferId)
+                                            {
+                                                <span class="rc-tool-muted">@L["Session_Store_BuyConfirm"]</span>
+                                                <button type="button" @onclick="@(() => ConfirmPurchaseStoreOffer(offer.OfferId))">✓</button>
+                                                <button type="button" @onclick="CancelPurchaseStoreOffer">X</button>
+                                            }
+                                            else
+                                            {
+                                                <button type="button"
+                                                        disabled="@(!offer.IsPurchasable)"
+                                                        @onclick="@(() => BeginPurchaseStoreOffer(offer.OfferId))">
+                                                    @L["Session_Store_Buy"]
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
                                 }
                             </div>
                         </div>
@@ -1174,6 +1265,14 @@ else
     private bool IsNewCharacterNameInputFilterAttached;
 
     private Guid? PendingConsumableItemDefinitionId;
+    private PlayerSessionStoreDto? SessionStore;
+    private bool ShowStorePanel;
+    private Guid? StoreGaugeFilterId;
+    private string StoreGaugeFilterIdString = string.Empty;
+    private Guid? PendingStoreOfferId;
+    private bool HideOwnedStoreOffers;
+    private bool HideTooExpensiveStoreOffers;
+    private bool ShowConsumableStoreOffersOnly;
 
     private bool IsTwitchEnabled = false;
     private bool ShowTwitchChat = true;
@@ -1355,6 +1454,8 @@ else
             var previousState = State;
 
             State = await CharacterService.GetPlayerRoomStateAsync(PlayerSessionId);
+            SessionStore = await SessionService.GetPlayerSessionStoreAsync(PlayerSessionId);
+            StoreGaugeFilterIdString = StoreGaugeFilterId?.ToString() ?? string.Empty;
 
             if (refreshJournal)
             {
@@ -1365,6 +1466,21 @@ else
             {
                 IsEditingBiography = false;
                 ShowBiographyPanel = false;
+                ShowStorePanel = false;
+                PendingStoreOfferId = null;
+            }
+
+            if (SessionStore?.Exists != true)
+            {
+                ShowStorePanel = false;
+                PendingStoreOfferId = null;
+                StoreGaugeFilterId = null;
+                StoreGaugeFilterIdString = string.Empty;
+            }
+            else if (!SessionStore.IsEnabled)
+            {
+                ShowStorePanel = false;
+                PendingStoreOfferId = null;
             }
 
             if (ViewedDeadCharacter is not null)
@@ -2216,6 +2332,97 @@ else
         PendingConsumableItemDefinitionId = null;
     }
 
+    private void ToggleStorePanel()
+    {
+        if (SessionStore?.Exists != true || !SessionStore.IsEnabled)
+            return;
+
+        ShowStorePanel = !ShowStorePanel;
+        PendingStoreOfferId = null;
+    }
+
+    private void CloseStorePanel()
+    {
+        ShowStorePanel = false;
+        PendingStoreOfferId = null;
+    }
+
+    private void OnStoreGaugeFilterChanged()
+    {
+        StoreGaugeFilterId = Guid.TryParse(StoreGaugeFilterIdString, out var parsed)
+            ? parsed
+            : null;
+        PendingStoreOfferId = null;
+    }
+
+    private void OnStoreOfferVisibilityFilterChanged()
+    {
+        PendingStoreOfferId = null;
+    }
+
+    private List<PlayerSessionStoreOfferDto> GetVisibleStoreOffers()
+    {
+        if (SessionStore is null)
+            return new List<PlayerSessionStoreOfferDto>();
+
+        var query = SessionStore.Offers.AsEnumerable();
+
+        if (StoreGaugeFilterId.HasValue)
+        {
+            query = query.Where(x => x.CurrencyGaugeDefinitionId == StoreGaugeFilterId.Value);
+        }
+
+        if (HideOwnedStoreOffers)
+        {
+            query = query.Where(x => !x.IsOwned || x.IsConsumable);
+        }
+
+        if (HideTooExpensiveStoreOffers)
+        {
+            query = query.Where(x => x.IsPurchasable);
+        }
+
+        if (ShowConsumableStoreOffersOnly)
+        {
+            query = query.Where(x => x.IsConsumable);
+        }
+
+        return query
+            .OrderBy(x => x.CurrencyGaugeName, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(x => x.OfferType)
+            .ThenBy(x => x.TargetName, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+    }
+
+    private void BeginPurchaseStoreOffer(Guid offerId)
+    {
+        PendingStoreOfferId = offerId;
+    }
+
+    private void CancelPurchaseStoreOffer()
+    {
+        PendingStoreOfferId = null;
+    }
+
+    private async Task ConfirmPurchaseStoreOffer(Guid offerId)
+    {
+        try
+        {
+            Message = string.Empty;
+            PendingStoreOfferId = null;
+
+            await CharacterService.PurchaseSessionStoreOfferAsync(PlayerSessionId, offerId);
+
+            await LoadState(refreshJournal: false);
+            await LoadActiveTest(allowArrivalAlert: false);
+            await LoadLatestPoll(allowArrivalAlert: false);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
     private async Task ConsumeItemAsync(Guid itemDefinitionId)
     {
         try
@@ -2364,6 +2571,18 @@ else
     void Open(string tag) => builder.OpenElement(seq++, tag);
     void Close() => builder.CloseElement();
     void Text(string value) => builder.AddContent(seq++, value);
+    void AddTooltipAttributes(string? tooltip, string baseClass)
+    {
+        var finalClass = string.IsNullOrWhiteSpace(tooltip)
+            ? baseClass
+            : $"{baseClass} rc-player-tooltip-surface";
+        builder.AddAttribute(seq++, "class", finalClass);
+        if (!string.IsNullOrWhiteSpace(tooltip))
+        {
+            builder.AddAttribute(seq++, "data-tooltip", tooltip);
+            builder.AddAttribute(seq++, "tabindex", "0");
+        }
+    }
 
     Open("div");
     builder.AddAttribute(seq++, "class", "rc-player-character-sheet");
@@ -2397,7 +2616,7 @@ else
         foreach (var item in sheet.Attributes)
         {
             Open("div");
-            builder.AddAttribute(seq++, "class", "rc-player-stat-card");
+            AddTooltipAttributes(item.Tooltip, "rc-player-stat-card");
             Open("div");
             builder.AddAttribute(seq++, "class", "rc-player-stat-card__label");
             Text(item.Name);
@@ -2426,7 +2645,7 @@ else
         foreach (var item in sheet.DerivedStats)
         {
             Open("div");
-            builder.AddAttribute(seq++, "class", "rc-player-stat-card");
+            AddTooltipAttributes(item.Tooltip, "rc-player-stat-card");
             Open("div");
             builder.AddAttribute(seq++, "class", "rc-player-stat-card__label");
             Text(item.Name);
@@ -2455,7 +2674,7 @@ else
         foreach (var item in sheet.Traits)
         {
             Open("div");
-            builder.AddAttribute(seq++, "class", "rc-player-pill");
+            AddTooltipAttributes(item.Tooltip, "rc-player-pill");
             Text($"{item.TraitName} : {item.OptionName}");
             Close();
         }
@@ -2477,7 +2696,7 @@ else
         foreach (var item in sheet.Talents)
         {
             Open("div");
-            builder.AddAttribute(seq++, "class", "rc-player-pill");
+            AddTooltipAttributes(item.Tooltip, "rc-player-pill");
             Text(item.Name);
             Close();
         }
@@ -2499,10 +2718,8 @@ else
         foreach (var item in sheet.Items)
         {
             Open("div");
-            builder.AddAttribute(seq++, "class", "rc-player-pill rc-player-pill--item");
-            Open("span");
+            AddTooltipAttributes(item.Tooltip, "rc-player-pill rc-player-pill--item");
             Text(item.Name);
-            Close();
 
             if (!isDeadView && item.IsConsumable && item.Quantity > 0)
             {
@@ -2840,6 +3057,3 @@ else
             : page.Title.Trim();
     }
 }
-
-
-

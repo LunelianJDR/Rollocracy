@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Rollocracy.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Rollocracy.Infrastructure.Persistence;
 namespace Rollocracy.Infrastructure.Migrations
 {
     [DbContext(typeof(RollocracyDbContext))]
-    partial class RollocracyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260410205313_M6_SessionStore")]
+    partial class M6_SessionStore
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -193,9 +196,6 @@ namespace Rollocracy.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int?>("CriticalSuccessValue")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("DefaultSuccessThreshold")
                         .HasColumnType("integer");
 
                     b.Property<int>("DefaultTestDiceCount")
@@ -521,7 +521,7 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<int>("Cost")
                         .HasColumnType("integer");
 
-                    b.Property<Guid>("CurrencyGaugeDefinitionId")
+                    b.Property<Guid>("CurrencySessionGaugeId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("DisplayOrder")

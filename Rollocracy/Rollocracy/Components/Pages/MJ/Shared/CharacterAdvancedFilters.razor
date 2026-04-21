@@ -223,6 +223,37 @@
                 </div>
             </div>
 
+
+            <div class="rc-advanced-filter-group">
+                <div class="rc-advanced-filter-group__title">@L["AdvancedFilter_RandomDrawSection"]</div>
+
+                <div class="rc-inline-picker">
+                    <select @bind="SelectedRandomDrawId">
+                        <option value="">@L["AdvancedFilter_None"]</option>
+                        @foreach (var item in RandomDrawOptions)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+
+                    <button type="button" @onclick="@(() => AddRandomDraw())">@L["MassDistribution_AddFilter"]</button>
+                </div>
+
+                <div class="rc-inline-pill-list">
+                    @foreach (var id in Filter.RandomDrawIds.ToList())
+                    {
+                        var refItem = RandomDrawOptions.FirstOrDefault(x => x.Id == id);
+                        if (refItem is not null)
+                        {
+                            <span class="rc-inline-pill rc-inline-pill--removable">
+                                @refItem.Name
+                                <button type="button" @onclick="@(() => RemoveRandomDraw(id))">×</button>
+                            </span>
+                        }
+                    }
+                </div>
+            </div>
+
             <div class="rc-advanced-filter-group">
                 <div class="rc-advanced-filter-group__title">@L["AdvancedFilter_NameSection"]</div>
 
@@ -294,6 +325,7 @@
     [Parameter] public List<CharacterFilterReferenceItem> MetricTargets { get; set; } = new();
     [Parameter] public List<CharacterFilterReferenceItem> PollOptions { get; set; } = new();
     [Parameter] public List<CharacterFilterReferenceItem> SelectedPollOptionOptions { get; set; } = new();
+    [Parameter] public List<CharacterFilterReferenceItem> RandomDrawOptions { get; set; } = new();
     [Parameter] public List<CharacterNameSuggestionItem> NameSuggestions { get; set; } = new();
     [Parameter] public EventCallback OnPollSelectionChanged { get; set; }
 
@@ -304,6 +336,7 @@
     private string SelectedItemId = string.Empty;
     private string SelectedPollId = string.Empty;
     private string SelectedPollOptionId = string.Empty;
+    private string SelectedRandomDrawId = string.Empty;
     private string NameSearchInput = string.Empty;
 
     protected override void OnParametersSet()
@@ -373,6 +406,17 @@
     private void RemoveItem(Guid id)
     {
         Filter.ItemIds.Remove(id);
+    }
+
+    private void AddRandomDraw()
+    {
+        if (Guid.TryParse(SelectedRandomDrawId, out var id) && !Filter.RandomDrawIds.Contains(id))
+            Filter.RandomDrawIds.Add(id);
+    }
+
+    private void RemoveRandomDraw(Guid id)
+    {
+        Filter.RandomDrawIds.Remove(id);
     }
 
     private void AddValueFilter()

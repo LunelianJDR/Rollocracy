@@ -396,6 +396,80 @@ namespace Rollocracy.Infrastructure.Services
             await _sessionNotifier.NotifyPollChangedAsync(poll.SessionId);
         }
 
+        private async Task<int> ComputeEffectiveGaugeMaxAsync(
+    RollocracyDbContext context,
+    Guid characterId,
+    Guid gaugeDefinitionId)
+        {
+            var definition = await context.GaugeDefinitions
+                .AsNoTracking()
+                .FirstAsync(x => x.Id == gaugeDefinitionId);
+
+            var traitValues = await context.CharacterTraitValues
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId)
+                .ToListAsync();
+
+            var characterTalents = await context.CharacterTalents
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId)
+                .ToListAsync();
+
+            var characterItems = await context.CharacterItems
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId)
+                .ToListAsync();
+
+            var traitOptionIds = traitValues.Select(x => x.TraitOptionId).Distinct().ToList();
+            var talentIds = characterTalents.Select(x => x.TalentDefinitionId).Distinct().ToList();
+            var itemIds = characterItems.Select(x => x.ItemDefinitionId).Distinct().ToList();
+
+            var choiceModifiers = await context.ChoiceOptionModifierDefinitions
+                .AsNoTracking()
+                .Where(x => traitOptionIds.Contains(x.ChoiceOptionDefinitionId))
+                .ToListAsync();
+
+            var talentModifiers = await context.TalentModifierDefinitions
+                .AsNoTracking()
+                .Where(x => talentIds.Contains(x.TalentDefinitionId))
+                .ToListAsync();
+
+            var itemModifiers = await context.ItemModifierDefinitions
+                .AsNoTracking()
+                .Where(x => itemIds.Contains(x.ItemDefinitionId))
+                .ToListAsync();
+
+            var characterModifiers = await context.CharacterModifiers
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId)
+                .ToListAsync();
+
+            var choiceBonus = choiceModifiers
+                .Where(x => x.TargetType == ModifierTargetType.Gauge &&
+                            x.TargetId == gaugeDefinitionId &&
+                            x.ValueMode != ModifierValueMode.Metric)
+                .Sum(x => x.Value);
+
+            var talentBonus = talentModifiers
+                .Where(x => x.TargetType == ModifierTargetType.Gauge &&
+                            x.TargetId == gaugeDefinitionId &&
+                            x.ValueMode != ModifierValueMode.Metric)
+                .Sum(x => x.AddValue);
+
+            var itemBonus = itemModifiers
+                .Where(x => x.TargetType == ModifierTargetType.Gauge &&
+                            x.TargetId == gaugeDefinitionId &&
+                            x.ValueMode != ModifierValueMode.Metric)
+                .Sum(x => x.AddValue);
+
+            var persistentBonus = characterModifiers
+                .Where(x => x.TargetType == CharacterEffectTargetType.Gauge &&
+                            x.TargetId == gaugeDefinitionId)
+                .Sum(x => x.AddValue);
+
+            return Math.Max(definition.MinValue, definition.MaxValue + choiceBonus + talentBonus + itemBonus + persistentBonus);
+        }
+
         public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -448,7 +522,8 @@ namespace Rollocracy.Infrastructure.Services
                         c.OperationType == TestConsequenceOperationType.AddValue &&
                         c.ValueMode != ModifierValueMode.Metric &&
                         (c.TargetKind == TestConsequenceTargetKind.Attribute ||
-                         c.TargetKind == TestConsequenceTargetKind.Gauge))
+                         c.TargetKind == TestConsequenceTargetKind.Gauge ||
+                         c.TargetKind == TestConsequenceTargetKind.SessionGauge))
                     .ToList();
 
                 foreach (var consequence in legacyConsequences)
@@ -470,7 +545,22 @@ namespace Rollocracy.Infrastructure.Services
                             var previousCharacterDiedAt = character.DiedAtUtc;
                             var previousValue = gaugeValue.Value;
 
-                            gaugeValue.Value += signedValue;
+                            var gaugeDefinition = await context.GaugeDefinitions
+                                .AsNoTracking()
+                                .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId);
+
+                            if (gaugeDefinition != null)
+                            {
+                                var effectiveMax = await ComputeEffectiveGaugeMaxAsync(
+                                    context,
+                                    vote.CharacterId,
+                                    consequence.TargetDefinitionId);
+
+                                gaugeValue.Value = Math.Clamp(
+                                    gaugeValue.Value + signedValue,
+                                    gaugeDefinition.MinValue,
+                                    effectiveMax);
+                            }
 
                             hasAppliedEffects = true;
 

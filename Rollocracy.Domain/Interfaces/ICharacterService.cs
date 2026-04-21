@@ -80,9 +80,9 @@ namespace Rollocracy.Domain.Interfaces
             Guid gameMasterUserAccountId,
             UpdateCharacterRequestDto request);
 
+        Task PurchaseSessionStoreOfferAsync(Guid playerSessionId, Guid offerId);
+
         Task ConsumeItemAsync(Guid playerSessionId, Guid itemDefinitionId);
 
     }
 }
-
-

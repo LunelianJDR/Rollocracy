@@ -172,6 +172,7 @@ namespace Rollocracy.Domain.GameRules
         public int DefaultTestDiceSides { get; set; } = 100;
         public int? CriticalSuccessValue { get; set; }
         public int? CriticalFailureValue { get; set; }
+        public int? DefaultSuccessThreshold { get; set; }
         public bool IsLockedToSessionCopy { get; set; }
         public bool CanUndoLastChange { get; set; }
         public bool IsGeneric { get; set; }
@@ -201,6 +202,7 @@ namespace Rollocracy.Domain.GameRules
         public int DefaultTestDiceSides { get; set; } = 100;
         public int? CriticalSuccessValue { get; set; }
         public int? CriticalFailureValue { get; set; }
+        public int? DefaultSuccessThreshold { get; set; }
         public bool ConfirmSharedSystemChanges { get; set; }
         public bool IsGeneric { get; set; }
         public int StartingTalentChoices { get; set; }
