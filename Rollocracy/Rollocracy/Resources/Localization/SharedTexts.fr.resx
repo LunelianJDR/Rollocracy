@@ -873,7 +873,7 @@
 		<value>Afficher le chat</value>
 	</data>
 	<data name="Session_Player_ShowSessionCharactersPanel" xml:space="preserve">
-		<value>Afficher les personnages</value>
+		<value>Voir les personnages</value>
 	</data>
 	<data name="Session_Player_ShowStreamPanel" xml:space="preserve">
 		<value>Afficher le stream</value>
@@ -3819,5 +3819,47 @@
 </data>
 	<data name="CharacterCreation_RandomizeRemaining" xml:space="preserve">
   <value>Aléatoire</value>
+</data>
+	<data name="Test_AdvancedModifiersSection" xml:space="preserve">
+  <value>Modificateurs avancés</value>
+</data>
+	<data name="Test_AdvancedModifiersMode" xml:space="preserve">
+  <value>Mode des modificateurs avancés</value>
+</data>
+	<data name="Test_AdvancedModifiersMode_Cumulative" xml:space="preserve">
+  <value>Cumul</value>
+</data>
+	<data name="Test_AdvancedModifiersMode_HighestOnly" xml:space="preserve">
+  <value>Plus fort bonus</value>
+</data>
+	<data name="Test_AdvancedModifiersList" xml:space="preserve">
+  <value>Lignes de modificateurs</value>
+</data>
+	<data name="Test_AdvancedModifiersAdd" xml:space="preserve">
+  <value>Ajouter un modificateur</value>
+</data>
+	<data name="Test_AdvancedModifiersNone" xml:space="preserve">
+  <value>Aucun modificateur avancé.</value>
+</data>
+	<data name="Test_AdvancedModifiersSourceType" xml:space="preserve">
+  <value>Type de critère</value>
+</data>
+	<data name="Test_BonusMalus" xml:space="preserve">
+  <value>Bonus / malus</value>
+</data>
+	<data name="Test_Bonus" xml:space="preserve">
+  <value>Bonus</value>
+</data>
+	<data name="Test_Malus" xml:space="preserve">
+  <value>Malus</value>
+</data>
+	<data name="Backend_InvalidAdvancedModifierSourceMetric" xml:space="preserve">
+  <value>La metric source du modificateur avancé est invalide.</value>
+</data>
+	<data name="Backend_InvalidAdvancedModifierSelection" xml:space="preserve">
+  <value>La sélection du modificateur avancé est invalide.</value>
+</data>
+	<data name="Backend_InvalidAdvancedModifierValue" xml:space="preserve">
+  <value>La valeur du modificateur avancé est invalide.</value>
 </data>
 </root>

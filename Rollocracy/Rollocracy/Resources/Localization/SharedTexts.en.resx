@@ -3820,4 +3820,46 @@
 	<data name="CharacterCreation_RandomizeRemaining" xml:space="preserve">
   <value>Random</value>
 </data>
+	<data name="Test_AdvancedModifiersSection" xml:space="preserve">
+  <value>Advanced modifiers</value>
+</data>
+	<data name="Test_AdvancedModifiersMode" xml:space="preserve">
+  <value>Advanced modifier mode</value>
+</data>
+	<data name="Test_AdvancedModifiersMode_Cumulative" xml:space="preserve">
+  <value>Cumulative</value>
+</data>
+	<data name="Test_AdvancedModifiersMode_HighestOnly" xml:space="preserve">
+  <value>Highest bonus</value>
+</data>
+	<data name="Test_AdvancedModifiersList" xml:space="preserve">
+  <value>Modifier rows</value>
+</data>
+	<data name="Test_AdvancedModifiersAdd" xml:space="preserve">
+  <value>Add modifier</value>
+</data>
+	<data name="Test_AdvancedModifiersNone" xml:space="preserve">
+  <value>No advanced modifiers.</value>
+</data>
+	<data name="Test_AdvancedModifiersSourceType" xml:space="preserve">
+  <value>Criteria type</value>
+</data>
+	<data name="Test_BonusMalus" xml:space="preserve">
+  <value>Bonus / malus</value>
+</data>
+	<data name="Test_Bonus" xml:space="preserve">
+  <value>Bonus</value>
+</data>
+	<data name="Test_Malus" xml:space="preserve">
+  <value>Malus</value>
+</data>
+	<data name="Backend_InvalidAdvancedModifierSourceMetric" xml:space="preserve">
+  <value>The advanced modifier source metric is invalid.</value>
+</data>
+	<data name="Backend_InvalidAdvancedModifierSelection" xml:space="preserve">
+  <value>The advanced modifier selection is invalid.</value>
+</data>
+	<data name="Backend_InvalidAdvancedModifierValue" xml:space="preserve">
+  <value>The advanced modifier value is invalid.</value>
+</data>
 </root>

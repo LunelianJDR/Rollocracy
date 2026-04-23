@@ -1,4 +1,6 @@
-﻿@page "/mj/session/{SessionId:guid}/test"
+﻿GameTest.razor
+
+@page "/mj/session/{SessionId:guid}/test"
 @rendermode InteractiveServer
 
 @using System.Security.Claims
@@ -306,6 +308,211 @@ else
                                               RandomDrawOptions="AdvancedRandomDrawOptions"
                                               NameSuggestions="AdvancedNameSuggestions"
                                               OnPollSelectionChanged="RefreshSelectedPollOptionOptionsAsync" />
+
+                    <div class="rc-filter-group-card">
+                        <div class="rc-tool-subsection__header">
+                            <div class="rc-filter-group-card__title">@L["Test_AdvancedModifiersSection"]</div>
+                            <div class="rc-tool-inline-actions">
+                                <button type="button" @onclick="ToggleAdvancedModifiersSection">
+                                    @(ShowAdvancedModifiers ? L["Common_Hide"] : L["Common_Show"])
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (ShowAdvancedModifiers)
+                        {
+                            <div class="rc-filter-groups">
+                                <div class="rc-filter-group-card">
+                                    <div class="rc-filter-group-card__title">@L["Test_AdvancedModifiersMode"]</div>
+                                    <div class="rc-filter-group-card__options">
+                                        <label class="rc-filter-toggle">
+                                            <input type="radio"
+                                                   checked="@(AdvancedModifierCombinationMode == GameTestAdvancedModifierCombinationMode.Cumulative)"
+                                                   @onchange="() => AdvancedModifierCombinationMode = GameTestAdvancedModifierCombinationMode.Cumulative" />
+                                            <span>@L["Test_AdvancedModifiersMode_Cumulative"]</span>
+                                        </label>
+
+                                        <label class="rc-filter-toggle">
+                                            <input type="radio"
+                                                   checked="@(AdvancedModifierCombinationMode == GameTestAdvancedModifierCombinationMode.HighestOnly)"
+                                                   @onchange="() => AdvancedModifierCombinationMode = GameTestAdvancedModifierCombinationMode.HighestOnly" />
+                                            <span>@L["Test_AdvancedModifiersMode_HighestOnly"]</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="rc-filter-group-card">
+                                    <div class="rc-tool-subsection__header">
+                                        <div class="rc-filter-group-card__title">@L["Test_AdvancedModifiersList"]</div>
+                                        <div class="rc-tool-inline-actions">
+                                            <button type="button" @onclick="AddAdvancedModifierRow">@L["Test_AdvancedModifiersAdd"]</button>
+                                        </div>
+                                    </div>
+
+                                    @if (AdvancedModifierRows.Count == 0)
+                                    {
+                                        <p class="rc-tool-muted">@L["Test_AdvancedModifiersNone"]</p>
+                                    }
+                                    else
+                                    {
+                                        <div class="rc-consequence-list">
+                                            @foreach (var row in AdvancedModifierRows)
+                                            {
+                                                <div class="rc-consequence-card">
+                                                    <div class="rc-consequence-card__grid">
+                                                        <div class="rc-form-field">
+                                                            <label>@L["Test_AdvancedModifiersSourceType"]</label>
+                                                            <select @bind="row.SourceType" @bind:after="() => OnAdvancedModifierSourceTypeChanged(row)">
+                                                                <option value="@GameTestAdvancedModifierSourceType.TraitOption">@L["MassDistribution_TraitOptionFilters"]</option>
+                                                                <option value="@GameTestAdvancedModifierSourceType.Talent">@L["MassDistribution_TalentFilters"]</option>
+                                                                <option value="@GameTestAdvancedModifierSourceType.Item">@L["MassDistribution_ItemFilters"]</option>
+                                                            </select>
+                                                        </div>
+
+                                                        <div class="rc-form-field">
+                                                            <label>@L["Test_ConsequenceValueMode"]</label>
+                                                            <select @bind="row.ValueMode" @bind:after="() => OnAdvancedModifierValueModeChanged(row)" class="@GetAdvancedModifierToneCssClass(row)">
+                                                                <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
+                                                                <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
+                                                            </select>
+                                                        </div>
+
+                                                        @if (row.ValueMode == ModifierValueMode.Fixed)
+                                                        {
+                                                            <div class="rc-form-field">
+                                                                <label>@L["Test_DifficultyValue"]</label>
+                                                                <input type="number" @bind="row.FixedValue" class="@GetAdvancedModifierToneCssClass(row)" />
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="rc-form-field">
+                                                                <label>@L["Test_BonusMalus"]</label>
+                                                                <select @bind="row.MetricModifierMode" class="@GetAdvancedModifierToneCssClass(row)">
+                                                                    <option value="@TestModifierMode.Bonus">@L["Test_Bonus"]</option>
+                                                                    <option value="@TestModifierMode.Malus">@L["Test_Malus"]</option>
+                                                                </select>
+                                                            </div>
+
+                                                            <div class="rc-form-field">
+                                                                <label>@L["Common_SourceMetric"]</label>
+                                                                <select @bind="row.SourceMetricId" class="@GetAdvancedModifierToneCssClass(row)">
+                                                                    <option value="@((Guid?)null)">@L["Common_None"]</option>
+                                                                    @foreach (var metric in AvailableMetrics)
+                                                                    {
+                                                                        <option value="@metric.Id">@metric.Name</option>
+                                                                    }
+                                                                </select>
+                                                            </div>
+                                                        }
+                                                    </div>
+
+                                                    @if (row.SourceType == GameTestAdvancedModifierSourceType.TraitOption)
+                                                    {
+                                                        <div class="rc-filter-group-card">
+                                                            <div class="rc-filter-group-card__title">@L["MassDistribution_TraitOptionFilters"]</div>
+                                                            @foreach (var group in AdvancedTraitOptionGroups)
+                                                            {
+                                                                <div class="rc-advanced-filter-group">
+                                                                    <div class="rc-advanced-filter-group__title">@group.GroupName</div>
+                                                                    <div class="rc-inline-picker">
+                                                                        <select value="@GetAdvancedModifierSelectedTraitOptionId(row, group.GroupName)"
+                                                                                @onchange="@(e => OnAdvancedModifierTraitGroupSelectionChanged(row, group.GroupName, e.Value?.ToString()))">
+                                                                            <option value="">--</option>
+                                                                            @foreach (var item in group.Options)
+                                                                            {
+                                                                                <option value="@item.Id">@item.Name</option>
+                                                                            }
+                                                                        </select>
+                                                                        <button type="button" @onclick="@(() => AddAdvancedModifierTraitOption(row, group.GroupName))">@L["MassDistribution_AddFilter"]</button>
+                                                                    </div>
+                                                                </div>
+                                                            }
+                                                            <div class="rc-inline-pill-list">
+                                                                @foreach (var id in row.SelectedIds.ToList())
+                                                                {
+                                                                    var refItem = AdvancedTraitOptionGroups.SelectMany(x => x.Options).FirstOrDefault(x => x.Id == id);
+                                                                    if (refItem is not null)
+                                                                    {
+                                                                        <span class="rc-inline-pill rc-inline-pill--removable">
+                                                                            @refItem.Name
+                                                                            <button type="button" @onclick="@(() => RemoveAdvancedModifierSelectedId(row, id))">×</button>
+                                                                        </span>
+                                                                    }
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    else if (row.SourceType == GameTestAdvancedModifierSourceType.Talent)
+                                                    {
+                                                        <div class="rc-filter-group-card">
+                                                            <div class="rc-filter-group-card__title">@L["MassDistribution_TalentFilters"]</div>
+                                                            <div class="rc-inline-picker">
+                                                                <select @bind="row.PendingSelectedId">
+                                                                    <option value="">--</option>
+                                                                    @foreach (var item in AdvancedTalentOptions)
+                                                                    {
+                                                                        <option value="@item.Id">@item.Name</option>
+                                                                    }
+                                                                </select>
+                                                                <button type="button" @onclick="@(() => AddAdvancedModifierSelectedId(row))">@L["MassDistribution_AddFilter"]</button>
+                                                            </div>
+                                                            <div class="rc-inline-pill-list">
+                                                                @foreach (var id in row.SelectedIds.ToList())
+                                                                {
+                                                                    var refItem = AdvancedTalentOptions.FirstOrDefault(x => x.Id == id);
+                                                                    if (refItem is not null)
+                                                                    {
+                                                                        <span class="rc-inline-pill rc-inline-pill--removable">
+                                                                            @refItem.Name
+                                                                            <button type="button" @onclick="@(() => RemoveAdvancedModifierSelectedId(row, id))">×</button>
+                                                                        </span>
+                                                                    }
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="rc-filter-group-card">
+                                                            <div class="rc-filter-group-card__title">@L["MassDistribution_ItemFilters"]</div>
+                                                            <div class="rc-inline-picker">
+                                                                <select @bind="row.PendingSelectedId">
+                                                                    <option value="">--</option>
+                                                                    @foreach (var item in AdvancedItemOptions)
+                                                                    {
+                                                                        <option value="@item.Id">@item.Name</option>
+                                                                    }
+                                                                </select>
+                                                                <button type="button" @onclick="@(() => AddAdvancedModifierSelectedId(row))">@L["MassDistribution_AddFilter"]</button>
+                                                            </div>
+                                                            <div class="rc-inline-pill-list">
+                                                                @foreach (var id in row.SelectedIds.ToList())
+                                                                {
+                                                                    var refItem = AdvancedItemOptions.FirstOrDefault(x => x.Id == id);
+                                                                    if (refItem is not null)
+                                                                    {
+                                                                        <span class="rc-inline-pill rc-inline-pill--removable">
+                                                                            @refItem.Name
+                                                                            <button type="button" @onclick="@(() => RemoveAdvancedModifierSelectedId(row, id))">×</button>
+                                                                        </span>
+                                                                    }
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+
+                                                    <div class="rc-tool-inline-actions">
+                                                        <button type="button" @onclick="@(() => RemoveAdvancedModifierRow(row.RowId))">@L["Common_Remove"]</button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
                     
                     <Consequences Title="@L["Test_Consequences"]"
                                   AddButtonLabel="@L["Test_AddConsequence"]"
@@ -528,6 +735,9 @@ else
     private TestTraitFilterMode NewTraitFilterMode = TestTraitFilterMode.AndBetweenGroups;
     private HashSet<Guid> SelectedTraitOptionIds = new();
     private List<SharedConsequenceRowModel> ConsequenceRows = new();
+    private bool ShowAdvancedModifiers;
+    private GameTestAdvancedModifierCombinationMode AdvancedModifierCombinationMode = GameTestAdvancedModifierCombinationMode.Cumulative;
+    private List<AdvancedTestModifierRowModel> AdvancedModifierRows = new();
 
 
     private List<SharedConsequenceApplyOnOption> ConsequenceApplyOnOptions
@@ -1127,6 +1337,9 @@ else
                         .ToList(),
                     BiographyNotEmpty = AdvancedFilter.BiographyNotEmpty
                 },
+                AdvancedModifiersEnabled = AdvancedModifierRows.Any(IsMeaningfulAdvancedModifier),
+                AdvancedModifierCombinationMode = AdvancedModifierCombinationMode,
+                AdvancedModifiers = AdvancedModifierRows.Where(IsMeaningfulAdvancedModifier).Select(MapAdvancedModifierRowToDto).ToList(),
                 Consequences = ConsequenceRows
                     .Where(row => row.TargetDefinitionId != Guid.Empty)
                     .Where(row => row.OperationType != TestConsequenceOperationType.AddValue
@@ -1858,6 +2071,12 @@ else
             GlobalSuccessThreshold3Percent = GlobalSuccessThresholds.Count > 2 ? GlobalSuccessThresholds[2] : null,
             AdvancedFilter = CloneAdvancedFilter(AdvancedFilter),
             TraitFilters = new List<GameTestTraitFilterGroupDto>(),
+            AdvancedModifiersEnabled = AdvancedModifierRows.Any(IsMeaningfulAdvancedModifier),
+            AdvancedModifierCombinationMode = AdvancedModifierCombinationMode,
+            AdvancedModifiers = AdvancedModifierRows
+                .Where(IsMeaningfulAdvancedModifier)
+                .Select(MapAdvancedModifierRowToDto)
+                .ToList(),
             Consequences = ConsequenceRows.Select(MapConsequenceRowToDto).ToList()
         };
     }
@@ -1895,7 +2114,131 @@ else
         if (request.GlobalSuccessThreshold3Percent.HasValue) GlobalSuccessThresholds.Add(request.GlobalSuccessThreshold3Percent.Value);
 
         AdvancedFilter = CloneAdvancedFilter(request.AdvancedFilter ?? new CharacterTargetFilterDto());
+
+        AdvancedModifierCombinationMode = request.AdvancedModifierCombinationMode;
+        AdvancedModifierRows = (request.AdvancedModifiers ?? new List<GameTestAdvancedModifierDto>())
+            .Select(MapAdvancedModifierDtoToRow)
+            .ToList();
+        ShowAdvancedModifiers = request.AdvancedModifiersEnabled || AdvancedModifierRows.Count > 0;
+
         ConsequenceRows = request.Consequences.Select(MapConsequenceDtoToRow).ToList();
+    }
+
+    private void ToggleAdvancedModifiersSection()
+    {
+        ShowAdvancedModifiers = !ShowAdvancedModifiers;
+    }
+
+    private string GetAdvancedModifierToneCssClass(AdvancedTestModifierRowModel row)
+    {
+        if (row.ValueMode == ModifierValueMode.Metric)
+        {
+            return row.MetricModifierMode == TestModifierMode.Bonus
+                ? "rc-consequence-pill rc-consequence-pill--positive"
+                : "rc-consequence-pill rc-consequence-pill--negative";
+        }
+
+        return row.FixedValue >= 0
+            ? "rc-consequence-pill rc-consequence-pill--positive"
+            : "rc-consequence-pill rc-consequence-pill--negative";
+    }
+
+    private void AddAdvancedModifierRow()
+    {
+        AdvancedModifierRows.Add(new AdvancedTestModifierRowModel());
+        ShowAdvancedModifiers = true;
+    }
+
+    private void RemoveAdvancedModifierRow(Guid rowId)
+    {
+        AdvancedModifierRows.RemoveAll(x => x.RowId == rowId);
+    }
+
+    private void OnAdvancedModifierSourceTypeChanged(AdvancedTestModifierRowModel row)
+    {
+        row.SelectedIds.Clear();
+        row.PendingSelectedId = string.Empty;
+        row.PendingTraitOptionIdByGroup.Clear();
+    }
+
+    private void OnAdvancedModifierValueModeChanged(AdvancedTestModifierRowModel row)
+    {
+        if (row.ValueMode == ModifierValueMode.Fixed)
+        {
+            row.SourceMetricId = null;
+            row.MetricModifierMode = TestModifierMode.Bonus;
+        }
+    }
+
+    private string GetAdvancedModifierSelectedTraitOptionId(AdvancedTestModifierRowModel row, string groupName)
+    {
+        return row.PendingTraitOptionIdByGroup.TryGetValue(groupName, out var value)
+            ? value
+            : string.Empty;
+    }
+
+    private void OnAdvancedModifierTraitGroupSelectionChanged(AdvancedTestModifierRowModel row, string groupName, string? selectedValue)
+    {
+        row.PendingTraitOptionIdByGroup[groupName] = selectedValue ?? string.Empty;
+    }
+
+    private void AddAdvancedModifierTraitOption(AdvancedTestModifierRowModel row, string groupName)
+    {
+        if (!row.PendingTraitOptionIdByGroup.TryGetValue(groupName, out var rawValue))
+            return;
+
+        if (Guid.TryParse(rawValue, out var id) && !row.SelectedIds.Contains(id))
+            row.SelectedIds.Add(id);
+    }
+
+    private void AddAdvancedModifierSelectedId(AdvancedTestModifierRowModel row)
+    {
+        if (Guid.TryParse(row.PendingSelectedId, out var id) && !row.SelectedIds.Contains(id))
+            row.SelectedIds.Add(id);
+    }
+
+    private void RemoveAdvancedModifierSelectedId(AdvancedTestModifierRowModel row, Guid id)
+    {
+        row.SelectedIds.Remove(id);
+    }
+
+    private bool IsMeaningfulAdvancedModifier(AdvancedTestModifierRowModel row)
+    {
+        if (row.SelectedIds.Count == 0)
+            return false;
+
+        if (row.ValueMode == ModifierValueMode.Metric)
+            return row.SourceMetricId.HasValue;
+
+        return row.FixedValue != 0;
+    }
+
+    private GameTestAdvancedModifierDto MapAdvancedModifierRowToDto(AdvancedTestModifierRowModel row)
+    {
+        return new GameTestAdvancedModifierDto
+        {
+            SourceType = row.SourceType,
+            SelectedIds = row.SelectedIds.ToList(),
+            ValueMode = row.ValueMode,
+            FixedValue = row.FixedValue,
+            MetricModifierMode = row.MetricModifierMode,
+            SourceMetricId = row.ValueMode == ModifierValueMode.Metric ? row.SourceMetricId : null
+        };
+    }
+
+    private AdvancedTestModifierRowModel MapAdvancedModifierDtoToRow(GameTestAdvancedModifierDto dto)
+    {
+        return new AdvancedTestModifierRowModel
+        {
+            SourceType = dto.SourceType,
+            SelectedIds = dto.SelectedIds.Distinct().ToList(),
+            ValueMode = dto.ValueMode,
+            FixedValue = dto.FixedValue,
+            MetricModifierMode = dto.MetricModifierMode,
+            SourceMetricId = dto.SourceMetricId,
+            PendingSelectedId = string.Empty,
+            PendingTraitOptionIdByGroup = new Dictionary<string, string>()
+        };
     }
 
     private Guid ParseSelectedAttributeId()
@@ -1998,5 +2341,18 @@ else
         {
             Message = $"{L["Common_Error"]} : {ex.Message}";
         }
+    }
+
+    private sealed class AdvancedTestModifierRowModel
+    {
+        public Guid RowId { get; set; } = Guid.NewGuid();
+        public GameTestAdvancedModifierSourceType SourceType { get; set; } = GameTestAdvancedModifierSourceType.TraitOption;
+        public List<Guid> SelectedIds { get; set; } = new();
+        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
+        public int FixedValue { get; set; }
+        public TestModifierMode MetricModifierMode { get; set; } = TestModifierMode.Bonus;
+        public Guid? SourceMetricId { get; set; }
+        public string PendingSelectedId { get; set; } = string.Empty;
+        public Dictionary<string, string> PendingTraitOptionIdByGroup { get; set; } = new();
     }
 }

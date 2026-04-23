@@ -1,5 +1,4 @@
-﻿
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.GameRules;
@@ -8,6 +7,7 @@ using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
 using System.Security.Cryptography;
 using System.Text.Json;
+using static Rollocracy.Infrastructure.Services.MetricFormulaEngine;
 
 namespace Rollocracy.Infrastructure.Services
 {
@@ -94,6 +94,40 @@ namespace Rollocracy.Infrastructure.Services
             effectiveFilter.OnlyDead = false;
             effectiveFilter.OnlyOnline = request.TargetScope == TestTargetScope.OnlineLivingCharacters;
             effectiveFilter.OnlyAlive = true;
+
+            foreach (var advancedModifier in request.AdvancedModifiers.Where(IsMeaningfulAdvancedModifier))
+            {
+                if (advancedModifier.ValueMode == ModifierValueMode.Metric)
+                {
+                    var sourceMetricExists = advancedModifier.SourceMetricId.HasValue && await context.MetricDefinitions
+                        .AsNoTracking()
+                        .AnyAsync(m => m.Id == advancedModifier.SourceMetricId.Value && m.GameSystemId == session.GameSystemId.Value);
+
+                    if (!sourceMetricExists)
+                        throw new Exception(_localizer["Backend_InvalidAdvancedModifierSourceMetric"]);
+                }
+
+                switch (advancedModifier.SourceType)
+                {
+                    case GameTestAdvancedModifierSourceType.TraitOption:
+                        var traitOptionIds = advancedModifier.SelectedIds.Distinct().ToList();
+                        if (traitOptionIds.Count == 0 || await context.TraitOptions.AsNoTracking().CountAsync(x => traitOptionIds.Contains(x.Id)) != traitOptionIds.Count)
+                            throw new Exception(_localizer["Backend_InvalidAdvancedModifierSelection"]);
+                        break;
+
+                    case GameTestAdvancedModifierSourceType.Talent:
+                        var talentIds = advancedModifier.SelectedIds.Distinct().ToList();
+                        if (talentIds.Count == 0 || await context.TalentDefinitions.AsNoTracking().CountAsync(x => talentIds.Contains(x.Id) && x.GameSystemId == session.GameSystemId.Value) != talentIds.Count)
+                            throw new Exception(_localizer["Backend_InvalidAdvancedModifierSelection"]);
+                        break;
+
+                    case GameTestAdvancedModifierSourceType.Item:
+                        var itemIds = advancedModifier.SelectedIds.Distinct().ToList();
+                        if (itemIds.Count == 0 || await context.ItemDefinitions.AsNoTracking().CountAsync(x => itemIds.Contains(x.Id) && (x.GameSystemId == session.GameSystemId.Value || x.SessionId == session.Id)) != itemIds.Count)
+                            throw new Exception(_localizer["Backend_InvalidAdvancedModifierSelection"]);
+                        break;
+                }
+            }
 
             // Compatibilité legacy : si jamais l'ancien UI alimente encore TraitFilters.
             if (effectiveFilter.TraitOptionIds.Count == 0 && request.TraitFilters.Count > 0)
@@ -230,10 +264,19 @@ namespace Rollocracy.Infrastructure.Services
                     request.TargetKind,
                     request.TargetDefinitionId);
 
-                var effectiveAttributeValue = ApplyModifier(
-                    testedValue,
-                    request.ModifierMode,
-                    request.DifficultyValue);
+                var globalModifierValue = request.ModifierMode == TestModifierMode.Bonus
+                    ? request.DifficultyValue
+                    : -request.DifficultyValue;
+
+                var advancedModifierValue = await ResolveAdvancedModifierTotalAsync(
+                    context,
+                    session.Id,
+                    session.GameSystemId.Value,
+                    row.Character.Id,
+                    request.AdvancedModifiersEnabled ? request.AdvancedModifiers : new List<GameTestAdvancedModifierDto>(),
+                    request.AdvancedModifierCombinationMode);
+
+                var effectiveAttributeValue = testedValue + globalModifierValue + advancedModifierValue;
 
                 context.PlayerTestRolls.Add(new PlayerTestRoll
                 {
@@ -1521,6 +1564,301 @@ namespace Rollocracy.Infrastructure.Services
             GameTestTargetKind targetKind,
             Guid targetDefinitionId)
         {
+            var resolvedContext = await ResolveCharacterNumericContextAsync(context, gameSystemId, characterId);
+
+            return targetKind switch
+            {
+                GameTestTargetKind.BaseAttribute => resolvedContext.AttributeValues.TryGetValue(targetDefinitionId, out var attributeValue) ? attributeValue : 0,
+                GameTestTargetKind.DerivedStat => resolvedContext.DerivedStatValues.TryGetValue(targetDefinitionId, out var derivedValue) ? derivedValue : 0,
+                _ => 0
+            };
+        }
+
+        private static int ComputeWeightedValue(
+            List<WeightedSourceValue> components,
+            int baseValue,
+            int minValue,
+            int maxValue,
+            ComputedValueRoundMode roundMode)
+        {
+            decimal rawValue = baseValue;
+
+            foreach (var component in components)
+            {
+                rawValue += component.Value * (component.Weight / 100m);
+            }
+
+            rawValue = roundMode switch
+            {
+                ComputedValueRoundMode.Ceiling => Math.Ceiling(rawValue),
+                ComputedValueRoundMode.Floor => Math.Floor(rawValue),
+                ComputedValueRoundMode.Nearest => Math.Round(rawValue, 0, MidpointRounding.AwayFromZero),
+                _ => rawValue
+            };
+
+            var asInt = (int)rawValue;
+            return Math.Clamp(asInt, minValue, maxValue);
+        }
+
+        private static List<RuntimeModifier> ResolveRuntimeModifiers(
+            List<RuntimeModifier> rawModifiers,
+            List<MetricDefinition> metricDefinitions,
+            List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> metricFormulaSteps,
+            Dictionary<Guid, int> effectiveAttributeValues,
+            Dictionary<Guid, int> effectiveGaugeValues,
+            Dictionary<Guid, int> derivedStatValues)
+        {
+            var fixedModifiers = rawModifiers
+                .Where(x => x.ValueMode != ModifierValueMode.Metric || !x.SourceMetricId.HasValue)
+                .Select(x => new RuntimeModifier
+                {
+                    TargetType = x.TargetType,
+                    TargetId = x.TargetId,
+                    AddValue = x.AddValue,
+                    ValueMode = ModifierValueMode.Fixed
+                })
+                .ToList();
+
+            if (!rawModifiers.Any(x => x.ValueMode == ModifierValueMode.Metric && x.SourceMetricId.HasValue))
+                return fixedModifiers;
+
+            var metricValues = MetricFormulaEngine.ComputeAll(new MetricFormulaEngine.MetricComputationRequest
+            {
+                MetricDefinitions = metricDefinitions,
+                FormulaSteps = metricFormulaSteps,
+                LegacyComponents = metricComponents,
+                BaseAttributeValues = effectiveAttributeValues,
+                GaugeValues = effectiveGaugeValues,
+                DerivedStatValues = derivedStatValues,
+                Modifiers = fixedModifiers
+                    .Select(x => new MetricFormulaEngine.ModifierValue
+                    {
+                        TargetType = x.TargetType,
+                        TargetId = x.TargetId,
+                        AddValue = x.AddValue
+                    })
+                    .ToList()
+            });
+
+            return rawModifiers.Select(x => new RuntimeModifier
+            {
+                TargetType = x.TargetType,
+                TargetId = x.TargetId,
+                AddValue = x.ValueMode == ModifierValueMode.Metric && x.SourceMetricId.HasValue && metricValues.TryGetValue(x.SourceMetricId.Value, out var metricValue)
+                    ? metricValue
+                    : x.AddValue,
+                ValueMode = ModifierValueMode.Fixed
+            }).ToList();
+        }
+
+        private sealed class ResolvedCharacterNumericContext
+        {
+            public Dictionary<Guid, int> AttributeValues { get; set; } = new();
+            public Dictionary<Guid, int> DerivedStatValues { get; set; } = new();
+            public Dictionary<Guid, int> MetricValues { get; set; } = new();
+        }
+
+        private sealed class RuntimeModifier
+        {
+            public ModifierTargetType TargetType { get; set; }
+            public Guid TargetId { get; set; }
+            public int AddValue { get; set; }
+            public ModifierValueMode ValueMode { get; set; }
+            public Guid? SourceMetricId { get; set; }
+        }
+
+        private sealed class WeightedSourceValue
+        {
+            public int Weight { get; set; }
+            public int Value { get; set; }
+        }
+
+        private async Task<string> ResolveConsequenceTargetNameAsync(
+            RollocracyDbContext context,
+            GameTestConsequenceDraftDto consequence,
+            Guid sessionId,
+            Guid gameSystemId)
+        {
+            switch (consequence.TargetKind)
+            {
+                case TestConsequenceTargetKind.Gauge:
+                    var gauge = await context.GaugeDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.GameSystemId == gameSystemId);
+
+                    if (gauge == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return gauge.Name;
+
+                case TestConsequenceTargetKind.SessionGauge:
+                    var sessionGauge = await context.SessionGauges
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.SessionId == sessionId);
+
+                    if (sessionGauge == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return sessionGauge.Name;
+
+                case TestConsequenceTargetKind.Attribute:
+                    var attribute = await context.AttributeDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(a => a.Id == consequence.TargetDefinitionId && a.GameSystemId == gameSystemId);
+
+                    if (attribute == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return attribute.Name;
+
+                case TestConsequenceTargetKind.DerivedStat:
+                    var derivedStat = await context.DerivedStatDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(d => d.Id == consequence.TargetDefinitionId && d.GameSystemId == gameSystemId);
+
+                    if (derivedStat == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return derivedStat.Name;
+
+                case TestConsequenceTargetKind.Metric:
+                    var metric = await context.MetricDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(m => m.Id == consequence.TargetDefinitionId && m.GameSystemId == gameSystemId);
+
+                    if (metric == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return metric.Name;
+
+                case TestConsequenceTargetKind.Talent:
+                    var talent = await context.TalentDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(t => t.Id == consequence.TargetDefinitionId && t.GameSystemId == gameSystemId);
+
+                    if (talent == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return talent.Name;
+
+                case TestConsequenceTargetKind.Item:
+                    var item = await context.ItemDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(i =>
+                            i.Id == consequence.TargetDefinitionId &&
+                            (i.GameSystemId == gameSystemId || i.SessionId == sessionId));
+
+                    if (item == null)
+                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+
+                    return item.Name;
+
+                default:
+                    throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
+            }
+        }
+
+
+        private static bool IsMeaningfulAdvancedModifier(GameTestAdvancedModifierDto modifier)
+        {
+            if (modifier.SelectedIds.Count == 0)
+                return false;
+
+            return modifier.ValueMode == ModifierValueMode.Metric
+                ? modifier.SourceMetricId.HasValue
+                : modifier.FixedValue != 0;
+        }
+
+        private async Task<int> ResolveAdvancedModifierTotalAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            Guid gameSystemId,
+            Guid characterId,
+            List<GameTestAdvancedModifierDto> advancedModifiers,
+            GameTestAdvancedModifierCombinationMode combinationMode)
+        {
+            var meaningfulModifiers = advancedModifiers
+                .Where(IsMeaningfulAdvancedModifier)
+                .ToList();
+
+            if (meaningfulModifiers.Count == 0)
+                return 0;
+
+            var traitOptionIds = await context.CharacterTraitValues
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId)
+                .Select(x => x.TraitOptionId)
+                .ToListAsync();
+
+            var talentIds = await context.CharacterTalents
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId)
+                .Select(x => x.TalentDefinitionId)
+                .ToListAsync();
+
+            var itemIds = await context.CharacterItems
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId)
+                .Select(x => x.ItemDefinitionId)
+                .ToListAsync();
+
+            Dictionary<Guid, int>? metricValues = null;
+            var values = new List<int>();
+
+            foreach (var modifier in meaningfulModifiers)
+            {
+                var matches = modifier.SourceType switch
+                {
+                    GameTestAdvancedModifierSourceType.TraitOption => modifier.SelectedIds.Any(id => traitOptionIds.Contains(id)),
+                    GameTestAdvancedModifierSourceType.Talent => modifier.SelectedIds.Any(id => talentIds.Contains(id)),
+                    GameTestAdvancedModifierSourceType.Item => modifier.SelectedIds.Any(id => itemIds.Contains(id)),
+                    _ => false
+                };
+
+                if (!matches)
+                    continue;
+
+                int resolvedValue;
+
+                if (modifier.ValueMode == ModifierValueMode.Metric && modifier.SourceMetricId.HasValue)
+                {
+                    metricValues ??= await ResolveCharacterMetricValuesAsync(context, gameSystemId, characterId);
+                    var metricValue = metricValues.GetValueOrDefault(modifier.SourceMetricId.Value);
+                    resolvedValue = modifier.MetricModifierMode == TestModifierMode.Bonus
+                        ? metricValue
+                        : -metricValue;
+                }
+                else
+                {
+                    resolvedValue = modifier.FixedValue;
+                }
+
+                values.Add(resolvedValue);
+            }
+
+            if (values.Count == 0)
+                return 0;
+
+            return combinationMode == GameTestAdvancedModifierCombinationMode.HighestOnly
+                ? values.Max()
+                : values.Sum();
+        }
+
+        private async Task<Dictionary<Guid, int>> ResolveCharacterMetricValuesAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            Guid characterId)
+        {
+            var resolvedContext = await ResolveCharacterNumericContextAsync(context, gameSystemId, characterId);
+            return resolvedContext.MetricValues;
+        }
+
+        private async Task<ResolvedCharacterNumericContext> ResolveCharacterNumericContextAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            Guid characterId)
+        {
             var attributeDefinitions = await context.AttributeDefinitions
                 .AsNoTracking()
                 .Where(a => a.GameSystemId == gameSystemId)
@@ -1557,11 +1895,11 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(v => v.CharacterId == characterId)
                 .ToListAsync();
 
-            var traitOptionIds = traitValues.Select(v => v.TraitOptionId).Distinct().ToList();
+            var selectedTraitOptionIds = traitValues.Select(v => v.TraitOptionId).Distinct().ToList();
 
             var choiceOptionModifiers = await context.ChoiceOptionModifierDefinitions
                 .AsNoTracking()
-                .Where(m => traitOptionIds.Contains(m.ChoiceOptionDefinitionId))
+                .Where(m => selectedTraitOptionIds.Contains(m.ChoiceOptionDefinitionId))
                 .ToListAsync();
 
             var characterTalentIds = await context.CharacterTalents
@@ -1635,7 +1973,7 @@ namespace Rollocracy.Infrastructure.Services
                 }))
                 .ToList();
 
-            Dictionary<Guid, int> effectiveAttributeValues = attributeDefinitions.ToDictionary(
+            var effectiveAttributeValues = attributeDefinitions.ToDictionary(
                 definition => definition.Id,
                 definition =>
                 {
@@ -1753,64 +2091,7 @@ namespace Rollocracy.Infrastructure.Services
                 derivedStatValues[definition.Id] = Math.Clamp(value, definition.MinValue, definition.MaxValue);
             }
 
-            return targetKind switch
-            {
-                GameTestTargetKind.BaseAttribute => effectiveAttributeValues.TryGetValue(targetDefinitionId, out var attributeValue) ? attributeValue : 0,
-                GameTestTargetKind.DerivedStat => derivedStatValues.TryGetValue(targetDefinitionId, out var derivedValue) ? derivedValue : 0,
-                _ => 0
-            };
-        }
-
-        private static int ComputeWeightedValue(
-            List<WeightedSourceValue> components,
-            int baseValue,
-            int minValue,
-            int maxValue,
-            ComputedValueRoundMode roundMode)
-        {
-            decimal rawValue = baseValue;
-
-            foreach (var component in components)
-            {
-                rawValue += component.Value * (component.Weight / 100m);
-            }
-
-            rawValue = roundMode switch
-            {
-                ComputedValueRoundMode.Ceiling => Math.Ceiling(rawValue),
-                ComputedValueRoundMode.Floor => Math.Floor(rawValue),
-                ComputedValueRoundMode.Nearest => Math.Round(rawValue, 0, MidpointRounding.AwayFromZero),
-                _ => rawValue
-            };
-
-            var asInt = (int)rawValue;
-            return Math.Clamp(asInt, minValue, maxValue);
-        }
-
-        private static List<RuntimeModifier> ResolveRuntimeModifiers(
-            List<RuntimeModifier> rawModifiers,
-            List<MetricDefinition> metricDefinitions,
-            List<MetricComponent> metricComponents,
-            List<MetricFormulaStep> metricFormulaSteps,
-            Dictionary<Guid, int> effectiveAttributeValues,
-            Dictionary<Guid, int> effectiveGaugeValues,
-            Dictionary<Guid, int> derivedStatValues)
-        {
-            var fixedModifiers = rawModifiers
-                .Where(x => x.ValueMode != ModifierValueMode.Metric || !x.SourceMetricId.HasValue)
-                .Select(x => new RuntimeModifier
-                {
-                    TargetType = x.TargetType,
-                    TargetId = x.TargetId,
-                    AddValue = x.AddValue,
-                    ValueMode = ModifierValueMode.Fixed
-                })
-                .ToList();
-
-            if (!rawModifiers.Any(x => x.ValueMode == ModifierValueMode.Metric && x.SourceMetricId.HasValue))
-                return fixedModifiers;
-
-            var metricValues = MetricFormulaEngine.ComputeAll(new MetricFormulaEngine.MetricComputationRequest
+            var metricValues = MetricFormulaEngine.ComputeAll(new MetricComputationRequest
             {
                 MetricDefinitions = metricDefinitions,
                 FormulaSteps = metricFormulaSteps,
@@ -1818,7 +2099,8 @@ namespace Rollocracy.Infrastructure.Services
                 BaseAttributeValues = effectiveAttributeValues,
                 GaugeValues = effectiveGaugeValues,
                 DerivedStatValues = derivedStatValues,
-                Modifiers = fixedModifiers
+                Modifiers = resolvedModifiers
+                    .Where(x => x.TargetType == ModifierTargetType.Metric)
                     .Select(x => new MetricFormulaEngine.ModifierValue
                     {
                         TargetType = x.TargetType,
@@ -1828,115 +2110,12 @@ namespace Rollocracy.Infrastructure.Services
                     .ToList()
             });
 
-            return rawModifiers.Select(x => new RuntimeModifier
+            return new ResolvedCharacterNumericContext
             {
-                TargetType = x.TargetType,
-                TargetId = x.TargetId,
-                AddValue = x.ValueMode == ModifierValueMode.Metric && x.SourceMetricId.HasValue && metricValues.TryGetValue(x.SourceMetricId.Value, out var metricValue)
-                    ? metricValue
-                    : x.AddValue,
-                ValueMode = ModifierValueMode.Fixed
-            }).ToList();
-        }
-
-        private sealed class RuntimeModifier
-        {
-            public ModifierTargetType TargetType { get; set; }
-            public Guid TargetId { get; set; }
-            public int AddValue { get; set; }
-            public ModifierValueMode ValueMode { get; set; }
-            public Guid? SourceMetricId { get; set; }
-        }
-
-        private sealed class WeightedSourceValue
-        {
-            public int Weight { get; set; }
-            public int Value { get; set; }
-        }
-
-        private async Task<string> ResolveConsequenceTargetNameAsync(
-            RollocracyDbContext context,
-            GameTestConsequenceDraftDto consequence,
-            Guid sessionId,
-            Guid gameSystemId)
-        {
-            switch (consequence.TargetKind)
-            {
-                case TestConsequenceTargetKind.Gauge:
-                    var gauge = await context.GaugeDefinitions
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.GameSystemId == gameSystemId);
-
-                    if (gauge == null)
-                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
-
-                    return gauge.Name;
-
-                case TestConsequenceTargetKind.SessionGauge:
-                    var sessionGauge = await context.SessionGauges
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.SessionId == sessionId);
-
-                    if (sessionGauge == null)
-                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
-
-                    return sessionGauge.Name;
-
-                case TestConsequenceTargetKind.Attribute:
-                    var attribute = await context.AttributeDefinitions
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(a => a.Id == consequence.TargetDefinitionId && a.GameSystemId == gameSystemId);
-
-                    if (attribute == null)
-                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
-
-                    return attribute.Name;
-
-                case TestConsequenceTargetKind.DerivedStat:
-                    var derivedStat = await context.DerivedStatDefinitions
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(d => d.Id == consequence.TargetDefinitionId && d.GameSystemId == gameSystemId);
-
-                    if (derivedStat == null)
-                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
-
-                    return derivedStat.Name;
-
-                case TestConsequenceTargetKind.Metric:
-                    var metric = await context.MetricDefinitions
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(m => m.Id == consequence.TargetDefinitionId && m.GameSystemId == gameSystemId);
-
-                    if (metric == null)
-                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
-
-                    return metric.Name;
-
-                case TestConsequenceTargetKind.Talent:
-                    var talent = await context.TalentDefinitions
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(t => t.Id == consequence.TargetDefinitionId && t.GameSystemId == gameSystemId);
-
-                    if (talent == null)
-                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
-
-                    return talent.Name;
-
-                case TestConsequenceTargetKind.Item:
-                    var item = await context.ItemDefinitions
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(i =>
-                            i.Id == consequence.TargetDefinitionId &&
-                            (i.GameSystemId == gameSystemId || i.SessionId == sessionId));
-
-                    if (item == null)
-                        throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
-
-                    return item.Name;
-
-                default:
-                    throw new Exception(_localizer["Backend_InvalidConsequenceTarget"]);
-            }
+                AttributeValues = effectiveAttributeValues,
+                DerivedStatValues = derivedStatValues,
+                MetricValues = metricValues
+            };
         }
 
         private static bool IsMeaningfulConsequence(GameTestConsequenceDraftDto consequence)
@@ -2009,6 +2188,22 @@ namespace Rollocracy.Infrastructure.Services
 
                 if (thresholds[i] - thresholds[i + 1] < 5)
                     throw new Exception(_localizer["Backend_GlobalThresholdsMustHaveGap"]);
+            }
+
+            foreach (var advancedModifier in request.AdvancedModifiers)
+            {
+                if (advancedModifier.SelectedIds.Count == 0)
+                    continue;
+
+                if (advancedModifier.ValueMode == ModifierValueMode.Metric)
+                {
+                    if (!advancedModifier.SourceMetricId.HasValue)
+                        throw new Exception(_localizer["Backend_InvalidAdvancedModifierSourceMetric"]);
+                }
+                else if (advancedModifier.FixedValue == 0)
+                {
+                    throw new Exception(_localizer["Backend_InvalidAdvancedModifierValue"]);
+                }
             }
 
             foreach (var consequence in request.Consequences)
@@ -2310,3 +2505,4 @@ namespace Rollocracy.Infrastructure.Services
         }
     }
 }
+

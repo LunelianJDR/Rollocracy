@@ -563,8 +563,15 @@ else
                             @if (ShowSessionCharactersPanel)
                             {
                                 <button type="button" @onclick="ShowStreamView">
-                                    @L["Session_Player_ShowStreamPanel"]
+                                    @L["Journal_ShowStream"]
                                 </button>
+
+                                @if (PublicJournal is not null && PublicJournal.PublicPages.Count > 0)
+                                {
+                                    <button type="button" @onclick="ShowJournal">
+                                        @L["Journal_ShowJournal"]
+                                    </button>
+                                }
                             }
                             else
                             {
@@ -601,7 +608,7 @@ else
                             </button>
                         }
 
-                        @if (!ShowSessionCharactersPanel)
+                        @if (!ShowSessionCharactersPanel && !ShowJournalPanel)
                         {
                             <button type="button" @onclick="() => IsTwitchEnabled = !IsTwitchEnabled">
                                 @(IsTwitchEnabled? L["Session_Player_DisableStream"] : L["Session_Player_EnableStream"])
@@ -3069,6 +3076,12 @@ else
 
     private void ToggleJournalPanel()
     {
+        ShowJournalPanel = !ShowJournalPanel;
+    }
+
+    private void ShowJournal()
+    {
+        ShowSessionCharactersPanel = !ShowSessionCharactersPanel;
         ShowJournalPanel = !ShowJournalPanel;
     }
 

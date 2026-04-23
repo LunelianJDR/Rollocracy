@@ -5,6 +5,35 @@ using Rollocracy.Domain.Characters;
 
 namespace Rollocracy.Domain.GameTests
 {
+
+    public enum GameTestAdvancedModifierSourceType
+    {
+        TraitOption = 0,
+        Talent = 1,
+        Item = 2
+    }
+
+    public enum GameTestAdvancedModifierCombinationMode
+    {
+        Cumulative = 0,
+        HighestOnly = 1
+    }
+
+    public class GameTestAdvancedModifierDto
+    {
+        public GameTestAdvancedModifierSourceType SourceType { get; set; } = GameTestAdvancedModifierSourceType.TraitOption;
+
+        public List<Guid> SelectedIds { get; set; } = new();
+
+        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
+
+        public int FixedValue { get; set; }
+
+        public TestModifierMode MetricModifierMode { get; set; } = TestModifierMode.Bonus;
+
+        public Guid? SourceMetricId { get; set; }
+    }
+
     public class GameTestTraitFilterGroupDto
     {
         public Guid TraitDefinitionId { get; set; }
@@ -78,6 +107,12 @@ namespace Rollocracy.Domain.GameTests
         public CharacterTargetFilterDto AdvancedFilter { get; set; } = new();
 
         public List<GameTestTraitFilterGroupDto> TraitFilters { get; set; } = new();
+
+        public bool AdvancedModifiersEnabled { get; set; }
+
+        public GameTestAdvancedModifierCombinationMode AdvancedModifierCombinationMode { get; set; } = GameTestAdvancedModifierCombinationMode.Cumulative;
+
+        public List<GameTestAdvancedModifierDto> AdvancedModifiers { get; set; } = new();
 
         public List<GameTestConsequenceDraftDto> Consequences { get; set; } = new();
     }
