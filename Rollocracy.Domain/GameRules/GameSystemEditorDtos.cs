@@ -204,6 +204,7 @@ namespace Rollocracy.Domain.GameRules
         public int? CriticalFailureValue { get; set; }
         public int? DefaultSuccessThreshold { get; set; }
         public bool ConfirmSharedSystemChanges { get; set; }
+        public bool ConfirmDeletedReferenceCleanup { get; set; }
         public bool IsGeneric { get; set; }
         public int StartingTalentChoices { get; set; }
         public int StartingItemChoices { get; set; }
@@ -217,3 +218,4 @@ namespace Rollocracy.Domain.GameRules
         public List<EditableItemDefinitionDto> Items { get; set; } = new();
     }
 }
+

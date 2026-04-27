@@ -1078,6 +1078,9 @@
 	<data name="GameSystem_Editor_AddTalentRow" xml:space="preserve">
 		<value>Add a talent</value>
 	</data>
+	<data name="GameSystem_Editor_AddTraitRow" xml:space="preserve">
+		<value>Add a trait</value>
+	</data>
 	<data name="GameSystem_Editor_AddTraitOptionRow" xml:space="preserve">
 		<value>Add option</value>
 	</data>
@@ -3627,14 +3630,20 @@
 	<data name="Backend_PollPresetNotFound" xml:space="preserve">
   <value>Poll preset not found.</value>
 </data>
+	<data name="Test_Presets" xml:space="preserve">
+  <value>Test preset</value>
+</data>
 	<data name="Test_SavePreset" xml:space="preserve">
   <value>Save preset</value>
 </data>
 	<data name="Test_SelectPreset" xml:space="preserve">
-  <value>Select a preset</value>
+  <value>New preset</value>
 </data>
 	<data name="Test_DeletePreset" xml:space="preserve">
   <value>Delete preset</value>
+</data>
+	<data name="Test_ConfirmDeletePreset" xml:space="preserve">
+  <value>Are you sure you want to delete the preset "{0}"?</value>
 </data>
 	<data name="Test_PresetName" xml:space="preserve">
   <value>Preset name</value>
@@ -3847,12 +3856,6 @@
 	<data name="Test_BonusMalus" xml:space="preserve">
   <value>Bonus / malus</value>
 </data>
-	<data name="Test_Bonus" xml:space="preserve">
-  <value>Bonus</value>
-</data>
-	<data name="Test_Malus" xml:space="preserve">
-  <value>Malus</value>
-</data>
 	<data name="Backend_InvalidAdvancedModifierSourceMetric" xml:space="preserve">
   <value>The advanced modifier source metric is invalid.</value>
 </data>
@@ -3861,5 +3864,53 @@
 </data>
 	<data name="Backend_InvalidAdvancedModifierValue" xml:space="preserve">
   <value>The advanced modifier value is invalid.</value>
+</data>
+	<data name="Common_And" xml:space="preserve">
+  <value>and</value>
+</data>
+	<data name="Common_To" xml:space="preserve">
+  <value>to</value>
+</data>
+	<data name="GameSystem_Editor_SelectElementHint" xml:space="preserve">
+  <value>Select a category or an element on the left to display its editable details.</value>
+</data>
+	<data name="GameSystem_Editor_UntitledElement" xml:space="preserve">
+  <value>Untitled element</value>
+</data>
+	<data name="GameSystem_Editor_NoDescriptionSummary" xml:space="preserve">
+  <value>No description</value>
+</data>
+	<data name="GameSystem_Editor_NoDerivedComponentsSummary" xml:space="preserve">
+  <value>No linked attributes</value>
+</data>
+	<data name="GameSystem_Editor_NoMetricFormulaSummary" xml:space="preserve">
+  <value>No formula</value>
+</data>
+	<data name="GameSystem_Editor_NoTraitOptionsSummary" xml:space="preserve">
+  <value>No options</value>
+</data>
+	<data name="GameSystem_Editor_GaugeHealthType" xml:space="preserve">
+  <value>Health</value>
+</data>
+	<data name="GameSystem_Editor_GaugeStandardType" xml:space="preserve">
+  <value>Standard</value>
+</data>
+	<data name="GameSystem_Editor_PendingChangesTitle" xml:space="preserve">
+  <value>There are unsaved changes</value>
+</data>
+	<data name="GameSystem_Editor_PendingChangesBody" xml:space="preserve">
+  <value>Do not forget to use Save to persist the changes to the database.</value>
+</data>
+	<data name="GameSystem_Editor_AllChangesSavedTitle" xml:space="preserve">
+  <value>Latest version saved</value>
+</data>
+	<data name="GameSystem_Editor_AllChangesSavedBody" xml:space="preserve">
+  <value>The currently loaded version matches the saved state.</value>
+</data>
+	<data name="EditGameSystem_DerivedStatComponents" xml:space="preserve">
+  <value>Skill's components</value>
+</data>
+	<data name="Backend_GameSystemDeletedReferenceConfirmationRequired" xml:space="preserve">
+  <value>Warning, a deleted element is still used by other elements. Confirming will also remove the related references:</value>
 </data>
 </root>

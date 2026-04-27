@@ -366,7 +366,7 @@ else
                                         @foreach (var typeattribute in CreationTemplate.Attributes)
                                         {
                                             <div class="rc-form-field">
-                                                <label>@typeattribute.Name (+@typeattribute.DefaultValue)</label>
+                                                <label>@typeattribute.Name</label>
                                                 <input type="number"
                                                        min="0"
                                                        max="@GetCreationAttributeInputMax(typeattribute.AttributeDefinitionId)"

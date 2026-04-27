@@ -1078,6 +1078,9 @@
 	<data name="GameSystem_Editor_AddTalentRow" xml:space="preserve">
 		<value>Ajouter un talent</value>
 	</data>
+	<data name="GameSystem_Editor_AddTraitRow" xml:space="preserve">
+		<value>Ajouter un attribut</value>
+	</data>
 	<data name="GameSystem_Editor_AddTraitOptionRow" xml:space="preserve">
 		<value>Ajouter une option</value>
 	</data>
@@ -1795,7 +1798,7 @@
 		<value>Valeur finale</value>
 	</data>
 	<data name="Test_GameMasterSectionTitle" xml:space="preserve">
-		<value>Test de dés</value>
+		<value>Test de Caractéristique/Compétence</value>
 	</data>
 	<data name="Test_GlobalOutcome_GlobalFailure" xml:space="preserve">
 		<value>Résultat global : échec global</value>
@@ -3627,14 +3630,20 @@
 	<data name="Backend_PollPresetNotFound" xml:space="preserve">
   <value>Preset de sondage introuvable.</value>
 </data>
-	<data name="Test_SavePreset" xml:space="preserve">
+	<data name="Test_Presets" xml:space="preserve">
+  <value>Preset de test</value>
+</data>
+<data name="Test_SavePreset" xml:space="preserve">
   <value>Enregistrer preset</value>
 </data>
 	<data name="Test_SelectPreset" xml:space="preserve">
-  <value>Sélectionner un preset</value>
+  <value>Nouveau preset</value>
 </data>
 	<data name="Test_DeletePreset" xml:space="preserve">
   <value>Supprimer le preset</value>
+</data>
+	<data name="Test_ConfirmDeletePreset" xml:space="preserve">
+  <value>Êtes-vous sûr de vouloir supprimer le preset "{0}" ?</value>
 </data>
 	<data name="Test_PresetName" xml:space="preserve">
   <value>Nom du preset</value>
@@ -3847,12 +3856,6 @@
 	<data name="Test_BonusMalus" xml:space="preserve">
   <value>Bonus / malus</value>
 </data>
-	<data name="Test_Bonus" xml:space="preserve">
-  <value>Bonus</value>
-</data>
-	<data name="Test_Malus" xml:space="preserve">
-  <value>Malus</value>
-</data>
 	<data name="Backend_InvalidAdvancedModifierSourceMetric" xml:space="preserve">
   <value>La metric source du modificateur avancé est invalide.</value>
 </data>
@@ -3861,5 +3864,53 @@
 </data>
 	<data name="Backend_InvalidAdvancedModifierValue" xml:space="preserve">
   <value>La valeur du modificateur avancé est invalide.</value>
+</data>
+	<data name="Common_And" xml:space="preserve">
+  <value>et</value>
+</data>
+	<data name="Common_To" xml:space="preserve">
+  <value>à</value>
+</data>
+	<data name="GameSystem_Editor_SelectElementHint" xml:space="preserve">
+  <value>Sélectionnez une catégorie ou un élément à gauche pour afficher son détail éditable.</value>
+</data>
+	<data name="GameSystem_Editor_UntitledElement" xml:space="preserve">
+  <value>Élément sans nom</value>
+</data>
+	<data name="GameSystem_Editor_NoDescriptionSummary" xml:space="preserve">
+  <value>Aucune description</value>
+</data>
+	<data name="GameSystem_Editor_NoDerivedComponentsSummary" xml:space="preserve">
+  <value>Aucune caractéristique liée</value>
+</data>
+	<data name="GameSystem_Editor_NoMetricFormulaSummary" xml:space="preserve">
+  <value>Aucune formule</value>
+</data>
+	<data name="GameSystem_Editor_NoTraitOptionsSummary" xml:space="preserve">
+  <value>Aucune option</value>
+</data>
+	<data name="GameSystem_Editor_GaugeHealthType" xml:space="preserve">
+  <value>Santé</value>
+</data>
+	<data name="GameSystem_Editor_GaugeStandardType" xml:space="preserve">
+  <value>Standard</value>
+</data>
+	<data name="GameSystem_Editor_PendingChangesTitle" xml:space="preserve">
+  <value>Des changements ne sont pas enregistrés</value>
+</data>
+	<data name="GameSystem_Editor_PendingChangesBody" xml:space="preserve">
+  <value>N’oubliez pas d’utiliser le bouton Enregistrer pour valider les modifications.</value>
+</data>
+	<data name="GameSystem_Editor_AllChangesSavedTitle" xml:space="preserve">
+  <value>Dernière version sauvegardée</value>
+</data>
+	<data name="GameSystem_Editor_AllChangesSavedBody" xml:space="preserve">
+  <value>La version actuellement chargée correspond bien à l’état enregistré.</value>
+</data>
+	<data name="EditGameSystem_DerivedStatComponents" xml:space="preserve">
+  <value>Composants de la compétence</value>
+</data>
+	<data name="Backend_GameSystemDeletedReferenceConfirmationRequired" xml:space="preserve">
+  <value>Attention, un élément supprimé est encore utilisé par d’autres éléments. Confirmer supprimera aussi les références concernées :</value>
 </data>
 </root>
