@@ -1,3 +1,4 @@
+
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -64,6 +65,7 @@ builder.Services.AddScoped<IGameTestService, GameTestService>();
 builder.Services.AddScoped<ISessionNotifier, SignalRSessionNotifier>();
 builder.Services.AddScoped<IPollService, PollService>();
 builder.Services.AddScoped<IMassDistributionService, MassDistributionService>();
+builder.Services.AddScoped<IAdministrationService, AdministrationService>();
 
 builder.Services.AddSingleton<IPresenceTracker, PresenceTracker>();
 builder.Services.AddSingleton<GameTestAutoRollScheduler>();

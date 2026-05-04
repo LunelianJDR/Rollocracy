@@ -1,0 +1,731 @@
+﻿@page "/admin"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Admin
+@using Rollocracy.Domain.Interfaces
+@using Rollocracy.Localization
+
+@inject IAdministrationService AdministrationService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
+@inject IJSRuntime JS
+
+<PageTitle>@L["Admin_Title"]</PageTitle>
+
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToLogin)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (!HasAdminAccess)
+{
+    <div class="rc-inline-error">@L["Admin_AccessDenied"]</div>
+}
+else if (Dashboard is null)
+{
+    <div class="rc-inline-error">@L["Admin_LoadError"]</div>
+}
+else
+{
+    <section class="rc-tool-section rc-admin-page">
+        <div class="rc-tool-panel">
+            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                <div class="rc-tool-panel__header-main">
+                    <h3 class="rc-tool-panel__title">@L["Admin_Title"]</h3>
+                    <p class="rc-tool-panel__subtitle">@L["Admin_Subtitle"]</p>
+                </div>
+                <div class="rc-tool-actions">
+                    <button type="button" @onclick="LoadDashboardAsync">@L["Common_Refresh"]</button>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Message))
+            {
+                <div class="rc-inline-warning">@Message</div>
+            }
+
+            <div class="rc-test-stats-grid">
+                <div class="rc-stat-card"><span class="rc-stat-card__label">@L["Admin_Stats_Users"]</span><span class="rc-stat-card__value">@Dashboard.UserCount</span></div>
+                <div class="rc-stat-card"><span class="rc-stat-card__label">@L["Admin_Stats_GameMasters"]</span><span class="rc-stat-card__value">@Dashboard.GameMasterAccountCount</span></div>
+                <div class="rc-stat-card"><span class="rc-stat-card__label">@L["Admin_Stats_Sessions"]</span><span class="rc-stat-card__value">@Dashboard.ActiveSessionCount / @Dashboard.SessionCount</span></div>
+                <div class="rc-stat-card"><span class="rc-stat-card__label">@L["Admin_Stats_Characters"]</span><span class="rc-stat-card__value">@Dashboard.AliveCharacterCount / @Dashboard.CharacterCount</span></div>
+            </div>
+        </div>
+
+        <details class="rc-collapse-section" open>
+            <summary class="rc-collapse-section__summary">
+                <div class="rc-collapse-section__summary-text">
+                    <div class="rc-collapse-section__title">@L["Admin_PatchNotes_Title"]</div>
+                    <div class="rc-collapse-section__subtitle">@L["Admin_PatchNotes_Subtitle"]</div>
+                </div>
+            </summary>
+            <div class="rc-collapse-section__body">
+                <div class="rc-admin-two-columns">
+                    <div class="rc-tool-panel">
+                        <div class="rc-tool-panel__header">
+                            <h4 class="rc-tool-panel__title">@L["Admin_PatchNotes_List"]</h4>
+                            <button type="button" @onclick="NewPatchNote">@L["Admin_NewPatchNote"]</button>
+                        </div>
+                        <div class="rc-admin-list">
+                            @foreach (var patchNote in Dashboard.PatchNotes)
+                            {
+                                <button type="button" class="rc-admin-list-item @(PatchNoteEditor.Id == patchNote.Id ? "selected" : string.Empty)" @onclick="() => EditPatchNote(patchNote)">
+                                    <strong>@patchNote.Version</strong>
+                                    <span>@(patchNote.IsPublished ? L["Admin_Published"] : L["Admin_Draft"])</span>
+                                    <span>@patchNote.Entries.Count @L["Admin_Entries"]</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="rc-tool-panel">
+                        <div class="rc-tool-form-grid">
+                            <div class="rc-form-field">
+                                <label>@L["Admin_Version"]</label>
+                                <input @bind="PatchNoteEditor.Version" />
+                            </div>
+                            <label class="rc-filter-toggle rc-admin-inline-toggle">
+                                <input type="checkbox" @bind="PatchNoteEditor.IsPublished" />
+                                <span>@L["Admin_Published"]</span>
+                            </label>
+                            <div class="rc-form-field">
+                                <label>@L["Admin_DisplayOrder"]</label>
+                                <input type="number" @bind="PatchNoteEditor.DisplayOrder" />
+                            </div>
+                        </div>
+
+                        <div class="rc-tool-subsection">
+                            <div class="rc-tool-subsection__title">@L["Admin_AddPatchNoteEntry"]</div>
+                            <div class="rc-tool-form-grid">
+                                <div class="rc-form-field"><label>FR</label><input @bind="NewPatchNoteEntryFr" /></div>
+                                <div class="rc-form-field"><label>EN</label><input @bind="NewPatchNoteEntryEn" /></div>
+                            </div>
+                            <div class="rc-tool-actions"><button type="button" @onclick="AddPatchNoteEntry">@L["Admin_AddEntry"]</button></div>
+                        </div>
+
+                        <div class="rc-admin-entry-list">
+                            @for (var i = 0; i < PatchNoteEditor.Entries.Count; i++)
+                            {
+                                var entry = PatchNoteEditor.Entries[i];
+                                var index = i;
+                                <div class="rc-filter-group-card">
+                                    <div class="rc-tool-form-grid">
+                                        <div class="rc-form-field"><label>FR</label><input @bind="entry.TextFr" /></div>
+                                        <div class="rc-form-field"><label>EN</label><input @bind="entry.TextEn" /></div>
+                                    </div>
+                                    <div class="rc-tool-actions">
+                                        <button type="button" @onclick="() => MovePatchNoteEntry(index, -1)" disabled="@(index == 0)">↑</button>
+                                        <button type="button" @onclick="() => MovePatchNoteEntry(index, 1)" disabled="@(index >= PatchNoteEditor.Entries.Count - 1)">↓</button>
+                                        <button type="button" @onclick="() => RemovePatchNoteEntry(index)">@L["Common_Remove"]</button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="rc-tool-actions">
+                            <button type="button" @onclick="SavePatchNoteAsync">@L["Common_Save"]</button>
+                            @if (PatchNoteEditor.Id.HasValue)
+                            {
+                                <button type="button" @onclick="ConfirmDeletePatchNote">@L["Common_Remove"]</button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <details class="rc-collapse-section" open>
+            <summary class="rc-collapse-section__summary">
+                <div class="rc-collapse-section__summary-text">
+                    <div class="rc-collapse-section__title">@L["Admin_PlannedFeatures_Title"]</div>
+                    <div class="rc-collapse-section__subtitle">@L["Admin_PlannedFeatures_Subtitle"]</div>
+                </div>
+            </summary>
+            <div class="rc-collapse-section__body">
+                <div class="rc-admin-two-columns">
+                    <div class="rc-tool-panel">
+                        <div class="rc-tool-panel__header"><h4 class="rc-tool-panel__title">@L["Admin_PlannedFeatures_List"]</h4><button type="button" @onclick="NewPlannedFeature">@L["Admin_NewPlannedFeature"]</button></div>
+                        <div class="rc-admin-list">
+                            @foreach (var feature in Dashboard.PlannedFeatures)
+                            {
+                                <button type="button" class="rc-admin-list-item @(PlannedFeatureEditor.Id == feature.Id ? "selected" : string.Empty)" @onclick="() => EditPlannedFeature(feature)">
+                                    <strong>@(string.IsNullOrWhiteSpace(feature.TextFr) ? feature.TextEn : feature.TextFr)</strong>
+                                    <span>@(feature.IsActive ? L["Admin_Active"] : L["Admin_Inactive"])</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                    <div class="rc-tool-panel">
+                        <div class="rc-tool-form-grid">
+                            <div class="rc-form-field"><label>FR</label><textarea rows="4" @bind="PlannedFeatureEditor.TextFr"></textarea></div>
+                            <div class="rc-form-field"><label>EN</label><textarea rows="4" @bind="PlannedFeatureEditor.TextEn"></textarea></div>
+                            <div class="rc-form-field"><label>@L["Admin_DisplayOrder"]</label><input type="number" @bind="PlannedFeatureEditor.DisplayOrder" /></div>
+                            <label class="rc-filter-toggle rc-admin-inline-toggle"><input type="checkbox" @bind="PlannedFeatureEditor.IsActive" /><span>@L["Admin_Active"]</span></label>
+                        </div>
+                        <div class="rc-tool-actions">
+                            <button type="button" @onclick="SavePlannedFeatureAsync">@L["Common_Save"]</button>
+                            @if (PlannedFeatureEditor.Id.HasValue)
+                            {
+                                <button type="button" @onclick="ConfirmDeletePlannedFeature">@L["Common_Remove"]</button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <details class="rc-collapse-section">
+            <summary class="rc-collapse-section__summary">
+                <div class="rc-collapse-section__summary-text"><div class="rc-collapse-section__title">@L["Admin_Users_Title"]</div><div class="rc-collapse-section__subtitle">@L["Admin_Users_Subtitle"]</div></div>
+            </summary>
+            <div class="rc-collapse-section__body">
+                <div class="rc-tool-panel">
+                    <div class="rc-tool-form-grid">
+                        <div class="rc-form-field"><label>@L["Common_Search"]</label><input @bind="UserSearch" @bind:event="oninput" /></div>
+                        <div class="rc-form-field"><label>@L["Session_Manage_SortBy"]</label><select @bind="UserSort"><option value="username">@L["Common_Username"]</option><option value="email">Email</option><option value="plan">@L["Admin_Subscription"]</option><option value="max">JMS</option></select></div>
+                    </div>
+                    <div class="rc-admin-table-wrap">
+                        <table class="rc-admin-table">
+                            <thead><tr><th>@L["Common_Username"]</th><th>Email</th><th>Twitch</th><th>@L["Admin_Subscription"]</th><th>JMS</th><th>@L["Common_Language"]</th><th>@L["Admin_Actions"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var user in FilteredUsers)
+                                {
+                                    <tr>
+                                        <td><input value="@user.Username" @onchange="e => user.Username = e.Value?.ToString() ?? string.Empty" /></td>
+                                        <td><input value="@user.Email" @onchange="e => user.Email = e.Value?.ToString()" /></td>
+                                        <td>@(user.IsTwitchLinked ? L["Common_Yes"] : L["Common_No"])</td>
+                                        <td>
+                                            <select value="@user.CurrentSubscriptionPlanId" @onchange="e => SetUserPlan(user, e.Value?.ToString())">
+                                                <option value="">@L["Common_None"]</option>
+                                                @foreach (var plan in Dashboard.SubscriptionPlans)
+                                                {
+                                                    <option value="@plan.Id">@plan.Name</option>
+                                                }
+                                            </select>
+                                        </td>
+                                        <td><input type="number" value="@user.MaxPlayersPerSession" @onchange="e => user.MaxPlayersPerSession = ParseInt(e.Value, user.MaxPlayersPerSession)" /></td>
+                                        <td><select value="@user.Language" @onchange="e => SetUserLanguage(user, e.Value?.ToString())"><option value="fr">FR</option><option value="en">EN</option></select></td>
+                                        <td>
+                                            <div class="rc-tool-actions">
+                                                <label class="rc-filter-toggle"><input type="checkbox" checked="@user.IsGameMaster" @onchange="e => user.IsGameMaster = e.Value is bool b && b" /><span>@L["Admin_IsAdmin"]</span></label>
+                                                <label class="rc-filter-toggle"><input type="checkbox" checked="@user.WantsToBeGameMaster" @onchange="e => user.WantsToBeGameMaster = e.Value is bool b && b" /><span>MJ</span></label>
+                                                <label class="rc-filter-toggle"><input type="checkbox" checked="@user.IsEmailVerified" @onchange="e => user.IsEmailVerified = e.Value is bool b && b" /><span>Email OK</span></label>
+                                                <button type="button" @onclick="() => SaveUserAsync(user)">@L["Common_Save"]</button>
+                                                <button type="button" @onclick="() => SendVerificationAsync(user)">@L["Admin_SendVerificationEmail"]</button>
+                                                <button type="button" @onclick="() => SendPasswordResetAsync(user)">@L["Admin_SendPasswordReset"]</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <details class="rc-collapse-section">
+            <summary class="rc-collapse-section__summary"><div class="rc-collapse-section__summary-text"><div class="rc-collapse-section__title">@L["Admin_SubscriptionPlans_Title"]</div><div class="rc-collapse-section__subtitle">@L["Admin_SubscriptionPlans_Subtitle"]</div></div></summary>
+            <div class="rc-collapse-section__body">
+                <div class="rc-tool-panel">
+                    <div class="rc-tool-actions"><button type="button" @onclick="NewSubscriptionPlan">@L["Admin_NewSubscriptionPlan"]</button></div>
+                    <div class="rc-admin-table-wrap">
+                        <table class="rc-admin-table">
+                            <thead><tr><th>Code</th><th>@L["Common_Name"]</th><th>@L["Admin_MonthlyPriceTtc"]</th><th>JMS</th><th>@L["Admin_DisplayOrder"]</th><th>@L["Admin_Active"]</th><th>@L["Admin_Users"]</th><th>@L["Admin_Actions"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var plan in Dashboard.SubscriptionPlans)
+                                {
+                                    <tr>
+                                        <td><input value="@plan.Code" @onchange="e => plan.Code = e.Value?.ToString() ?? string.Empty" /></td>
+                                        <td><input value="@plan.Name" @onchange="e => plan.Name = e.Value?.ToString() ?? string.Empty" /></td>
+                                        <td><input type="number" step="0.01" value="@plan.MonthlyPriceTtc" @onchange="e => plan.MonthlyPriceTtc = ParseDecimal(e.Value, plan.MonthlyPriceTtc)" /></td>
+                                        <td><input type="number" value="@plan.MaxPlayersPerSession" @onchange="e => plan.MaxPlayersPerSession = ParseInt(e.Value, plan.MaxPlayersPerSession)" /></td>
+                                        <td><input type="number" value="@plan.DisplayOrder" @onchange="e => plan.DisplayOrder = ParseInt(e.Value, plan.DisplayOrder)" /></td>
+                                        <td><input type="checkbox" checked="@plan.IsActive" @onchange="e => plan.IsActive = e.Value is bool b && b" /></td>
+                                        <td>@plan.UserCount</td>
+                                        <td><div class="rc-tool-actions"><button type="button" @onclick="() => SaveSubscriptionPlanAsync(plan)">@L["Common_Save"]</button><button type="button" @onclick="() => ConfirmDeleteSubscriptionPlan(plan)">@L["Common_Remove"]</button></div></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <details class="rc-collapse-section">
+            <summary class="rc-collapse-section__summary"><div class="rc-collapse-section__summary-text"><div class="rc-collapse-section__title">@L["Admin_GameSystems_Title"]</div><div class="rc-collapse-section__subtitle">@L["Admin_GameSystems_Subtitle"]</div></div></summary>
+            <div class="rc-collapse-section__body">
+                <div class="rc-tool-panel">
+                    <div class="rc-tool-form-grid"><div class="rc-form-field"><label>@L["Common_Search"]</label><input @bind="GameSystemSearch" @bind:event="oninput" /></div></div>
+                    <div class="rc-admin-table-wrap">
+                        <table class="rc-admin-table">
+                            <thead><tr><th>@L["Common_Name"]</th><th>@L["Admin_Creator"]</th><th>@L["Admin_Mode"]</th><th>@L["Admin_UsedBySessions"]</th><th>Generic</th><th>@L["Admin_Actions"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var system in FilteredGameSystems)
+                                {
+                                    <tr><td>@system.Name</td><td>@system.CreatorUsername</td><td>@system.TestResolutionMode</td><td>@system.SessionsUsingCount</td><td>@(system.IsGeneric ? L["Common_Yes"] : L["Common_No"])</td><td><div class="rc-tool-actions"><button type="button" @onclick="() => OpenGameSystem(system)">@L["Admin_OpenEditor"]</button><button type="button" @onclick="() => MakeGameSystemGenericAsync(system)" disabled="@system.IsGeneric">@L["Admin_MakeGeneric"]</button><button type="button" @onclick="() => ConfirmDeleteGameSystem(system)">@L["Common_Remove"]</button></div></td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <details class="rc-collapse-section">
+            <summary class="rc-collapse-section__summary"><div class="rc-collapse-section__summary-text"><div class="rc-collapse-section__title">@L["Admin_Sessions_Title"]</div><div class="rc-collapse-section__subtitle">@L["Admin_Sessions_Subtitle"]</div></div></summary>
+            <div class="rc-collapse-section__body">
+                <div class="rc-tool-panel">
+                    <div class="rc-tool-form-grid"><div class="rc-form-field"><label>@L["Common_Search"]</label><input @bind="SessionSearch" @bind:event="oninput" /></div></div>
+                    <div class="rc-admin-table-wrap">
+                        <table class="rc-admin-table">
+                            <thead><tr><th>MJ</th><th>@L["Session_Name"]</th><th>@L["Admin_Characters"]</th><th>@L["Session_IsActive"]</th><th>@L["Admin_GameSystem"]</th><th>@L["Common_Url"]</th><th>@L["Admin_Actions"]</th></tr></thead>
+                            <tbody>
+                                @foreach (var session in FilteredSessions)
+                                {
+                                    <tr><td>@session.GameMasterUsername</td><td>@session.SessionName</td><td>@session.AliveCharacterCount / @session.TotalCharacterCount</td><td>@(session.IsActive ? L["Admin_Active"] : L["Admin_Inactive"])</td><td>@(session.GameSystemName ?? L["Common_None"])</td><td><span class="rc-admin-url">@session.JoinUrl</span></td><td><div class="rc-tool-actions"><button type="button" @onclick="() => ToggleSessionAsync(session)">@(session.IsActive ? L["Session_List_Deactivate"] : L["Session_List_Activate"])</button><button type="button" @onclick="() => ConfirmDeleteSession(session)">@L["Common_Remove"]</button></div></td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </details>
+    </section>
+}
+
+@code {
+    private bool IsLoaded;
+    private bool RedirectToLogin;
+    private bool HasAdminAccess;
+    private Guid CurrentUserId;
+    private AdminDashboardDto? Dashboard;
+    private string Message = string.Empty;
+
+    private AdminPatchNoteSaveDto PatchNoteEditor = new();
+    private string NewPatchNoteEntryFr = string.Empty;
+    private string NewPatchNoteEntryEn = string.Empty;
+    private AdminPlannedFeatureSaveDto PlannedFeatureEditor = new();
+
+    private string UserSearch = string.Empty;
+    private string UserSort = "username";
+    private string GameSystemSearch = string.Empty;
+    private string SessionSearch = string.Empty;
+
+    private IEnumerable<AdminUserDto> FilteredUsers => SortUsers(Dashboard?.Users ?? new List<AdminUserDto>())
+        .Where(x => string.IsNullOrWhiteSpace(UserSearch) ||
+                    x.Username.Contains(UserSearch, StringComparison.OrdinalIgnoreCase) ||
+                    (x.Email?.Contains(UserSearch, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (x.CurrentSubscriptionPlanName?.Contains(UserSearch, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    private IEnumerable<AdminGameSystemDto> FilteredGameSystems => (Dashboard?.GameSystems ?? new List<AdminGameSystemDto>())
+        .Where(x => string.IsNullOrWhiteSpace(GameSystemSearch) ||
+                    x.Name.Contains(GameSystemSearch, StringComparison.OrdinalIgnoreCase) ||
+                    x.CreatorUsername.Contains(GameSystemSearch, StringComparison.OrdinalIgnoreCase))
+        .OrderBy(x => x.Name);
+
+    private IEnumerable<AdminSessionDto> FilteredSessions => (Dashboard?.Sessions ?? new List<AdminSessionDto>())
+        .Where(x => string.IsNullOrWhiteSpace(SessionSearch) ||
+                    x.SessionName.Contains(SessionSearch, StringComparison.OrdinalIgnoreCase) ||
+                    x.GameMasterUsername.Contains(SessionSearch, StringComparison.OrdinalIgnoreCase) ||
+                    (x.GameSystemName?.Contains(SessionSearch, StringComparison.OrdinalIgnoreCase) ?? false))
+        .OrderByDescending(x => x.CreatedAtUtc);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (user.Identity?.IsAuthenticated != true || !Guid.TryParse(userIdValue, out CurrentUserId))
+        {
+            RedirectToLogin = true;
+            IsLoaded = true;
+            return;
+        }
+
+        HasAdminAccess = await AdministrationService.IsAdministratorAsync(CurrentUserId);
+        if (HasAdminAccess)
+        {
+            await LoadDashboardAsync();
+        }
+
+        IsLoaded = true;
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && RedirectToLogin)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        Message = string.Empty;
+        Dashboard = await AdministrationService.GetDashboardAsync(CurrentUserId, Navigation.BaseUri);
+    }
+
+    private IEnumerable<AdminUserDto> SortUsers(IEnumerable<AdminUserDto> users)
+    {
+        return UserSort switch
+        {
+            "email" => users.OrderBy(x => x.Email),
+            "plan" => users.OrderBy(x => x.CurrentSubscriptionPlanName),
+            "max" => users.OrderByDescending(x => x.MaxPlayersPerSession),
+            _ => users.OrderBy(x => x.Username)
+        };
+    }
+
+    private void NewPatchNote()
+    {
+        var nextDisplayOrder = Dashboard.PatchNotes.Count == 0
+            ? 1
+            : Dashboard.PatchNotes.Max(x => x.DisplayOrder) + 1;
+
+        PatchNoteEditor = new AdminPatchNoteSaveDto
+        {
+            IsPublished = true,
+            PublishedAtUtc = DateTime.UtcNow,
+            DisplayOrder = nextDisplayOrder
+        };
+
+        NewPatchNoteEntryFr = string.Empty;
+        NewPatchNoteEntryEn = string.Empty;
+    }
+
+    private void EditPatchNote(AdminPatchNoteDto patchNote)
+    {
+        PatchNoteEditor = new AdminPatchNoteSaveDto
+        {
+            Id = patchNote.Id,
+            Version = patchNote.Version,
+            IsPublished = patchNote.IsPublished,
+            DisplayOrder = patchNote.DisplayOrder,
+            PublishedAtUtc = patchNote.PublishedAtUtc,
+            Entries = patchNote.Entries.Select(x => new AdminPatchNoteEntryDto { Id = x.Id, TextFr = x.TextFr, TextEn = x.TextEn, DisplayOrder = x.DisplayOrder }).ToList()
+        };
+    }
+
+    private void AddPatchNoteEntry()
+    {
+        if (string.IsNullOrWhiteSpace(NewPatchNoteEntryFr) && string.IsNullOrWhiteSpace(NewPatchNoteEntryEn))
+            return;
+
+        PatchNoteEditor.Entries.Add(new AdminPatchNoteEntryDto
+        {
+            TextFr = NewPatchNoteEntryFr.Trim(),
+            TextEn = NewPatchNoteEntryEn.Trim(),
+            DisplayOrder = PatchNoteEditor.Entries.Count
+        });
+
+        NewPatchNoteEntryFr = string.Empty;
+        NewPatchNoteEntryEn = string.Empty;
+    }
+
+    private void RemovePatchNoteEntry(int index)
+    {
+        if (index < 0 || index >= PatchNoteEditor.Entries.Count)
+            return;
+
+        PatchNoteEditor.Entries.RemoveAt(index);
+        NormalizePatchNoteEntryOrder();
+    }
+
+    private void MovePatchNoteEntry(int index, int delta)
+    {
+        var targetIndex = index + delta;
+        if (index < 0 || targetIndex < 0 || index >= PatchNoteEditor.Entries.Count || targetIndex >= PatchNoteEditor.Entries.Count)
+            return;
+
+        (PatchNoteEditor.Entries[index], PatchNoteEditor.Entries[targetIndex]) = (PatchNoteEditor.Entries[targetIndex], PatchNoteEditor.Entries[index]);
+        NormalizePatchNoteEntryOrder();
+    }
+
+    private void NormalizePatchNoteEntryOrder()
+    {
+        for (var i = 0; i < PatchNoteEditor.Entries.Count; i++)
+        {
+            PatchNoteEditor.Entries[i].DisplayOrder = i;
+        }
+    }
+
+    private async Task SavePatchNoteAsync()
+    {
+        try
+        {
+            NormalizePatchNoteEntryOrder();
+            await AdministrationService.SavePatchNoteAsync(CurrentUserId, PatchNoteEditor);
+            await LoadDashboardAsync();
+            NewPatchNote();
+            Message = L["Admin_Saved"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ConfirmDeletePatchNote()
+    {
+        if (!PatchNoteEditor.Id.HasValue)
+            return;
+
+        if (!await ConfirmDestructiveActionAsync())
+            return;
+
+        await AdministrationService.DeletePatchNoteAsync(CurrentUserId, PatchNoteEditor.Id.Value);
+        await LoadDashboardAsync();
+        NewPatchNote();
+        Message = L["Admin_Deleted"];
+    }
+
+    private void NewPlannedFeature()
+    {
+        PlannedFeatureEditor = new AdminPlannedFeatureSaveDto { IsActive = true };
+    }
+
+    private void EditPlannedFeature(AdminPlannedFeatureDto feature)
+    {
+        PlannedFeatureEditor = new AdminPlannedFeatureSaveDto
+        {
+            Id = feature.Id,
+            TextFr = feature.TextFr,
+            TextEn = feature.TextEn,
+            DisplayOrder = feature.DisplayOrder,
+            IsActive = feature.IsActive
+        };
+    }
+
+    private async Task SavePlannedFeatureAsync()
+    {
+        try
+        {
+            await AdministrationService.SavePlannedFeatureAsync(CurrentUserId, PlannedFeatureEditor);
+            await LoadDashboardAsync();
+            NewPlannedFeature();
+            Message = L["Admin_Saved"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ConfirmDeletePlannedFeature()
+    {
+        if (!PlannedFeatureEditor.Id.HasValue)
+            return;
+
+        if (!await ConfirmDestructiveActionAsync())
+            return;
+
+        await AdministrationService.DeletePlannedFeatureAsync(CurrentUserId, PlannedFeatureEditor.Id.Value);
+        await LoadDashboardAsync();
+        NewPlannedFeature();
+        Message = L["Admin_Deleted"];
+    }
+
+    private void SetUserPlan(AdminUserDto user, string? value)
+    {
+        user.CurrentSubscriptionPlanId = Guid.TryParse(value, out var planId) ? planId : null;
+    }
+
+    private void SetUserLanguage(AdminUserDto user, string? language)
+    {
+        user.Language = string.Equals(language, "en", StringComparison.OrdinalIgnoreCase) ? "en" : "fr";
+    }
+
+    private void OpenGameSystem(AdminGameSystemDto system)
+    {
+        Navigation.NavigateTo($"/mj/gamesystems/{system.Id}");
+    }
+
+    private async Task SaveUserAsync(AdminUserDto user)
+    {
+        try
+        {
+            await AdministrationService.UpdateUserAsync(CurrentUserId, new AdminUserUpdateDto
+            {
+                UserId = user.Id,
+                Username = user.Username,
+                Email = user.Email,
+                IsEmailVerified = user.IsEmailVerified,
+                IsGameMaster = user.IsGameMaster,
+                WantsToBeGameMaster = user.WantsToBeGameMaster,
+                Language = user.Language,
+                MaxPlayersPerSession = user.MaxPlayersPerSession,
+                CurrentSubscriptionPlanId = user.CurrentSubscriptionPlanId
+            });
+            await LoadDashboardAsync();
+            Message = L["Admin_Saved"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task SendVerificationAsync(AdminUserDto user)
+    {
+        try
+        {
+            await AdministrationService.SendUserEmailVerificationAsync(CurrentUserId, user.Id);
+            Message = L["Admin_EmailSent"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task SendPasswordResetAsync(AdminUserDto user)
+    {
+        try
+        {
+            await AdministrationService.SendUserPasswordResetAsync(CurrentUserId, user.Id);
+            Message = L["Admin_EmailSent"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void NewSubscriptionPlan()
+    {
+        Dashboard?.SubscriptionPlans.Insert(0, new AdminSubscriptionPlanDto { Id = Guid.Empty, Code = "new-plan", Name = L["Admin_NewSubscriptionPlan"].Value, IsActive = true });
+    }
+
+    private async Task SaveSubscriptionPlanAsync(AdminSubscriptionPlanDto plan)
+    {
+        try
+        {
+            await AdministrationService.SaveSubscriptionPlanAsync(CurrentUserId, new AdminSubscriptionPlanSaveDto
+            {
+                Id = plan.Id == Guid.Empty ? null : plan.Id,
+                Code = plan.Code,
+                Name = plan.Name,
+                MonthlyPriceTtc = plan.MonthlyPriceTtc,
+                MaxPlayersPerSession = plan.MaxPlayersPerSession,
+                DisplayOrder = plan.DisplayOrder,
+                IsActive = plan.IsActive
+            });
+            await LoadDashboardAsync();
+            Message = L["Admin_Saved"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ConfirmDeleteSubscriptionPlan(AdminSubscriptionPlanDto plan)
+    {
+        try
+        {
+            if (plan.Id == Guid.Empty)
+            {
+                Dashboard?.SubscriptionPlans.Remove(plan);
+                return;
+            }
+
+            if (!await ConfirmDestructiveActionAsync())
+                return;
+
+            await AdministrationService.DeleteSubscriptionPlanAsync(CurrentUserId, plan.Id);
+            await LoadDashboardAsync();
+            Message = L["Admin_Deleted"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task MakeGameSystemGenericAsync(AdminGameSystemDto system)
+    {
+        try
+        {
+            await AdministrationService.MakeGameSystemGenericAsync(CurrentUserId, system.Id);
+            await LoadDashboardAsync();
+            Message = L["Admin_Saved"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ConfirmDeleteGameSystem(AdminGameSystemDto system)
+    {
+        try
+        {
+            if (!await ConfirmDestructiveActionAsync())
+                return;
+
+            await AdministrationService.DeleteGameSystemAsync(CurrentUserId, system.Id);
+            await LoadDashboardAsync();
+            Message = L["Admin_Deleted"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ToggleSessionAsync(AdminSessionDto session)
+    {
+        try
+        {
+            await AdministrationService.SetSessionActiveAsync(CurrentUserId, session.Id, !session.IsActive);
+            await LoadDashboardAsync();
+            Message = L["Admin_Saved"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ConfirmDeleteSession(AdminSessionDto session)
+    {
+        try
+        {
+            if (!await ConfirmDestructiveActionAsync())
+                return;
+
+            await AdministrationService.DeleteSessionAsync(CurrentUserId, session.Id);
+            await LoadDashboardAsync();
+            Message = L["Admin_Deleted"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task<bool> ConfirmDestructiveActionAsync()
+    {
+        return await JS.InvokeAsync<bool>("confirm", L["Admin_ConfirmDelete"].Value);
+    }
+
+    private static int ParseInt(object? value, int fallback)
+        => int.TryParse(value?.ToString(), out var parsed) ? parsed : fallback;
+
+    private static decimal ParseDecimal(object? value, decimal fallback)
+        => decimal.TryParse(value?.ToString(), out var parsed) ? parsed : fallback;
+}

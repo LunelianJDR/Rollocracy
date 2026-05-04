@@ -1,4 +1,5 @@
-﻿@page "/account/settings"
+﻿
+@page "/account/settings"
 @attribute [Authorize]
 @rendermode InteractiveServer
 @using System.Security.Claims
@@ -57,8 +58,18 @@ else
 
                     <div class="rc-stat-card">
                         <span class="rc-stat-card__label">@L["Account_Settings_Email"]</span>
-                        <span class="rc-stat-card__value rc-stat-card__value--small">
-                            @(string.IsNullOrWhiteSpace(Settings.Email) ? L["Account_Settings_NoEmail"] : Settings.Email)
+                        <span class="rc-stat-card__value rc-stat-card__value--small rc-masked-email-line">
+                            <span>@GetDisplayedEmail()</span>
+                            @if (!string.IsNullOrWhiteSpace(Settings.Email))
+                            {
+                                <button type="button"
+                                        class="rc-round-icon-button rc-email-visibility-button"
+                                        title="@(ShowAccountEmail ? L["Account_Settings_HideEmail"] : L["Account_Settings_ShowEmail"])"
+                                        aria-label="@(ShowAccountEmail ? L["Account_Settings_HideEmail"] : L["Account_Settings_ShowEmail"])"
+                                        @onclick="ToggleAccountEmailVisibility">
+                                    👁
+                                </button>
+                            }
                         </span>
                     </div>
 
@@ -85,7 +96,29 @@ else
                 <div class="rc-tool-form-grid">
                     <div class="rc-form-field rc-form-field--full">
                         <label>@L["Account_Settings_Email"]</label>
-                        <input @bind="EditableEmail" type="email" />
+
+                        <div class="rc-account-email-edit">
+                            @if (ShowAccountEmail)
+                            {
+                                <input class="rc-account-email-edit__input"
+                                       @bind="EditableEmail"
+                                       type="email" />
+                            }
+                            else
+                            {
+                                <div class="rc-readonly-value rc-account-email-edit__masked">
+                                    @GetDisplayedEditableEmail()
+                                </div>
+                            }
+
+                            <button type="button"
+                                    class="rc-round-icon-button"
+                                    title="@(ShowAccountEmail ? L["Account_Settings_HideEmail"] : L["Account_Settings_ShowEmail"])"
+                                    aria-label="@(ShowAccountEmail ? L["Account_Settings_HideEmail"] : L["Account_Settings_ShowEmail"])"
+                                    @onclick="ToggleAccountEmailVisibility">
+                                👁
+                            </button>
+                        </div>
                     </div>
 
                     <div class="rc-form-field">
@@ -439,6 +472,7 @@ else
     private string EditableEmail = string.Empty;
     private string EditableLanguage = "fr";
     private string NewUsername = string.Empty;
+    private bool ShowAccountEmail;
 
     private string CurrentPassword = string.Empty;
     private string NewPassword = string.Empty;
@@ -493,6 +527,7 @@ else
             EditableEmail = Settings.Email ?? string.Empty;
             EditableLanguage = Settings.Language;
             NewUsername = Settings.Username;
+            ShowAccountEmail = false;
         }
         catch
         {
@@ -671,6 +706,52 @@ else
             Message = $"{L["Common_Error"]} : {ex.Message}";
             await LoadSettingsAsync();
         }
+    }
+
+    private void ToggleAccountEmailVisibility()
+    {
+        ShowAccountEmail = !ShowAccountEmail;
+    }
+
+    private string GetDisplayedEmail()
+    {
+        if (Settings is null || string.IsNullOrWhiteSpace(Settings.Email))
+            return L["Account_Settings_NoEmail"].Value;
+
+        if (ShowAccountEmail)
+            return Settings.Email;
+
+        return MaskEmail(Settings.Email);
+    }
+
+    private string GetDisplayedEditableEmail()
+    {
+        if (string.IsNullOrWhiteSpace(EditableEmail))
+            return L["Account_Settings_NoEmail"].Value;
+
+        if (ShowAccountEmail)
+            return EditableEmail;
+
+        return MaskEmail(EditableEmail);
+    }
+
+    private static string MaskEmail(string email)
+    {
+        var trimmed = email.Trim();
+        var atIndex = trimmed.IndexOf('@');
+
+        if (atIndex <= 0 || atIndex >= trimmed.Length - 1)
+            return "***";
+
+        var local = trimmed[..atIndex];
+        var domain = trimmed[(atIndex + 1)..];
+        var dotIndex = domain.LastIndexOf('.');
+        var domainName = dotIndex > 0 ? domain[..dotIndex] : domain;
+
+        var localPrefix = local.Length > 0 ? local[0].ToString() : "*";
+        var domainPrefix = domainName.Length > 0 ? domainName[0].ToString() : "*";
+
+        return $"{localPrefix}***@{domainPrefix}***.**";
     }
 
     private string GetLastSensitiveChangeLabel()

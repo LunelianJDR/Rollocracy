@@ -2491,3 +2491,431 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260407140210_M3_CharacterCreationEnhancements') THEN
+    ALTER TABLE "TalentDefinitions" ADD "IsSelectableAtCharacterCreation" boolean NOT NULL DEFAULT FALSE;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260407140210_M3_CharacterCreationEnhancements') THEN
+    ALTER TABLE "ItemDefinitions" ADD "IsSelectableAtCharacterCreation" boolean NOT NULL DEFAULT FALSE;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260407140210_M3_CharacterCreationEnhancements') THEN
+    ALTER TABLE "GameSystems" ADD "StartingItemChoices" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260407140210_M3_CharacterCreationEnhancements') THEN
+    ALTER TABLE "GameSystems" ADD "StartingTalentChoices" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260407140210_M3_CharacterCreationEnhancements') THEN
+    ALTER TABLE "DerivedStatDefinitions" ADD "CreationDistributionPoints" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260407140210_M3_CharacterCreationEnhancements') THEN
+    ALTER TABLE "DerivedStatDefinitions" ADD "MaxCreationDistributionPerCharacter" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260407140210_M3_CharacterCreationEnhancements') THEN
+    ALTER TABLE "AttributeDefinitions" ADD "CreationDistributionPoints" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260407140210_M3_CharacterCreationEnhancements') THEN
+    ALTER TABLE "AttributeDefinitions" ADD "MaxCreationDistributionPerCharacter" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260407140210_M3_CharacterCreationEnhancements') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260407140210_M3_CharacterCreationEnhancements', '10.0.5');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260408200231_M4_ConsumableItems') THEN
+    ALTER TABLE "ItemModifierDefinitions" ADD "FillGaugeCurrentValueOnly" boolean NOT NULL DEFAULT FALSE;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260408200231_M4_ConsumableItems') THEN
+    ALTER TABLE "ItemModifierDefinitions" ADD "OperationType" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260408200231_M4_ConsumableItems') THEN
+    ALTER TABLE "ItemDefinitions" ADD "IsConsumable" boolean NOT NULL DEFAULT FALSE;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260408200231_M4_ConsumableItems') THEN
+    ALTER TABLE "ItemDefinitions" ADD "MaxQuantityPerCharacter" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260408200231_M4_ConsumableItems') THEN
+    ALTER TABLE "CharacterItems" ADD "Quantity" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260408200231_M4_ConsumableItems') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260408200231_M4_ConsumableItems', '10.0.5');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410125512_M5A1_SessionPresets') THEN
+    CREATE TABLE "SessionGameTestPresets" (
+        "Id" uuid NOT NULL,
+        "SessionId" uuid NOT NULL,
+        "Name" text NOT NULL,
+        "PayloadJson" text NOT NULL,
+        "CreatedAtUtc" timestamp with time zone NOT NULL,
+        "UpdatedAtUtc" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_SessionGameTestPresets" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410125512_M5A1_SessionPresets') THEN
+    CREATE TABLE "SessionPollPresets" (
+        "Id" uuid NOT NULL,
+        "SessionId" uuid NOT NULL,
+        "Name" text NOT NULL,
+        "PayloadJson" text NOT NULL,
+        "CreatedAtUtc" timestamp with time zone NOT NULL,
+        "UpdatedAtUtc" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_SessionPollPresets" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410125512_M5A1_SessionPresets') THEN
+    CREATE INDEX "IX_SessionGameTestPresets_SessionId" ON "SessionGameTestPresets" ("SessionId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410125512_M5A1_SessionPresets') THEN
+    CREATE UNIQUE INDEX "IX_SessionGameTestPresets_SessionId_Name" ON "SessionGameTestPresets" ("SessionId", "Name");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410125512_M5A1_SessionPresets') THEN
+    CREATE INDEX "IX_SessionPollPresets_SessionId" ON "SessionPollPresets" ("SessionId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410125512_M5A1_SessionPresets') THEN
+    CREATE UNIQUE INDEX "IX_SessionPollPresets_SessionId_Name" ON "SessionPollPresets" ("SessionId", "Name");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410125512_M5A1_SessionPresets') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260410125512_M5A1_SessionPresets', '10.0.5');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410140831_M5B_TestConsequencesRollback') THEN
+    ALTER TABLE "GameTests" ADD "ConsequencesCancelled" boolean NOT NULL DEFAULT FALSE;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410140831_M5B_TestConsequencesRollback') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260410140831_M5B_TestConsequencesRollback', '10.0.5');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410205313_M6_SessionStore') THEN
+    CREATE TABLE "SessionStoreOffers" (
+        "Id" uuid NOT NULL,
+        "SessionStoreId" uuid NOT NULL,
+        "OfferType" integer NOT NULL,
+        "TargetDefinitionId" uuid NOT NULL,
+        "CurrencySessionGaugeId" uuid NOT NULL,
+        "Cost" integer NOT NULL,
+        "DisplayOrder" integer NOT NULL,
+        CONSTRAINT "PK_SessionStoreOffers" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410205313_M6_SessionStore') THEN
+    CREATE TABLE "SessionStores" (
+        "Id" uuid NOT NULL,
+        "SessionId" uuid NOT NULL,
+        "IsEnabled" boolean NOT NULL,
+        CONSTRAINT "PK_SessionStores" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410205313_M6_SessionStore') THEN
+    CREATE INDEX "IX_SessionStoreOffers_SessionStoreId" ON "SessionStoreOffers" ("SessionStoreId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410205313_M6_SessionStore') THEN
+    CREATE INDEX "IX_SessionStoreOffers_SessionStoreId_DisplayOrder" ON "SessionStoreOffers" ("SessionStoreId", "DisplayOrder");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410205313_M6_SessionStore') THEN
+    CREATE UNIQUE INDEX "IX_SessionStores_SessionId" ON "SessionStores" ("SessionId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260410205313_M6_SessionStore') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260410205313_M6_SessionStore', '10.0.5');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260411123604_M6_GaugeCorrection') THEN
+    ALTER TABLE "SessionStoreOffers" RENAME COLUMN "CurrencySessionGaugeId" TO "CurrencyGaugeDefinitionId";
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260411123604_M6_GaugeCorrection') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260411123604_M6_GaugeCorrection', '10.0.5');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260412132309_P1_DefaultSuccessThreshold') THEN
+    ALTER TABLE "GameSystems" ADD "DefaultSuccessThreshold" integer;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260412132309_P1_DefaultSuccessThreshold') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260412132309_P1_DefaultSuccessThreshold', '10.0.5');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260427095754_AddGameTestDynamicSuccessThreshold') THEN
+    ALTER TABLE "PlayerTestRolls" ADD "EffectiveSuccessThreshold" integer;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260427095754_AddGameTestDynamicSuccessThreshold') THEN
+    ALTER TABLE "GameTests" ADD "SuccessThresholdMetricId" uuid;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260427095754_AddGameTestDynamicSuccessThreshold') THEN
+    ALTER TABLE "GameTests" ADD "SuccessThresholdMetricNameSnapshot" text NOT NULL DEFAULT '';
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260427095754_AddGameTestDynamicSuccessThreshold') THEN
+    ALTER TABLE "GameTests" ADD "SuccessThresholdMode" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260427095754_AddGameTestDynamicSuccessThreshold') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260427095754_AddGameTestDynamicSuccessThreshold', '10.0.5');
+    END IF;
+END $EF$;
+COMMIT;
+
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260504092641_AddAdministrationContent') THEN
+    CREATE TABLE "PatchNotes" (
+        "Id" uuid NOT NULL,
+        "Version" text NOT NULL,
+        "IsPublished" boolean NOT NULL,
+        "DisplayOrder" integer NOT NULL,
+        "PublishedAtUtc" timestamp with time zone NOT NULL,
+        "CreatedAtUtc" timestamp with time zone NOT NULL,
+        "UpdatedAtUtc" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_PatchNotes" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260504092641_AddAdministrationContent') THEN
+    CREATE TABLE "PlannedFeatures" (
+        "Id" uuid NOT NULL,
+        "TextFr" text NOT NULL,
+        "TextEn" text NOT NULL,
+        "DisplayOrder" integer NOT NULL,
+        "IsActive" boolean NOT NULL,
+        "CreatedAtUtc" timestamp with time zone NOT NULL,
+        "UpdatedAtUtc" timestamp with time zone NOT NULL,
+        CONSTRAINT "PK_PlannedFeatures" PRIMARY KEY ("Id")
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260504092641_AddAdministrationContent') THEN
+    CREATE TABLE "PatchNoteEntries" (
+        "Id" uuid NOT NULL,
+        "PatchNoteId" uuid NOT NULL,
+        "TextFr" text NOT NULL,
+        "TextEn" text NOT NULL,
+        "DisplayOrder" integer NOT NULL,
+        CONSTRAINT "PK_PatchNoteEntries" PRIMARY KEY ("Id"),
+        CONSTRAINT "FK_PatchNoteEntries_PatchNotes_PatchNoteId" FOREIGN KEY ("PatchNoteId") REFERENCES "PatchNotes" ("Id") ON DELETE CASCADE
+    );
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260504092641_AddAdministrationContent') THEN
+    CREATE INDEX "IX_PatchNoteEntries_PatchNoteId" ON "PatchNoteEntries" ("PatchNoteId");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260504092641_AddAdministrationContent') THEN
+    CREATE INDEX "IX_PatchNoteEntries_PatchNoteId_DisplayOrder" ON "PatchNoteEntries" ("PatchNoteId", "DisplayOrder");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260504092641_AddAdministrationContent') THEN
+    CREATE INDEX "IX_PatchNotes_IsPublished_DisplayOrder_PublishedAtUtc" ON "PatchNotes" ("IsPublished", "DisplayOrder", "PublishedAtUtc");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260504092641_AddAdministrationContent') THEN
+    CREATE UNIQUE INDEX "IX_PatchNotes_Version" ON "PatchNotes" ("Version");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260504092641_AddAdministrationContent') THEN
+    CREATE INDEX "IX_PlannedFeatures_IsActive_DisplayOrder" ON "PlannedFeatures" ("IsActive", "DisplayOrder");
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260504092641_AddAdministrationContent') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260504092641_AddAdministrationContent', '10.0.5');
+    END IF;
+END $EF$;
+COMMIT;
+

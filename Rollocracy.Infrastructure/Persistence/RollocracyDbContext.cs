@@ -1,3 +1,4 @@
+
 using Microsoft.EntityFrameworkCore;
 using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.Entities;
@@ -22,6 +23,9 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
         public DbSet<GameSystem> GameSystems => Set<GameSystem>();
         public DbSet<GameSystemSnapshot> GameSystemSnapshots => Set<GameSystemSnapshot>();
+        public DbSet<PatchNote> PatchNotes => Set<PatchNote>();
+        public DbSet<PatchNoteEntry> PatchNoteEntries => Set<PatchNoteEntry>();
+        public DbSet<PlannedFeature> PlannedFeatures => Set<PlannedFeature>();
 
         public DbSet<Session> Sessions => Set<Session>();
         public DbSet<PlayerSession> PlayerSessions => Set<PlayerSession>();
@@ -157,6 +161,59 @@ namespace Rollocracy.Infrastructure.Persistence
 
                 entity.Property(x => x.Language)
                     .HasColumnType("text");
+            });
+
+
+            modelBuilder.Entity<PatchNote>(entity =>
+            {
+                entity.HasIndex(x => x.Version).IsUnique();
+                entity.HasIndex(x => new { x.IsPublished, x.DisplayOrder, x.PublishedAtUtc });
+
+                entity.Property(x => x.Version)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.PublishedAtUtc)
+                    .HasColumnType("timestamp with time zone");
+
+                entity.Property(x => x.CreatedAtUtc)
+                    .HasColumnType("timestamp with time zone");
+
+                entity.Property(x => x.UpdatedAtUtc)
+                    .HasColumnType("timestamp with time zone");
+            });
+
+            modelBuilder.Entity<PatchNoteEntry>(entity =>
+            {
+                entity.HasIndex(x => x.PatchNoteId);
+                entity.HasIndex(x => new { x.PatchNoteId, x.DisplayOrder });
+
+                entity.Property(x => x.TextFr)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.TextEn)
+                    .HasColumnType("text");
+
+                entity.HasOne(x => x.PatchNote)
+                    .WithMany(x => x.Entries)
+                    .HasForeignKey(x => x.PatchNoteId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<PlannedFeature>(entity =>
+            {
+                entity.HasIndex(x => new { x.IsActive, x.DisplayOrder });
+
+                entity.Property(x => x.TextFr)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.TextEn)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.CreatedAtUtc)
+                    .HasColumnType("timestamp with time zone");
+
+                entity.Property(x => x.UpdatedAtUtc)
+                    .HasColumnType("timestamp with time zone");
             });
 
             modelBuilder.Entity<SubscriptionPlan>(entity =>

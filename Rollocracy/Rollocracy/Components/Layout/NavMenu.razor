@@ -1,8 +1,12 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
+@using System.Security.Claims
+@using Rollocracy.Domain.Interfaces
 @using Rollocracy.Localization
 @inject IStringLocalizer<SharedTexts> L
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IAdministrationService AdministrationService
 
 <div class="rc-nav @(IsCollapsed ? "collapsed" : string.Empty)">
     <div class="rc-nav__header">
@@ -93,6 +97,16 @@
                         </span>
                         <span class="rc-nav__label">@L["Account_Settings_Title"]</span>
                     </NavLink>
+
+                    @if (CanShowAdministrationLink)
+                    {
+                        <NavLink class="rc-nav__link" href="/admin" title="@L["Admin_Title"]">
+                            <span class="rc-nav__icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-120 200-240v-240L80-540l400-180 400 180-120 60v240L480-120Zm0-414 210-94-210-94-210 94 210 94Zm0 326 200-90v-144L480-352 280-442v144l200 90Zm0-326Zm0 182Zm0 0Z" /></svg>
+                            </span>
+                            <span class="rc-nav__label">@L["Admin_Title"]</span>
+                        </NavLink>
+                    }
 
                     <NavLink class="rc-nav__link" @onclick="HandleLogout" href="/auth/logout" title="@L["Auth_Logout_Action"]">
                         <span class="rc-nav__icon">
@@ -202,6 +216,19 @@
     [Parameter] public EventCallback OnCycleTheme { get; set; }
     
     private const string SupportRollocracyUrl = "https://ko-fi.com/lunelianjdr";
+    private bool CanShowAdministrationLink;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (user.Identity?.IsAuthenticated == true && Guid.TryParse(userIdValue, out var userId))
+        {
+            CanShowAdministrationLink = await AdministrationService.IsAdministratorAsync(userId);
+        }
+    }
 
     private void HandleLogout()
     {

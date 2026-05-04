@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Rollocracy.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Rollocracy.Infrastructure.Persistence;
 namespace Rollocracy.Infrastructure.Migrations
 {
     [DbContext(typeof(RollocracyDbContext))]
-    partial class RollocracyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260504092641_AddAdministrationContent")]
+    partial class AddAdministrationContent
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -33,6 +36,9 @@ namespace Rollocracy.Infrastructure.Migrations
 
                     b.Property<Guid>("ItemDefinitionId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -192,6 +198,9 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<int?>("CriticalSuccessValue")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("DefaultSuccessThreshold")
+                        .HasColumnType("integer");
+
                     b.Property<int>("DefaultTestDiceCount")
                         .HasColumnType("integer");
 
@@ -217,6 +226,12 @@ namespace Rollocracy.Infrastructure.Migrations
 
                     b.Property<Guid?>("SourceGameSystemId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("StartingItemChoices")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StartingTalentChoices")
+                        .HasColumnType("integer");
 
                     b.Property<int>("TestResolutionMode")
                         .HasColumnType("integer");
@@ -577,6 +592,59 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.ToTable("SessionRandomDraws");
                 });
 
+            modelBuilder.Entity("Rollocracy.Domain.Entities.SessionStore", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId")
+                        .IsUnique();
+
+                    b.ToTable("SessionStores");
+                });
+
+            modelBuilder.Entity("Rollocracy.Domain.Entities.SessionStoreOffer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Cost")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("CurrencyGaugeDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("OfferType")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SessionStoreId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TargetDefinitionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionStoreId");
+
+                    b.HasIndex("SessionStoreId", "DisplayOrder");
+
+                    b.ToTable("SessionStoreOffers");
+                });
+
             modelBuilder.Entity("Rollocracy.Domain.Entities.SubscriptionPlan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -867,6 +935,9 @@ namespace Rollocracy.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("CreationDistributionPoints")
+                        .HasColumnType("integer");
+
                     b.Property<int>("DefaultValue")
                         .HasColumnType("integer");
 
@@ -884,6 +955,9 @@ namespace Rollocracy.Infrastructure.Migrations
 
                     b.Property<Guid>("GameSystemId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("MaxCreationDistributionPerCharacter")
+                        .HasColumnType("integer");
 
                     b.Property<int>("MaxValue")
                         .HasColumnType("integer");
@@ -1024,11 +1098,17 @@ namespace Rollocracy.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("CreationDistributionPoints")
+                        .HasColumnType("integer");
+
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("GameSystemId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("MaxCreationDistributionPerCharacter")
+                        .HasColumnType("integer");
 
                     b.Property<int>("MaxValue")
                         .HasColumnType("integer");
@@ -1095,6 +1175,15 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<Guid?>("GameSystemId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsConsumable")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSelectableAtCharacterCreation")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MaxQuantityPerCharacter")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1127,8 +1216,14 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<int>("AddValue")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("FillGaugeCurrentValueOnly")
+                        .HasColumnType("boolean");
+
                     b.Property<Guid>("ItemDefinitionId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("OperationType")
+                        .HasColumnType("integer");
 
                     b.Property<Guid?>("SourceMetricId")
                         .HasColumnType("uuid");
@@ -1253,6 +1348,9 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<Guid>("GameSystemId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsSelectableAtCharacterCreation")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1347,6 +1445,9 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<DateTime?>("ClosedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("ConsequencesCancelled")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1390,6 +1491,16 @@ namespace Rollocracy.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<int?>("SuccessThreshold")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("SuccessThresholdMetricId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SuccessThresholdMetricNameSnapshot")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("SuccessThresholdMode")
                         .HasColumnType("integer");
 
                     b.Property<Guid>("TargetDefinitionId")
@@ -1557,6 +1668,9 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.Property<int>("EffectiveAttributeValue")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("EffectiveSuccessThreshold")
+                        .HasColumnType("integer");
+
                     b.Property<int>("FinalValue")
                         .HasColumnType("integer");
 
@@ -1588,6 +1702,39 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("PlayerTestRolls");
+                });
+
+            modelBuilder.Entity("Rollocracy.Domain.GameTests.SessionGameTestPreset", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("SessionId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("SessionGameTestPresets");
                 });
 
             modelBuilder.Entity("Rollocracy.Domain.Polls.SessionPoll", b =>
@@ -1771,6 +1918,39 @@ namespace Rollocracy.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SessionPollOptionConsequences");
+                });
+
+            modelBuilder.Entity("Rollocracy.Domain.Polls.SessionPollPreset", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionId");
+
+                    b.HasIndex("SessionId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("SessionPollPresets");
                 });
 
             modelBuilder.Entity("Rollocracy.Domain.Polls.SessionPollVote", b =>

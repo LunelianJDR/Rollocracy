@@ -2,6 +2,8 @@
 @rendermode InteractiveServer
 @using System.Security.Claims
 @using System.Text
+@using System.Globalization
+@using Rollocracy.Domain.Admin
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
 @using Rollocracy.Domain.Interfaces
@@ -9,6 +11,7 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IEmailService EmailService
+@inject IAdministrationService AdministrationService
 @inject IStringLocalizer<SharedTexts> L
 
 <PageTitle>@L["Home_PageTitle"]</PageTitle>
@@ -157,7 +160,7 @@
 
                     <div class="rc-tool-actions">
                         <button type="button" @onclick="SubmitBugReportAsync" disabled="@IsSendingBugReport">
-                            @(IsSendingBugReport? L["Common_Loading"] : L["Home_BugForm_Send"])
+                            @(IsSendingBugReport ? L["Common_Loading"] : L["Home_BugForm_Send"])
                         </button>
                         <button type="button" @onclick="CancelBugReport" disabled="@IsSendingBugReport">@L["Common_Cancel"]</button>
                     </div>
@@ -170,38 +173,55 @@
                         <h4 class="rc-tool-panel__title">@L["Home_Planned_Title"]</h4>
                     </div>
 
-                    <ul>
-                        @foreach (var featureResourceKey in PlannedFeatureResourceKeys)
-                        {
-                            <li>@L[featureResourceKey]</li>
-                        }
-                    </ul>
+                    @if (HomeProjectContent.PlannedFeatures.Count == 0)
+                    {
+                        <p class="rc-tool-muted">@L["Home_Project_NoPlannedFeatures"]</p>
+                    }
+                    else
+                    {
+                        <ul>
+                            @foreach (var feature in HomeProjectContent.PlannedFeatures)
+                            {
+                                <li>@feature.Text</li>
+                            }
+                        </ul>
+                    }
                 </div>
             }
             else
             {
                 <div class="rc-tool-section">
-                    <div class="rc-form-field">
-                        <label>@L["Home_Project_SelectPatchnote"]</label>
-                        <select value="@SelectedPatchnoteKey" @onchange="OnPatchnoteChanged">
-                            @foreach (var patchnote in Patchnotes)
-                            {
-                                <option value="@patchnote.Key">@L[patchnote.SelectLabelResourceKey]</option>
-                            }
-                        </select>
-                    </div>
+                    @if (HomeProjectContent.PatchNotes.Count == 0)
+                    {
+                        <p class="rc-tool-muted">@L["Home_Project_NoPatchnotes"]</p>
+                    }
+                    else
+                    {
+                        <div class="rc-form-field">
+                            <label>@L["Home_Project_SelectPatchnote"]</label>
+                            <select value="@SelectedPatchnoteId" @onchange="OnPatchnoteChanged">
+                                @foreach (var patchnote in HomeProjectContent.PatchNotes)
+                                {
+                                    <option value="@patchnote.Id">@string.Format(L["Home_Patchnote_VersionLabel"], patchnote.Version)</option>
+                                }
+                            </select>
+                        </div>
 
-                    <div>
-                        <h4 class="rc-tool-panel__title">@L[SelectedPatchnote.TitleResourceKey]</h4>
-                        <p class="rc-tool-panel__subtitle">@L[SelectedPatchnote.IntroResourceKey]</p>
-                    </div>
-
-                    <ul>
-                        @foreach (var itemResourceKey in SelectedPatchnote.ItemResourceKeys)
+                        @if (SelectedPatchnote is not null)
                         {
-                            <li>@L[itemResourceKey]</li>
+                            <div>
+                                <h4 class="rc-tool-panel__title">@string.Format(L["Home_Patchnote_VersionTitle"], SelectedPatchnote.Version)</h4>
+                                <p class="rc-tool-panel__subtitle">@SelectedPatchnote.PublishedAtUtc.ToLocalTime().ToString("d")</p>
+                            </div>
+
+                            <ul>
+                                @foreach (var item in SelectedPatchnote.Entries)
+                                {
+                                    <li>@item</li>
+                                }
+                            </ul>
                         }
-                    </ul>
+                    }
                 </div>
             }
         </div>
@@ -231,7 +251,7 @@
     private const string BugReportEmail = "rollocracy@lunelian.com";
 
     private string SelectedVideoKey = "presentation";
-    private string SelectedPatchnoteKey = "current";
+    private Guid? SelectedPatchnoteId;
     private bool ShowPlannedFeatures;
     private bool IsBugReportMode;
     private bool IsBugReportSent;
@@ -264,43 +284,31 @@
             "https://www.youtube.com/embed/d_HlPboLRL8")
     ];
 
-    private readonly List<HomePatchnoteOption> Patchnotes =
-    [
-        new(
-            "current",
-            "Home_Patchnote_Current_Label",
-            "Home_Patchnote_Current_Title",
-            "Home_Patchnote_Current_Intro",
-            [
-                "Home_Patchnote_Current_Item1",
-                "Home_Patchnote_Current_Item2",
-                "Home_Patchnote_Current_Item3"
-            ]),
-        new(
-            "previous",
-            "Home_Patchnote_Previous_Label",
-            "Home_Patchnote_Previous_Title",
-            "Home_Patchnote_Previous_Intro",
-            [
-                "Home_Patchnote_Previous_Item1",
-                "Home_Patchnote_Previous_Item2",
-                "Home_Patchnote_Previous_Item3"
-            ])
-    ];
-
-    private readonly string[] PlannedFeatureResourceKeys =
-    [
-        "Home_Planned_Item1",
-        "Home_Planned_Item2",
-        "Home_Planned_Item3",
-        "Home_Planned_Item4"
-    ];
+    private HomeProjectContentDto HomeProjectContent = new();
 
     private HomeVideoOption SelectedVideo
         => Videos.FirstOrDefault(v => v.Key == SelectedVideoKey) ?? Videos[0];
 
-    private HomePatchnoteOption SelectedPatchnote
-        => Patchnotes.FirstOrDefault(p => p.Key == SelectedPatchnoteKey) ?? Patchnotes[0];
+    private PublicPatchNoteDto? SelectedPatchnote
+        => SelectedPatchnoteId.HasValue
+            ? HomeProjectContent.PatchNotes.FirstOrDefault(p => p.Id == SelectedPatchnoteId.Value)
+            : HomeProjectContent.PatchNotes.FirstOrDefault();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadHomeProjectContentAsync();
+    }
+
+    private async Task LoadHomeProjectContentAsync()
+    {
+        var language = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+        HomeProjectContent = await AdministrationService.GetHomeProjectContentAsync(language);
+
+        if (HomeProjectContent.PatchNotes.Count > 0)
+        {
+            SelectedPatchnoteId = HomeProjectContent.PatchNotes[0].Id;
+        }
+    }
 
     private void GoToLogin()
     {
@@ -380,7 +388,10 @@
 
     private void OnPatchnoteChanged(ChangeEventArgs args)
     {
-        SelectedPatchnoteKey = args.Value?.ToString() ?? Patchnotes[0].Key;
+        if (Guid.TryParse(args.Value?.ToString(), out var patchNoteId))
+        {
+            SelectedPatchnoteId = patchNoteId;
+        }
     }
 
     private async Task SubmitBugReportAsync()
@@ -446,10 +457,4 @@
         string DescriptionResourceKey,
         string EmbedUrl);
 
-    private sealed record HomePatchnoteOption(
-        string Key,
-        string SelectLabelResourceKey,
-        string TitleResourceKey,
-        string IntroResourceKey,
-        string[] ItemResourceKeys);
 }

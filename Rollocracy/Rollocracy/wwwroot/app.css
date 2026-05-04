@@ -3345,3 +3345,789 @@ button.rc-global-threshold-slider__handle:focus-visible {
     color: var(--rc-accent) !important;
     box-shadow: 0 0 0 1px var(--rc-accent) inset !important;
 }
+
+.rc-consumable-edit-line {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.rc-consumable-qty-input {
+    width: 88px;
+    min-width: 88px;
+}
+
+.rc-player-pill--item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.rc-session-store-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    margin-top: 0.75rem;
+}
+
+.rc-session-store-offer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 16px;
+    background: var(--rc-surface);
+}
+
+.rc-session-store-offer__main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.rc-session-store-offer__title {
+    font-weight: 700;
+    color: var(--rc-text);
+    word-break: break-word;
+}
+
+.rc-session-store-offer__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    font-size: 0.92rem;
+    color: var(--rc-text-soft);
+}
+
+.rc-player-tooltip-surface {
+    position: relative;
+    z-index: 1; /* important pour créer une base propre */
+    transition: box-shadow var(--rc-transition), border-color var(--rc-transition), background var(--rc-transition);
+}
+
+    .rc-player-tooltip-surface[data-tooltip] {
+        cursor: none;
+    }
+
+    /* Curseur rond */
+    .rc-player-tooltip-surface::after {
+        content: "";
+        position: fixed;
+        width: 12px;
+        height: 12px;
+        border-radius: 999px;
+        background: radial-gradient(circle, var(--rc-accent) 60%, transparent 100%);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--rc-accent) 20%, transparent);
+        pointer-events: none;
+        opacity: 0;
+        z-index: 9999;
+        left: var(--rc-tooltip-cursor-x, -999px);
+        top: var(--rc-tooltip-cursor-y, -999px);
+        transform: translate(-50%, -50%);
+        transition: opacity 120ms ease;
+    }
+
+    .rc-player-tooltip-surface[data-tooltip]:hover::after,
+    .rc-player-tooltip-surface[data-tooltip]:focus-visible::after {
+        opacity: 1;
+    }
+
+    /* Infobulle (FIX PRINCIPAL ICI) */
+    .rc-player-tooltip-surface[data-tooltip]::before {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 0.6rem);
+        transform: translateX(-50%) translateY(6px);
+        min-width: 140px;
+        max-width: min(420px, 80vw);
+        padding: 0.65rem 0.8rem;
+        border-radius: 16px;
+        border: 1px solid color-mix(in srgb, var(--rc-accent) 28%, var(--rc-border));
+        background: linear-gradient( 180deg, color-mix(in srgb, var(--rc-surface-2) 94%, var(--rc-accent) 6%), var(--rc-surface) );
+        color: var(--rc-text);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18), 0 0 0 1px color-mix(in srgb, var(--rc-accent) 10%, transparent) inset;
+        white-space: pre-line;
+        line-height: 1.35;
+        font-size: 0.9rem;
+        font-weight: 500;
+        z-index: 9999; /* clé du fix */
+
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--rc-transition), transform var(--rc-transition);
+        backdrop-filter: blur(8px);
+    }
+
+    /* Affichage */
+    .rc-player-tooltip-surface[data-tooltip]:hover::before,
+    .rc-player-tooltip-surface[data-tooltip]:focus-visible::before {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+
+    /* Hover bloc */
+    .rc-player-tooltip-surface[data-tooltip]:hover {
+        z-index: 9998; /* IMPORTANT : élève le bloc lui-même */
+        border-color: color-mix(in srgb, var(--rc-accent) 38%, var(--rc-border));
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--rc-accent) 20%, transparent) inset, 0 10px 26px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Couleurs */
+    .rc-player-tooltip-surface .rc-player-stat-card__label,
+    .rc-player-tooltip-surface .rc-player-stat-card__value,
+    .rc-player-tooltip-surface {
+        color: var(--rc-text);
+    }
+
+/* =========================================================
+   IMJ-1 - EDIT GAME SYSTEM EN MODE LISTE + PANNEAU DÉTAIL
+   ========================================================= */
+
+.rc-gs-editor-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.rc-editor-save-state {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.95rem 1rem;
+    border-radius: 16px;
+    border: 1px solid var(--rc-border);
+    margin-bottom: 1rem;
+    box-shadow: var(--rc-shadow);
+}
+
+.rc-editor-save-state--saved {
+    background: rgba(29, 107, 60, 0.10);
+    border-color: rgba(29, 107, 60, 0.28);
+}
+
+.rc-editor-save-state--dirty {
+    background: rgba(161, 63, 63, 0.10);
+    border-color: rgba(161, 63, 63, 0.28);
+}
+
+.rc-inline-warning--soft {
+    margin-bottom: 0.85rem;
+}
+
+.rc-editor-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.rc-editor-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    min-width: 0;
+}
+
+.rc-editor-category-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.9rem;
+    border-radius: 18px;
+    border: 1px solid var(--rc-border);
+    background: var(--rc-surface);
+    box-shadow: var(--rc-shadow);
+    min-width: 0;
+    transition: border-color var(--rc-transition), box-shadow var(--rc-transition), background var(--rc-transition);
+}
+
+    .rc-editor-category-card.is-dirty {
+        border-color: rgba(178, 85, 85, 0.55);
+        box-shadow: 0 0 0 2px rgba(178, 85, 85, 0.10), var(--rc-shadow);
+    }
+
+.rc-editor-category-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.rc-editor-category-card__title-button {
+    min-width: 0;
+    justify-content: flex-start !important;
+    text-align: left;
+    font-weight: 700;
+    padding-left: 0.8rem !important;
+    padding-right: 0.8rem !important;
+}
+
+.rc-editor-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+}
+
+.rc-editor-list-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start !important;
+    justify-content: flex-start;
+    gap: 0.2rem;
+    width: 100%;
+    min-width: 0;
+    min-height: 84px;
+    text-align: left !important;
+    border-radius: 14px !important;
+    padding: 0.75rem 0.9rem !important;
+    background: var(--rc-surface-2) !important;
+    border: 1px solid var(--rc-border) !important;
+}
+
+    .rc-editor-list-item:hover {
+        border-color: var(--rc-accent) !important;
+        background: var(--rc-bg-alt) !important;
+    }
+
+    .rc-editor-list-item.is-selected {
+        border-color: var(--rc-accent) !important;
+        box-shadow: 0 0 0 2px rgba(40, 105, 131, 0.12), var(--rc-shadow);
+    }
+
+html[data-theme="dark"] .rc-editor-list-item.is-selected {
+    box-shadow: 0 0 0 2px rgba(196, 167, 231, 0.18), var(--rc-shadow);
+}
+
+.rc-editor-list-item.is-deleted {
+    opacity: 0.72;
+    border-style: dashed !important;
+}
+
+.rc-editor-list-item__title {
+    font-weight: 700;
+    color: var(--rc-text);
+    word-break: break-word;
+}
+
+.rc-editor-list-item__summary {
+    font-size: 0.86rem;
+    color: var(--rc-text-soft);
+    word-break: break-word;
+    line-height: 1.2;
+}
+
+.rc-editor-detail-panel {
+    min-width: 0;
+}
+
+.rc-editor-footer-actions {
+    margin-top: 0.25rem;
+}
+
+@media (max-width: 1680px) {
+    .rc-editor-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1480px) {
+    .rc-editor-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .rc-editor-list {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 900px) {
+    .rc-editor-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .rc-editor-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+.rc-inline-picker {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+    .rc-inline-picker select {
+        flex: 1;
+    }
+
+    .rc-inline-picker button {
+        width: 42px;
+        height: 42px;
+        padding: 0 !important;
+        min-width: unset;
+        min-height: unset;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+        .rc-inline-picker button svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .rc-inline-picker button:hover svg {
+            transform: scale(1.1);
+            transition: transform 120ms ease;
+        }
+
+.rc-test-result-card__success-threshold {
+    font-size: 0.78rem;
+    opacity: 0.75;
+    line-height: 1.1;
+    margin-top: 0.15rem;
+}
+
+/* =========================================================
+   IMJ-3 - Éditeur du magasin de session
+   ========================================================= */
+.rc-store-editor-page .rc-store-editor-shell {
+    align-items: flex-start;
+}
+
+.rc-store-editor-sidebar {
+    gap: 1rem;
+}
+
+.rc-store-gauge-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.rc-store-gauge-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.7rem;
+    min-height: 1.7rem;
+    margin-left: 0.45rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    border: 1px solid var(--rc-border);
+    background: var(--rc-surface-2);
+    color: var(--rc-text-soft);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.rc-store-empty-gauge {
+    margin: 0;
+    padding: 0.75rem 0.9rem;
+    border: 1px dashed var(--rc-border);
+    border-radius: 14px;
+    background: var(--rc-surface-2);
+}
+
+.rc-store-detail-panel {
+    min-width: 0;
+}
+
+.rc-store-muted-box {
+    width: min(100%, 780px);
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 14px;
+    background: var(--rc-surface-2);
+    color: var(--rc-text-soft);
+    line-height: 1.45;
+}
+
+/* =========================================================
+   BOUTON COMPOSÉ
+   ========================================================= */
+
+.rc-compound-button {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1px solid var(--rc-border);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--rc-surface);
+    transition: border-color var(--rc-transition), transform var(--rc-transition), box-shadow var(--rc-transition);
+}
+
+    .rc-compound-button:hover {
+        border-color: var(--rc-accent);
+        transform: translateY(-1px);
+    }
+
+.rc-main .rc-compound-button button.rc-compound-button__main,
+.rc-main .rc-compound-button button.rc-compound-button__icon {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    transform: none;
+    box-shadow: none;
+}
+
+.rc-main .rc-compound-button button.rc-compound-button__main {
+    padding: 0.65rem 0.9rem 0.65rem 1rem;
+}
+
+.rc-main .rc-compound-button button.rc-compound-button__icon {
+    width: 42px;
+    min-width: 42px;
+    padding: 0;
+    border-left: 1px solid var(--rc-border);
+}
+
+    .rc-main .rc-compound-button button.rc-compound-button__main:hover,
+    .rc-main .rc-compound-button button.rc-compound-button__icon:hover {
+        background: var(--rc-bg-alt);
+        border-color: var(--rc-border);
+        transform: none;
+    }
+
+.rc-compound-button__icon svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+}
+
+/* =========================================================
+   IMJ-3B - JOURNAL / STREAM POPUPS
+   ========================================================= */
+
+.rc-journal-popup-page .rc-journal-nav-button,
+.rc-journal-popup-page .rc-journal-viewer__nav > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid var(--rc-border);
+    background: var(--rc-surface);
+    color: var(--rc-text);
+    transition: background var(--rc-transition), border-color var(--rc-transition), transform var(--rc-transition), box-shadow var(--rc-transition);
+}
+
+    .rc-journal-popup-page .rc-journal-nav-button:hover:not(:disabled),
+    .rc-journal-popup-page .rc-journal-viewer__nav > button:hover:not(:disabled) {
+        background: var(--rc-bg-alt);
+        border-color: var(--rc-accent);
+        transform: translateY(-1px);
+    }
+
+    .rc-journal-popup-page .rc-journal-nav-button:focus,
+    .rc-journal-popup-page .rc-journal-viewer__nav > button:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(40, 105, 131, 0.15);
+    }
+
+html[data-theme="dark"] .rc-journal-popup-page .rc-journal-nav-button:focus,
+html[data-theme="dark"] .rc-journal-popup-page .rc-journal-viewer__nav > button:focus {
+    box-shadow: 0 0 0 3px rgba(196, 167, 231, 0.18);
+}
+
+.rc-journal-popup-page .rc-journal-nav-button:disabled,
+.rc-journal-popup-page .rc-journal-viewer__nav > button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.rc-main .rc-compound-button button.rc-compound-button__icon:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+    .rc-main .rc-compound-button button.rc-compound-button__icon:disabled:hover {
+        background: transparent;
+    }
+
+/* =========================================================
+   IMJ-3B - BOUTON POPUP DU PANEL COURANT
+   ========================================================= */
+
+.rc-main button.rc-side-panel-popup-button {
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    padding: 0 !important;
+    border-radius: 999px;
+}
+
+.rc-side-panel-popup-button svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+}
+
+.rc-main button.rc-side-panel-popup-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* =========================================================
+   IMJ-4 - JOURNAL MJ DOUBLE COLONNE
+   ========================================================= */
+
+.rc-journal-management-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.rc-journal-overview-panel {
+    width: 100%;
+}
+
+.rc-journal-explanation-card {
+    padding: 0.95rem 1rem;
+    border-radius: 16px;
+    border: 1px solid var(--rc-border);
+    background: var(--rc-surface-2);
+}
+
+    .rc-journal-explanation-card p {
+        margin: 0;
+        color: var(--rc-text-soft);
+        line-height: 1.45;
+    }
+
+.rc-journal-dual-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.rc-journal-scope-panel {
+    min-width: 0;
+}
+
+    .rc-journal-scope-panel .rc-journal-editor {
+        min-width: 0;
+    }
+
+    .rc-journal-scope-panel .rc-form-field,
+    .rc-journal-scope-panel .rc-form-field input,
+    .rc-journal-scope-panel .rc-form-field textarea,
+    .rc-journal-scope-panel .rc-form-field select {
+        width: 100%;
+        max-width: none;
+    }
+
+.rc-journal-save-state {
+    margin-top: 0;
+}
+
+.rc-journal-scope-panel .ql-container {
+    min-height: 26rem;
+}
+
+.rc-journal-scope-panel .ql-editor {
+    min-height: 26rem;
+}
+
+    .rc-journal-scope-panel .ql-editor img,
+    .rc-journal-content img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 14px;
+    }
+
+@media (max-width: 1200px) {
+    .rc-journal-dual-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================================================
+   DEBUG UI - ALIGNEMENT RADIO / CHECKBOX DANS LES PILLS
+   ========================================================= */
+
+.rc-filter-toggle input[type="checkbox"],
+.rc-filter-toggle input[type="radio"] {
+    width: 16px;
+    min-width: 16px;
+    max-width: 16px;
+    height: 16px;
+    min-height: 16px;
+    padding: 0;
+    margin: 0;
+    flex: 0 0 16px;
+    border-radius: initial;
+}
+
+.rc-filter-toggle span {
+    line-height: 1.2;
+}
+
+.rc-filter-group-card__options .rc-filter-toggle + .rc-filter-toggle,
+.rc-character-inline-list .rc-filter-toggle + .rc-filter-toggle {
+    margin-top: 0;
+}
+
+/* =========================================================
+   ADMIN-1 - ADMINISTRATION
+   ========================================================= */
+
+.rc-admin-page {
+    gap: 1rem;
+}
+
+.rc-admin-two-columns {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.85fr) minmax(420px, 1.15fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.rc-admin-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.rc-main button.rc-admin-list-item {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-radius: 16px;
+    text-align: left;
+    white-space: normal;
+}
+
+    .rc-main button.rc-admin-list-item.selected {
+        border-color: var(--rc-accent);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--rc-accent) 18%, transparent), var(--rc-shadow);
+    }
+
+.rc-admin-entry-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.rc-admin-inline-toggle {
+    align-self: end;
+    margin: 0;
+}
+
+.rc-admin-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.rc-admin-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 0.45rem;
+    min-width: 980px;
+}
+
+    .rc-admin-table th {
+        text-align: left;
+        color: var(--rc-text-soft);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 0 0.55rem;
+    }
+
+    .rc-admin-table td {
+        padding: 0.55rem;
+        background: var(--rc-surface-2);
+        border-top: 1px solid var(--rc-border);
+        border-bottom: 1px solid var(--rc-border);
+        vertical-align: middle;
+    }
+
+        .rc-admin-table td:first-child {
+            border-left: 1px solid var(--rc-border);
+            border-top-left-radius: 14px;
+            border-bottom-left-radius: 14px;
+        }
+
+        .rc-admin-table td:last-child {
+            border-right: 1px solid var(--rc-border);
+            border-top-right-radius: 14px;
+            border-bottom-right-radius: 14px;
+        }
+
+    .rc-admin-table input,
+    .rc-admin-table select {
+        min-width: 120px;
+        max-width: 220px;
+    }
+
+    .rc-admin-table .rc-filter-toggle input[type="checkbox"] {
+        min-width: 16px;
+        width: 16px;
+        height: 16px;
+        min-height: 16px;
+        padding: 0;
+    }
+
+.rc-admin-url {
+    display: inline-block;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.rc-masked-email-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.rc-main button.rc-email-visibility-button {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    min-height: 34px;
+    padding: 0;
+    font-size: 0.95rem;
+}
+
+@media (max-width: 1200px) {
+    .rc-admin-two-columns {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================================================
+   ADMIN-1 PATCH - EMAIL ÉDITABLE MASQUÉ
+   ========================================================= */
+
+.rc-account-email-edit {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.rc-account-email-edit__input,
+.rc-account-email-edit__masked {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+}
+
+.rc-account-email-edit__masked {
+    justify-content: flex-start;
+}

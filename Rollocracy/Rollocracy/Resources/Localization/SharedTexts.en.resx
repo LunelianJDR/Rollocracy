@@ -3438,4 +3438,719 @@
 	<data name="AdvancedFilter_None" xml:space="preserve">
   <value>-- None --</value>
 </data>
+	<data name="Navigation_EnableAlertSound" xml:space="preserve">
+  <value>Enable alert sound</value>
+</data>
+	<data name="Navigation_DisableAlertSound" xml:space="preserve">
+  <value>Disable alert sound</value>
+</data>
+	<data name="Journal_InsertImageUrl" xml:space="preserve">
+  <value>Image URL</value>
+</data>
+	<data name="Journal_ImageUrlLabel" xml:space="preserve">
+  <value>Image URL</value>
+</data>
+	<data name="Journal_InsertImageAction" xml:space="preserve">
+  <value>Insert image</value>
+</data>
+	<data name="Journal_CurrentImages" xml:space="preserve">
+  <value>Page images</value>
+</data>
+	<data name="Journal_ImageAlt" xml:space="preserve">
+  <value>Journal image</value>
+</data>
+	<data name="Journal_InvalidImageUrl" xml:space="preserve">
+  <value>The link must be a valid https URL pointing to a supported image.</value>
+</data>
+	<data name="Journal_ImageInsertFailed" xml:space="preserve">
+  <value>Unable to insert the image into the journal.</value>
+</data>
+	<data name="GameSystem_Editor_AttributeCreationDistributionPoints" xml:space="preserve">
+  <value>Creation bonus points</value>
+</data>
+	<data name="GameSystem_Editor_AttributeCreationDistributionMaxPerStat" xml:space="preserve">
+  <value>Max increase in a single attribute</value>
+</data>
+	<data name="GameSystem_Editor_DerivedCreationDistributionPoints" xml:space="preserve">
+  <value>Creation bonus points</value>
+</data>
+	<data name="GameSystem_Editor_DerivedCreationDistributionMaxPerStat" xml:space="preserve">
+  <value>Max increase in a single skill</value>
+</data>
+	<data name="GameSystem_Editor_StartingTalentChoices" xml:space="preserve">
+  <value>Starting talents</value>
+</data>
+	<data name="GameSystem_Editor_StartingItemChoices" xml:space="preserve">
+  <value>Starting items</value>
+</data>
+	<data name="GameSystem_Editor_IsSelectableAtCharacterCreation" xml:space="preserve">
+  <value>Selectable at creation</value>
+</data>
+	<data name="CharacterCreation_AttributeDistributionTitle" xml:space="preserve">
+  <value>Attribute distribution</value>
+</data>
+	<data name="CharacterCreation_DerivedStatDistributionTitle" xml:space="preserve">
+  <value>Skill distribution</value>
+</data>
+	<data name="CharacterCreation_PointsRemaining" xml:space="preserve">
+  <value>Remaining points: {0}</value>
+</data>
+	<data name="CharacterCreation_TalentChoicesTitle" xml:space="preserve">
+  <value>Starting talents</value>
+</data>
+	<data name="CharacterCreation_ItemChoicesTitle" xml:space="preserve">
+  <value>Starting items</value>
+</data>
+	<data name="CharacterCreation_ChoicesSelected" xml:space="preserve">
+  <value>Selected: {0} / {1}</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionMustBeConsistent" xml:space="preserve">
+  <value>The attribute distribution configuration must be identical across all attributes.</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionInvalid" xml:space="preserve">
+  <value>The attribute distribution configuration is invalid.</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionRequiresAttributes" xml:space="preserve">
+  <value>You cannot distribute attribute points without any defined attributes.</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionMaxIncreaseRequired" xml:space="preserve">
+  <value>A max increase per attribute must be defined when attribute points are distributed at creation.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionMustBeConsistent" xml:space="preserve">
+  <value>The skill distribution configuration must be identical across all skills.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionInvalid" xml:space="preserve">
+  <value>The skill distribution configuration is invalid.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionRequiresDerivedStats" xml:space="preserve">
+  <value>You cannot distribute skill points without any defined skills.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionMaxIncreaseRequired" xml:space="preserve">
+  <value>A max increase per skill must be defined when skill points are distributed at creation.</value>
+</data>
+	<data name="Backend_StartingTalentChoicesInvalid" xml:space="preserve">
+  <value>The number of starting talents is invalid.</value>
+</data>
+	<data name="Backend_StartingTalentChoicesExceedAvailable" xml:space="preserve">
+  <value>The number of starting talents cannot exceed the number of talents marked as selectable at creation.</value>
+</data>
+	<data name="Backend_StartingItemChoicesInvalid" xml:space="preserve">
+  <value>The number of starting items is invalid.</value>
+</data>
+	<data name="Backend_StartingItemChoicesExceedAvailable" xml:space="preserve">
+  <value>The number of starting items cannot exceed the number of items marked as selectable at creation.</value>
+</data>
+	<data name="Backend_CharacterCreationNoAttributesForDistribution" xml:space="preserve">
+  <value>No attributes are available for point distribution.</value>
+</data>
+	<data name="Backend_CharacterCreationAttributePointsMustBeFullyDistributed" xml:space="preserve">
+  <value>All attribute points must be distributed before creating the character.</value>
+</data>
+	<data name="Backend_CharacterCreationAttributeBonusExceedsLimit" xml:space="preserve">
+  <value>The attribute point distribution exceeds the allowed limit for one attribute.</value>
+</data>
+	<data name="Backend_CharacterCreationNoDerivedStatsForDistribution" xml:space="preserve">
+  <value>No skills are available for point distribution.</value>
+</data>
+	<data name="Backend_CharacterCreationDerivedStatPointsMustBeFullyDistributed" xml:space="preserve">
+  <value>All skill points must be distributed before creating the character.</value>
+</data>
+	<data name="Backend_CharacterCreationDerivedStatBonusExceedsLimit" xml:space="preserve">
+  <value>The skill point distribution exceeds the allowed limit for one skill.</value>
+</data>
+	<data name="Backend_CharacterCreationTalentChoicesRequired" xml:space="preserve">
+  <value>The required number of starting talents must be selected.</value>
+</data>
+	<data name="Backend_CharacterCreationTalentChoiceInvalid" xml:space="preserve">
+  <value>A selected starting talent is invalid.</value>
+</data>
+	<data name="Backend_CharacterCreationTalentChoicesConfigurationInvalid" xml:space="preserve">
+  <value>The starting talent configuration is invalid for this system.</value>
+</data>
+	<data name="Backend_CharacterCreationItemChoicesRequired" xml:space="preserve">
+  <value>The required number of starting items must be selected.</value>
+</data>
+	<data name="Backend_CharacterCreationItemChoiceInvalid" xml:space="preserve">
+  <value>A selected starting item is invalid.</value>
+</data>
+	<data name="Backend_CharacterCreationItemChoicesConfigurationInvalid" xml:space="preserve">
+  <value>The starting item configuration is invalid for this system.</value>
+</data>
+	<data name="GameSystem_Editor_ItemIsConsumable" xml:space="preserve">
+  <value>Consumable</value>
+</data>
+	<data name="GameSystem_Editor_ItemMaxQuantityPerCharacter" xml:space="preserve">
+  <value>Max quantity per character</value>
+</data>
+	<data name="GameSystem_Editor_ItemModifierFillGaugeOnly" xml:space="preserve">
+  <value>Fill gauge only</value>
+</data>
+	<data name="Character_Item_Consume" xml:space="preserve">
+  <value>Consume</value>
+</data>
+	<data name="Backend_ConsumableItemMaxQuantityInvalid" xml:space="preserve">
+  <value>A consumable item's max quantity must be greater than 0.</value>
+</data>
+	<data name="Backend_CharacterItemNotOwned" xml:space="preserve">
+  <value>The character does not own this item.</value>
+</data>
+	<data name="Backend_InvalidCharacterItemSelection" xml:space="preserve">
+  <value>The selected item is invalid.</value>
+</data>
+	<data name="Backend_CharacterItemNotConsumable" xml:space="preserve">
+  <value>This item is not consumable.</value>
+</data>
+	<data name="Backend_CharacterItemOutOfStock" xml:space="preserve">
+  <value>This item is out of stock.</value>
+</data>
+	<data name="GameSystem_Editor_ItemModifierAffectsMaximum" xml:space="preserve">
+  <value>Affect maximum value</value>
+</data>
+	<data name="Character_Item_ConfirmConsume" xml:space="preserve">
+  <value>Consume?</value>
+</data>
+	<data name="Backend_TestPresetNameRequired" xml:space="preserve">
+  <value>A test preset name is required.</value>
+</data>
+	<data name="Backend_TestPresetAlreadyExists" xml:space="preserve">
+  <value>A test preset with this name already exists.</value>
+</data>
+	<data name="Backend_TestPresetNotFound" xml:space="preserve">
+  <value>Test preset not found.</value>
+</data>
+	<data name="Backend_PollPresetNameRequired" xml:space="preserve">
+  <value>A poll preset name is required.</value>
+</data>
+	<data name="Backend_PollPresetAlreadyExists" xml:space="preserve">
+  <value>A poll preset with this name already exists.</value>
+</data>
+	<data name="Backend_PollPresetNotFound" xml:space="preserve">
+  <value>Poll preset not found.</value>
+</data>
+	<data name="Test_Presets" xml:space="preserve">
+  <value>Test preset</value>
+</data>
+	<data name="Test_SavePreset" xml:space="preserve">
+  <value>Save preset</value>
+</data>
+	<data name="Test_SelectPreset" xml:space="preserve">
+  <value>New preset</value>
+</data>
+	<data name="Test_DeletePreset" xml:space="preserve">
+  <value>Delete preset</value>
+</data>
+	<data name="Test_ConfirmDeletePreset" xml:space="preserve">
+  <value>Are you sure you want to delete the preset "{0}"?</value>
+</data>
+	<data name="Test_PresetName" xml:space="preserve">
+  <value>Preset name</value>
+</data>
+	<data name="Test_PresetOverwriteConfirm" xml:space="preserve">
+  <value>Replace existing preset?</value>
+</data>
+	<data name="Test_PresetSaved" xml:space="preserve">
+  <value>Test preset saved.</value>
+</data>
+	<data name="Test_PresetDeleted" xml:space="preserve">
+  <value>Test preset deleted.</value>
+</data>
+
+	<data name="Poll_SavePreset" xml:space="preserve">
+  <value>Save preset</value>
+</data>
+	<data name="Poll_SelectPreset" xml:space="preserve">
+  <value>Select a preset</value>
+</data>
+	<data name="Poll_DeletePreset" xml:space="preserve">
+  <value>Delete preset</value>
+</data>
+	<data name="Poll_PresetName" xml:space="preserve">
+  <value>Preset name</value>
+</data>
+	<data name="Poll_PresetOverwriteConfirm" xml:space="preserve">
+  <value>Replace existing preset?</value>
+</data>
+	<data name="Poll_PresetSaved" xml:space="preserve">
+  <value>Poll preset saved.</value>
+</data>
+	<data name="Poll_PresetDeleted" xml:space="preserve">
+  <value>Poll preset deleted.</value>
+</data>
+	<data name="Backend_TestConsequencesAlreadyCancelled" xml:space="preserve">
+  <value>This test's consequences have already been cancelled.</value>
+</data>
+	<data name="Backend_TestHasNoConsequencesToRollback" xml:space="preserve">
+  <value>This test has no consequences to cancel.</value>
+</data>
+	<data name="Test_RollbackConsequencesOnly" xml:space="preserve">
+  <value>Cancel consequences only</value>
+</data>
+	<data name="Test_RollbackConsequencesOnlyConfirmQuestion" xml:space="preserve">
+  <value>Cancel only the latest test's consequences and keep the results?</value>
+</data>
+	<data name="Test_RollbackConsequencesOnlySuccess" xml:space="preserve">
+  <value>The latest test's consequences have been cancelled.</value>
+</data>
+	<data name="Test_ConsequencesCancelled" xml:space="preserve">
+  <value>Consequences cancelled</value>
+</data>
+	<data name="Session_Settings_ManageStore" xml:space="preserve">
+  <value>Manage Store</value>
+</data>
+	<data name="Session_Store_Title" xml:space="preserve">
+  <value>Session Store</value>
+</data>
+	<data name="Session_Store_Subtitle" xml:space="preserve">
+  <value>Configure the store and purchasable offers</value>
+</data>
+	<data name="Session_Store_PlayerSubtitle" xml:space="preserve">
+  <value>Buy talents and items using your session gauges</value>
+</data>
+	<data name="Session_Store_Enabled" xml:space="preserve">
+  <value>Store enabled</value>
+</data>
+	<data name="Session_Store_Offers" xml:space="preserve">
+  <value>Store offers</value>
+</data>
+	<data name="Session_Store_AddTalentOffer" xml:space="preserve">
+  <value>Add talent offer</value>
+</data>
+	<data name="Session_Store_AddItemOffer" xml:space="preserve">
+  <value>Add offer</value>
+</data>
+	<data name="Session_Store_OfferType" xml:space="preserve">
+  <value>Type</value>
+</data>
+	<data name="Session_Store_Target" xml:space="preserve">
+  <value>Target</value>
+</data>
+	<data name="Session_Store_CurrencyGauge" xml:space="preserve">
+  <value>Payment gauge</value>
+</data>
+	<data name="Session_Store_Cost" xml:space="preserve">
+  <value>Cost</value>
+</data>
+	<data name="Session_Store_Saved" xml:space="preserve">
+  <value>Store saved.</value>
+</data>
+	<data name="Session_Store_Button" xml:space="preserve">
+  <value>Store</value>
+</data>
+	<data name="Session_Store_FilterGauge" xml:space="preserve">
+  <value>Filter by gauge</value>
+</data>
+	<data name="Session_Store_FilterAll" xml:space="preserve">
+  <value>Show all</value>
+</data>
+	<data name="Session_Store_Buy" xml:space="preserve">
+  <value>Buy</value>
+</data>
+	<data name="Session_Store_BuyConfirm" xml:space="preserve">
+  <value>Buy?</value>
+</data>
+	<data name="Backend_SessionStoreInvalidGauge" xml:space="preserve">
+  <value>The selected payment gauge is invalid.</value>
+</data>
+	<data name="Backend_SessionStoreInvalidTarget" xml:space="preserve">
+  <value>The selected store offer target is invalid.</value>
+</data>
+	<data name="Backend_SessionStoreInvalidCost" xml:space="preserve">
+  <value>An offer cost cannot be negative.</value>
+</data>
+	<data name="Backend_SessionStoreDisabled" xml:space="preserve">
+  <value>The store is disabled.</value>
+</data>
+	<data name="Backend_SessionStoreOfferNotFound" xml:space="preserve">
+  <value>Store offer not found.</value>
+</data>
+	<data name="Backend_SessionStoreNotEnoughCurrency" xml:space="preserve">
+  <value>The selected gauge does not have enough value for this purchase.</value>
+</data>
+	<data name="Backend_SessionStoreOfferAlreadyOwned" xml:space="preserve">
+  <value>This offer is already owned.</value>
+</data>
+	<data name="Backend_SessionStoreConsumableLimitReached" xml:space="preserve">
+  <value>The maximum quantity for this consumable item has already been reached.</value>
+</data>
+	<data name="Session_Store_NoGaugeAvailable" xml:space="preserve">
+  <value>No session gauge is available for the store.</value>
+</data>
+	<data name="Session_Store_NoTalentAvailable" xml:space="preserve">
+  <value>No talent is available to create an offer.</value>
+</data>
+	<data name="Session_Store_NoItemAvailable" xml:space="preserve">
+  <value>No item is available to create an offer.</value>
+</data>
+	<data name="Session_Store_HideOwned" xml:space="preserve">
+  <value>Hide owned</value>
+</data>
+	<data name="Session_Store_HideTooExpensive" xml:space="preserve">
+  <value>Hide too expensive</value>
+</data>
+	<data name="Session_Store_ConsumablesOnly" xml:space="preserve">
+  <value>Consumables only</value>
+</data>
+	<data name="GameSystem_Editor_DefaultSuccessThreshold" xml:space="preserve">
+  <value>Default success threshold</value>
+</data>
+	<data name="Backend_DefaultSuccessThresholdInvalid" xml:space="preserve">
+  <value>The default success threshold must be greater than or equal to 1.</value>
+</data>
+	<data name="Audience_BiographyNotEmpty" xml:space="preserve">
+  <value>Biography not empty</value>
+</data>
+	<data name="AdvancedFilter_RandomDrawSection" xml:space="preserve">
+  <value>Previous random draws</value>
+</data>
+	<data name="Character_Tooltip_Base" xml:space="preserve">
+  <value>base</value>
+</data>
+	<data name="Character_Tooltip_Augmentations" xml:space="preserve">
+  <value>modifier</value>
+</data>
+	<data name="Character_Tooltip_OnUsePrefix" xml:space="preserve">
+  <value>On use:</value>
+</data>
+	<data name="Character_Tooltip_Grant" xml:space="preserve">
+  <value>Grants {0}</value>
+</data>
+	<data name="Character_Tooltip_Revoke" xml:space="preserve">
+  <value>Removes {0}</value>
+</data>
+	<data name="CharacterCreation_SelectOptionPlaceholder" xml:space="preserve">
+  <value>Choose...</value>
+</data>
+	<data name="CharacterCreation_RequiredTraits" xml:space="preserve">
+  <value>Required traits</value>
+</data>
+	<data name="CharacterCreation_RandomizeRemaining" xml:space="preserve">
+  <value>Random</value>
+</data>
+	<data name="Test_AdvancedModifiersSection" xml:space="preserve">
+  <value>Advanced modifiers</value>
+</data>
+	<data name="Test_AdvancedModifiersMode" xml:space="preserve">
+  <value>Advanced modifier mode</value>
+</data>
+	<data name="Test_AdvancedModifiersMode_Cumulative" xml:space="preserve">
+  <value>Cumulative</value>
+</data>
+	<data name="Test_AdvancedModifiersMode_HighestOnly" xml:space="preserve">
+  <value>Highest bonus</value>
+</data>
+	<data name="Test_AdvancedModifiersList" xml:space="preserve">
+  <value>Modifier rows</value>
+</data>
+	<data name="Test_AdvancedModifiersAdd" xml:space="preserve">
+  <value>Add modifier</value>
+</data>
+	<data name="Test_AdvancedModifiersNone" xml:space="preserve">
+  <value>No advanced modifiers.</value>
+</data>
+	<data name="Test_AdvancedModifiersSourceType" xml:space="preserve">
+  <value>Criteria type</value>
+</data>
+	<data name="Test_BonusMalus" xml:space="preserve">
+  <value>Bonus / malus</value>
+</data>
+	<data name="Backend_InvalidAdvancedModifierSourceMetric" xml:space="preserve">
+  <value>The advanced modifier source metric is invalid.</value>
+</data>
+	<data name="Backend_InvalidAdvancedModifierSelection" xml:space="preserve">
+  <value>The advanced modifier selection is invalid.</value>
+</data>
+	<data name="Backend_InvalidAdvancedModifierValue" xml:space="preserve">
+  <value>The advanced modifier value is invalid.</value>
+</data>
+	<data name="Common_And" xml:space="preserve">
+  <value>and</value>
+</data>
+	<data name="Common_To" xml:space="preserve">
+  <value>to</value>
+</data>
+	<data name="GameSystem_Editor_SelectElementHint" xml:space="preserve">
+  <value>Select a category or an element on the left to display its editable details.</value>
+</data>
+	<data name="GameSystem_Editor_UntitledElement" xml:space="preserve">
+  <value>Untitled element</value>
+</data>
+	<data name="GameSystem_Editor_NoDescriptionSummary" xml:space="preserve">
+  <value>No description</value>
+</data>
+	<data name="GameSystem_Editor_NoDerivedComponentsSummary" xml:space="preserve">
+  <value>No linked attributes</value>
+</data>
+	<data name="GameSystem_Editor_NoMetricFormulaSummary" xml:space="preserve">
+  <value>No formula</value>
+</data>
+	<data name="GameSystem_Editor_NoTraitOptionsSummary" xml:space="preserve">
+  <value>No options</value>
+</data>
+	<data name="GameSystem_Editor_GaugeHealthType" xml:space="preserve">
+  <value>Health</value>
+</data>
+	<data name="GameSystem_Editor_GaugeStandardType" xml:space="preserve">
+  <value>Standard</value>
+</data>
+	<data name="GameSystem_Editor_PendingChangesTitle" xml:space="preserve">
+  <value>There are unsaved changes</value>
+</data>
+	<data name="GameSystem_Editor_PendingChangesBody" xml:space="preserve">
+  <value>Do not forget to use Save to persist the changes to the database.</value>
+</data>
+	<data name="GameSystem_Editor_AllChangesSavedTitle" xml:space="preserve">
+  <value>Latest version saved</value>
+</data>
+	<data name="GameSystem_Editor_AllChangesSavedBody" xml:space="preserve">
+  <value>The currently loaded version matches the saved state.</value>
+</data>
+	<data name="EditGameSystem_DerivedStatComponents" xml:space="preserve">
+  <value>Skill's components</value>
+</data>
+	<data name="Backend_GameSystemDeletedReferenceConfirmationRequired" xml:space="preserve">
+  <value>Warning, a deleted element is still used by other elements. Confirming will also remove the related references:</value>
+</data>
+	<data name="Test_SuccessThresholdMode" xml:space="preserve">
+    <value>Success threshold mode</value>
+  </data>
+	<data name="Test_SuccessThresholdMode_Fixed" xml:space="preserve">
+    <value>Fixed threshold</value>
+  </data>
+	<data name="Test_SuccessThresholdMode_Metric" xml:space="preserve">
+    <value>Metric-based threshold</value>
+  </data>
+	<data name="Test_SuccessThresholdMetric" xml:space="preserve">
+    <value>Threshold metric</value>
+  </data>
+	<data name="Test_SelectSuccessThresholdMetric" xml:space="preserve">
+    <value>Select a metric</value>
+  </data>
+	<data name="Test_SuccessThresholdMetricMissing" xml:space="preserve">
+    <value>The configured success threshold metric cannot be found. Select another metric or switch back to a fixed threshold.</value>
+  </data>
+	<data name="Test_SuccessThresholdShort" xml:space="preserve">
+    <value>SR</value>
+  </data>
+	<data name="Backend_SuccessThresholdMetricRequired" xml:space="preserve">
+    <value>A success threshold metric must be selected.</value>
+  </data>
+	<data name="Backend_SuccessThresholdMetricNotFound" xml:space="preserve">
+    <value>The metric used as success threshold cannot be found or has been deleted.</value>
+  </data>
+	<data name="Session_Store_StatsStatus" xml:space="preserve">
+  <value>Status</value>
+</data>
+	<data name="Session_Store_StatusEnabled" xml:space="preserve">
+  <value>Enabled</value>
+</data>
+	<data name="Session_Store_StatusDisabled" xml:space="preserve">
+  <value>Disabled</value>
+</data>
+	<data name="Session_Store_StatsOffers" xml:space="preserve">
+  <value>Offers</value>
+</data>
+	<data name="Session_Store_StatsPaymentGauges" xml:space="preserve">
+  <value>Payment gauges used</value>
+</data>
+	<data name="Session_Store_StatsAvailableTargets" xml:space="preserve">
+  <value>Available targets</value>
+</data>
+	<data name="Session_Store_GlobalActions" xml:space="preserve">
+  <value>Global actions</value>
+</data>
+	<data name="Session_Store_GlobalActionsSubtitle" xml:space="preserve">
+  <value>Store activation and general payment rules</value>
+</data>
+	<data name="Session_Store_PaymentGaugeModel" xml:space="preserve">
+  <value>Gauges usable as payment</value>
+</data>
+	<data name="Session_Store_PaymentGaugeModelHelp" xml:space="preserve">
+  <value>The current store model allows every system gauge to be used as a payment gauge. Offers are grouped below by selected gauge.</value>
+</data>
+	<data name="Session_Store_AddOffer" xml:space="preserve">
+  <value>Add offer</value>
+</data>
+	<data name="Session_Store_NoOfferForGauge" xml:space="preserve">
+  <value>No offer for this gauge.</value>
+</data>
+	<data name="Session_Store_NoOfferSelectedTitle" xml:space="preserve">
+  <value>No offer selected</value>
+</data>
+	<data name="Session_Store_NoOfferSelectedBody" xml:space="preserve">
+  <value>Select an offer from the left column or add a new offer from a payment gauge.</value>
+</data>
+	<data name="Session_Store_EditOfferSubtitle" xml:space="preserve">
+  <value>Edit the offer locally, then use the global save button at the top of the page.</value>
+</data>
+	<data name="Session_Store_TargetMissing" xml:space="preserve">
+  <value>Deleted target</value>
+</data>
+	<data name="Journal_OpenPopup" xml:space="preserve">
+  <value>Open the journal in a separate window</value>
+</data>
+	<data name="Stream_OpenPopup" xml:space="preserve">
+  <value>Open the stream in a separate window</value>
+</data>
+	<data name="Journal_Explanation" xml:space="preserve">
+  <value>The public journal is visible to all players. The private journal can only be viewed by the GM.</value>
+</data>
+	<data name="Journal_PrivateSubtitle" xml:space="preserve">
+  <value>Internal notes reserved for the GM.</value>
+</data>
+	<data name="Journal_PublicSubtitle" xml:space="preserve">
+  <value>Pages visible to all players.</value>
+</data>
+	<data name="Journal_SavePrivate" xml:space="preserve">
+  <value>Save private</value>
+</data>
+	<data name="Journal_SavePublic" xml:space="preserve">
+  <value>Save public</value>
+</data>
+	<data name="Journal_UnsavedChangesTitle" xml:space="preserve">
+  <value>Unsaved changes</value>
+</data>
+	<data name="Journal_AllChangesSavedTitle" xml:space="preserve">
+  <value>Changes saved</value>
+</data>
+	<data name="Journal_PrivateUnsavedChangesBody" xml:space="preserve">
+  <value>The private journal has unsaved changes.</value>
+</data>
+	<data name="Journal_PrivateAllChangesSavedBody" xml:space="preserve">
+  <value>The private journal is up to date.</value>
+</data>
+	<data name="Journal_PublicUnsavedChangesBody" xml:space="preserve">
+  <value>The public journal has unsaved changes.</value>
+</data>
+	<data name="Journal_PublicAllChangesSavedBody" xml:space="preserve">
+  <value>The public journal is up to date.</value>
+</data>
+	<data name="Journal_PrivateSaved" xml:space="preserve">
+  <value>Private journal saved.</value>
+</data>
+	<data name="Journal_PublicSaved" xml:space="preserve">
+  <value>Public journal saved.</value>
+</data>
+	<data name="Admin_AccessDenied" xml:space="preserve">
+		<value>Administrator access denied.</value>
+	</data>
+	<data name="Admin_Active" xml:space="preserve">
+		<value>Active</value>
+	</data>
+	<data name="Admin_Actions" xml:space="preserve">
+		<value>Actions</value>
+	</data>
+	<data name="Admin_AddEntry" xml:space="preserve">
+		<value>Add</value>
+	</data>
+	<data name="Admin_AddPatchNoteEntry" xml:space="preserve">
+		<value>Add a note</value>
+	</data>
+	<data name="Admin_Characters" xml:space="preserve">
+		<value>Characters</value>
+	</data>
+	<data name="Admin_ConfirmDelete" xml:space="preserve">
+		<value>Confirm this deletion? This action may be irreversible.</value>
+	</data>
+	<data name="Admin_Creator" xml:space="preserve">
+		<value>Creator</value>
+	</data>
+	<data name="Admin_Deleted" xml:space="preserve">
+		<value>Deletion completed.</value>
+	</data>
+	<data name="Admin_DisplayOrder" xml:space="preserve">
+		<value>Display order</value>
+	</data>
+	<data name="Admin_Draft" xml:space="preserve">
+		<value>Draft</value>
+	</data>
+	<data name="Admin_EmailSent" xml:space="preserve">
+		<value>Email sent.</value>
+	</data>
+	<data name="Admin_Entries" xml:space="preserve">
+		<value>entries</value>
+	</data>
+	<data name="Admin_GameSystem" xml:space="preserve">
+		<value>Game system</value>
+	</data>
+	<data name="Admin_GameSystemDeleteBlocked" xml:space="preserve">
+		<value>This game system is used by at least one session and cannot be deleted.</value>
+	</data>
+	<data name="Admin_GameSystems_Subtitle" xml:space="preserve">
+		<value>Review game systems, their creator and their linked sessions.</value>
+	</data>
+	<data name="Admin_GameSystems_Title" xml:space="preserve">
+		<value>Game systems</value>
+	</data>
+	<data name="Admin_Inactive" xml:space="preserve">
+		<value>Inactive</value>
+	</data>
+	<data name="Admin_IsAdmin" xml:space="preserve">
+		<value>Admin</value>
+	</data>
+	<data name="Admin_LoadError" xml:space="preserve">
+		<value>Unable to load administration data.</value>
+	</data>
+	<data name="Admin_MakeGeneric" xml:space="preserve">
+		<value>Make generic</value>
+	</data>
+	<data name="Admin_Mode" xml:space="preserve">
+		<value>Mode</value>
+	</data>
+	<data name="Admin_MonthlyPriceTtc" xml:space="preserve">
+		<value>Monthly price incl. tax</value>
+	</data>
+	<data name="Admin_NewPatchNote" xml:space="preserve">
+		<value>New patch note</value>
+	</data>
+	<data name="Admin_NewPlannedFeature" xml:space="preserve">
+		<value>New planned feature</value>
+	</data>
+	<data name="Admin_NewSubscriptionPlan" xml:space="preserve"><value>New plan</value></data>
+	<data name="Admin_OpenEditor" xml:space="preserve"><value>Edit</value></data>
+	<data name="Admin_PatchNoteNotFound" xml:space="preserve"><value>Patch note not found.</value></data>
+	<data name="Admin_PatchNotes_List" xml:space="preserve"><value>Existing patch notes</value></data>
+	<data name="Admin_PatchNotes_Subtitle" xml:space="preserve"><value>Create, edit and publish bilingual version notes.</value></data>
+	<data name="Admin_PatchNotes_Title" xml:space="preserve"><value>Patch notes</value></data>
+	<data name="Admin_PatchNoteVersionAlreadyExists" xml:space="preserve"><value>A patch note already exists for this version.</value></data>
+	<data name="Admin_PatchNoteVersionRequired" xml:space="preserve"><value>The version number is required.</value></data>
+	<data name="Admin_PlannedFeatureNotFound" xml:space="preserve"><value>Planned feature not found.</value></data>
+	<data name="Admin_PlannedFeatures_List" xml:space="preserve"><value>Planned features</value></data>
+	<data name="Admin_PlannedFeatures_Subtitle" xml:space="preserve"><value>Edit the planned features shown on the home page.</value></data>
+	<data name="Admin_PlannedFeatures_Title" xml:space="preserve"><value>Planned features</value></data>
+	<data name="Admin_PlannedFeatureTextRequired" xml:space="preserve"><value>A French or English text is required.</value></data>
+	<data name="Admin_Published" xml:space="preserve"><value>Published</value></data>
+	<data name="Admin_Saved" xml:space="preserve"><value>Saved.</value></data>
+	<data name="Admin_SendPasswordReset" xml:space="preserve"><value>Password reset</value></data>
+	<data name="Admin_SendVerificationEmail" xml:space="preserve"><value>Email verification</value></data>
+	<data name="Admin_Sessions_Subtitle" xml:space="preserve"><value>Review sessions, their characters and status.</value></data>
+	<data name="Admin_Sessions_Title" xml:space="preserve"><value>Sessions</value></data>
+	<data name="Admin_Stats_Characters" xml:space="preserve"><value>Alive / total characters</value></data>
+	<data name="Admin_Stats_GameMasters" xml:space="preserve"><value>GM accounts</value></data>
+	<data name="Admin_Stats_Sessions" xml:space="preserve"><value>Active / total sessions</value></data>
+	<data name="Admin_Stats_Users" xml:space="preserve"><value>Users</value></data>
+	<data name="Admin_Subscription" xml:space="preserve"><value>Subscription</value></data>
+	<data name="Admin_SubscriptionPlanCodeAlreadyExists" xml:space="preserve"><value>This plan code already exists.</value></data>
+	<data name="Admin_SubscriptionPlanCodeRequired" xml:space="preserve"><value>The plan code is required.</value></data>
+	<data name="Admin_SubscriptionPlanDeleteBlocked" xml:space="preserve"><value>This plan is used by at least one subscription and cannot be deleted.</value></data>
+	<data name="Admin_SubscriptionPlanNameRequired" xml:space="preserve"><value>The plan name is required.</value></data>
+	<data name="Admin_SubscriptionPlanNotFound" xml:space="preserve"><value>Subscription plan not found.</value></data>
+	<data name="Admin_SubscriptionPlans_Subtitle" xml:space="preserve"><value>Create, edit, activate or deactivate subscription plans.</value></data>
+	<data name="Admin_SubscriptionPlans_Title" xml:space="preserve"><value>Subscription plans</value></data>
+	<data name="Admin_Subtitle" xml:space="preserve"><value>General Rollocracy administration.</value></data>
+	<data name="Admin_Title" xml:space="preserve"><value>Administration</value></data>
+	<data name="Admin_UsedBySessions" xml:space="preserve"><value>Linked sessions</value></data>
+	<data name="Admin_Users" xml:space="preserve"><value>Users</value></data>
+	<data name="Admin_Users_Subtitle" xml:space="preserve"><value>Review and edit registered accounts.</value></data>
+	<data name="Admin_Users_Title" xml:space="preserve"><value>Users</value></data>
+	<data name="Admin_Version" xml:space="preserve"><value>Version</value></data>
+	<data name="Common_Refresh" xml:space="preserve"><value>Refresh</value></data>
+	<data name="Common_Search" xml:space="preserve"><value>Search</value></data>
+	<data name="Home_Patchnote_VersionLabel" xml:space="preserve"><value>Version {0}</value></data>
+	<data name="Home_Patchnote_VersionTitle" xml:space="preserve"><value>Patch note — version {0}</value></data>
+	<data name="Home_Project_NoPatchnotes" xml:space="preserve"><value>No published patch notes yet.</value></data>
+	<data name="Home_Project_NoPlannedFeatures" xml:space="preserve"><value>No published planned features yet.</value></data>
+	<data name="Navigation_Administration" xml:space="preserve"><value>Administration</value></data>
+	<data name="Account_Settings_HideEmail" xml:space="preserve"><value>Hide email</value></data>
+	<data name="Account_Settings_ShowEmail" xml:space="preserve"><value>Show email</value></data>
+
 </root>

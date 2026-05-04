@@ -3438,4 +3438,669 @@
 	<data name="AdvancedFilter_None" xml:space="preserve">
   <value>-- Aucun --</value>
 </data>
+	<data name="Navigation_EnableAlertSound" xml:space="preserve">
+  <value>Activer le son des alertes</value>
+</data>
+	<data name="Navigation_DisableAlertSound" xml:space="preserve">
+  <value>Désactiver le son des alertes</value>
+</data>
+	<data name="Journal_InsertImageUrl" xml:space="preserve">
+  <value>Image URL</value>
+</data>
+	<data name="Journal_ImageUrlLabel" xml:space="preserve">
+  <value>URL de l'image</value>
+</data>
+	<data name="Journal_InsertImageAction" xml:space="preserve">
+  <value>Insérer l'image</value>
+</data>
+	<data name="Journal_CurrentImages" xml:space="preserve">
+  <value>Images de la page</value>
+</data>
+	<data name="Journal_ImageAlt" xml:space="preserve">
+  <value>Image du journal</value>
+</data>
+	<data name="Journal_InvalidImageUrl" xml:space="preserve">
+  <value>Le lien doit être une URL https valide pointant vers une image prise en charge.</value>
+</data>
+	<data name="Journal_ImageInsertFailed" xml:space="preserve">
+  <value>Impossible d'insérer l'image dans le journal.</value>
+</data>
+	<data name="GameSystem_Editor_AttributeCreationDistributionPoints" xml:space="preserve">
+  <value>Distribution au choix à la création</value>
+</data>
+	<data name="GameSystem_Editor_AttributeCreationDistributionMaxPerStat" xml:space="preserve">
+  <value>Augmentation max dans une seule caractéristique</value>
+</data>
+	<data name="GameSystem_Editor_DerivedCreationDistributionPoints" xml:space="preserve">
+  <value>Distribution au choix à la création</value>
+</data>
+	<data name="GameSystem_Editor_DerivedCreationDistributionMaxPerStat" xml:space="preserve">
+  <value>Augmentation max dans une seule compétence</value>
+</data>
+	<data name="GameSystem_Editor_StartingTalentChoices" xml:space="preserve">
+  <value>Talents de départ</value>
+</data>
+	<data name="GameSystem_Editor_StartingItemChoices" xml:space="preserve">
+  <value>Objets de départ</value>
+</data>
+	<data name="GameSystem_Editor_IsSelectableAtCharacterCreation" xml:space="preserve">
+  <value>Choix à la création</value>
+</data>
+	<data name="CharacterCreation_AttributeDistributionTitle" xml:space="preserve">
+  <value>Répartition des caractéristiques</value>
+</data>
+	<data name="CharacterCreation_DerivedStatDistributionTitle" xml:space="preserve">
+  <value>Répartition des compétences</value>
+</data>
+	<data name="CharacterCreation_PointsRemaining" xml:space="preserve">
+  <value>Points restants : {0}</value>
+</data>
+	<data name="CharacterCreation_TalentChoicesTitle" xml:space="preserve">
+  <value>Talents de départ</value>
+</data>
+	<data name="CharacterCreation_ItemChoicesTitle" xml:space="preserve">
+  <value>Objets de départ</value>
+</data>
+	<data name="CharacterCreation_ChoicesSelected" xml:space="preserve">
+  <value>Sélection : {0} / {1}</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionMustBeConsistent" xml:space="preserve">
+  <value>La configuration de distribution des caractéristiques doit être identique pour toutes les caractéristiques du système.</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionInvalid" xml:space="preserve">
+  <value>La configuration de distribution des caractéristiques est invalide.</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionRequiresAttributes" xml:space="preserve">
+  <value>Impossible de distribuer des points de caractéristiques sans caractéristique définie.</value>
+</data>
+	<data name="Backend_AttributeCreationDistributionMaxIncreaseRequired" xml:space="preserve">
+  <value>Une augmentation maximale par caractéristique doit être définie si des points de caractéristiques sont distribués à la création.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionMustBeConsistent" xml:space="preserve">
+  <value>La configuration de distribution des compétences doit être identique pour toutes les compétences du système.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionInvalid" xml:space="preserve">
+  <value>La configuration de distribution des compétences est invalide.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionRequiresDerivedStats" xml:space="preserve">
+  <value>Impossible de distribuer des points de compétences sans compétence définie.</value>
+</data>
+	<data name="Backend_DerivedStatCreationDistributionMaxIncreaseRequired" xml:space="preserve">
+  <value>Une augmentation maximale par compétence doit être définie si des points de compétences sont distribués à la création.</value>
+</data>
+	<data name="Backend_StartingTalentChoicesInvalid" xml:space="preserve">
+  <value>Le nombre de talents de départ est invalide.</value>
+</data>
+	<data name="Backend_StartingTalentChoicesExceedAvailable" xml:space="preserve">
+  <value>Le nombre de talents de départ ne peut pas dépasser le nombre de talents marqués comme choix à la création.</value>
+</data>
+	<data name="Backend_StartingItemChoicesInvalid" xml:space="preserve">
+  <value>Le nombre d'objets de départ est invalide.</value>
+</data>
+	<data name="Backend_StartingItemChoicesExceedAvailable" xml:space="preserve">
+  <value>Le nombre d'objets de départ ne peut pas dépasser le nombre d'objets marqués comme choix à la création.</value>
+</data>
+	<data name="Backend_CharacterCreationNoAttributesForDistribution" xml:space="preserve">
+  <value>Aucune caractéristique n'est disponible pour la répartition des points.</value>
+</data>
+	<data name="Backend_CharacterCreationAttributePointsMustBeFullyDistributed" xml:space="preserve">
+  <value>Tous les points de caractéristiques doivent être répartis avant de créer le personnage.</value>
+</data>
+	<data name="Backend_CharacterCreationAttributeBonusExceedsLimit" xml:space="preserve">
+  <value>La répartition des points de caractéristiques dépasse la limite autorisée pour une caractéristique.</value>
+</data>
+	<data name="Backend_CharacterCreationNoDerivedStatsForDistribution" xml:space="preserve">
+  <value>Aucune compétence n'est disponible pour la répartition des points.</value>
+</data>
+	<data name="Backend_CharacterCreationDerivedStatPointsMustBeFullyDistributed" xml:space="preserve">
+  <value>Tous les points de compétences doivent être répartis avant de créer le personnage.</value>
+</data>
+	<data name="Backend_CharacterCreationDerivedStatBonusExceedsLimit" xml:space="preserve">
+  <value>La répartition des points de compétences dépasse la limite autorisée pour une compétence.</value>
+</data>
+	<data name="Backend_CharacterCreationTalentChoicesRequired" xml:space="preserve">
+  <value>Le nombre requis de talents de départ doit être sélectionné.</value>
+</data>
+	<data name="Backend_CharacterCreationTalentChoiceInvalid" xml:space="preserve">
+  <value>Un talent sélectionné à la création est invalide.</value>
+</data>
+	<data name="Backend_CharacterCreationTalentChoicesConfigurationInvalid" xml:space="preserve">
+  <value>La configuration des talents de départ est invalide pour ce système.</value>
+</data>
+	<data name="Backend_CharacterCreationItemChoicesRequired" xml:space="preserve">
+  <value>Le nombre requis d'objets de départ doit être sélectionné.</value>
+</data>
+	<data name="Backend_CharacterCreationItemChoiceInvalid" xml:space="preserve">
+  <value>Un objet sélectionné à la création est invalide.</value>
+</data>
+	<data name="Backend_CharacterCreationItemChoicesConfigurationInvalid" xml:space="preserve">
+  <value>La configuration des objets de départ est invalide pour ce système.</value>
+</data>
+	<data name="GameSystem_Editor_ItemIsConsumable" xml:space="preserve">
+  <value>Consommable</value>
+</data>
+	<data name="GameSystem_Editor_ItemMaxQuantityPerCharacter" xml:space="preserve">
+  <value>Quantité max par personnage</value>
+</data>
+	<data name="GameSystem_Editor_ItemModifierFillGaugeOnly" xml:space="preserve">
+  <value>Remplir la jauge uniquement</value>
+</data>
+	<data name="Character_Item_Consume" xml:space="preserve">
+  <value>Consommer</value>
+</data>
+	<data name="Backend_ConsumableItemMaxQuantityInvalid" xml:space="preserve">
+  <value>La quantité max d'un objet consommable doit être supérieure à 0.</value>
+</data>
+	<data name="Backend_CharacterItemNotOwned" xml:space="preserve">
+  <value>Le personnage ne possède pas cet objet.</value>
+</data>
+	<data name="Backend_InvalidCharacterItemSelection" xml:space="preserve">
+  <value>La sélection d'objet est invalide.</value>
+</data>
+	<data name="Backend_CharacterItemNotConsumable" xml:space="preserve">
+  <value>Cet objet n'est pas consommable.</value>
+</data>
+	<data name="Backend_CharacterItemOutOfStock" xml:space="preserve">
+  <value>La quantité de cet objet est épuisée.</value>
+</data>
+	<data name="GameSystem_Editor_ItemModifierAffectsMaximum" xml:space="preserve">
+  <value>Modifier le maximum</value>
+</data>
+	<data name="Character_Item_ConfirmConsume" xml:space="preserve">
+  <value>Consommer ?</value>
+</data>
+	<data name="Backend_TestPresetNameRequired" xml:space="preserve">
+  <value>Le nom du preset de test est requis.</value>
+</data>
+	<data name="Backend_TestPresetAlreadyExists" xml:space="preserve">
+  <value>Un preset de test avec ce nom existe déjà.</value>
+</data>
+	<data name="Backend_TestPresetNotFound" xml:space="preserve">
+  <value>Preset de test introuvable.</value>
+</data>
+	<data name="Backend_PollPresetNameRequired" xml:space="preserve">
+  <value>Le nom du preset de sondage est requis.</value>
+</data>
+	<data name="Backend_PollPresetAlreadyExists" xml:space="preserve">
+  <value>Un preset de sondage avec ce nom existe déjà.</value>
+</data>
+	<data name="Backend_PollPresetNotFound" xml:space="preserve">
+  <value>Preset de sondage introuvable.</value>
+</data>
+	<data name="Test_Presets" xml:space="preserve">
+  <value>Preset de test</value>
+</data>
+<data name="Test_SavePreset" xml:space="preserve">
+  <value>Enregistrer preset</value>
+</data>
+	<data name="Test_SelectPreset" xml:space="preserve">
+  <value>Nouveau preset</value>
+</data>
+	<data name="Test_DeletePreset" xml:space="preserve">
+  <value>Supprimer le preset</value>
+</data>
+	<data name="Test_ConfirmDeletePreset" xml:space="preserve">
+  <value>Êtes-vous sûr de vouloir supprimer le preset "{0}" ?</value>
+</data>
+	<data name="Test_PresetName" xml:space="preserve">
+  <value>Nom du preset</value>
+</data>
+	<data name="Test_PresetOverwriteConfirm" xml:space="preserve">
+  <value>Remplacer preset existant ?</value>
+</data>
+	<data name="Test_PresetSaved" xml:space="preserve">
+  <value>Preset de test enregistré.</value>
+</data>
+	<data name="Test_PresetDeleted" xml:space="preserve">
+  <value>Preset de test supprimé.</value>
+</data>
+
+	<data name="Poll_SavePreset" xml:space="preserve">
+  <value>Enregistrer preset</value>
+</data>
+	<data name="Poll_SelectPreset" xml:space="preserve">
+  <value>Sélectionner un preset</value>
+</data>
+	<data name="Poll_DeletePreset" xml:space="preserve">
+  <value>Supprimer le preset</value>
+</data>
+	<data name="Poll_PresetName" xml:space="preserve">
+  <value>Nom du preset</value>
+</data>
+	<data name="Poll_PresetOverwriteConfirm" xml:space="preserve">
+  <value>Remplacer preset existant ?</value>
+</data>
+	<data name="Poll_PresetSaved" xml:space="preserve">
+  <value>Preset de sondage enregistré.</value>
+</data>
+	<data name="Poll_PresetDeleted" xml:space="preserve">
+  <value>Preset de sondage supprimé.</value>
+</data>
+	<data name="Backend_TestConsequencesAlreadyCancelled" xml:space="preserve">
+  <value>Les conséquences de ce test ont déjà été annulées.</value>
+</data>
+	<data name="Backend_TestHasNoConsequencesToRollback" xml:space="preserve">
+  <value>Ce test n'a aucune conséquence à annuler.</value>
+</data>
+	<data name="Test_RollbackConsequencesOnly" xml:space="preserve">
+  <value>Annuler uniquement les conséquences</value>
+</data>
+	<data name="Test_RollbackConsequencesOnlyConfirmQuestion" xml:space="preserve">
+  <value>Annuler uniquement les conséquences du dernier test et conserver les résultats ?</value>
+</data>
+	<data name="Test_RollbackConsequencesOnlySuccess" xml:space="preserve">
+  <value>Les conséquences du dernier test ont été annulées.</value>
+</data>
+	<data name="Test_ConsequencesCancelled" xml:space="preserve">
+  <value>Conséquences annulées</value>
+</data>
+	<data name="Session_Settings_ManageStore" xml:space="preserve">
+  <value>Gérer le Magasin</value>
+</data>
+	<data name="Session_Store_Title" xml:space="preserve">
+  <value>Magasin de Session</value>
+</data>
+	<data name="Session_Store_Subtitle" xml:space="preserve">
+  <value>Configuration du magasin et des offres achetables</value>
+</data>
+	<data name="Session_Store_PlayerSubtitle" xml:space="preserve">
+  <value>Achetez des talents et objets avec vos jauges de session</value>
+</data>
+	<data name="Session_Store_Enabled" xml:space="preserve">
+  <value>Magasin activé</value>
+</data>
+	<data name="Session_Store_Offers" xml:space="preserve">
+  <value>Offres du magasin</value>
+</data>
+	<data name="Session_Store_AddTalentOffer" xml:space="preserve">
+  <value>Ajouter une offre de talent</value>
+</data>
+	<data name="Session_Store_AddItemOffer" xml:space="preserve">
+  <value>Ajouter une offre</value>
+</data>
+	<data name="Session_Store_OfferType" xml:space="preserve">
+  <value>Type</value>
+</data>
+	<data name="Session_Store_Target" xml:space="preserve">
+  <value>Cible</value>
+</data>
+	<data name="Session_Store_CurrencyGauge" xml:space="preserve">
+  <value>Jauge de paiement</value>
+</data>
+	<data name="Session_Store_Cost" xml:space="preserve">
+  <value>Coût</value>
+</data>
+	<data name="Session_Store_Saved" xml:space="preserve">
+  <value>Magasin sauvegardé.</value>
+</data>
+	<data name="Session_Store_Button" xml:space="preserve">
+  <value>Magasin</value>
+</data>
+	<data name="Session_Store_FilterGauge" xml:space="preserve">
+  <value>Filtrer par jauge</value>
+</data>
+	<data name="Session_Store_FilterAll" xml:space="preserve">
+  <value>Afficher tout</value>
+</data>
+	<data name="Session_Store_Buy" xml:space="preserve">
+  <value>Acheter</value>
+</data>
+	<data name="Session_Store_BuyConfirm" xml:space="preserve">
+  <value>Acheter ?</value>
+</data>
+	<data name="Backend_SessionStoreInvalidGauge" xml:space="preserve">
+  <value>La jauge de paiement sélectionnée est invalide.</value>
+</data>
+	<data name="Backend_SessionStoreInvalidTarget" xml:space="preserve">
+  <value>La cible sélectionnée pour l'offre est invalide.</value>
+</data>
+	<data name="Backend_SessionStoreInvalidCost" xml:space="preserve">
+  <value>Le coût d'une offre ne peut pas être négatif.</value>
+</data>
+	<data name="Backend_SessionStoreDisabled" xml:space="preserve">
+  <value>Le magasin est désactivé.</value>
+</data>
+	<data name="Backend_SessionStoreOfferNotFound" xml:space="preserve">
+  <value>Offre de magasin introuvable.</value>
+</data>
+	<data name="Backend_SessionStoreNotEnoughCurrency" xml:space="preserve">
+  <value>La jauge sélectionnée n'a pas assez de valeur pour cet achat.</value>
+</data>
+	<data name="Backend_SessionStoreOfferAlreadyOwned" xml:space="preserve">
+  <value>Cette offre est déjà possédée.</value>
+</data>
+	<data name="Backend_SessionStoreConsumableLimitReached" xml:space="preserve">
+  <value>La quantité maximale de cet objet consommable est déjà atteinte.</value>
+</data>
+	<data name="Session_Store_NoGaugeAvailable" xml:space="preserve">
+  <value>Aucune jauge de session n'est disponible pour le magasin.</value>
+</data>
+	<data name="Session_Store_NoTalentAvailable" xml:space="preserve">
+  <value>Aucun talent n'est disponible pour créer une offre.</value>
+</data>
+	<data name="Session_Store_NoItemAvailable" xml:space="preserve">
+  <value>Aucun objet n'est disponible pour créer une offre.</value>
+</data>
+	<data name="Session_Store_HideOwned" xml:space="preserve">
+  <value>Masquer possédé</value>
+</data>
+	<data name="Session_Store_HideTooExpensive" xml:space="preserve">
+  <value>Masquer trop cher</value>
+</data>
+	<data name="Session_Store_ConsumablesOnly" xml:space="preserve">
+  <value>Consommables</value>
+</data>
+	<data name="GameSystem_Editor_DefaultSuccessThreshold" xml:space="preserve">
+  <value>Seuil de réussite par défaut</value>
+</data>
+	<data name="Backend_DefaultSuccessThresholdInvalid" xml:space="preserve">
+  <value>Le seuil de réussite par défaut doit être supérieur ou égal à 1.</value>
+</data>
+	<data name="Audience_BiographyNotEmpty" xml:space="preserve">
+  <value>Biographie non vide</value>
+</data>
+	<data name="AdvancedFilter_RandomDrawSection" xml:space="preserve">
+  <value>Tirages au sort précédents</value>
+</data>
+	<data name="Character_Tooltip_Base" xml:space="preserve">
+  <value>base</value>
+</data>
+	<data name="Character_Tooltip_Augmentations" xml:space="preserve">
+  <value>modification</value>
+</data>
+	<data name="Character_Tooltip_OnUsePrefix" xml:space="preserve">
+  <value>À l’utilisation :</value>
+</data>
+	<data name="Character_Tooltip_Grant" xml:space="preserve">
+  <value>Octroie {0}</value>
+</data>
+	<data name="Character_Tooltip_Revoke" xml:space="preserve">
+  <value>Retire {0}</value>
+</data>
+	<data name="CharacterCreation_SelectOptionPlaceholder" xml:space="preserve">
+  <value>Choisir...</value>
+</data>
+	<data name="CharacterCreation_RequiredTraits" xml:space="preserve">
+  <value>Traits obligatoires</value>
+</data>
+	<data name="CharacterCreation_RandomizeRemaining" xml:space="preserve">
+  <value>Aléatoire</value>
+</data>
+	<data name="Test_AdvancedModifiersSection" xml:space="preserve">
+  <value>Modificateurs avancés</value>
+</data>
+	<data name="Test_AdvancedModifiersMode" xml:space="preserve">
+  <value>Mode des modificateurs avancés</value>
+</data>
+	<data name="Test_AdvancedModifiersMode_Cumulative" xml:space="preserve">
+  <value>Cumul</value>
+</data>
+	<data name="Test_AdvancedModifiersMode_HighestOnly" xml:space="preserve">
+  <value>Plus fort bonus</value>
+</data>
+	<data name="Test_AdvancedModifiersList" xml:space="preserve">
+  <value>Lignes de modificateurs</value>
+</data>
+	<data name="Test_AdvancedModifiersAdd" xml:space="preserve">
+  <value>Ajouter un modificateur</value>
+</data>
+	<data name="Test_AdvancedModifiersNone" xml:space="preserve">
+  <value>Aucun modificateur avancé.</value>
+</data>
+	<data name="Test_AdvancedModifiersSourceType" xml:space="preserve">
+  <value>Type de critère</value>
+</data>
+	<data name="Test_BonusMalus" xml:space="preserve">
+  <value>Bonus / malus</value>
+</data>
+	<data name="Backend_InvalidAdvancedModifierSourceMetric" xml:space="preserve">
+  <value>La metric source du modificateur avancé est invalide.</value>
+</data>
+	<data name="Backend_InvalidAdvancedModifierSelection" xml:space="preserve">
+  <value>La sélection du modificateur avancé est invalide.</value>
+</data>
+	<data name="Backend_InvalidAdvancedModifierValue" xml:space="preserve">
+  <value>La valeur du modificateur avancé est invalide.</value>
+</data>
+	<data name="Common_And" xml:space="preserve">
+  <value>et</value>
+</data>
+	<data name="Common_To" xml:space="preserve">
+  <value>à</value>
+</data>
+	<data name="GameSystem_Editor_SelectElementHint" xml:space="preserve">
+  <value>Sélectionnez une catégorie ou un élément à gauche pour afficher son détail éditable.</value>
+</data>
+	<data name="GameSystem_Editor_UntitledElement" xml:space="preserve">
+  <value>Élément sans nom</value>
+</data>
+	<data name="GameSystem_Editor_NoDescriptionSummary" xml:space="preserve">
+  <value>Aucune description</value>
+</data>
+	<data name="GameSystem_Editor_NoDerivedComponentsSummary" xml:space="preserve">
+  <value>Aucune caractéristique liée</value>
+</data>
+	<data name="GameSystem_Editor_NoMetricFormulaSummary" xml:space="preserve">
+  <value>Aucune formule</value>
+</data>
+	<data name="GameSystem_Editor_NoTraitOptionsSummary" xml:space="preserve">
+  <value>Aucune option</value>
+</data>
+	<data name="GameSystem_Editor_GaugeHealthType" xml:space="preserve">
+  <value>Santé</value>
+</data>
+	<data name="GameSystem_Editor_GaugeStandardType" xml:space="preserve">
+  <value>Standard</value>
+</data>
+	<data name="GameSystem_Editor_PendingChangesTitle" xml:space="preserve">
+  <value>Des changements ne sont pas enregistrés</value>
+</data>
+	<data name="GameSystem_Editor_PendingChangesBody" xml:space="preserve">
+  <value>N’oubliez pas d’utiliser le bouton Enregistrer pour valider les modifications.</value>
+</data>
+	<data name="GameSystem_Editor_AllChangesSavedTitle" xml:space="preserve">
+  <value>Dernière version sauvegardée</value>
+</data>
+	<data name="GameSystem_Editor_AllChangesSavedBody" xml:space="preserve">
+  <value>La version actuellement chargée correspond bien à l’état enregistré.</value>
+</data>
+	<data name="EditGameSystem_DerivedStatComponents" xml:space="preserve">
+  <value>Composants de la compétence</value>
+</data>
+	<data name="Backend_GameSystemDeletedReferenceConfirmationRequired" xml:space="preserve">
+  <value>Attention, un élément supprimé est encore utilisé par d’autres éléments. Confirmer supprimera aussi les références concernées :</value>
+</data>
+	<data name="Test_SuccessThresholdMode" xml:space="preserve">
+    <value>Mode du seuil de réussite</value>
+  </data>
+	<data name="Test_SuccessThresholdMode_Fixed" xml:space="preserve">
+    <value>Seuil fixe</value>
+  </data>
+	<data name="Test_SuccessThresholdMode_Metric" xml:space="preserve">
+    <value>Seuil basé sur une metric</value>
+  </data>
+	<data name="Test_SuccessThresholdMetric" xml:space="preserve">
+    <value>Metric de seuil</value>
+  </data>
+	<data name="Test_SelectSuccessThresholdMetric" xml:space="preserve">
+    <value>Sélectionner une metric</value>
+  </data>
+	<data name="Test_SuccessThresholdMetricMissing" xml:space="preserve">
+    <value>La metric de seuil de réussite configurée est introuvable. Sélectionnez une autre metric ou repassez en seuil fixe.</value>
+  </data>
+	<data name="Test_SuccessThresholdShort" xml:space="preserve">
+    <value>SR</value>
+  </data>
+	<data name="Backend_SuccessThresholdMetricRequired" xml:space="preserve">
+    <value>Une metric de seuil de réussite doit être sélectionnée.</value>
+  </data>
+	<data name="Backend_SuccessThresholdMetricNotFound" xml:space="preserve">
+    <value>La metric utilisée comme seuil de réussite est introuvable ou a été supprimée.</value>
+  </data>
+	<data name="Session_Store_StatsStatus" xml:space="preserve">
+  <value>État</value>
+</data>
+	<data name="Session_Store_StatusEnabled" xml:space="preserve">
+  <value>Activé</value>
+</data>
+	<data name="Session_Store_StatusDisabled" xml:space="preserve">
+  <value>Désactivé</value>
+</data>
+	<data name="Session_Store_StatsOffers" xml:space="preserve">
+  <value>Offres</value>
+</data>
+	<data name="Session_Store_StatsPaymentGauges" xml:space="preserve">
+  <value>Jauges de paiement utilisées</value>
+</data>
+	<data name="Session_Store_StatsAvailableTargets" xml:space="preserve">
+  <value>Cibles disponibles</value>
+</data>
+	<data name="Session_Store_GlobalActions" xml:space="preserve">
+  <value>Actions globales</value>
+</data>
+	<data name="Session_Store_GlobalActionsSubtitle" xml:space="preserve">
+  <value>Activation du magasin et règles générales de paiement</value>
+</data>
+	<data name="Session_Store_PaymentGaugeModel" xml:space="preserve">
+  <value>Jauges pouvant servir de paiement</value>
+</data>
+	<data name="Session_Store_PaymentGaugeModelHelp" xml:space="preserve">
+  <value>Le modèle actuel du magasin autorise toutes les jauges du système comme jauges de paiement. Les offres sont regroupées ci-dessous par jauge sélectionnée.</value>
+</data>
+	<data name="Session_Store_AddOffer" xml:space="preserve">
+  <value>Ajouter une offre</value>
+</data>
+	<data name="Session_Store_NoOfferForGauge" xml:space="preserve">
+  <value>Aucune offre pour cette jauge.</value>
+</data>
+	<data name="Session_Store_NoOfferSelectedTitle" xml:space="preserve">
+  <value>Aucune offre sélectionnée</value>
+</data>
+	<data name="Session_Store_NoOfferSelectedBody" xml:space="preserve">
+  <value>Sélectionnez une offre dans la colonne de gauche ou ajoutez une nouvelle offre depuis une jauge de paiement.</value>
+</data>
+	<data name="Session_Store_EditOfferSubtitle" xml:space="preserve">
+  <value>Modifiez l'offre localement, puis utilisez l'enregistrement global en haut de page.</value>
+</data>
+	<data name="Session_Store_TargetMissing" xml:space="preserve">
+  <value>Cible supprimée</value>
+</data>
+	<data name="Journal_OpenPopup" xml:space="preserve">
+  <value>Ouvrir le journal dans une fenêtre séparée</value>
+</data>
+	<data name="Stream_OpenPopup" xml:space="preserve">
+  <value>Ouvrir le stream dans une fenêtre séparée</value>
+</data>
+	<data name="Journal_Explanation" xml:space="preserve">
+  <value>Le journal public est visible par tous les joueurs. Le journal privé ne peut être consulté que par le MJ.</value>
+</data>
+	<data name="Journal_PrivateSubtitle" xml:space="preserve">
+  <value>Notes internes réservées au MJ.</value>
+</data>
+	<data name="Journal_PublicSubtitle" xml:space="preserve">
+  <value>Pages visibles par tous les joueurs.</value>
+</data>
+	<data name="Journal_SavePrivate" xml:space="preserve">
+  <value>Enregistrer le privé</value>
+</data>
+	<data name="Journal_SavePublic" xml:space="preserve">
+  <value>Enregistrer le public</value>
+</data>
+	<data name="Journal_UnsavedChangesTitle" xml:space="preserve">
+  <value>Modifications non enregistrées</value>
+</data>
+	<data name="Journal_AllChangesSavedTitle" xml:space="preserve">
+  <value>Modifications enregistrées</value>
+</data>
+	<data name="Journal_PrivateUnsavedChangesBody" xml:space="preserve">
+  <value>Le journal privé contient des changements non sauvegardés.</value>
+</data>
+	<data name="Journal_PrivateAllChangesSavedBody" xml:space="preserve">
+  <value>Le journal privé est à jour.</value>
+</data>
+	<data name="Journal_PublicUnsavedChangesBody" xml:space="preserve">
+  <value>Le journal public contient des changements non sauvegardés.</value>
+</data>
+	<data name="Journal_PublicAllChangesSavedBody" xml:space="preserve">
+  <value>Le journal public est à jour.</value>
+</data>
+	<data name="Journal_PrivateSaved" xml:space="preserve">
+  <value>Journal privé enregistré.</value>
+</data>
+	<data name="Journal_PublicSaved" xml:space="preserve">
+  <value>Journal public enregistré.</value>
+</data>
+	<data name="Admin_AccessDenied" xml:space="preserve"><value>Accès administrateur refusé.</value></data>
+	<data name="Admin_Active" xml:space="preserve"><value>Actif</value></data>
+	<data name="Admin_Actions" xml:space="preserve"><value>Actions</value></data>
+	<data name="Admin_AddEntry" xml:space="preserve"><value>Ajouter</value></data>
+	<data name="Admin_AddPatchNoteEntry" xml:space="preserve"><value>Ajouter une note</value></data>
+	<data name="Admin_Characters" xml:space="preserve"><value>Personnages</value></data>
+	<data name="Admin_ConfirmDelete" xml:space="preserve"><value>Confirmer cette suppression ? Cette action peut être irréversible.</value></data>
+	<data name="Admin_Creator" xml:space="preserve"><value>Créateur</value></data>
+	<data name="Admin_Deleted" xml:space="preserve"><value>Suppression effectuée.</value></data>
+	<data name="Admin_DisplayOrder" xml:space="preserve"><value>Ordre d’affichage</value></data>
+	<data name="Admin_Draft" xml:space="preserve"><value>Brouillon</value></data>
+	<data name="Admin_EmailSent" xml:space="preserve"><value>Email envoyé.</value></data>
+	<data name="Admin_Entries" xml:space="preserve"><value>notes</value></data>
+	<data name="Admin_GameSystem" xml:space="preserve"><value>Système</value></data>
+	<data name="Admin_GameSystemDeleteBlocked" xml:space="preserve"><value>Ce système est utilisé par au moins une session et ne peut pas être supprimé.</value></data>
+	<data name="Admin_GameSystems_Subtitle" xml:space="preserve"><value>Consultez les systèmes, leur créateur et leurs sessions utilisatrices.</value></data>
+	<data name="Admin_GameSystems_Title" xml:space="preserve"><value>Systèmes de jeu</value></data>
+	<data name="Admin_Inactive" xml:space="preserve"><value>Inactif</value></data>
+	<data name="Admin_IsAdmin" xml:space="preserve"><value>Admin</value></data>
+	<data name="Admin_LoadError" xml:space="preserve"><value>Impossible de charger les données d’administration.</value></data>
+	<data name="Admin_MakeGeneric" xml:space="preserve"><value>Rendre générique</value></data>
+	<data name="Admin_Mode" xml:space="preserve"><value>Mode</value></data>
+	<data name="Admin_MonthlyPriceTtc" xml:space="preserve"><value>Prix mensuel TTC</value></data>
+	<data name="Admin_NewPatchNote" xml:space="preserve"><value>Nouvelle patchnote</value></data>
+	<data name="Admin_NewPlannedFeature" xml:space="preserve"><value>Nouvelle fonctionnalité prévue</value></data>
+	<data name="Admin_NewSubscriptionPlan" xml:space="preserve"><value>Nouveau plan</value></data>
+	<data name="Admin_OpenEditor" xml:space="preserve"><value>Éditer</value></data>
+	<data name="Admin_PatchNoteNotFound" xml:space="preserve"><value>Patchnote introuvable.</value></data>
+	<data name="Admin_PatchNotes_List" xml:space="preserve"><value>Patchnotes existantes</value></data>
+	<data name="Admin_PatchNotes_Subtitle" xml:space="preserve"><value>Créez, éditez et publiez les notes de version bilingues.</value></data>
+	<data name="Admin_PatchNotes_Title" xml:space="preserve"><value>Patchnotes</value></data>
+	<data name="Admin_PatchNoteVersionAlreadyExists" xml:space="preserve"><value>Une patchnote existe déjà pour cette version.</value></data>
+	<data name="Admin_PatchNoteVersionRequired" xml:space="preserve"><value>Le numéro de version est obligatoire.</value></data>
+	<data name="Admin_PlannedFeatureNotFound" xml:space="preserve"><value>Fonctionnalité prévue introuvable.</value></data>
+	<data name="Admin_PlannedFeatures_List" xml:space="preserve"><value>Fonctionnalités prévues</value></data>
+	<data name="Admin_PlannedFeatures_Subtitle" xml:space="preserve"><value>Modifiez les fonctionnalités prévues affichées sur l’accueil.</value></data>
+	<data name="Admin_PlannedFeatures_Title" xml:space="preserve"><value>Fonctionnalités prévues</value></data>
+	<data name="Admin_PlannedFeatureTextRequired" xml:space="preserve"><value>Un texte français ou anglais est obligatoire.</value></data>
+	<data name="Admin_Published" xml:space="preserve"><value>Publié</value></data>
+	<data name="Admin_Saved" xml:space="preserve"><value>Enregistrement effectué.</value></data>
+	<data name="Admin_SendPasswordReset" xml:space="preserve"><value>Reset MDP</value></data>
+	<data name="Admin_SendVerificationEmail" xml:space="preserve"><value>Vérification email</value></data>
+	<data name="Admin_Sessions_Subtitle" xml:space="preserve"><value>Consultez les sessions, leurs personnages et leur état.</value></data>
+	<data name="Admin_Sessions_Title" xml:space="preserve"><value>Sessions</value></data>
+	<data name="Admin_Stats_Characters" xml:space="preserve"><value>Personnages vivants / total</value></data>
+	<data name="Admin_Stats_GameMasters" xml:space="preserve"><value>Comptes MJ</value></data>
+	<data name="Admin_Stats_Sessions" xml:space="preserve"><value>Sessions actives / total</value></data>
+	<data name="Admin_Stats_Users" xml:space="preserve"><value>Utilisateurs</value></data>
+	<data name="Admin_Subscription" xml:space="preserve"><value>Abonnement</value></data>
+	<data name="Admin_SubscriptionPlanCodeAlreadyExists" xml:space="preserve"><value>Ce code de plan existe déjà.</value></data>
+	<data name="Admin_SubscriptionPlanCodeRequired" xml:space="preserve"><value>Le code du plan est obligatoire.</value></data>
+	<data name="Admin_SubscriptionPlanDeleteBlocked" xml:space="preserve"><value>Ce plan est utilisé par au moins un abonnement et ne peut pas être supprimé.</value></data>
+	<data name="Admin_SubscriptionPlanNameRequired" xml:space="preserve"><value>Le nom du plan est obligatoire.</value></data>
+	<data name="Admin_SubscriptionPlanNotFound" xml:space="preserve"><value>Plan d’abonnement introuvable.</value></data>
+	<data name="Admin_SubscriptionPlans_Subtitle" xml:space="preserve"><value>Créez, modifiez, activez ou désactivez les plans d’abonnement.</value></data>
+	<data name="Admin_SubscriptionPlans_Title" xml:space="preserve"><value>Plans d’abonnement</value></data>
+	<data name="Admin_Subtitle" xml:space="preserve"><value>Administration générale de Rollocracy.</value></data>
+	<data name="Admin_Title" xml:space="preserve"><value>Administration</value></data>
+	<data name="Admin_UsedBySessions" xml:space="preserve"><value>Sessions utilisatrices</value></data>
+	<data name="Admin_Users" xml:space="preserve"><value>Utilisateurs</value></data>
+	<data name="Admin_Users_Subtitle" xml:space="preserve"><value>Consultez et modifiez les comptes enregistrés.</value></data>
+	<data name="Admin_Users_Title" xml:space="preserve"><value>Utilisateurs</value></data>
+	<data name="Admin_Version" xml:space="preserve"><value>Version</value></data>
+	<data name="Common_Refresh" xml:space="preserve"><value>Rafraîchir</value></data>
+	<data name="Common_Search" xml:space="preserve"><value>Recherche</value></data>
+	<data name="Home_Patchnote_VersionLabel" xml:space="preserve"><value>Version {0}</value></data>
+	<data name="Home_Patchnote_VersionTitle" xml:space="preserve"><value>Patchnote — version {0}</value></data>
+	<data name="Home_Project_NoPatchnotes" xml:space="preserve"><value>Aucune patchnote publiée pour le moment.</value></data>
+	<data name="Home_Project_NoPlannedFeatures" xml:space="preserve"><value>Aucune fonctionnalité prévue publiée pour le moment.</value></data>
+	<data name="Navigation_Administration" xml:space="preserve"><value>Administration</value></data>
+	<data name="Account_Settings_HideEmail" xml:space="preserve"><value>Masquer l’email</value></data>
+	<data name="Account_Settings_ShowEmail" xml:space="preserve"><value>Afficher l’email</value></data>
+
 </root>
