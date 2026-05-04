@@ -3913,4 +3913,124 @@
 	<data name="Backend_GameSystemDeletedReferenceConfirmationRequired" xml:space="preserve">
   <value>Warning, a deleted element is still used by other elements. Confirming will also remove the related references:</value>
 </data>
+	<data name="Test_SuccessThresholdMode" xml:space="preserve">
+    <value>Success threshold mode</value>
+  </data>
+	<data name="Test_SuccessThresholdMode_Fixed" xml:space="preserve">
+    <value>Fixed threshold</value>
+  </data>
+	<data name="Test_SuccessThresholdMode_Metric" xml:space="preserve">
+    <value>Metric-based threshold</value>
+  </data>
+	<data name="Test_SuccessThresholdMetric" xml:space="preserve">
+    <value>Threshold metric</value>
+  </data>
+	<data name="Test_SelectSuccessThresholdMetric" xml:space="preserve">
+    <value>Select a metric</value>
+  </data>
+	<data name="Test_SuccessThresholdMetricMissing" xml:space="preserve">
+    <value>The configured success threshold metric cannot be found. Select another metric or switch back to a fixed threshold.</value>
+  </data>
+	<data name="Test_SuccessThresholdShort" xml:space="preserve">
+    <value>SR</value>
+  </data>
+	<data name="Backend_SuccessThresholdMetricRequired" xml:space="preserve">
+    <value>A success threshold metric must be selected.</value>
+  </data>
+	<data name="Backend_SuccessThresholdMetricNotFound" xml:space="preserve">
+    <value>The metric used as success threshold cannot be found or has been deleted.</value>
+  </data>
+	<data name="Session_Store_StatsStatus" xml:space="preserve">
+  <value>Status</value>
+</data>
+	<data name="Session_Store_StatusEnabled" xml:space="preserve">
+  <value>Enabled</value>
+</data>
+	<data name="Session_Store_StatusDisabled" xml:space="preserve">
+  <value>Disabled</value>
+</data>
+	<data name="Session_Store_StatsOffers" xml:space="preserve">
+  <value>Offers</value>
+</data>
+	<data name="Session_Store_StatsPaymentGauges" xml:space="preserve">
+  <value>Payment gauges used</value>
+</data>
+	<data name="Session_Store_StatsAvailableTargets" xml:space="preserve">
+  <value>Available targets</value>
+</data>
+	<data name="Session_Store_GlobalActions" xml:space="preserve">
+  <value>Global actions</value>
+</data>
+	<data name="Session_Store_GlobalActionsSubtitle" xml:space="preserve">
+  <value>Store activation and general payment rules</value>
+</data>
+	<data name="Session_Store_PaymentGaugeModel" xml:space="preserve">
+  <value>Gauges usable as payment</value>
+</data>
+	<data name="Session_Store_PaymentGaugeModelHelp" xml:space="preserve">
+  <value>The current store model allows every system gauge to be used as a payment gauge. Offers are grouped below by selected gauge.</value>
+</data>
+	<data name="Session_Store_AddOffer" xml:space="preserve">
+  <value>Add offer</value>
+</data>
+	<data name="Session_Store_NoOfferForGauge" xml:space="preserve">
+  <value>No offer for this gauge.</value>
+</data>
+	<data name="Session_Store_NoOfferSelectedTitle" xml:space="preserve">
+  <value>No offer selected</value>
+</data>
+	<data name="Session_Store_NoOfferSelectedBody" xml:space="preserve">
+  <value>Select an offer from the left column or add a new offer from a payment gauge.</value>
+</data>
+	<data name="Session_Store_EditOfferSubtitle" xml:space="preserve">
+  <value>Edit the offer locally, then use the global save button at the top of the page.</value>
+</data>
+	<data name="Session_Store_TargetMissing" xml:space="preserve">
+  <value>Deleted target</value>
+</data>
+	<data name="Journal_OpenPopup" xml:space="preserve">
+  <value>Open the journal in a separate window</value>
+</data>
+	<data name="Stream_OpenPopup" xml:space="preserve">
+  <value>Open the stream in a separate window</value>
+</data>
+	<data name="Journal_Explanation" xml:space="preserve">
+  <value>The public journal is visible to all players. The private journal can only be viewed by the GM.</value>
+</data>
+	<data name="Journal_PrivateSubtitle" xml:space="preserve">
+  <value>Internal notes reserved for the GM.</value>
+</data>
+	<data name="Journal_PublicSubtitle" xml:space="preserve">
+  <value>Pages visible to all players.</value>
+</data>
+	<data name="Journal_SavePrivate" xml:space="preserve">
+  <value>Save private</value>
+</data>
+	<data name="Journal_SavePublic" xml:space="preserve">
+  <value>Save public</value>
+</data>
+	<data name="Journal_UnsavedChangesTitle" xml:space="preserve">
+  <value>Unsaved changes</value>
+</data>
+	<data name="Journal_AllChangesSavedTitle" xml:space="preserve">
+  <value>Changes saved</value>
+</data>
+	<data name="Journal_PrivateUnsavedChangesBody" xml:space="preserve">
+  <value>The private journal has unsaved changes.</value>
+</data>
+	<data name="Journal_PrivateAllChangesSavedBody" xml:space="preserve">
+  <value>The private journal is up to date.</value>
+</data>
+	<data name="Journal_PublicUnsavedChangesBody" xml:space="preserve">
+  <value>The public journal has unsaved changes.</value>
+</data>
+	<data name="Journal_PublicAllChangesSavedBody" xml:space="preserve">
+  <value>The public journal is up to date.</value>
+</data>
+	<data name="Journal_PrivateSaved" xml:space="preserve">
+  <value>Private journal saved.</value>
+</data>
+	<data name="Journal_PublicSaved" xml:space="preserve">
+  <value>Public journal saved.</value>
+</data>
 </root>

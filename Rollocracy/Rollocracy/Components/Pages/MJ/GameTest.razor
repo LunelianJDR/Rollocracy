@@ -276,9 +276,33 @@ else
                         @if (AssignedGameSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold)
                         {
                             <div class="rc-form-field">
-                                <label>@L["Test_SuccessThreshold"]</label>
-                                <input type="number" @bind="NewSuccessThreshold" />
+                                <label>@L["Test_SuccessThresholdMode"]</label>
+                                <select @bind="NewSuccessThresholdMode" @bind:after="OnSuccessThresholdModeChanged">
+                                    <option value="@GameTestSuccessThresholdMode.Fixed">@L["Test_SuccessThresholdMode_Fixed"]</option>
+                                    <option value="@GameTestSuccessThresholdMode.Metric">@L["Test_SuccessThresholdMode_Metric"]</option>
+                                </select>
                             </div>
+
+                            @if (NewSuccessThresholdMode == GameTestSuccessThresholdMode.Fixed)
+                            {
+                                <div class="rc-form-field">
+                                    <label>@L["Test_SuccessThreshold"]</label>
+                                    <input type="number" @bind="NewSuccessThreshold" />
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="rc-form-field">
+                                    <label>@L["Test_SuccessThresholdMetric"]</label>
+                                    <select @bind="NewSuccessThresholdMetricId">
+                                        <option value="@((Guid?)null)">@L["Test_SelectSuccessThresholdMetric"]</option>
+                                        @foreach (var metric in AvailableMetrics)
+                                        {
+                                            <option value="@metric.Id">@metric.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
                         }
                         
                         <div class="rc-form-field">
@@ -747,6 +771,12 @@ else
                                                                 <div class="rc-final-value @GetFinalValueClass(resultLine)">
                                                                     @resultLine.FinalValue
                                                                 </div>
+                                                                @if (ShouldDisplayResultSuccessThreshold(resultLine))
+                                                                {
+                                                                    <div class="rc-test-result-card__success-threshold">
+                                                                        @($"({L["Test_SuccessThresholdShort"]} : {resultLine.EffectiveSuccessThreshold!.Value})")
+                                                                    </div>
+                                                                }
                                                             </div>
                                                         </div>
                                                     }
@@ -806,6 +836,8 @@ else
     private int NewDiceCount = 1;
     private int NewDiceSides = 100;
     private int? NewSuccessThreshold;
+    private GameTestSuccessThresholdMode NewSuccessThresholdMode = GameTestSuccessThresholdMode.Fixed;
+    private Guid? NewSuccessThresholdMetricId;
     private List<int> GlobalSuccessThresholds = new();
 
     private bool IncludeNpcsInTest;
@@ -1114,6 +1146,7 @@ else
 
         RebuildDifficultyScale();
         EnsureSuccessThresholdDefault();
+        NormalizeSuccessThresholdSelection();
         OnTestTargetKindChanged();
 
         TestPresets = await GameTestService.GetSessionPresetsAsync(SessionId, CurrentUserId);
@@ -1252,6 +1285,9 @@ else
         if (AssignedGameSystem is null || AssignedGameSystem.TestResolutionMode != TestResolutionMode.SuccessThreshold)
             return;
 
+        if (NewSuccessThreshold.HasValue)
+            return;
+
         var diceCount = UseSystemDefaultDice ? AssignedGameSystem.DefaultTestDiceCount : NewDiceCount;
         var diceSides = UseSystemDefaultDice ? AssignedGameSystem.DefaultTestDiceSides : NewDiceSides;
 
@@ -1260,6 +1296,72 @@ else
 
         var average = diceCount * (diceSides + 1) / 2.0;
         NewSuccessThreshold = AssignedGameSystem.DefaultSuccessThreshold ?? (int)Math.Ceiling(average);
+    }
+
+    private void OnSuccessThresholdModeChanged()
+    {
+        NormalizeSuccessThresholdSelection();
+    }
+
+    private void NormalizeSuccessThresholdSelection()
+    {
+        if (AssignedGameSystem?.TestResolutionMode != TestResolutionMode.SuccessThreshold)
+        {
+            NewSuccessThresholdMode = GameTestSuccessThresholdMode.Fixed;
+            NewSuccessThresholdMetricId = null;
+            return;
+        }
+
+        if (NewSuccessThresholdMode == GameTestSuccessThresholdMode.Fixed)
+        {
+            NewSuccessThresholdMetricId = null;
+            EnsureSuccessThresholdDefault();
+            return;
+        }
+
+        NewSuccessThreshold = null;
+
+        if (NewSuccessThresholdMetricId.HasValue && AvailableMetrics.All(x => x.Id != NewSuccessThresholdMetricId.Value))
+        {
+            NewSuccessThresholdMetricId = null;
+            Message = L["Test_SuccessThresholdMetricMissing"];
+        }
+    }
+
+    private GameTestSuccessThresholdMode GetEffectiveSuccessThresholdMode()
+    {
+        if (AssignedGameSystem?.TestResolutionMode != TestResolutionMode.SuccessThreshold)
+            return GameTestSuccessThresholdMode.Fixed;
+
+        return NewSuccessThresholdMode;
+    }
+
+    private int? GetEffectiveFixedSuccessThreshold()
+    {
+        if (AssignedGameSystem?.TestResolutionMode != TestResolutionMode.SuccessThreshold)
+            return null;
+
+        return NewSuccessThresholdMode == GameTestSuccessThresholdMode.Fixed
+            ? NewSuccessThreshold
+            : null;
+    }
+
+    private Guid? GetEffectiveSuccessThresholdMetricId()
+    {
+        if (AssignedGameSystem?.TestResolutionMode != TestResolutionMode.SuccessThreshold)
+            return null;
+
+        return NewSuccessThresholdMode == GameTestSuccessThresholdMode.Metric
+            ? NewSuccessThresholdMetricId
+            : null;
+    }
+
+    private bool ShouldDisplayResultSuccessThreshold(GameMasterGameTestResultLineDto resultLine)
+    {
+        return ActiveTest?.ResolutionMode == TestResolutionMode.SuccessThreshold
+            && ActiveTest.SuccessThresholdMode == GameTestSuccessThresholdMode.Metric
+            && resultLine.HasRolled
+            && resultLine.EffectiveSuccessThreshold.HasValue;
     }
 
     private void RebuildDifficultyScale()
@@ -1384,7 +1486,9 @@ else
                 DiceSides = UseSystemDefaultDice ? AssignedGameSystem.DefaultTestDiceSides : NewDiceSides,
                 CriticalSuccessValue = UseSystemDefaultDice ? AssignedGameSystem.CriticalSuccessValue : null,
                 CriticalFailureValue = UseSystemDefaultDice ? AssignedGameSystem.CriticalFailureValue : null,
-                SuccessThreshold = NewSuccessThreshold,
+                SuccessThresholdMode = GetEffectiveSuccessThresholdMode(),
+                SuccessThreshold = GetEffectiveFixedSuccessThreshold(),
+                SuccessThresholdMetricId = GetEffectiveSuccessThresholdMetricId(),
                 ModifierMode = modifierMode,
                 DifficultyValue = difficultyValue,
                 TargetScope = NewTargetScope,
@@ -2143,7 +2247,9 @@ else
             UseSystemDefaultDice = UseSystemDefaultDice,
             DiceCount = NewDiceCount,
             DiceSides = NewDiceSides,
-            SuccessThreshold = NewSuccessThreshold,
+            SuccessThresholdMode = GetEffectiveSuccessThresholdMode(),
+            SuccessThreshold = GetEffectiveFixedSuccessThreshold(),
+            SuccessThresholdMetricId = GetEffectiveSuccessThresholdMetricId(),
             ModifierMode = difficultyValue >= 0 ? TestModifierMode.Bonus : TestModifierMode.Malus,
             DifficultyValue = Math.Abs(difficultyValue),
             TargetScope = NewTargetScope,
@@ -2175,7 +2281,10 @@ else
         UseSystemDefaultDice = request.UseSystemDefaultDice;
         NewDiceCount = request.DiceCount;
         NewDiceSides = request.DiceSides;
+        NewSuccessThresholdMode = request.SuccessThresholdMode;
         NewSuccessThreshold = request.SuccessThreshold;
+        NewSuccessThresholdMetricId = request.SuccessThresholdMetricId;
+        NormalizeSuccessThresholdSelection();
         NewTargetScope = request.TargetScope;
         NewTraitFilterMode = request.TraitFilterMode;
         IncludeNpcsInTest = request.IncludeNpcs;

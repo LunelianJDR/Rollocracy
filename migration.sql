@@ -2787,3 +2787,42 @@ BEGIN
 END $EF$;
 COMMIT;
 
+START TRANSACTION;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260427095754_AddGameTestDynamicSuccessThreshold') THEN
+    ALTER TABLE "PlayerTestRolls" ADD "EffectiveSuccessThreshold" integer;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260427095754_AddGameTestDynamicSuccessThreshold') THEN
+    ALTER TABLE "GameTests" ADD "SuccessThresholdMetricId" uuid;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260427095754_AddGameTestDynamicSuccessThreshold') THEN
+    ALTER TABLE "GameTests" ADD "SuccessThresholdMetricNameSnapshot" text NOT NULL DEFAULT '';
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260427095754_AddGameTestDynamicSuccessThreshold') THEN
+    ALTER TABLE "GameTests" ADD "SuccessThresholdMode" integer NOT NULL DEFAULT 0;
+    END IF;
+END $EF$;
+
+DO $EF$
+BEGIN
+    IF NOT EXISTS(SELECT 1 FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20260427095754_AddGameTestDynamicSuccessThreshold') THEN
+    INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
+    VALUES ('20260427095754_AddGameTestDynamicSuccessThreshold', '10.0.5');
+    END IF;
+END $EF$;
+COMMIT;
+

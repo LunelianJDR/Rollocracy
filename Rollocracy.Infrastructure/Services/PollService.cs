@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Characters;
+using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
@@ -470,6 +471,65 @@ namespace Rollocracy.Infrastructure.Services
             return Math.Max(definition.MinValue, definition.MaxValue + choiceBonus + talentBonus + itemBonus + persistentBonus);
         }
 
+        private async Task UpdateCharacterAliveStateAsync(
+            RollocracyDbContext context,
+            Guid? gameSystemId,
+            Guid characterId,
+            Character character)
+        {
+            if (!gameSystemId.HasValue)
+                return;
+
+            var healthGaugeDefinitions = await context.GaugeDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId.Value && x.IsHealthGauge)
+                .ToListAsync();
+
+            if (healthGaugeDefinitions.Count == 0)
+                return;
+
+            var healthGaugeDefinitionIds = healthGaugeDefinitions
+                .Select(x => x.Id)
+                .ToList();
+
+            var persistedHealthGaugeValues = await context.CharacterGaugeValues
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId && healthGaugeDefinitionIds.Contains(x.GaugeDefinitionId))
+                .ToListAsync();
+
+            var trackedHealthGaugeValues = context.ChangeTracker
+                .Entries<CharacterGaugeValue>()
+                .Where(x =>
+                    x.Entity.CharacterId == characterId &&
+                    healthGaugeDefinitionIds.Contains(x.Entity.GaugeDefinitionId))
+                .GroupBy(x => x.Entity.GaugeDefinitionId)
+                .ToDictionary(x => x.Key, x => x.Last().Entity.Value);
+
+            var isAlive = healthGaugeDefinitions.All(definition =>
+            {
+                if (trackedHealthGaugeValues.TryGetValue(definition.Id, out var trackedValue))
+                    return trackedValue > 0;
+
+                var persistedValue = persistedHealthGaugeValues.FirstOrDefault(x => x.GaugeDefinitionId == definition.Id)?.Value
+                    ?? definition.DefaultValue;
+
+                return persistedValue > 0;
+            });
+
+            if (isAlive)
+            {
+                character.IsAlive = true;
+                character.DiedAtUtc = null;
+            }
+            else
+            {
+                if (character.IsAlive)
+                    character.DiedAtUtc = DateTime.UtcNow;
+
+                character.IsAlive = false;
+            }
+        }
+
         public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -560,6 +620,12 @@ namespace Rollocracy.Infrastructure.Services
                                     gaugeValue.Value + signedValue,
                                     gaugeDefinition.MinValue,
                                     effectiveMax);
+
+                                await UpdateCharacterAliveStateAsync(
+                                    context,
+                                    session.GameSystemId,
+                                    vote.CharacterId,
+                                    character);
                             }
 
                             hasAppliedEffects = true;

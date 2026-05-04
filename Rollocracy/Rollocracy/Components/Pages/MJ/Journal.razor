@@ -4,6 +4,7 @@
 @using System.Security.Claims
 @using System.Text.RegularExpressions
 @using System.IO
+@using System.Net
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components
 @using Microsoft.Extensions.Localization
@@ -33,41 +34,55 @@ else if (Editor is null)
 }
 else
 {
-    <section class="rc-tool-section">
-        <div class="rc-tool-layout">
-            <div class="rc-tool-panel">
+    <section class="rc-tool-section rc-journal-management-page">
+        @* <div class="rc-tool-layout rc-tool-layout--top">
+            <div class="rc-tool-panel rc-journal-overview-panel">
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
                         <h4 class="rc-tool-panel__title">@L["Journal_Title"]</h4>
-                        @* <p class="rc-tool-panel__subtitle">@Editor.SessionName</p> *@
+                        <p class="rc-tool-panel__subtitle">@Editor.SessionName</p>
                     </div>
+                </div>
 
-                    <div class="rc-tool-actions">
-                        <button type="button" @onclick="BackToSettings">@L["Journal_BackToSettings"]</button>
-                        <button type="button" @onclick="SaveJournal">@L["Journal_Save"]</button>
-                    </div>
+                <div class="rc-journal-explanation-card">
+                    <p>@L["Journal_Explanation"]</p>
                 </div>
 
                 @if (!string.IsNullOrWhiteSpace(Message))
                 {
-                    <p>@Message</p>
+                    <div class="rc-inline-warning rc-inline-warning--soft">
+                        <p>@Message</p>
+                    </div>
                 }
+            </div>
+        </div> *@
 
-                <div class="rc-tool-actions" style="margin-bottom: 1rem;">
-                    <button type="button"
-                            class="@(ShowPublicJournal ? string.Empty : "rc-button-secondary")"
-                            @onclick="() => SwitchScope(false)">
-                        @L["Journal_PrivateTab"]
-                    </button>
+        <div class="rc-journal-dual-layout">
+            <div class="rc-tool-panel rc-journal-scope-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["Journal_PrivateTab"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["Journal_PrivateSubtitle"]</p>
+                    </div>
 
-                    <button type="button"
-                            class="@(ShowPublicJournal ? "rc-button-secondary" : string.Empty)"
-                            @onclick="() => SwitchScope(true)">
-                        @L["Journal_PublicTab"]
-                    </button>
+                    <div class="rc-tool-actions">
+                        <button type="button" @onclick="() => SaveJournalAsync(false)">@L["Journal_SavePrivate"]</button>
+                    </div>
                 </div>
 
-                @if (CurrentPage is null)
+                <div class="@GetSaveStateCssClass(false)">
+                    <strong>@(PrivateJournalHasUnsavedChanges ? L["Journal_UnsavedChangesTitle"] : L["Journal_AllChangesSavedTitle"])</strong>
+                    <span>@(PrivateJournalHasUnsavedChanges ? L["Journal_PrivateUnsavedChangesBody"] : L["Journal_PrivateAllChangesSavedBody"])</span>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(PrivateJournalMessage))
+                {
+                    <div class="rc-inline-warning rc-inline-warning--soft">
+                        <p>@PrivateJournalMessage</p>
+                    </div>
+                }
+
+                @if (PrivatePage is null)
                 {
                     <div class="rc-empty-panel">
                         <p>@L["Journal_NoPage"]</p>
@@ -78,33 +93,30 @@ else
                     <div class="rc-journal-editor">
                         <div class="rc-journal-editor__topbar">
                             <div class="rc-journal-editor__nav">
-                                <button type="button" @onclick="GoPreviousPage">&lt;</button>
-                                <span class="rc-journal-editor__page-number">@CurrentPage.PageNumber</span>
-                                <button type="button" @onclick="GoNextPage">&gt;</button>
-                                <span class="rc-journal-editor__page-title">@GetDisplayTitle(CurrentPage)</span>
+                                <button type="button" @onclick="() => GoPreviousPageAsync(false)" disabled="@(CurrentPrivatePageIndex <= 0)">&lt;</button>
+                                <span class="rc-journal-editor__page-number">@PrivatePage.PageNumber</span>
+                                <button type="button" @onclick="() => GoNextPageAsync(false)">&gt;</button>
+                                <span class="rc-journal-editor__page-title">@GetDisplayTitle(PrivatePage)</span>
                             </div>
 
                             <div class="rc-tool-actions">
-                                <button type="button" @onclick="DeleteCurrentPage">@L["Journal_DeletePage"]</button>
+                                <button type="button" @onclick="() => DeleteCurrentPageAsync(false)">@L["Journal_DeletePage"]</button>
                             </div>
                         </div>
 
                         <div class="rc-form-field rc-form-field--full">
                             <label>@L["Journal_PageTitle"]</label>
-                            <input maxlength="120" @bind="CurrentPage.Title" />
+                            <input maxlength="120" value="@PrivatePage.Title" @oninput="args => OnPageTitleChanged(false, args)" />
                         </div>
 
-                        @if (!ShowPublicJournal)
-                        {
-                            <label class="rc-filter-toggle">
-                                <input type="checkbox"
-                                       @bind="CurrentPage.IsVisible"
-                                       @bind:after="OnPrivatePageVisibilityChanged" />
-                                <span>@L["Journal_PrivatePageVisible"]</span>
-                            </label>
-                        }
+                        <label class="rc-filter-toggle">
+                            <input type="checkbox"
+                                   checked="@PrivatePage.IsVisible"
+                                   @onchange="OnPrivatePageVisibilityChanged" />
+                            <span>@L["Journal_PrivatePageVisible"]</span>
+                        </label>
 
-                        @if (!ShowPublicJournal && !CurrentPage.IsVisible)
+                        @if (!PrivatePage.IsVisible)
                         {
                             <div class="rc-empty-panel" style="margin-top: 0.75rem;">
                                 <p>@L["Journal_PrivatePageHidden"]</p>
@@ -115,9 +127,11 @@ else
                             <div class="rc-form-field rc-form-field--full" style="margin-top: 0.75rem;">
                                 <label>@L["Journal_PageContent"]</label>
 
-                                <div @ref="EditorHost">
-                                    <BlazoredTextEditor @ref="JournalEditor"
-                                                        @key="GetEditorRenderKey()"
+                                <div @ref="PrivateEditorHost"
+                                     @onclick="() => MarkDirty(false)"
+                                     @onkeyup="() => MarkDirty(false)">
+                                    <BlazoredTextEditor @ref="PrivateJournalEditor"
+                                                        @key="GetEditorRenderKey(false)"
                                                         Theme="snow"
                                                         Placeholder="@L["Journal_EditorPlaceholder"]">
                                         <ToolbarContent>
@@ -140,7 +154,7 @@ else
                                             </span>
 
                                             <span class="ql-formats">
-                                                <button type="button" class="rc-journal-toolbar-button rc-journal-toolbar-button--image-url" @onclick="ToggleInsertImagePanel" title="@L["Journal_InsertImageUrl"]">
+                                                <button type="button" class="rc-journal-toolbar-button rc-journal-toolbar-button--image-url" @onclick="() => ToggleInsertImagePanel(false)" title="@L["Journal_InsertImageUrl"]">
                                                     <span>@L["Journal_InsertImageUrl"]</span>
                                                 </button>
                                             </span>
@@ -148,42 +162,130 @@ else
                                     </BlazoredTextEditor>
                                 </div>
 
-                                @if (ShowInsertImagePanel)
+                                @if (ShowPrivateInsertImagePanel)
                                 {
                                     <div class="rc-journal-image-url-panel">
                                         <div class="rc-form-field rc-form-field--full">
                                             <label>@L["Journal_ImageUrlLabel"]</label>
-                                            <input @bind="ImageUrlInput" placeholder="https://..." />
+                                            <input value="@PrivateImageUrlInput" @oninput="args => OnImageUrlInputChanged(false, args)" placeholder="https://..." />
                                         </div>
 
                                         <div class="rc-tool-actions">
-                                            <button type="button" @onclick="InsertImageFromUrlAsync">@L["Journal_InsertImageAction"]</button>
-                                            <button type="button" @onclick="CancelInsertImage">@L["Common_Cancel"]</button>
+                                            <button type="button" @onclick="() => InsertImageFromUrlAsync(false)">@L["Journal_InsertImageAction"]</button>
+                                            <button type="button" @onclick="() => CancelInsertImage(false)">@L["Common_Cancel"]</button>
                                         </div>
                                     </div>
                                 }
-
-                                @* @if (CurrentPageImages.Count > 0)
-                                {
-                                    <div class="rc-journal-image-list">
-                                        <div class="rc-detail-block__title">@L["Journal_CurrentImages"]</div>
-
-                                        <div class="rc-journal-image-list__items">
-                                            @foreach (var image in CurrentPageImages)
-                                            {
-                                                <div class="rc-journal-image-list__item">
-                                                    <img src="@image.Url" alt="@L["Journal_ImageAlt"]" />
-                                                    <div class="rc-journal-image-list__meta">@image.Url</div>
-                                                    <div class="rc-tool-actions">
-                                                        <button type="button" @onclick="() => RemoveImageAsync(image.Index)">@L["Common_Remove"]</button>
-                                                    </div>
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-                                } *@
                             </div>
                         }
+                    </div>
+                }
+            </div>
+
+            <div class="rc-tool-panel rc-journal-scope-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["Journal_PublicTab"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["Journal_PublicSubtitle"]</p>
+                    </div>
+
+                    <div class="rc-tool-actions">
+                        <button type="button" @onclick="() => SaveJournalAsync(true)">@L["Journal_SavePublic"]</button>
+                    </div>
+                </div>
+
+                <div class="@GetSaveStateCssClass(true)">
+                    <strong>@(PublicJournalHasUnsavedChanges ? L["Journal_UnsavedChangesTitle"] : L["Journal_AllChangesSavedTitle"])</strong>
+                    <span>@(PublicJournalHasUnsavedChanges ? L["Journal_PublicUnsavedChangesBody"] : L["Journal_PublicAllChangesSavedBody"])</span>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(PublicJournalMessage))
+                {
+                    <div class="rc-inline-warning rc-inline-warning--soft">
+                        <p>@PublicJournalMessage</p>
+                    </div>
+                }
+
+                @if (PublicPage is null)
+                {
+                    <div class="rc-empty-panel">
+                        <p>@L["Journal_NoPage"]</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="rc-journal-editor">
+                        <div class="rc-journal-editor__topbar">
+                            <div class="rc-journal-editor__nav">
+                                <button type="button" @onclick="() => GoPreviousPageAsync(true)" disabled="@(CurrentPublicPageIndex <= 0)">&lt;</button>
+                                <span class="rc-journal-editor__page-number">@PublicPage.PageNumber</span>
+                                <button type="button" @onclick="() => GoNextPageAsync(true)">&gt;</button>
+                                <span class="rc-journal-editor__page-title">@GetDisplayTitle(PublicPage)</span>
+                            </div>
+
+                            <div class="rc-tool-actions">
+                                <button type="button" @onclick="() => DeleteCurrentPageAsync(true)">@L["Journal_DeletePage"]</button>
+                            </div>
+                        </div>
+
+                        <div class="rc-form-field rc-form-field--full">
+                            <label>@L["Journal_PageTitle"]</label>
+                            <input maxlength="120" value="@PublicPage.Title" @oninput="args => OnPageTitleChanged(true, args)" />
+                        </div>
+
+                        <div class="rc-form-field rc-form-field--full" style="margin-top: 0.75rem;">
+                            <label>@L["Journal_PageContent"]</label>
+
+                            <div @ref="PublicEditorHost"
+                                 @onclick="() => MarkDirty(true)"
+                                 @onkeyup="() => MarkDirty(true)">
+                                <BlazoredTextEditor @ref="PublicJournalEditor"
+                                                    @key="GetEditorRenderKey(true)"
+                                                    Theme="snow"
+                                                    Placeholder="@L["Journal_EditorPlaceholder"]">
+                                    <ToolbarContent>
+                                        <select class="ql-header">
+                                            <option value="false">@L["Journal_FormatParagraph"]</option>
+                                            <option value="4">@L["Journal_FormatSmallTitle"]</option>
+                                            <option value="3">@L["Journal_FormatLargeTitle"]</option>
+                                        </select>
+
+                                        <span class="ql-formats">
+                                            <button type="button" class="ql-bold rc-journal-toolbar-button" title="@L["Journal_FormatBold"]"><span>@L["Journal_FormatBold"]</span></button>
+                                            <button type="button" class="ql-italic rc-journal-toolbar-button" title="@L["Journal_FormatItalic"]"><span>@L["Journal_FormatItalic"]</span></button>
+                                            <button type="button" class="ql-underline rc-journal-toolbar-button" title="@L["Journal_FormatUnderline"]"><span>@L["Journal_FormatUnderline"]</span></button>
+                                            <button type="button" class="ql-strike rc-journal-toolbar-button" title="@L["Journal_FormatStrike"]"><span>@L["Journal_FormatStrike"]</span></button>
+                                        </span>
+
+                                        <span class="ql-formats">
+                                            <button type="button" class="ql-list rc-journal-toolbar-button" value="ordered" title="@L["Journal_ListOrdered"]"><span>@L["Journal_ListOrdered"]</span></button>
+                                            <button type="button" class="ql-list rc-journal-toolbar-button" value="bullet" title="@L["Journal_ListBullet"]"><span>@L["Journal_ListBullet"]</span></button>
+                                        </span>
+
+                                        <span class="ql-formats">
+                                            <button type="button" class="rc-journal-toolbar-button rc-journal-toolbar-button--image-url" @onclick="() => ToggleInsertImagePanel(true)" title="@L["Journal_InsertImageUrl"]">
+                                                <span>@L["Journal_InsertImageUrl"]</span>
+                                            </button>
+                                        </span>
+                                    </ToolbarContent>
+                                </BlazoredTextEditor>
+                            </div>
+
+                            @if (ShowPublicInsertImagePanel)
+                            {
+                                <div class="rc-journal-image-url-panel">
+                                    <div class="rc-form-field rc-form-field--full">
+                                        <label>@L["Journal_ImageUrlLabel"]</label>
+                                        <input value="@PublicImageUrlInput" @oninput="args => OnImageUrlInputChanged(true, args)" placeholder="https://..." />
+                                    </div>
+
+                                    <div class="rc-tool-actions">
+                                        <button type="button" @onclick="() => InsertImageFromUrlAsync(true)">@L["Journal_InsertImageAction"]</button>
+                                        <button type="button" @onclick="() => CancelInsertImage(true)">@L["Common_Cancel"]</button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
                     </div>
                 }
             </div>
@@ -200,44 +302,44 @@ else
     private string Message = string.Empty;
 
     private SessionJournalEditorDto? Editor;
-    private bool ShowPublicJournal;
     private int CurrentPrivatePageIndex;
     private int CurrentPublicPageIndex;
 
-    private BlazoredTextEditor? JournalEditor;
-    private ElementReference EditorHost;
-    private bool ShouldLoadCurrentPageIntoEditor;
-    private bool WaitOneRenderBeforeLoadingEditorContent;
-    private bool ShowInsertImagePanel;
-    private string ImageUrlInput = string.Empty;
+    private BlazoredTextEditor? PrivateJournalEditor;
+    private BlazoredTextEditor? PublicJournalEditor;
+    private ElementReference PrivateEditorHost;
+    private ElementReference PublicEditorHost;
 
-    private List<SessionJournalPageDto> CurrentPages
-        => ShowPublicJournal
-            ? Editor?.PublicPages ?? new List<SessionJournalPageDto>()
-            : Editor?.PrivatePages ?? new List<SessionJournalPageDto>();
+    private bool ShouldLoadPrivatePageIntoEditor;
+    private bool ShouldLoadPublicPageIntoEditor;
+    private bool WaitOneRenderBeforeLoadingPrivateEditorContent;
+    private bool WaitOneRenderBeforeLoadingPublicEditorContent;
 
-    private SessionJournalPageDto? CurrentPage
-        => CurrentPages.Count == 0
+    private bool ShowPrivateInsertImagePanel;
+    private bool ShowPublicInsertImagePanel;
+    private string PrivateImageUrlInput = string.Empty;
+    private string PublicImageUrlInput = string.Empty;
+
+    private bool PrivateJournalHasUnsavedChanges;
+    private bool PublicJournalHasUnsavedChanges;
+    private string PrivateJournalMessage = string.Empty;
+    private string PublicJournalMessage = string.Empty;
+
+    private List<SessionJournalPageDto> PrivatePages => Editor?.PrivatePages ?? new List<SessionJournalPageDto>();
+    private List<SessionJournalPageDto> PublicPages => Editor?.PublicPages ?? new List<SessionJournalPageDto>();
+
+    private SessionJournalPageDto? PrivatePage
+        => PrivatePages.Count == 0
             ? null
-            : CurrentPages[Math.Clamp(CurrentPageIndex, 0, CurrentPages.Count - 1)];
+            : PrivatePages[Math.Clamp(CurrentPrivatePageIndex, 0, PrivatePages.Count - 1)];
 
-    private int CurrentPageIndex
-    {
-        get => ShowPublicJournal ? CurrentPublicPageIndex : CurrentPrivatePageIndex;
-        set
-        {
-            if (ShowPublicJournal)
-                CurrentPublicPageIndex = value;
-            else
-                CurrentPrivatePageIndex = value;
-        }
-    }
+    private SessionJournalPageDto? PublicPage
+        => PublicPages.Count == 0
+            ? null
+            : PublicPages[Math.Clamp(CurrentPublicPageIndex, 0, PublicPages.Count - 1)];
 
-    private bool IsEditorVisible
-    => CurrentPage is not null && (ShowPublicJournal || CurrentPage.IsVisible);
-
-    private List<JournalImageEntry> CurrentPageImages
-        => GetCurrentPageImages(CurrentPage?.ContentHtml);
+    private bool IsPrivateEditorVisible => PrivatePage is not null && PrivatePage.IsVisible;
+    private bool IsPublicEditorVisible => PublicPage is not null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -256,7 +358,7 @@ else
 
         CurrentUserId = Guid.Parse(userIdValue);
 
-        await LoadEditor();
+        await LoadEditorAsync();
         IsLoaded = true;
     }
 
@@ -268,42 +370,89 @@ else
             return;
         }
 
-        if (JournalEditor is not null && IsEditorVisible && ShouldLoadCurrentPageIntoEditor && CurrentPage is not null)
+        var mustRenderAgain = false;
+
+        if (PrivateJournalEditor is not null && IsPrivateEditorVisible && ShouldLoadPrivatePageIntoEditor && PrivatePage is not null && WaitOneRenderBeforeLoadingPrivateEditorContent)
         {
-            if (WaitOneRenderBeforeLoadingEditorContent)
-            {
-                WaitOneRenderBeforeLoadingEditorContent = false;
-                StateHasChanged();
-                return;
-            }
-
-            try
-            {
-                var loaded = await JS.InvokeAsync<bool>(
-                    "rollocracyJournal.setHtml",
-                    EditorHost,
-                    CurrentPage.ContentHtml ?? string.Empty);
-
-                if (loaded)
-                {
-                    ShouldLoadCurrentPageIntoEditor = false;
-                }
-            }
-            catch
-            {
-            }
+            WaitOneRenderBeforeLoadingPrivateEditorContent = false;
+            mustRenderAgain = true;
         }
+
+        if (PublicJournalEditor is not null && IsPublicEditorVisible && ShouldLoadPublicPageIntoEditor && PublicPage is not null && WaitOneRenderBeforeLoadingPublicEditorContent)
+        {
+            WaitOneRenderBeforeLoadingPublicEditorContent = false;
+            mustRenderAgain = true;
+        }
+
+        if (mustRenderAgain)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await LoadEditorContentIfNeededAsync(false);
+        await LoadEditorContentIfNeededAsync(true);
     }
 
-    private async Task LoadEditor()
+    private async Task LoadEditorAsync()
     {
         Message = string.Empty;
+        PrivateJournalMessage = string.Empty;
+        PublicJournalMessage = string.Empty;
+
         Editor = await SessionService.GetSessionJournalEditorAsync(SessionId, CurrentUserId);
 
         ClampIndexes();
-        JournalEditor = null;
-        ShouldLoadCurrentPageIntoEditor = true;
-        WaitOneRenderBeforeLoadingEditorContent = true;
+        ResetEditorLoadState(false);
+        ResetEditorLoadState(true);
+        PrivateJournalHasUnsavedChanges = false;
+        PublicJournalHasUnsavedChanges = false;
+    }
+
+    private async Task LoadEditorContentIfNeededAsync(bool isPublic)
+    {
+        var editor = isPublic ? PublicJournalEditor : PrivateJournalEditor;
+        var isVisible = isPublic ? IsPublicEditorVisible : IsPrivateEditorVisible;
+        var shouldLoad = isPublic ? ShouldLoadPublicPageIntoEditor : ShouldLoadPrivatePageIntoEditor;
+        var page = GetPage(isPublic);
+        var host = isPublic ? PublicEditorHost : PrivateEditorHost;
+
+        if (editor is null || !isVisible || !shouldLoad || page is null)
+            return;
+
+        try
+        {
+            var loaded = await JS.InvokeAsync<bool>(
+                "rollocracyJournal.setHtml",
+                host,
+                page.ContentHtml ?? string.Empty);
+
+            if (loaded)
+            {
+                SetShouldLoadEditorContent(isPublic, false);
+            }
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task RefreshPageFromEditorAsync(bool isPublic)
+    {
+        var page = GetPage(isPublic);
+        if (page is null || !IsEditorVisible(isPublic))
+            return;
+
+        var host = isPublic ? PublicEditorHost : PrivateEditorHost;
+
+        try
+        {
+            var html = await JS.InvokeAsync<string>("rollocracyJournal.getHtml", host);
+            page.ContentHtml = NormalizeJournalHtml(html);
+        }
+        catch
+        {
+        }
     }
 
     private void ClampIndexes()
@@ -311,139 +460,201 @@ else
         if (Editor is null)
             return;
 
-        if (Editor.PrivatePages.Count == 0)
-            CurrentPrivatePageIndex = 0;
-        else
-            CurrentPrivatePageIndex = Math.Clamp(CurrentPrivatePageIndex, 0, Editor.PrivatePages.Count - 1);
+        CurrentPrivatePageIndex = Editor.PrivatePages.Count == 0
+            ? 0
+            : Math.Clamp(CurrentPrivatePageIndex, 0, Editor.PrivatePages.Count - 1);
 
-        if (Editor.PublicPages.Count == 0)
-            CurrentPublicPageIndex = 0;
-        else
-            CurrentPublicPageIndex = Math.Clamp(CurrentPublicPageIndex, 0, Editor.PublicPages.Count - 1);
+        CurrentPublicPageIndex = Editor.PublicPages.Count == 0
+            ? 0
+            : Math.Clamp(CurrentPublicPageIndex, 0, Editor.PublicPages.Count - 1);
     }
 
-    private string GetEditorRenderKey()
+    private List<SessionJournalPageDto> GetPages(bool isPublic)
+        => isPublic ? PublicPages : PrivatePages;
+
+    private SessionJournalPageDto? GetPage(bool isPublic)
+        => isPublic ? PublicPage : PrivatePage;
+
+    private int GetCurrentPageIndex(bool isPublic)
+        => isPublic ? CurrentPublicPageIndex : CurrentPrivatePageIndex;
+
+    private void SetCurrentPageIndex(bool isPublic, int value)
     {
-        var currentPageId = CurrentPage?.JournalPageId?.ToString("N") ?? "new";
-        return $"{ShowPublicJournal}-{CurrentPageIndex}-{CurrentPage?.IsVisible}-{currentPageId}";
+        if (isPublic)
+            CurrentPublicPageIndex = value;
+        else
+            CurrentPrivatePageIndex = value;
     }
 
-    private async Task RefreshCurrentPageFromEditorAsync()
+    private bool IsEditorVisible(bool isPublic)
+        => isPublic ? IsPublicEditorVisible : IsPrivateEditorVisible;
+
+    private string GetEditorRenderKey(bool isPublic)
     {
-        if (CurrentPage is null || !IsEditorVisible)
+        var page = GetPage(isPublic);
+        var currentPageId = page?.JournalPageId?.ToString("N") ?? "new";
+        var visibility = isPublic ? true : page?.IsVisible;
+        return $"{isPublic}-{GetCurrentPageIndex(isPublic)}-{visibility}-{currentPageId}";
+    }
+
+    private void ResetEditorLoadState(bool isPublic)
+    {
+        if (isPublic)
+        {
+            PublicJournalEditor = null;
+            ShouldLoadPublicPageIntoEditor = true;
+            WaitOneRenderBeforeLoadingPublicEditorContent = true;
+        }
+        else
+        {
+            PrivateJournalEditor = null;
+            ShouldLoadPrivatePageIntoEditor = true;
+            WaitOneRenderBeforeLoadingPrivateEditorContent = true;
+        }
+    }
+
+    private void SetShouldLoadEditorContent(bool isPublic, bool value)
+    {
+        if (isPublic)
+            ShouldLoadPublicPageIntoEditor = value;
+        else
+            ShouldLoadPrivatePageIntoEditor = value;
+    }
+
+    private void MarkDirty(bool isPublic)
+    {
+        if (isPublic)
+        {
+            PublicJournalHasUnsavedChanges = true;
+            PublicJournalMessage = string.Empty;
+        }
+        else
+        {
+            PrivateJournalHasUnsavedChanges = true;
+            PrivateJournalMessage = string.Empty;
+        }
+
+        Message = string.Empty;
+    }
+
+    private string GetSaveStateCssClass(bool isPublic)
+    {
+        var isDirty = isPublic ? PublicJournalHasUnsavedChanges : PrivateJournalHasUnsavedChanges;
+        return isDirty
+            ? "rc-editor-save-state rc-editor-save-state--dirty rc-journal-save-state"
+            : "rc-editor-save-state rc-editor-save-state--saved rc-journal-save-state";
+    }
+
+    private void OnImageUrlInputChanged(bool isPublic, ChangeEventArgs args)
+    {
+        if (isPublic)
+            PublicImageUrlInput = args.Value?.ToString() ?? string.Empty;
+        else
+            PrivateImageUrlInput = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void OnPageTitleChanged(bool isPublic, ChangeEventArgs args)
+    {
+        var page = GetPage(isPublic);
+        if (page is null)
             return;
 
-        try
-        {
-            var html = await JS.InvokeAsync<string>("rollocracyJournal.getHtml", EditorHost);
-            CurrentPage.ContentHtml = html ?? string.Empty;
-        }
-        catch
-        {
-        }
+        page.Title = args.Value?.ToString() ?? string.Empty;
+        MarkDirty(isPublic);
     }
 
-    private Task OnPrivatePageVisibilityChanged()
+    private Task OnPrivatePageVisibilityChanged(ChangeEventArgs args)
     {
-        if (CurrentPage is null || ShowPublicJournal)
+        if (PrivatePage is null)
             return Task.CompletedTask;
 
-        JournalEditor = null;
-        ShouldLoadCurrentPageIntoEditor = true;
-        WaitOneRenderBeforeLoadingEditorContent = true;
+        PrivatePage.IsVisible = args.Value is bool boolValue
+            ? boolValue
+            : bool.TryParse(args.Value?.ToString(), out var parsed) && parsed;
 
+        MarkDirty(false);
+        ResetEditorLoadState(false);
         return InvokeAsync(StateHasChanged);
     }
 
-    private async Task SwitchScope(bool isPublic)
+    private async Task GoPreviousPageAsync(bool isPublic)
     {
-        await RefreshCurrentPageFromEditorAsync();
-
-        ShowPublicJournal = isPublic;
-        JournalEditor = null;
-        ClampIndexes();
-        ShouldLoadCurrentPageIntoEditor = true;
-        WaitOneRenderBeforeLoadingEditorContent = true;
-    }
-
-    private async Task GoPreviousPage()
-    {
-        if (CurrentPages.Count == 0)
+        var pages = GetPages(isPublic);
+        if (pages.Count == 0)
             return;
 
-        await RefreshCurrentPageFromEditorAsync();
+        await RefreshPageFromEditorAsync(isPublic);
 
-        if (CurrentPageIndex > 0)
+        var currentIndex = GetCurrentPageIndex(isPublic);
+        if (currentIndex > 0)
         {
-            CurrentPageIndex--;
-            JournalEditor = null;
-            ShouldLoadCurrentPageIntoEditor = true;
-            WaitOneRenderBeforeLoadingEditorContent = true;
+            SetCurrentPageIndex(isPublic, currentIndex - 1);
+            ResetEditorLoadState(isPublic);
         }
     }
 
-    private async Task GoNextPage()
+    private async Task GoNextPageAsync(bool isPublic)
     {
-        if (CurrentPages.Count == 0)
+        var pages = GetPages(isPublic);
+        if (pages.Count == 0)
             return;
 
-        await RefreshCurrentPageFromEditorAsync();
+        await RefreshPageFromEditorAsync(isPublic);
 
-        if (CurrentPageIndex < CurrentPages.Count - 1)
+        var currentIndex = GetCurrentPageIndex(isPublic);
+        if (currentIndex < pages.Count - 1)
         {
-            CurrentPageIndex++;
-            JournalEditor = null;
-            ShouldLoadCurrentPageIntoEditor = true;
-            WaitOneRenderBeforeLoadingEditorContent = true;
+            SetCurrentPageIndex(isPublic, currentIndex + 1);
+            ResetEditorLoadState(isPublic);
             return;
         }
 
-        var currentHtml = CurrentPage?.ContentHtml ?? string.Empty;
+        var currentHtml = GetPage(isPublic)?.ContentHtml ?? string.Empty;
 
         if (!HasMeaningfulContent(currentHtml))
             return;
 
         var newPage = new SessionJournalPageDto
         {
-            PageNumber = CurrentPages.Count + 1,
+            PageNumber = pages.Count + 1,
             Title = string.Empty,
             ContentHtml = string.Empty,
-            IsVisible = ShowPublicJournal
+            IsVisible = isPublic
         };
 
-        CurrentPages.Add(newPage);
-        Reindex(CurrentPages);
-        CurrentPageIndex = CurrentPages.Count - 1;
-        JournalEditor = null;
-        ShouldLoadCurrentPageIntoEditor = true;
-        WaitOneRenderBeforeLoadingEditorContent = true;
+        pages.Add(newPage);
+        Reindex(pages);
+        SetCurrentPageIndex(isPublic, pages.Count - 1);
+        MarkDirty(isPublic);
+        ResetEditorLoadState(isPublic);
     }
 
-    private async Task DeleteCurrentPage()
+    private async Task DeleteCurrentPageAsync(bool isPublic)
     {
-        if (CurrentPage is null)
+        var page = GetPage(isPublic);
+        var pages = GetPages(isPublic);
+        if (page is null)
             return;
 
-        await RefreshCurrentPageFromEditorAsync();
+        await RefreshPageFromEditorAsync(isPublic);
 
-        CurrentPages.Remove(CurrentPage);
+        pages.Remove(page);
 
-        if (CurrentPages.Count == 0)
+        if (pages.Count == 0)
         {
-            CurrentPages.Add(new SessionJournalPageDto
+            pages.Add(new SessionJournalPageDto
             {
                 PageNumber = 1,
                 Title = string.Empty,
                 ContentHtml = string.Empty,
-                IsVisible = ShowPublicJournal
+                IsVisible = isPublic
             });
         }
 
-        Reindex(CurrentPages);
-        CurrentPageIndex = Math.Clamp(CurrentPageIndex, 0, CurrentPages.Count - 1);
-        JournalEditor = null;
-        ShouldLoadCurrentPageIntoEditor = true;
-        WaitOneRenderBeforeLoadingEditorContent = true;
+        Reindex(pages);
+        SetCurrentPageIndex(isPublic, Math.Clamp(GetCurrentPageIndex(isPublic), 0, pages.Count - 1));
+        MarkDirty(isPublic);
+        ResetEditorLoadState(isPublic);
     }
 
     private void Reindex(List<SessionJournalPageDto> pages)
@@ -454,7 +665,7 @@ else
         }
     }
 
-    private async Task SaveJournal()
+    private async Task SaveJournalAsync(bool isPublic)
     {
         if (Editor is null)
             return;
@@ -462,31 +673,74 @@ else
         try
         {
             Message = string.Empty;
+            SetScopeMessage(isPublic, string.Empty);
 
-            await RefreshCurrentPageFromEditorAsync();
+            await RefreshPageFromEditorAsync(isPublic);
+            NormalizePages(GetPages(isPublic));
+
+            var latestEditor = await SessionService.GetSessionJournalEditorAsync(SessionId, CurrentUserId);
+            if (latestEditor is null)
+                throw new Exception(L["Journal_NotFound"].Value);
 
             await SessionService.SaveSessionJournalAsync(
                 SessionId,
                 CurrentUserId,
                 new SessionJournalSaveRequestDto
                 {
-                    PrivatePages = Editor.PrivatePages,
-                    PublicPages = Editor.PublicPages
+                    PrivatePages = isPublic ? latestEditor.PrivatePages : Editor.PrivatePages,
+                    PublicPages = isPublic ? Editor.PublicPages : latestEditor.PublicPages
                 });
 
-            await LoadEditor();
-            Message = L["Journal_Saved"];
+            var reloadedEditor = await SessionService.GetSessionJournalEditorAsync(SessionId, CurrentUserId);
+            if (reloadedEditor is null)
+                throw new Exception(L["Journal_NotFound"].Value);
+
+            if (isPublic)
+            {
+                ReplacePages(Editor.PublicPages, reloadedEditor.PublicPages);
+                PublicJournalHasUnsavedChanges = false;
+                PublicJournalMessage = L["Journal_PublicSaved"].Value;
+
+                if (!PrivateJournalHasUnsavedChanges)
+                    ReplacePages(Editor.PrivatePages, reloadedEditor.PrivatePages);
+            }
+            else
+            {
+                ReplacePages(Editor.PrivatePages, reloadedEditor.PrivatePages);
+                PrivateJournalHasUnsavedChanges = false;
+                PrivateJournalMessage = L["Journal_PrivateSaved"].Value;
+
+                if (!PublicJournalHasUnsavedChanges)
+                    ReplacePages(Editor.PublicPages, reloadedEditor.PublicPages);
+            }
+
+            ClampIndexes();
+            ResetEditorLoadState(isPublic);
         }
         catch (Exception ex)
         {
-            Message = $"{L["Common_Error"]} : {ex.Message}";
+            SetScopeMessage(isPublic, $"{L["Common_Error"]} : {ex.Message}");
         }
+    }
+
+    private void SetScopeMessage(bool isPublic, string value)
+    {
+        if (isPublic)
+            PublicJournalMessage = value;
+        else
+            PrivateJournalMessage = value;
+    }
+
+    private static void ReplacePages(List<SessionJournalPageDto> target, List<SessionJournalPageDto> source)
+    {
+        target.Clear();
+        target.AddRange(source);
     }
 
     private string GetDisplayTitle(SessionJournalPageDto page)
     {
         return string.IsNullOrWhiteSpace(page.Title)
-            ? L["Journal_DefaultPageTitle"]
+            ? L["Journal_DefaultPageTitle"].Value
             : page.Title.Trim();
     }
 
@@ -495,6 +749,9 @@ else
         if (string.IsNullOrWhiteSpace(html))
             return false;
 
+        if (Regex.IsMatch(html, @"<img\b[^>]*\bsrc\s*=", RegexOptions.IgnoreCase | RegexOptions.Singleline))
+            return true;
+
         var text = Regex.Replace(html, "<.*?>", string.Empty);
         text = text.Replace("&nbsp;", " ", StringComparison.OrdinalIgnoreCase);
         text = text.Trim();
@@ -502,116 +759,135 @@ else
         return !string.IsNullOrWhiteSpace(text);
     }
 
-
-    private void ToggleInsertImagePanel()
+    private void ToggleInsertImagePanel(bool isPublic)
     {
-        ShowInsertImagePanel = !ShowInsertImagePanel;
-
-        if (!ShowInsertImagePanel)
+        if (isPublic)
         {
-            ImageUrlInput = string.Empty;
+            ShowPublicInsertImagePanel = !ShowPublicInsertImagePanel;
+
+            if (!ShowPublicInsertImagePanel)
+                PublicImageUrlInput = string.Empty;
+        }
+        else
+        {
+            ShowPrivateInsertImagePanel = !ShowPrivateInsertImagePanel;
+
+            if (!ShowPrivateInsertImagePanel)
+                PrivateImageUrlInput = string.Empty;
         }
     }
 
-    private void CancelInsertImage()
+    private void CancelInsertImage(bool isPublic)
     {
-        ShowInsertImagePanel = false;
-        ImageUrlInput = string.Empty;
+        if (isPublic)
+        {
+            ShowPublicInsertImagePanel = false;
+            PublicImageUrlInput = string.Empty;
+        }
+        else
+        {
+            ShowPrivateInsertImagePanel = false;
+            PrivateImageUrlInput = string.Empty;
+        }
     }
 
-    private async Task InsertImageFromUrlAsync()
+    private async Task InsertImageFromUrlAsync(bool isPublic)
     {
-        if (CurrentPage is null || !IsEditorVisible)
+        var page = GetPage(isPublic);
+        if (page is null || !IsEditorVisible(isPublic))
             return;
 
-        Message = string.Empty;
+        SetScopeMessage(isPublic, string.Empty);
 
-        if (!TryNormalizeImageUrl(ImageUrlInput, out var normalizedImageUrl))
+        var imageUrlInput = isPublic ? PublicImageUrlInput : PrivateImageUrlInput;
+        if (!TryNormalizeImageUrl(imageUrlInput, out var normalizedImageUrl))
         {
-            Message = L["Journal_InvalidImageUrl"];
+            SetScopeMessage(isPublic, L["Journal_InvalidImageUrl"].Value);
             return;
         }
+
+        var host = isPublic ? PublicEditorHost : PrivateEditorHost;
 
         try
         {
             var inserted = await JS.InvokeAsync<bool>(
                 "rollocracyJournal.insertImageByUrl",
-                EditorHost,
+                host,
                 normalizedImageUrl);
 
             if (!inserted)
             {
-                Message = L["Journal_ImageInsertFailed"];
+                SetScopeMessage(isPublic, L["Journal_ImageInsertFailed"].Value);
                 return;
             }
 
-            await RefreshCurrentPageFromEditorAsync();
-            ShowInsertImagePanel = false;
-            ImageUrlInput = string.Empty;
+            await RefreshPageFromEditorAsync(isPublic);
+            page.ContentHtml = NormalizeJournalHtml(page.ContentHtml);
+            CancelInsertImage(isPublic);
+            MarkDirty(isPublic);
         }
         catch
         {
-            Message = L["Journal_ImageInsertFailed"];
+            SetScopeMessage(isPublic, L["Journal_ImageInsertFailed"].Value);
         }
     }
 
-    private async Task RemoveImageAsync(int imageIndex)
+    private void NormalizePages(List<SessionJournalPageDto> pages)
     {
-        if (CurrentPage is null || imageIndex < 0)
-            return;
-
-        Message = string.Empty;
-        await RefreshCurrentPageFromEditorAsync();
-
-        CurrentPage.ContentHtml = RemoveImageAtIndex(CurrentPage.ContentHtml, imageIndex);
-        JournalEditor = null;
-        ShouldLoadCurrentPageIntoEditor = true;
-        WaitOneRenderBeforeLoadingEditorContent = true;
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private static List<JournalImageEntry> GetCurrentPageImages(string? html)
-    {
-        if (string.IsNullOrWhiteSpace(html))
-            return new List<JournalImageEntry>();
-
-        var results = new List<JournalImageEntry>();
-        var matches = Regex.Matches(
-            html,
-            @"<img\b[^>]*\bsrc\s*=\s*(?:""(?<src>[^""]+)""|'(?<src>[^']+)'|(?<src>[^\s>]+))[^>]*>",
-            RegexOptions.IgnoreCase | RegexOptions.Singleline);
-
-        for (var i = 0; i < matches.Count; i++)
+        foreach (var page in pages)
         {
-            var src = matches[i].Groups["src"].Value;
-            if (TryNormalizeImageUrl(src, out var normalizedImageUrl))
-            {
-                results.Add(new JournalImageEntry
-                {
-                    Index = i,
-                    Url = normalizedImageUrl
-                });
-            }
+            page.ContentHtml = NormalizeJournalHtml(page.ContentHtml);
         }
-
-        return results;
     }
 
-    private static string RemoveImageAtIndex(string? html, int imageIndex)
+    private static string NormalizeJournalHtml(string? html)
     {
         if (string.IsNullOrWhiteSpace(html))
             return string.Empty;
 
-        var currentIndex = -1;
         return Regex.Replace(
             html,
-            @"<img\b[^>]*>",
-            match =>
-            {
-                currentIndex++;
-                return currentIndex == imageIndex ? string.Empty : match.Value;
-            },
+            @"<img\b(?<attrs>[^>]*)>",
+            match => NormalizeImageTag(match.Value, match.Groups["attrs"].Value),
             RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    }
+
+    private static string NormalizeImageTag(string originalTag, string attributes)
+    {
+        var srcMatch = Regex.Match(
+            attributes,
+            @"\bsrc\s*=\s*(?:(?<q>[""'])(?<src>.*?)(\k<q>)|(?<src>[^\s>]+))",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        if (!srcMatch.Success)
+            return originalTag;
+
+        var rawSrc = WebUtility.HtmlDecode(srcMatch.Groups["src"].Value);
+        if (!TryNormalizeImageUrl(rawSrc, out var normalizedSrc))
+            return originalTag;
+
+        var encodedSrc = WebUtility.HtmlEncode(normalizedSrc);
+        var normalizedAttributes = Regex.Replace(
+            attributes,
+            @"\bsrc\s*=\s*(?:(?<q>[""'])(?<src>.*?)(\k<q>)|(?<src>[^\s>]+))",
+            $"src=\"{encodedSrc}\"",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline,
+            TimeSpan.FromMilliseconds(250));
+
+        normalizedAttributes = EnsureImageAttribute(normalizedAttributes, "loading", "lazy");
+        normalizedAttributes = EnsureImageAttribute(normalizedAttributes, "decoding", "async");
+        normalizedAttributes = EnsureImageAttribute(normalizedAttributes, "referrerpolicy", "no-referrer");
+        normalizedAttributes = EnsureImageAttribute(normalizedAttributes, "alt", "");
+
+        return $"<img{normalizedAttributes}>";
+    }
+
+    private static string EnsureImageAttribute(string attributes, string name, string value)
+    {
+        if (Regex.IsMatch(attributes, $@"\b{Regex.Escape(name)}\s*=", RegexOptions.IgnoreCase))
+            return attributes;
+
+        return $"{attributes} {name}=\"{WebUtility.HtmlEncode(value)}\"";
     }
 
     private static bool TryNormalizeImageUrl(string? rawUrl, out string normalizedImageUrl)
@@ -621,7 +897,7 @@ else
         if (string.IsNullOrWhiteSpace(rawUrl))
             return false;
 
-        var trimmed = rawUrl.Trim();
+        var trimmed = WebUtility.HtmlDecode(rawUrl).Trim();
 
         if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri))
             return false;
@@ -631,18 +907,42 @@ else
 
         var extension = Path.GetExtension(uri.AbsolutePath);
         var allowedExtensions = new[] { ".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".avif" };
+        var hasAllowedExtension = !string.IsNullOrWhiteSpace(extension) && allowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
 
-        if (string.IsNullOrWhiteSpace(extension) || !allowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+        var queryFormat = GetQueryParameter(uri, "format");
+        var allowedFormats = new[] { "png", "jpg", "jpeg", "pjpg", "gif", "webp", "bmp", "avif" };
+        var hasAllowedQueryFormat = !string.IsNullOrWhiteSpace(queryFormat) && allowedFormats.Contains(queryFormat, StringComparer.OrdinalIgnoreCase);
+
+        if (!hasAllowedExtension && !hasAllowedQueryFormat)
             return false;
+
+        if (string.Equals(uri.Host, "i.redd.it", StringComparison.OrdinalIgnoreCase) && hasAllowedExtension)
+        {
+            normalizedImageUrl = uri.GetLeftPart(UriPartial.Path);
+            return true;
+        }
 
         normalizedImageUrl = uri.ToString();
         return true;
     }
 
-    private sealed class JournalImageEntry
+    private static string? GetQueryParameter(Uri uri, string name)
     {
-        public int Index { get; set; }
-        public string Url { get; set; } = string.Empty;
+        var query = uri.Query;
+        if (string.IsNullOrWhiteSpace(query))
+            return null;
+
+        foreach (var part in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var pieces = part.Split('=', 2);
+            var key = Uri.UnescapeDataString(pieces[0]);
+            if (!string.Equals(key, name, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            return pieces.Length == 2 ? Uri.UnescapeDataString(pieces[1]) : string.Empty;
+        }
+
+        return null;
     }
 
     private void BackToSettings()

@@ -1,0 +1,225 @@
+﻿@page "/player/room/{PlayerSessionId:guid}/journal"
+@rendermode InteractiveServer
+@layout Rollocracy.Components.Layout.EmptyLayout
+@implements IAsyncDisposable
+
+@using Microsoft.AspNetCore.SignalR.Client
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Entities
+@using Rollocracy.Domain.Interfaces
+@using Rollocracy.Localization
+
+@inject ISessionService SessionService
+@inject NavigationManager Navigation
+@inject IConfiguration Configuration
+@inject IStringLocalizer<SharedTexts> L
+
+@if (!IsLoaded)
+{
+    <main class="rc-journal-popup-page">
+        <p>@L["Common_Loading"]</p>
+    </main>
+}
+else if (PublicJournal is null)
+{
+    <main class="rc-journal-popup-page">
+        <div class="rc-empty-panel rc-empty-panel--small">
+            <p>@L["Session_Player_NotFound"]</p>
+        </div>
+    </main>
+}
+else
+{
+    <main class="rc-journal-popup-page">
+        <section class="rc-journal-popup-shell">
+            <header class="rc-journal-popup-header">
+                <div>
+                    <h1 class="rc-journal-popup-title">@L["Journal_PublicTab"]</h1>
+                    <p class="rc-journal-popup-subtitle">@PublicJournal.SessionName</p>
+                </div>
+            </header>
+
+            @if (CurrentPublicJournalPage is null)
+            {
+                <div class="rc-empty-panel rc-empty-panel--small">
+                    <p>@L["Journal_EmptyPage"]</p>
+                </div>
+            }
+            else
+            {
+                <section class="rc-journal-viewer">
+                    <div class="rc-journal-viewer__nav">
+                        <button type="button"
+                                class="rc-journal-nav-button"
+                                @onclick="PreviousPublicJournalPage"
+                                disabled="@(CurrentPublicJournalPageIndex <= 0)">
+                            &lt;
+                        </button>
+
+                        <span class="rc-journal-viewer__page-number">
+                            @CurrentPublicJournalPage.PageNumber
+                        </span>
+
+                        <button type="button"
+                                class="rc-journal-nav-button"
+                                @onclick="NextPublicJournalPage"
+                                disabled="@(PublicJournal is null || CurrentPublicJournalPageIndex >= PublicJournal.PublicPages.Count - 1)">
+                            &gt;
+                        </button>
+
+                        <span class="rc-journal-viewer__page-title">
+                            @GetJournalDisplayTitle(CurrentPublicJournalPage)
+                        </span>
+                    </div>
+
+                    @if (string.IsNullOrWhiteSpace(CurrentPublicJournalPage.ContentHtml))
+                    {
+                        <div class="rc-empty-panel rc-empty-panel--small">
+                            <p>@L["Journal_EmptyPage"]</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="rc-journal-content">
+                            @((MarkupString)CurrentPublicJournalPage.ContentHtml)
+                        </div>
+                    }
+                </section>
+            }
+        </section>
+    </main>
+}
+
+@code {
+    [Parameter] public Guid PlayerSessionId { get; set; }
+
+    private bool IsLoaded;
+    private SessionJournalViewDto? PublicJournal;
+    private int CurrentPublicJournalPageIndex;
+    private HubConnection? hubConnection;
+    private bool _isDisposed;
+    private readonly SemaphoreSlim HubRefreshLock = new(1, 1);
+
+    private SessionJournalPageDto? CurrentPublicJournalPage
+        => PublicJournal is null || PublicJournal.PublicPages.Count == 0
+            ? null
+            : PublicJournal.PublicPages[Math.Clamp(CurrentPublicJournalPageIndex, 0, PublicJournal.PublicPages.Count - 1)];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPublicJournal();
+        await InitializeHubIfNeeded();
+
+        IsLoaded = true;
+    }
+
+    private async Task LoadPublicJournal()
+    {
+        PublicJournal = await SessionService.GetPublicSessionJournalAsync(PlayerSessionId);
+
+        if (PublicJournal is null || PublicJournal.PublicPages.Count == 0)
+        {
+            CurrentPublicJournalPageIndex = 0;
+            return;
+        }
+
+        CurrentPublicJournalPageIndex = Math.Clamp(
+            CurrentPublicJournalPageIndex,
+            0,
+            PublicJournal.PublicPages.Count - 1);
+    }
+
+    private async Task InitializeHubIfNeeded()
+    {
+        if (PublicJournal is null)
+            return;
+
+        var internalBaseUrl = Configuration["InternalUrls:AppBaseUrl"];
+
+        if (string.IsNullOrWhiteSpace(internalBaseUrl))
+        {
+            internalBaseUrl = Navigation.BaseUri.TrimEnd('/');
+        }
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl($"{internalBaseUrl.TrimEnd('/')}/sessionhub")
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On("JournalChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await RunHubRefreshAsync(async () =>
+                {
+                    await LoadPublicJournal();
+                    StateHasChanged();
+                });
+            });
+        });
+
+        await hubConnection.StartAsync();
+        await hubConnection.SendAsync("JoinSessionGroup", PublicJournal.SessionId.ToString());
+    }
+
+    private async Task RunHubRefreshAsync(Func<Task> action)
+    {
+        if (_isDisposed)
+            return;
+
+        await HubRefreshLock.WaitAsync();
+
+        try
+        {
+            if (_isDisposed)
+                return;
+
+            await action();
+        }
+        finally
+        {
+            HubRefreshLock.Release();
+        }
+    }
+
+    private void PreviousPublicJournalPage()
+    {
+        if (CurrentPublicJournalPageIndex > 0)
+            CurrentPublicJournalPageIndex--;
+    }
+
+    private void NextPublicJournalPage()
+    {
+        if (PublicJournal is null)
+            return;
+
+        if (CurrentPublicJournalPageIndex < PublicJournal.PublicPages.Count - 1)
+            CurrentPublicJournalPageIndex++;
+    }
+
+    private string GetJournalDisplayTitle(SessionJournalPageDto page)
+    {
+        return string.IsNullOrWhiteSpace(page.Title)
+            ? L["Journal_DefaultPageTitle"].Value
+            : page.Title.Trim();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _isDisposed = true;
+        HubRefreshLock.Dispose();
+
+        if (hubConnection is not null)
+        {
+            try
+            {
+                await hubConnection.StopAsync();
+            }
+            catch
+            {
+            }
+
+            await hubConnection.DisposeAsync();
+        }
+    }
+}

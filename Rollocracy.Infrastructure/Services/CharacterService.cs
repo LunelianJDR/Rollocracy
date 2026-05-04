@@ -2165,6 +2165,42 @@ namespace Rollocracy.Infrastructure.Services
         }
 
 
+        private async Task UpdateCharacterAliveStateFromComputedHealthGaugesAsync(
+            RollocracyDbContext context,
+            Guid playerSessionId,
+            Guid gameSystemId,
+            Character character)
+        {
+            var computed = await ComputeCharacterContextAsync(
+                context,
+                playerSessionId,
+                gameSystemId,
+                character.Id);
+
+            var healthGauges = computed.GaugeLines
+                .Where(x => x.IsHealthGauge)
+                .ToList();
+
+            if (healthGauges.Count == 0)
+                return;
+
+            var shouldBeAlive = healthGauges.All(x => x.Value > 0);
+
+            if (shouldBeAlive)
+            {
+                character.IsAlive = true;
+                character.DiedAtUtc = null;
+            }
+            else
+            {
+                if (character.IsAlive)
+                    character.DiedAtUtc = DateTime.UtcNow;
+
+                character.IsAlive = false;
+            }
+        }
+
+
         private async Task<ComputedCharacterContext> ComputeCharacterContextAsync(
             RollocracyDbContext context,
             Guid playerSessionId,
@@ -3442,6 +3478,14 @@ namespace Rollocracy.Infrastructure.Services
 
             await context.SaveChangesAsync();
 
+            await UpdateCharacterAliveStateFromComputedHealthGaugesAsync(
+                context,
+                playerSession.Id,
+                session.GameSystemId.Value,
+                character);
+
+            await context.SaveChangesAsync();
+
             await _sessionNotifier.NotifyCharacterStateChangedAsync(session.Id);
             await _sessionNotifier.NotifyPresenceChangedAsync(session.Id);
         }
@@ -3461,6 +3505,9 @@ namespace Rollocracy.Infrastructure.Services
 
             if (session == null)
                 throw new Exception(_localizer["Session_NotFound"]);
+
+            if (!session.GameSystemId.HasValue)
+                throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
 
             var character = await context.Characters
                 .FirstOrDefaultAsync(x => x.PlayerSessionId == playerSessionId && x.IsAlive);
@@ -3496,6 +3543,9 @@ namespace Rollocracy.Infrastructure.Services
             if (gaugeValue.Value < offer.Cost)
                 throw new Exception(_localizer["Backend_SessionStoreNotEnoughCurrency"]);
 
+            var grantedTalentDefinitionId = (Guid?)null;
+            var grantedNonConsumableItemDefinitionId = (Guid?)null;
+
             if (offer.OfferType == SessionStoreOfferType.Talent)
             {
                 var alreadyHas = await context.CharacterTalents.AnyAsync(x =>
@@ -3511,6 +3561,8 @@ namespace Rollocracy.Infrastructure.Services
                     CharacterId = character.Id,
                     TalentDefinitionId = offer.TargetDefinitionId
                 });
+
+                grantedTalentDefinitionId = offer.TargetDefinitionId;
             }
             else
             {
@@ -3536,6 +3588,8 @@ namespace Rollocracy.Infrastructure.Services
                         ItemDefinitionId = itemDefinition.Id,
                         Quantity = 1
                     });
+
+                    grantedNonConsumableItemDefinitionId = itemDefinition.Id;
                 }
                 else
                 {
@@ -3563,6 +3617,36 @@ namespace Rollocracy.Infrastructure.Services
                 gaugeValue.Value - offer.Cost,
                 gaugeDefinition.MinValue,
                 gaugeDefinition.MaxValue);
+
+            await context.SaveChangesAsync();
+
+            if (grantedTalentDefinitionId.HasValue)
+            {
+                await ApplyGaugeModifiersFromTalentInventoryChangeAsync(
+                    context,
+                    session.GameSystemId!.Value,
+                    character.Id,
+                    grantedTalentDefinitionId.Value,
+                    true);
+            }
+
+            if (grantedNonConsumableItemDefinitionId.HasValue)
+            {
+                await ApplyGaugeModifiersFromItemInventoryChangeAsync(
+                    context,
+                    session.GameSystemId!.Value,
+                    character.Id,
+                    grantedNonConsumableItemDefinitionId.Value,
+                    true);
+            }
+
+            await context.SaveChangesAsync();
+
+            await UpdateCharacterAliveStateFromComputedHealthGaugesAsync(
+                context,
+                playerSession.Id,
+                session.GameSystemId!.Value,
+                character);
 
             await context.SaveChangesAsync();
 

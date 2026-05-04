@@ -27,7 +27,13 @@ namespace Rollocracy.Domain.GameTests
 
         public int? CriticalFailureValueSnapshot { get; set; }
 
+        public GameTestSuccessThresholdMode SuccessThresholdMode { get; set; } = GameTestSuccessThresholdMode.Fixed;
+
         public int? SuccessThreshold { get; set; }
+
+        public Guid? SuccessThresholdMetricId { get; set; }
+
+        public string SuccessThresholdMetricNameSnapshot { get; set; } = string.Empty;
 
         public TestModifierMode ModifierMode { get; set; }
 

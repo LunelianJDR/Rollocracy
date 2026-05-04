@@ -19,6 +19,12 @@ namespace Rollocracy.Domain.GameTests
         HighestOnly = 1
     }
 
+    public enum GameTestSuccessThresholdMode
+    {
+        Fixed = 0,
+        Metric = 1
+    }
+
     public class GameTestAdvancedModifierDto
     {
         public GameTestAdvancedModifierSourceType SourceType { get; set; } = GameTestAdvancedModifierSourceType.TraitOption;
@@ -86,7 +92,11 @@ namespace Rollocracy.Domain.GameTests
 
         public int? CriticalFailureValue { get; set; }
 
+        public GameTestSuccessThresholdMode SuccessThresholdMode { get; set; } = GameTestSuccessThresholdMode.Fixed;
+
         public int? SuccessThreshold { get; set; }
+
+        public Guid? SuccessThresholdMetricId { get; set; }
 
         public TestModifierMode ModifierMode { get; set; }
 
@@ -137,7 +147,13 @@ namespace Rollocracy.Domain.GameTests
 
         public int? CriticalFailureValue { get; set; }
 
+        public GameTestSuccessThresholdMode SuccessThresholdMode { get; set; } = GameTestSuccessThresholdMode.Fixed;
+
         public int? SuccessThreshold { get; set; }
+
+        public Guid? SuccessThresholdMetricId { get; set; }
+
+        public string SuccessThresholdMetricName { get; set; } = string.Empty;
 
         public TestModifierMode ModifierMode { get; set; }
 
@@ -161,6 +177,8 @@ namespace Rollocracy.Domain.GameTests
         public int EffectiveAttributeValue { get; set; }
 
         public int FinalValue { get; set; }
+
+        public int? EffectiveSuccessThreshold { get; set; }
 
         public bool IsSuccess { get; set; }
 
@@ -194,6 +212,8 @@ namespace Rollocracy.Domain.GameTests
         public int EffectiveAttributeValue { get; set; }
 
         public int FinalValue { get; set; }
+
+        public int? EffectiveSuccessThreshold { get; set; }
     }
 
     public class GameMasterActiveGameTestDto
@@ -216,7 +236,13 @@ namespace Rollocracy.Domain.GameTests
 
         public int? CriticalFailureValue { get; set; }
 
+        public GameTestSuccessThresholdMode SuccessThresholdMode { get; set; } = GameTestSuccessThresholdMode.Fixed;
+
         public int? SuccessThreshold { get; set; }
+
+        public Guid? SuccessThresholdMetricId { get; set; }
+
+        public string SuccessThresholdMetricName { get; set; } = string.Empty;
 
         public TestModifierMode ModifierMode { get; set; }
 

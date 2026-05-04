@@ -3913,4 +3913,124 @@
 	<data name="Backend_GameSystemDeletedReferenceConfirmationRequired" xml:space="preserve">
   <value>Attention, un élément supprimé est encore utilisé par d’autres éléments. Confirmer supprimera aussi les références concernées :</value>
 </data>
+	<data name="Test_SuccessThresholdMode" xml:space="preserve">
+    <value>Mode du seuil de réussite</value>
+  </data>
+	<data name="Test_SuccessThresholdMode_Fixed" xml:space="preserve">
+    <value>Seuil fixe</value>
+  </data>
+	<data name="Test_SuccessThresholdMode_Metric" xml:space="preserve">
+    <value>Seuil basé sur une metric</value>
+  </data>
+	<data name="Test_SuccessThresholdMetric" xml:space="preserve">
+    <value>Metric de seuil</value>
+  </data>
+	<data name="Test_SelectSuccessThresholdMetric" xml:space="preserve">
+    <value>Sélectionner une metric</value>
+  </data>
+	<data name="Test_SuccessThresholdMetricMissing" xml:space="preserve">
+    <value>La metric de seuil de réussite configurée est introuvable. Sélectionnez une autre metric ou repassez en seuil fixe.</value>
+  </data>
+	<data name="Test_SuccessThresholdShort" xml:space="preserve">
+    <value>SR</value>
+  </data>
+	<data name="Backend_SuccessThresholdMetricRequired" xml:space="preserve">
+    <value>Une metric de seuil de réussite doit être sélectionnée.</value>
+  </data>
+	<data name="Backend_SuccessThresholdMetricNotFound" xml:space="preserve">
+    <value>La metric utilisée comme seuil de réussite est introuvable ou a été supprimée.</value>
+  </data>
+	<data name="Session_Store_StatsStatus" xml:space="preserve">
+  <value>État</value>
+</data>
+	<data name="Session_Store_StatusEnabled" xml:space="preserve">
+  <value>Activé</value>
+</data>
+	<data name="Session_Store_StatusDisabled" xml:space="preserve">
+  <value>Désactivé</value>
+</data>
+	<data name="Session_Store_StatsOffers" xml:space="preserve">
+  <value>Offres</value>
+</data>
+	<data name="Session_Store_StatsPaymentGauges" xml:space="preserve">
+  <value>Jauges de paiement utilisées</value>
+</data>
+	<data name="Session_Store_StatsAvailableTargets" xml:space="preserve">
+  <value>Cibles disponibles</value>
+</data>
+	<data name="Session_Store_GlobalActions" xml:space="preserve">
+  <value>Actions globales</value>
+</data>
+	<data name="Session_Store_GlobalActionsSubtitle" xml:space="preserve">
+  <value>Activation du magasin et règles générales de paiement</value>
+</data>
+	<data name="Session_Store_PaymentGaugeModel" xml:space="preserve">
+  <value>Jauges pouvant servir de paiement</value>
+</data>
+	<data name="Session_Store_PaymentGaugeModelHelp" xml:space="preserve">
+  <value>Le modèle actuel du magasin autorise toutes les jauges du système comme jauges de paiement. Les offres sont regroupées ci-dessous par jauge sélectionnée.</value>
+</data>
+	<data name="Session_Store_AddOffer" xml:space="preserve">
+  <value>Ajouter une offre</value>
+</data>
+	<data name="Session_Store_NoOfferForGauge" xml:space="preserve">
+  <value>Aucune offre pour cette jauge.</value>
+</data>
+	<data name="Session_Store_NoOfferSelectedTitle" xml:space="preserve">
+  <value>Aucune offre sélectionnée</value>
+</data>
+	<data name="Session_Store_NoOfferSelectedBody" xml:space="preserve">
+  <value>Sélectionnez une offre dans la colonne de gauche ou ajoutez une nouvelle offre depuis une jauge de paiement.</value>
+</data>
+	<data name="Session_Store_EditOfferSubtitle" xml:space="preserve">
+  <value>Modifiez l'offre localement, puis utilisez l'enregistrement global en haut de page.</value>
+</data>
+	<data name="Session_Store_TargetMissing" xml:space="preserve">
+  <value>Cible supprimée</value>
+</data>
+	<data name="Journal_OpenPopup" xml:space="preserve">
+  <value>Ouvrir le journal dans une fenêtre séparée</value>
+</data>
+	<data name="Stream_OpenPopup" xml:space="preserve">
+  <value>Ouvrir le stream dans une fenêtre séparée</value>
+</data>
+	<data name="Journal_Explanation" xml:space="preserve">
+  <value>Le journal public est visible par tous les joueurs. Le journal privé ne peut être consulté que par le MJ.</value>
+</data>
+	<data name="Journal_PrivateSubtitle" xml:space="preserve">
+  <value>Notes internes réservées au MJ.</value>
+</data>
+	<data name="Journal_PublicSubtitle" xml:space="preserve">
+  <value>Pages visibles par tous les joueurs.</value>
+</data>
+	<data name="Journal_SavePrivate" xml:space="preserve">
+  <value>Enregistrer le privé</value>
+</data>
+	<data name="Journal_SavePublic" xml:space="preserve">
+  <value>Enregistrer le public</value>
+</data>
+	<data name="Journal_UnsavedChangesTitle" xml:space="preserve">
+  <value>Modifications non enregistrées</value>
+</data>
+	<data name="Journal_AllChangesSavedTitle" xml:space="preserve">
+  <value>Modifications enregistrées</value>
+</data>
+	<data name="Journal_PrivateUnsavedChangesBody" xml:space="preserve">
+  <value>Le journal privé contient des changements non sauvegardés.</value>
+</data>
+	<data name="Journal_PrivateAllChangesSavedBody" xml:space="preserve">
+  <value>Le journal privé est à jour.</value>
+</data>
+	<data name="Journal_PublicUnsavedChangesBody" xml:space="preserve">
+  <value>Le journal public contient des changements non sauvegardés.</value>
+</data>
+	<data name="Journal_PublicAllChangesSavedBody" xml:space="preserve">
+  <value>Le journal public est à jour.</value>
+</data>
+	<data name="Journal_PrivateSaved" xml:space="preserve">
+  <value>Journal privé enregistré.</value>
+</data>
+	<data name="Journal_PublicSaved" xml:space="preserve">
+  <value>Journal public enregistré.</value>
+</data>
 </root>

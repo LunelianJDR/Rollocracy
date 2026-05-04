@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.Interfaces;
@@ -1112,8 +1113,17 @@ namespace Rollocracy.Infrastructure.Services
             var validTalentIdSet = validTalentIds.ToHashSet();
             var validItemIdSet = validItemIds.ToHashSet();
 
-            var activeOffers = request.Offers
+            var incomingActiveOffers = request.Offers
                 .Where(x => !x.IsDeleted)
+                .ToList();
+
+            var activeOffers = incomingActiveOffers
+                .Where(offer => offer.OfferType switch
+                {
+                    SessionStoreOfferType.Talent => validTalentIdSet.Contains(offer.TargetDefinitionId),
+                    SessionStoreOfferType.Item => validItemIdSet.Contains(offer.TargetDefinitionId),
+                    _ => false
+                })
                 .ToList();
 
             foreach (var offer in activeOffers)
@@ -1123,16 +1133,6 @@ namespace Rollocracy.Infrastructure.Services
 
                 if (offer.Cost < 0)
                     throw new Exception(_localizer["Backend_SessionStoreInvalidCost"]);
-
-                var targetIsValid = offer.OfferType switch
-                {
-                    SessionStoreOfferType.Talent => validTalentIdSet.Contains(offer.TargetDefinitionId),
-                    SessionStoreOfferType.Item => validItemIdSet.Contains(offer.TargetDefinitionId),
-                    _ => false
-                };
-
-                if (!targetIsValid)
-                    throw new Exception(_localizer["Backend_SessionStoreInvalidTarget"]);
             }
 
             var store = await context.SessionStores
@@ -1198,6 +1198,7 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             await context.SaveChangesAsync();
+            await _sessionNotifier.NotifyStoreChangedAsync(sessionId);
         }
 
         public async Task<PlayerSessionStoreDto> GetPlayerSessionStoreAsync(Guid playerSessionId)

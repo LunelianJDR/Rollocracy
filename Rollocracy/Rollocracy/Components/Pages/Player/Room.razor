@@ -562,15 +562,54 @@ else
                         {
                             @if (ShowSessionCharactersPanel)
                             {
-                                <button type="button" @onclick="ShowStreamView">
-                                    @L["Journal_ShowStream"]
-                                </button>
+                                <div class="rc-compound-button rc-journal-compound-button">
+                                    <button type="button"
+                                            class="rc-compound-button__main"
+                                            @onclick="ShowStreamView">
+                                        @L["Journal_ShowStream"]
+                                    </button>
+
+                                    <button type="button"
+                                            class="rc-compound-button__icon"
+                                            disabled="@(!CanOpenStreamPopup)"
+                                            title="@L["Stream_OpenPopup"]"
+                                            aria-label="@L["Stream_OpenPopup"]"
+                                            @onclick="OpenStreamPopup">
+                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                             viewBox="0 -960 960 960"
+                                             width="20"
+                                             height="20"
+                                             fill="currentColor"
+                                             aria-hidden="true">
+                                            <path d="M216-144q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h240v72H216v528h528v-240h72v240q0 29.7-21.15 50.85Q773.7-144 744-144H216Zm168-216-51-51 360-360H528v-72h288v288h-72v-165L384-360Z" />
+                                        </svg>
+                                    </button>
+                                </div>
 
                                 @if (PublicJournal is not null && PublicJournal.PublicPages.Count > 0)
                                 {
-                                    <button type="button" @onclick="ShowJournal">
-                                        @L["Journal_ShowJournal"]
-                                    </button>
+                                    <div class="rc-compound-button rc-journal-compound-button">
+                                        <button type="button"
+                                                class="rc-compound-button__main"
+                                                @onclick="ShowJournal">
+                                            @L["Journal_ShowJournal"]
+                                        </button>
+
+                                        <button type="button"
+                                                class="rc-compound-button__icon"
+                                                title="@L["Journal_OpenPopup"]"
+                                                aria-label="@L["Journal_OpenPopup"]"
+                                                @onclick="OpenJournalPopup">
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                 viewBox="0 -960 960 960"
+                                                 width="20"
+                                                 height="20"
+                                                 fill="currentColor"
+                                                 aria-hidden="true">
+                                                <path d="M216-144q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h240v72H216v528h528v-240h72v240q0 29.7-21.15 50.85Q773.7-144 744-144H216Zm168-216-51-51 360-360H528v-72h288v288h-72v-165L384-360Z" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 }
                             }
                             else
@@ -583,9 +622,29 @@ else
 
                         @if (!ShowSessionCharactersPanel && PublicJournal is not null && PublicJournal.PublicPages.Count > 0)
                         {
-                            <button type="button" @onclick="ToggleJournalPanel">
-                                @(ShowJournalPanel? L["Journal_ShowStream"] : L["Journal_ShowJournal"])
-                            </button>
+                            <div class="rc-compound-button rc-journal-compound-button">
+                                <button type="button"
+                                        class="rc-compound-button__main"
+                                        @onclick="ToggleJournalPanel">
+                                    @(ShowJournalPanel ? L["Journal_ShowStream"] : L["Journal_ShowJournal"])
+                                </button>
+
+                                <button type="button"
+                                        class="rc-compound-button__icon"
+                                        disabled="@(!CanOpenCurrentSidePanelPopup)"
+                                        title="@GetCurrentSidePanelPopupLabel()"
+                                        aria-label="@GetCurrentSidePanelPopupLabel()"
+                                        @onclick="OpenCurrentSidePanelPopup">
+                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                         viewBox="0 -960 960 960"
+                                         width="20"
+                                         height="20"
+                                         fill="currentColor"
+                                         aria-hidden="true">
+                                        <path d="M216-144q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h240v72H216v528h528v-240h72v240q0 29.7-21.15 50.85Q773.7-144 744-144H216Zm168-216-51-51 360-360H528v-72h288v288h-72v-165L384-360Z" />
+                                    </svg>
+                                </button>
+                            </div>
                         }
 
                         @if (ShowEditSystemConfirm)
@@ -619,6 +678,25 @@ else
                         {
                             <button type="button" @onclick="EditSessionGameSystem">
                                 @L["Session_Player_EditSessionGameSystem"]
+                            </button>
+                        }
+
+                        @if (!ShowSessionCharactersPanel)
+                        {
+                            <button type="button"
+                                    class="rc-side-panel-popup-button"
+                                    disabled="@(CanOpenCurrentSidePanelPopup)"
+                                    title="@GetOtherSidePanelPopupLabel()"
+                                    aria-label="@GetOtherSidePanelPopupLabel()"
+                                    @onclick="OpenOtherSidePanelPopup">
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 -960 960 960"
+                                        width="20"
+                                        height="20"
+                                        fill="currentColor"
+                                        aria-hidden="true">
+                                    <path d="M216-144q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h240v72H216v528h528v-240h72v240q0 29.7-21.15 50.85Q773.7-144 744-144H216Zm168-216-51-51 360-360H528v-72h288v288h-72v-165L384-360Z" />
+                                </svg>
                             </button>
                         }
                     </div>
@@ -1670,7 +1748,20 @@ else
             });
         });
 
+        hubConnection.On("StoreChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await RunHubRefreshAsync(async () =>
+                {
+                    await LoadState(refreshJournal: false);
+                    StateHasChanged();
+                });
+            });
+        });
+
         await hubConnection.StartAsync();
+
         await hubConnection.SendAsync("JoinSessionGroup", State.SessionId.ToString());
 
         if (State.AliveCharacter is not null || State.DeadCharacters.Count > 0)
@@ -1927,12 +2018,6 @@ else
         {
             await LoadSpecialRoleCharacters();
         }
-    }
-
-    private Task ShowStreamView()
-    {
-        ShowSessionCharactersPanel = false;
-        return Task.CompletedTask;
     }
 
     private async Task LoadSpecialRoleCharacters()
@@ -3074,15 +3159,102 @@ else
             PublicJournal.PublicPages.Count - 1);
     }
 
+    private bool CanOpenStreamPopup
+        => !string.IsNullOrWhiteSpace(TwitchChannelName);
+
+    private bool CanOpenJournalPopup
+        => PublicJournal is not null && PublicJournal.PublicPages.Count > 0;
+
+    private bool CanOpenCurrentSidePanelPopup
+        => ShowJournalPanel ? CanOpenStreamPopup : CanOpenJournalPopup;
+
     private void ToggleJournalPanel()
     {
         ShowJournalPanel = !ShowJournalPanel;
+
+        if (ShowJournalPanel)
+        {
+            ShowSessionCharactersPanel = false;
+        }
+    }
+
+    private async Task OpenCurrentSidePanelPopup()
+    {
+        if (ShowJournalPanel)
+        {
+            await OpenStreamPopup();
+        }
+        else
+        {
+            await OpenJournalPopup();
+        }
+    }
+
+    private async Task OpenOtherSidePanelPopup()
+    {
+        if (ShowJournalPanel)
+        {
+            await OpenJournalPopup();
+        }
+        else
+        {
+            await OpenStreamPopup();
+        }
+    }
+
+    private string GetCurrentSidePanelPopupLabel()
+    {
+        return ShowJournalPanel
+            ? L["Stream_OpenPopup"].Value
+            : L["Journal_OpenPopup"].Value;
+    }
+
+    private string GetOtherSidePanelPopupLabel()
+    {
+        return ShowJournalPanel
+            ? L["Journal_OpenPopup"].Value
+            : L["Stream_OpenPopup"].Value;
+    }
+
+    private async Task OpenJournalPopup()
+    {
+        if (!CanOpenJournalPopup)
+            return;
+
+        var url = $"/player/room/{PlayerSessionId}/journal";
+
+        await JS.InvokeVoidAsync(
+            "window.open",
+            url,
+            "RollocracyJournal",
+            "popup=yes,width=900,height=900,resizable=yes,scrollbars=yes");
+    }
+
+    private async Task OpenStreamPopup()
+    {
+        if (!CanOpenStreamPopup)
+            return;
+
+        var url = $"https://www.twitch.tv/{Uri.EscapeDataString(TwitchChannelName!)}";
+
+        await JS.InvokeVoidAsync(
+            "window.open",
+            url,
+            "RollocracyStream",
+            "popup=yes,width=1100,height=850,resizable=yes,scrollbars=yes");
     }
 
     private void ShowJournal()
     {
-        ShowSessionCharactersPanel = !ShowSessionCharactersPanel;
-        ShowJournalPanel = !ShowJournalPanel;
+        ShowSessionCharactersPanel = false;
+        ShowJournalPanel = true;
+    }
+
+    private Task ShowStreamView()
+    {
+        ShowSessionCharactersPanel = false;
+        ShowJournalPanel = false;
+        return Task.CompletedTask;
     }
 
     private void PreviousPublicJournalPage()
@@ -3100,10 +3272,10 @@ else
             CurrentPublicJournalPageIndex++;
     }
 
-    private static string GetJournalDisplayTitle(SessionJournalPageDto page)
+    private string GetJournalDisplayTitle(SessionJournalPageDto page)
     {
         return string.IsNullOrWhiteSpace(page.Title)
-            ? "Nouvelle page"
+            ? L["Journal_DefaultPageTitle"].Value
             : page.Title.Trim();
     }
 }

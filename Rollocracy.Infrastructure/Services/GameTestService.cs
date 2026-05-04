@@ -75,13 +75,42 @@ namespace Rollocracy.Infrastructure.Services
                 request.TargetKind,
                 request.TargetDefinitionId);
 
-            if (gameSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold && !request.SuccessThreshold.HasValue)
+            if (gameSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold)
             {
-                request.SuccessThreshold = gameSystem.DefaultSuccessThreshold;
-            }
+                if (request.SuccessThresholdMode == GameTestSuccessThresholdMode.Metric)
+                {
+                    if (!request.SuccessThresholdMetricId.HasValue)
+                        throw new Exception(_localizer["Backend_SuccessThresholdMetricRequired"]);
 
-            if (gameSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold && !request.SuccessThreshold.HasValue)
-                throw new Exception(_localizer["Backend_SuccessThresholdRequired"]);
+                    var thresholdMetric = await context.MetricDefinitions
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(m => m.Id == request.SuccessThresholdMetricId.Value && m.GameSystemId == session.GameSystemId.Value);
+
+                    if (thresholdMetric is null)
+                        throw new Exception(_localizer["Backend_SuccessThresholdMetricNotFound"]);
+
+                    request.SuccessThreshold = null;
+                }
+                else
+                {
+                    request.SuccessThresholdMode = GameTestSuccessThresholdMode.Fixed;
+                    request.SuccessThresholdMetricId = null;
+
+                    if (!request.SuccessThreshold.HasValue)
+                    {
+                        request.SuccessThreshold = gameSystem.DefaultSuccessThreshold;
+                    }
+
+                    if (!request.SuccessThreshold.HasValue)
+                        throw new Exception(_localizer["Backend_SuccessThresholdRequired"]);
+                }
+            }
+            else
+            {
+                request.SuccessThresholdMode = GameTestSuccessThresholdMode.Fixed;
+                request.SuccessThreshold = null;
+                request.SuccessThresholdMetricId = null;
+            }
 
             var diceCount = request.UseSystemDefaultDice ? gameSystem.DefaultTestDiceCount : request.DiceCount;
             var diceSides = request.UseSystemDefaultDice ? gameSystem.DefaultTestDiceSides : request.DiceSides;
@@ -189,7 +218,16 @@ namespace Rollocracy.Infrastructure.Services
                 DiceSides = diceSides,
                 CriticalSuccessValueSnapshot = criticalSuccessValue,
                 CriticalFailureValueSnapshot = criticalFailureValue,
+                SuccessThresholdMode = request.SuccessThresholdMode,
                 SuccessThreshold = request.SuccessThreshold,
+                SuccessThresholdMetricId = request.SuccessThresholdMetricId,
+                SuccessThresholdMetricNameSnapshot = request.SuccessThresholdMetricId.HasValue
+                    ? await context.MetricDefinitions
+                        .AsNoTracking()
+                        .Where(m => m.Id == request.SuccessThresholdMetricId.Value)
+                        .Select(m => m.Name)
+                        .FirstOrDefaultAsync() ?? string.Empty
+                    : string.Empty,
                 ModifierMode = TestModifierMode.Bonus,
                 DifficultyValue = request.DifficultyValue,
                 TargetScope = request.TargetScope,
@@ -278,6 +316,15 @@ namespace Rollocracy.Infrastructure.Services
 
                 var effectiveAttributeValue = testedValue + globalModifierValue + advancedModifierValue;
 
+                var effectiveSuccessThreshold = await ResolveEffectiveSuccessThresholdAsync(
+                    context,
+                    session.GameSystemId.Value,
+                    row.Character.Id,
+                    gameSystem.TestResolutionMode,
+                    request.SuccessThresholdMode,
+                    request.SuccessThreshold,
+                    request.SuccessThresholdMetricId);
+
                 context.PlayerTestRolls.Add(new PlayerTestRoll
                 {
                     Id = Guid.NewGuid(),
@@ -291,6 +338,7 @@ namespace Rollocracy.Infrastructure.Services
                     DiceResultsJson = "[]",
                     DiceTotal = 0,
                     FinalValue = 0,
+                    EffectiveSuccessThreshold = effectiveSuccessThreshold,
                     IsSuccess = false,
                     Outcome = GameTestOutcome.Failure,
                     HasRolled = false,
@@ -378,7 +426,10 @@ namespace Rollocracy.Infrastructure.Services
                 DiceSides = playerRoll.test.DiceSides,
                 CriticalSuccessValue = playerRoll.test.CriticalSuccessValueSnapshot,
                 CriticalFailureValue = playerRoll.test.CriticalFailureValueSnapshot,
+                SuccessThresholdMode = playerRoll.test.SuccessThresholdMode,
                 SuccessThreshold = playerRoll.test.SuccessThreshold,
+                SuccessThresholdMetricId = playerRoll.test.SuccessThresholdMetricId,
+                SuccessThresholdMetricName = playerRoll.test.SuccessThresholdMetricNameSnapshot,
                 ModifierMode = playerRoll.test.ModifierMode,
                 DifficultyValue = playerRoll.test.DifficultyValue,
                 AutoRollAtUtc = playerRoll.test.AutoRollAtUtc,
@@ -394,6 +445,7 @@ namespace Rollocracy.Infrastructure.Services
                     AttributeValue = playerRoll.roll.AttributeValueSnapshot,
                     EffectiveAttributeValue = playerRoll.roll.EffectiveAttributeValue,
                     FinalValue = playerRoll.roll.FinalValue,
+                    EffectiveSuccessThreshold = playerRoll.roll.EffectiveSuccessThreshold,
                     IsSuccess = playerRoll.roll.IsSuccess,
                     Outcome = playerRoll.roll.Outcome,
                     IsAutoRolled = playerRoll.roll.IsAutoRolled
@@ -438,7 +490,7 @@ namespace Rollocracy.Infrastructure.Services
             if (test.ResolutionModeSnapshot == TestResolutionMode.SuccessThreshold)
             {
                 finalValue = diceTotal + row.EffectiveAttributeValue;
-                isSuccess = finalValue >= (test.SuccessThreshold ?? 0);
+                isSuccess = finalValue >= (row.EffectiveSuccessThreshold ?? test.SuccessThreshold ?? 0);
             }
             else
             {
@@ -1223,13 +1275,43 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(c => c.GameTestId == test.Id && c.ApplyOn == applyOn.Value)
                 .ToListAsync();
 
-            foreach (var row in rows)
+            if (globalConsequences.Count == 0)
+            {
+                test.GlobalConsequencesApplied = true;
+                await context.SaveChangesAsync();
+                return;
+            }
+
+            var sessionGaugeConsequences = globalConsequences
+                .Where(c => c.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                .ToList();
+
+            var characterScopedConsequences = globalConsequences
+                .Where(c => c.TargetKind != TestConsequenceTargetKind.SessionGauge)
+                .ToList();
+
+            // Une jauge de session est une ressource commune :
+            // une conséquence globale qui la cible doit être appliquée une seule fois pour le test,
+            // et non une fois par personnage ciblé.
+            if (sessionGaugeConsequences.Count > 0)
             {
                 await ApplyResolvedConsequencesAsync(
                     context,
                     test.Id,
-                    row.CharacterId,
-                    globalConsequences);
+                    rows[0].CharacterId,
+                    sessionGaugeConsequences);
+            }
+
+            if (characterScopedConsequences.Count > 0)
+            {
+                foreach (var row in rows)
+                {
+                    await ApplyResolvedConsequencesAsync(
+                        context,
+                        test.Id,
+                        row.CharacterId,
+                        characterScopedConsequences);
+                }
             }
 
             test.GlobalConsequencesApplied = true;
@@ -1381,7 +1463,10 @@ namespace Rollocracy.Infrastructure.Services
                 DiceSides = test.DiceSides,
                 CriticalSuccessValue = test.CriticalSuccessValueSnapshot,
                 CriticalFailureValue = test.CriticalFailureValueSnapshot,
+                SuccessThresholdMode = test.SuccessThresholdMode,
                 SuccessThreshold = test.SuccessThreshold,
+                SuccessThresholdMetricId = test.SuccessThresholdMetricId,
+                SuccessThresholdMetricName = test.SuccessThresholdMetricNameSnapshot,
                 ModifierMode = test.ModifierMode,
                 DifficultyValue = test.DifficultyValue,
                 TargetScope = test.TargetScope,
@@ -1417,7 +1502,8 @@ namespace Rollocracy.Infrastructure.Services
                     DiceTotal = r.DiceTotal,
                     AttributeValue = r.AttributeValueSnapshot,
                     EffectiveAttributeValue = r.EffectiveAttributeValue,
-                    FinalValue = r.FinalValue
+                    FinalValue = r.FinalValue,
+                    EffectiveSuccessThreshold = r.EffectiveSuccessThreshold
                 }).ToList()
             };
         }
@@ -1555,6 +1641,39 @@ namespace Rollocracy.Infrastructure.Services
                 default:
                     throw new Exception(_localizer["Backend_InvalidTestTargetDefinition"]);
             }
+        }
+
+        private async Task<int?> ResolveEffectiveSuccessThresholdAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            Guid characterId,
+            TestResolutionMode resolutionMode,
+            GameTestSuccessThresholdMode thresholdMode,
+            int? fixedThreshold,
+            Guid? thresholdMetricId)
+        {
+            if (resolutionMode != TestResolutionMode.SuccessThreshold)
+                return null;
+
+            if (thresholdMode == GameTestSuccessThresholdMode.Fixed)
+                return fixedThreshold;
+
+            if (!thresholdMetricId.HasValue)
+                throw new Exception(_localizer["Backend_SuccessThresholdMetricRequired"]);
+
+            var metricExists = await context.MetricDefinitions
+                .AsNoTracking()
+                .AnyAsync(m => m.Id == thresholdMetricId.Value && m.GameSystemId == gameSystemId);
+
+            if (!metricExists)
+                throw new Exception(_localizer["Backend_SuccessThresholdMetricNotFound"]);
+
+            var numericContext = await ResolveCharacterNumericContextAsync(context, gameSystemId, characterId);
+
+            if (!numericContext.MetricValues.TryGetValue(thresholdMetricId.Value, out var threshold))
+                throw new Exception(_localizer["Backend_SuccessThresholdMetricNotFound"]);
+
+            return threshold;
         }
 
         private async Task<int> ResolveTestTargetValueAsync(
@@ -2150,6 +2269,17 @@ namespace Rollocracy.Infrastructure.Services
             if (request.DifficultyValue < 0)
                 throw new Exception(_localizer["Backend_InvalidDifficultyValue"]);
 
+            if (request.SuccessThresholdMode == GameTestSuccessThresholdMode.Metric)
+            {
+                if (!request.SuccessThresholdMetricId.HasValue)
+                    throw new Exception(_localizer["Backend_SuccessThresholdMetricRequired"]);
+            }
+            else
+            {
+                request.SuccessThresholdMode = GameTestSuccessThresholdMode.Fixed;
+                request.SuccessThresholdMetricId = null;
+            }
+
             if (request.AutoRollDelaySeconds != 0 &&
                 request.AutoRollDelaySeconds != 10 &&
                 request.AutoRollDelaySeconds != 20 &&
@@ -2284,6 +2414,7 @@ namespace Rollocracy.Infrastructure.Services
                 AttributeValue = row.AttributeValueSnapshot,
                 EffectiveAttributeValue = row.EffectiveAttributeValue,
                 FinalValue = row.FinalValue,
+                EffectiveSuccessThreshold = row.EffectiveSuccessThreshold,
                 IsSuccess = row.IsSuccess,
                 Outcome = row.Outcome,
                 IsAutoRolled = row.IsAutoRolled
@@ -2505,4 +2636,3 @@ namespace Rollocracy.Infrastructure.Services
         }
     }
 }
-

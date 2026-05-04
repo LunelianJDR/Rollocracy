@@ -1020,6 +1020,28 @@ namespace Rollocracy.Infrastructure.Services
                                     context.CharacterItems.Remove(item);
                                     characterItems.Remove(item);
                                 }
+
+                                await ApplyGaugeModifiersFromItemAsync(
+                                    context,
+                                    character,
+                                    effect.TargetId,
+                                    true,
+                                    gaugeDefinitions,
+                                    attributeDefinitions,
+                                    derivedDefinitions,
+                                    metricDefinitions,
+                                    derivedComponents,
+                                    metricComponents,
+                                    metricFormulaSteps,
+                                    traitValues,
+                                    choiceModifiers,
+                                    talentModifiers,
+                                    itemModifiers,
+                                    attributeValues,
+                                    gaugeValues,
+                                    characterTalents,
+                                    characterItems,
+                                    characterModifiers);
                             }
                             else
                             {
