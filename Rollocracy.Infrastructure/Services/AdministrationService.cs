@@ -108,7 +108,7 @@ namespace Rollocracy.Infrastructure.Services
             var patchNotes = await context.PatchNotes
                 .AsNoTracking()
                 .Where(x => x.IsPublished)
-                .OrderByDescending(x => x.DisplayOrder)
+                .OrderBy(x => x.DisplayOrder)
                 .ThenByDescending(x => x.PublishedAtUtc)
                 .Take(8)
                 .ToListAsync();
@@ -507,7 +507,7 @@ namespace Rollocracy.Infrastructure.Services
         {
             var notes = await context.PatchNotes
                 .AsNoTracking()
-                .OrderByDescending(x => x.DisplayOrder)
+                .OrderBy(x => x.DisplayOrder)
                 .ThenByDescending(x => x.PublishedAtUtc)
                 .ToListAsync();
 

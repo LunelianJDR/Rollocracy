@@ -123,13 +123,32 @@
                 }
                 else
                 {
-                    <a class="rc-support-link"
-                           href="@SupportRollocracyUrl"
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           title="@L["Navigation_SupportRollocracy"]">
-                        @L["Navigation_SupportRollocracy"]
-                    </a>
+                    <div class="rc-topbar__quick-actions">
+                        <button type="button"
+                                class="icon-button rc-alert-sound-toggle"
+                                title="@(IsAlertSoundEnabled? L["Navigation_DisableAlertSound"] : L["Navigation_EnableAlertSound"])"
+                                @onclick="ToggleAlertSound">
+                            @if (IsAlertSoundEnabled)
+                            {
+                                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor" aria-hidden="true"><path d="M560-131v-82q90-26 145-100t55-167q0-93-55-167t-145-100v-82q124 29 202 128.5T840-480q0 122-78 221.5T560-131ZM120-360v-240h160l200-200v640L280-360H120Zm280 4v-248L314-520H200v80h114l86 84Zm100 76v-401q47 22 73.5 66.5T600-520q0 49-26.5 93.5T500-360v80Zm0-160Zm0 0Z" /></svg>
+                            }
+                            else
+                            {
+                                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor" aria-hidden="true"><path d="m616-320-56-56q33-11 56.5-39.5T640-480q0-36-23.5-64.5T560-584l56-56q45 26 72.5 71t27.5 89q0 44-27.5 89T616-320ZM792-56 56-792l56-56 736 736-56 56ZM400-599 286-485H200v10l-80-80v-45h160l200-200v201l-80-80Zm80 440L280-359H120v-160L36-603l57-57 387 387v114Zm80-201-80-80v-360q64 24 102 78t38 122q0 10-1 20t-3 20l-56-56v-1q0-38-21-70.5T500-553v193l-20-20Z" /></svg>
+                            }
+                        </button>
+
+                        <a class="rc-support-link"
+                               href="@SupportRollocracyUrl"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               title="@L["Navigation_SupportRollocracy"]">
+                            <span class="rc-support-link__text">@L["Navigation_SupportRollocracy"]</span>
+                            <span class="rc-support-link__icon" aria-hidden="true">
+                                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M640-440 474-602q-31-30-52.5-66.5T400-748q0-55 38.5-93.5T532-880q32 0 60 13.5t48 36.5q20-23 48-36.5t60-13.5q55 0 93.5 38.5T880-748q0 43-21 79.5T807-602L640-440Zm0-112 109-107q19-19 35-40.5t16-48.5q0-22-15-37t-37-15q-14 0-26.5 5.5T700-778l-60 72-60-72q-9-11-21.5-16.5T532-800q-22 0-37 15t-15 37q0 27 16 48.5t35 40.5l109 107ZM280-220l278 76 238-74q-5-9-14.5-15.5T760-240H558q-27 0-43-2t-33-8l-93-31 22-78 81 27q17 5 40 8t68 4q0-11-6.5-21T578-354l-234-86h-64v220ZM40-80v-440h304q7 0 14 1.5t13 3.5l235 87q33 12 53.5 42t20.5 66h80q50 0 85 33t35 87v40L560-60l-280-78v58H40Zm80-80h80v-280h-80v280Zm520-546Z" /></svg>
+                            </span>
+                        </a>
+                    </div>
                 }
             </div>
         </header>
@@ -207,7 +226,9 @@
 
         <main class="rc-main">
             <article class="rc-main__content">
-                @Body
+                <CascadingValue Name="RollocracyAlertSoundEnabled" Value="IsAlertSoundEnabled">
+                    @Body
+                </CascadingValue>
             </article>
         </main>
     </div>
@@ -233,6 +254,7 @@
     private string CurrentUserDisplayName = string.Empty;
     private string JoinUrl = string.Empty;
     private string SessionGaugeMessage = string.Empty;
+    private bool IsAlertSoundEnabled = true;
     private const string SupportRollocracyUrl = "https://ko-fi.com/lunelianjdr";
 
     private Guid? CurrentUserId;
@@ -438,6 +460,13 @@
         return Task.CompletedTask;
     }
 
+    private Task ToggleAlertSound()
+    {
+        IsAlertSoundEnabled = !IsAlertSoundEnabled;
+        return Task.CompletedTask;
+    }
+
+
     private async Task CycleTheme()
     {
         CurrentTheme = CurrentTheme == "light" ? "dark" : "light";
@@ -526,4 +555,3 @@
         }
     }
 }
-

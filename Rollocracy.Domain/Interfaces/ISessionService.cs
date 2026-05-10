@@ -99,6 +99,15 @@ namespace Rollocracy.Domain.Interfaces
             Guid sessionId,
             Guid gameMasterUserAccountId,
             List<EditableItemDefinitionDto> requestItems);
+        Task<SessionStoreEditorDto?> GetSessionStoreEditorAsync(Guid sessionId, Guid gameMasterUserAccountId);
+
+        Task SaveSessionStoreAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            SessionStoreEditorDto request);
+
+        Task<PlayerSessionStoreDto> GetPlayerSessionStoreAsync(Guid playerSessionId);
+
 
         Task<Session> UpdateSessionSettingsAsync(
             Guid sessionId,

@@ -1,0 +1,490 @@
+﻿@page "/mj/session/{SessionId:guid}/store"
+@rendermode InteractiveServer
+
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Localization
+@using Rollocracy.Domain.Entities
+@using Rollocracy.Domain.Interfaces
+@using Rollocracy.Localization
+
+@inject ISessionService SessionService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SharedTexts> L
+
+@if (!IsLoaded)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (RedirectToHome)
+{
+    <p>@L["Common_Loading"]</p>
+}
+else if (Editor is null)
+{
+    <p>@L["Session_NotFound"]</p>
+}
+else
+{
+    <section class="rc-tool-section rc-store-editor-page">
+        <div class="rc-tool-layout rc-tool-layout--top">
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["Session_Store_Title"]</h4>
+                        <p class="rc-tool-panel__subtitle">@L["Session_Store_Subtitle"]</p>
+                    </div>
+
+                    <div class="rc-tool-actions">
+                        <button type="button" @onclick="Save" disabled="@(!HasPendingUnsavedChanges)">@L["Common_Save"]</button>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Message))
+                {
+                    <div class="rc-inline-warning rc-inline-warning--soft">
+                        <p>@Message</p>
+                    </div>
+                }
+
+                <div class="@(HasPendingUnsavedChanges ? "rc-editor-save-state rc-editor-save-state--dirty" : "rc-editor-save-state rc-editor-save-state--saved")">
+                    <strong>@(HasPendingUnsavedChanges ? L["GameSystem_Editor_PendingChangesTitle"] : L["GameSystem_Editor_AllChangesSavedTitle"])</strong>
+                    <span>@(HasPendingUnsavedChanges ? L["GameSystem_Editor_PendingChangesBody"] : L["GameSystem_Editor_AllChangesSavedBody"])</span>
+                </div>
+
+                <div class="rc-test-stats-grid">
+                    <div class="rc-stat-card">
+                        <span class="rc-stat-card__label">@L["Session_Store_StatsStatus"]</span>
+                        <span class="rc-stat-card__value">@(Editor.IsEnabled ? L["Session_Store_StatusEnabled"] : L["Session_Store_StatusDisabled"])</span>
+                    </div>
+                    <div class="rc-stat-card">
+                        <span class="rc-stat-card__label">@L["Session_Store_StatsOffers"]</span>
+                        <span class="rc-stat-card__value">@ActiveOffers.Count</span>
+                    </div>
+                    <div class="rc-stat-card">
+                        <span class="rc-stat-card__label">@L["Session_Store_StatsPaymentGauges"]</span>
+                        <span class="rc-stat-card__value">@PaymentGaugeCount</span>
+                    </div>
+                    <div class="rc-stat-card">
+                        <span class="rc-stat-card__label">@L["Session_Store_StatsAvailableTargets"]</span>
+                        <span class="rc-stat-card__value">@(Editor.AvailableTalents.Count + Editor.AvailableItems.Count)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rc-tool-panel">
+                <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                    <div class="rc-tool-panel__header-main">
+                        <h4 class="rc-tool-panel__title">@L["Session_Store_GlobalActions"]</h4>
+                        @* <p class="rc-tool-panel__subtitle">@L["Session_Store_GlobalActionsSubtitle"]</p> *@
+                    </div>
+                </div>
+
+                <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                    <div class="rc-form-field">
+                        <label>@L["Session_Store_StatusEnabled"]</label>
+                        <label class="rc-filter-toggle">
+                            <input type="checkbox" checked="@Editor.IsEnabled" @onchange="OnEnabledChanged" />
+                            <span>@L["Common_Yes"]</span>
+                        </label>
+                    </div>
+@* 
+                    <div class="rc-form-field rc-form-field--full">
+                        <label>@L["Session_Store_PaymentGaugeModel"]</label>
+                        <div class="rc-store-muted-box">@L["Session_Store_PaymentGaugeModelHelp"]</div>
+                    </div> *@
+                </div>
+            </div>
+        </div>
+
+        <div class="rc-editor-shell rc-store-editor-shell">
+            <div class="rc-editor-sidebar rc-store-editor-sidebar">
+                @if (Editor.AvailableGauges.Count == 0)
+                {
+                    <div class="rc-empty-panel">
+                        <p>@L["Session_Store_NoGaugeAvailable"]</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var gauge in Editor.AvailableGauges.OrderBy(x => x.Name))
+                    {
+                        var offers = GetOffersForGauge(gauge.GaugeDefinitionId);
+                        var isCollapsed = IsGaugeCollapsed(gauge.GaugeDefinitionId);
+
+                        <div class="@GetGaugeCardCssClass(gauge.GaugeDefinitionId)">
+                            <div class="rc-editor-category-card__header">
+                                <div class="rc-filter-group-card__title">
+                                    @gauge.Name
+                                    <span class="rc-store-gauge-count">@offers.Count</span>
+                                </div>
+
+                                <div class="rc-tool-inline-actions">
+                                    <button type="button" @onclick="() => AddOfferForGauge(gauge.GaugeDefinitionId)">@L["Session_Store_AddOffer"]</button>
+                                    <button type="button" @onclick="() => ToggleGaugeCollapse(gauge.GaugeDefinitionId)">
+                                        @(isCollapsed ? L["Common_Show"] : L["Common_Hide"])
+                                    </button>
+                                </div>
+                            </div>
+
+                            @if (!isCollapsed)
+                            {
+                                @if (offers.Count == 0)
+                                {
+                                    <p class="rc-tool-muted rc-store-empty-gauge">@L["Session_Store_NoOfferForGauge"]</p>
+                                }
+                                else
+                                {
+                                    <div class="rc-editor-list">
+                                        @foreach (var offer in offers)
+                                        {
+                                            <button type="button"
+                                                    class="@GetOfferListItemClass(offer)"
+                                                    @onclick="() => SelectOffer(offer)">
+                                                <span class="rc-editor-list-item__title">@GetOfferTargetName(offer)</span>
+                                                <span class="rc-editor-list-item__summary">@GetOfferSummary(offer)</span>
+                                            </button>
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+                    }
+                }
+            </div>
+            
+            <div class="rc-editor-detail-panel rc-store-detail-panel rc-tool-panel">
+                @if (SelectedOffer is null || SelectedOffer.IsDeleted)
+                {
+                    <div class="rc-empty-panel">
+                        <h5>@L["Session_Store_NoOfferSelectedTitle"]</h5>
+                        <p>@L["Session_Store_NoOfferSelectedBody"]</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                        <div class="rc-tool-panel__header-main">
+                            <h4 class="rc-tool-panel__title">@GetOfferTargetName(SelectedOffer)</h4>
+                            <p class="rc-tool-panel__subtitle">@L["Session_Store_EditOfferSubtitle"]</p>
+                        </div>
+                        <div class="rc-tool-actions">
+                            <button type="button" @onclick="() => RemoveOffer(SelectedOffer)">@L["Common_Remove"]</button>
+                        </div>
+                    </div>
+
+                    <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                        <div class="rc-form-field">
+                            <label>@L["Session_Store_OfferType"]</label>
+                            <select value="@SelectedOffer.OfferType" @onchange="OnSelectedOfferTypeChanged">
+                                <option value="@SessionStoreOfferType.Talent">@L["Character_Edit_Talents"]</option>
+                                <option value="@SessionStoreOfferType.Item">@L["Character_Edit_Items"]</option>
+                            </select>
+                        </div>
+
+                        <div class="rc-form-field">
+                            <label>@L["Session_Store_Target"]</label>
+                            <select value="@SelectedOffer.TargetDefinitionId" @onchange="OnSelectedOfferTargetChanged">
+                                @foreach (var option in GetOfferTargets(SelectedOffer.OfferType))
+                                {
+                                    <option value="@option.Id">@option.Name</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="rc-form-field">
+                            <label>@L["Session_Store_CurrencyGauge"]</label>
+                            <select value="@SelectedOffer.CurrencyGaugeDefinitionId" @onchange="OnSelectedOfferGaugeChanged">
+                                @foreach (var gauge in Editor.AvailableGauges.OrderBy(x => x.Name))
+                                {
+                                    <option value="@gauge.GaugeDefinitionId">@gauge.Name</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="rc-form-field">
+                            <label>@L["Session_Store_Cost"]</label>
+                            <input type="number" min="0" value="@SelectedOffer.Cost" @onchange="OnSelectedOfferCostChanged" />
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter] public Guid SessionId { get; set; }
+
+    private Guid CurrentUserId;
+    private bool IsLoaded;
+    private bool RedirectToHome;
+    private SessionStoreEditorDto? Editor;
+    private SessionStoreOfferEditorDto? SelectedOffer;
+    private readonly HashSet<Guid> CollapsedGaugeIds = new();
+    private bool HasPendingUnsavedChanges;
+    private string Message = string.Empty;
+
+    private List<SessionStoreOfferEditorDto> ActiveOffers
+        => Editor?.Offers.Where(x => !x.IsDeleted).ToList() ?? new();
+
+    private int PaymentGaugeCount
+        => ActiveOffers.Select(x => x.CurrencyGaugeDefinitionId).Distinct().Count();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userIdValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (string.IsNullOrWhiteSpace(userIdValue))
+        {
+            RedirectToHome = true;
+            IsLoaded = true;
+            return;
+        }
+
+        CurrentUserId = Guid.Parse(userIdValue);
+        await LoadEditorAsync();
+        RedirectToHome = Editor is null;
+        IsLoaded = true;
+    }
+
+    private async Task LoadEditorAsync()
+    {
+        Editor = await SessionService.GetSessionStoreEditorAsync(SessionId, CurrentUserId);
+        SelectedOffer = null;
+        HasPendingUnsavedChanges = false;
+        CollapsedGaugeIds.Clear();
+    }
+
+    private void BackToSettings()
+    {
+        Navigation.NavigateTo($"/mj/session/{SessionId}/settings");
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            Message = string.Empty;
+            if (Editor is null)
+                return;
+
+            NormalizeDisplayOrder();
+            await SessionService.SaveSessionStoreAsync(SessionId, CurrentUserId, Editor);
+            await LoadEditorAsync();
+            Message = L["Session_Store_Saved"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private void OnEnabledChanged(ChangeEventArgs args)
+    {
+        if (Editor is null)
+            return;
+
+        Editor.IsEnabled = args.Value is bool boolValue
+            ? boolValue
+            : bool.TryParse(args.Value?.ToString(), out var parsed) && parsed;
+
+        MarkDirty();
+    }
+
+    private void AddOfferForGauge(Guid gaugeDefinitionId)
+    {
+        if (Editor is null)
+            return;
+
+        if (Editor.AvailableGauges.Count == 0)
+        {
+            Message = L["Session_Store_NoGaugeAvailable"];
+            return;
+        }
+
+        var defaultType = Editor.AvailableItems.Count > 0
+            ? SessionStoreOfferType.Item
+            : SessionStoreOfferType.Talent;
+
+        var targets = GetOfferTargets(defaultType);
+        if (targets.Count == 0)
+        {
+            Message = defaultType == SessionStoreOfferType.Item
+                ? L["Session_Store_NoItemAvailable"]
+                : L["Session_Store_NoTalentAvailable"];
+            return;
+        }
+
+        Message = string.Empty;
+
+        var offer = new SessionStoreOfferEditorDto
+        {
+            OfferType = defaultType,
+            TargetDefinitionId = targets[0].Id,
+            CurrencyGaugeDefinitionId = gaugeDefinitionId,
+            Cost = 0,
+            DisplayOrder = ActiveOffers.Count
+        };
+
+        Editor.Offers.Add(offer);
+        SelectedOffer = offer;
+        EnsureGaugeExpanded(gaugeDefinitionId);
+        MarkDirty();
+    }
+
+    private List<SessionStoreReferenceOptionDto> GetOfferTargets(SessionStoreOfferType type)
+    {
+        if (Editor is null)
+            return new();
+
+        return type == SessionStoreOfferType.Talent
+            ? Editor.AvailableTalents
+            : Editor.AvailableItems;
+    }
+
+    private List<SessionStoreOfferEditorDto> GetOffersForGauge(Guid gaugeDefinitionId)
+    {
+        return ActiveOffers
+            .Where(x => x.CurrencyGaugeDefinitionId == gaugeDefinitionId)
+            .OrderBy(x => x.DisplayOrder)
+            .ThenBy(x => x.OfferType)
+            .ThenBy(GetOfferTargetName)
+            .ToList();
+    }
+
+    private bool IsGaugeCollapsed(Guid gaugeDefinitionId)
+        => CollapsedGaugeIds.Contains(gaugeDefinitionId);
+
+    private void ToggleGaugeCollapse(Guid gaugeDefinitionId)
+    {
+        if (!CollapsedGaugeIds.Add(gaugeDefinitionId))
+        {
+            CollapsedGaugeIds.Remove(gaugeDefinitionId);
+        }
+    }
+
+    private void EnsureGaugeExpanded(Guid gaugeDefinitionId)
+    {
+        CollapsedGaugeIds.Remove(gaugeDefinitionId);
+    }
+
+    private void SelectOffer(SessionStoreOfferEditorDto offer)
+    {
+        SelectedOffer = offer;
+    }
+
+    private void OnSelectedOfferTypeChanged(ChangeEventArgs args)
+    {
+        if (SelectedOffer is null)
+            return;
+
+        if (!Enum.TryParse<SessionStoreOfferType>(args.Value?.ToString(), out var parsedType))
+            return;
+
+        SelectedOffer.OfferType = parsedType;
+        var targets = GetOfferTargets(parsedType);
+        SelectedOffer.TargetDefinitionId = targets.FirstOrDefault()?.Id ?? Guid.Empty;
+        MarkDirty();
+    }
+
+    private void OnSelectedOfferTargetChanged(ChangeEventArgs args)
+    {
+        if (SelectedOffer is null)
+            return;
+
+        if (Guid.TryParse(args.Value?.ToString(), out var targetId))
+        {
+            SelectedOffer.TargetDefinitionId = targetId;
+            MarkDirty();
+        }
+    }
+
+    private void OnSelectedOfferGaugeChanged(ChangeEventArgs args)
+    {
+        if (SelectedOffer is null)
+            return;
+
+        if (Guid.TryParse(args.Value?.ToString(), out var gaugeId))
+        {
+            SelectedOffer.CurrencyGaugeDefinitionId = gaugeId;
+            EnsureGaugeExpanded(gaugeId);
+            MarkDirty();
+        }
+    }
+
+    private void OnSelectedOfferCostChanged(ChangeEventArgs args)
+    {
+        if (SelectedOffer is null)
+            return;
+
+        if (int.TryParse(args.Value?.ToString(), out var cost))
+        {
+            SelectedOffer.Cost = Math.Max(0, cost);
+            MarkDirty();
+        }
+    }
+
+    private void RemoveOffer(SessionStoreOfferEditorDto offer)
+    {
+        offer.IsDeleted = true;
+        if (ReferenceEquals(SelectedOffer, offer))
+        {
+            SelectedOffer = null;
+        }
+
+        MarkDirty();
+    }
+
+    private void MarkDirty()
+    {
+        HasPendingUnsavedChanges = true;
+        Message = string.Empty;
+    }
+
+    private void NormalizeDisplayOrder()
+    {
+        if (Editor is null)
+            return;
+
+        var index = 0;
+        foreach (var offer in Editor.Offers.Where(x => !x.IsDeleted).OrderBy(x => x.CurrencyGaugeDefinitionId).ThenBy(x => x.DisplayOrder))
+        {
+            offer.DisplayOrder = index++;
+        }
+    }
+
+    private string GetGaugeCardCssClass(Guid gaugeDefinitionId)
+    {
+        var css = "rc-editor-category-card rc-store-gauge-card";
+        if (!IsGaugeCollapsed(gaugeDefinitionId))
+            css += " rc-editor-category-card--selected";
+        return css;
+    }
+
+    private string GetOfferListItemClass(SessionStoreOfferEditorDto offer)
+    {
+        var css = "rc-editor-list-item";
+        if (ReferenceEquals(SelectedOffer, offer))
+            css += " rc-editor-list-item--selected";
+        return css;
+    }
+
+    private string GetOfferTargetName(SessionStoreOfferEditorDto offer)
+    {
+        var target = GetOfferTargets(offer.OfferType).FirstOrDefault(x => x.Id == offer.TargetDefinitionId);
+        return target?.Name ?? L["Session_Store_TargetMissing"];
+    }
+
+    private string GetOfferSummary(SessionStoreOfferEditorDto offer)
+    {
+        var typeLabel = offer.OfferType == SessionStoreOfferType.Talent
+            ? L["Character_Edit_Talents"].Value
+            : L["Character_Edit_Items"].Value;
+
+        return $"{typeLabel} · {L["Session_Store_Cost"]} : {offer.Cost}";
+    }
+}

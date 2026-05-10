@@ -10,9 +10,11 @@
 @using Rollocracy.Domain.Interfaces
 @using Rollocracy.Localization
 @using Rollocracy.Domain.Polls
+@using Rollocracy.Domain.Entities
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.JSInterop
+@using System.Text.RegularExpressions
 
 @inject ICharacterService CharacterService
 @inject IGameTestService GameTestService
@@ -60,17 +62,27 @@ else
                                 <button type="button" @onclick="BeginBiographyEdit">@L["Session_Player_EditBiography"]</button>
                                 <button type="button" @onclick="ShowStatsView">@L["Session_Player_Statistics"]</button>
                             }
+                            else if (ShowStorePanel)
+                            {
+                                <button type="button" @onclick="CloseStorePanel">@L["Session_Player_Statistics"]</button>
+                            }
                             else
                             {
                                 <button type="button" @onclick="ShowBiographyView">@L["Session_Player_ViewBiography"]</button>
+                                @if (SessionStore?.Exists == true)
+                                {
+                                    <button type="button" disabled="@(!SessionStore.IsEnabled)" @onclick="ToggleStorePanel">@L["Session_Store_Button"]</button>
+                                }
                             }
+
+                            
                         }
                     </div>
                 </div>
 
                 @if (ActiveTest is not null && !IsTestDismissed)
                 {
-                    <div class="rc-filter-group-card">
+                    <div class="rc-filter-group-card rc-player-action-card @(HighlightActiveTest ? "rc-player-action-card--highlight" : string.Empty)">
                         <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                             <div class="rc-tool-panel__header-main">
                                 <h5 class="rc-tool-panel__title">@L["Test_PlayerSectionTitle"]</h5>
@@ -90,7 +102,7 @@ else
                             @if (IsRollingCurrentTest)
                             {
                                 <div class="rc-player-roll-animation">
-                                    <img src="/images/AnimatedDice_150.gif" alt="@L["Session_Player_RollingDice"]" height="70" width="70"/>
+                                    <img src="/images/AnimatedDice_150.gif" alt="@L["Session_Player_RollingDice"]" height="70" width="70" />
                                 </div>
                             }
                             else
@@ -130,7 +142,7 @@ else
 
                 @if (LatestPoll is not null && !IsPollDismissed)
                 {
-                    <div class="rc-filter-group-card">
+                    <div class="rc-filter-group-card rc-player-action-card @(HighlightLatestPoll ? "rc-player-action-card--highlight" : string.Empty)">
                         <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                             <div class="rc-tool-panel__header-main">
                                 <h5 class="rc-tool-panel__title">@L["Poll_PlayerSectionTitle"]</h5>
@@ -161,20 +173,17 @@ else
                                 <p>@L["Poll_VoteRegistered"]</p>
                             }
 
-                            <ul class="rc-detail-list">
-                                @foreach (var option in LatestPoll.Options)
-                                {
-                                    var isSelected = LatestPoll.SelectedOptionId == option.OptionId;
+                            @if (LatestPoll.SelectedOptionId.HasValue)
+                            {
+                                var selectedOption = LatestPoll.Options
+                                    .FirstOrDefault(x => x.OptionId == LatestPoll.SelectedOptionId.Value);
 
-                                    <li>
-                                        @option.Label : @option.VoteCount / @option.WeightedVoteTotal.ToString("F2")
-                                        @if (isSelected)
-                                        {
-                                            <span>(@L["Poll_YourVote"])</span>
-                                        }
-                                    </li>
+                                @if (selectedOption is not null)
+                                {
+                                    <p>@L["Poll_YourVote"] : @selectedOption.Label</p>
                                 }
-                            </ul>
+                            }
+                            
                         }
                     </div>
                 }
@@ -197,7 +206,7 @@ else
                             <div class="rc-player-character-sheet__hero">
                                 <div class="rc-player-character-sheet__name">@State.AliveCharacter.Name</div>
                                 <div class="rc-player-character-sheet__status @(State.AliveCharacter.IsAlive ? "alive" : "dead")">
-                                    @(State.AliveCharacter.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
+                                    @(State.AliveCharacter.IsAlive? L["Common_Alive"] : L["Common_Dead"])
                                 </div>
                             </div>
 
@@ -215,7 +224,7 @@ else
                             <div class="rc-player-character-sheet__hero">
                                 <div class="rc-player-character-sheet__name">@State.AliveCharacter.Name</div>
                                 <div class="rc-player-character-sheet__status @(State.AliveCharacter.IsAlive ? "alive" : "dead")">
-                                    @(State.AliveCharacter.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
+                                    @(State.AliveCharacter.IsAlive? L["Common_Alive"] : L["Common_Dead"])
                                 </div>
                             </div>
 
@@ -228,6 +237,89 @@ else
                                 else
                                 {
                                     <div class="rc-player-character-sheet__biography">@State.AliveCharacter.Biography</div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (ShowStorePanel && SessionStore?.Exists == true)
+                    {
+                        <div class="rc-filter-group-card">
+                            <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                                <div class="rc-tool-panel__header-main">
+                                    <h5 class="rc-tool-panel__title">@L["Session_Store_Title"]</h5>
+                                    @* <p class="rc-tool-panel__subtitle">@L["Session_Store_PlayerSubtitle"]</p> *@
+                                </div>
+
+                                @* <div class="rc-tool-actions">
+                                    <button type="button" @onclick="CloseStorePanel">@L["Common_Close"]</button>
+                                </div> *@
+                            </div>
+
+                            <div class="rc-form-field">
+                                <label>@L["Session_Store_FilterGauge"]</label>
+                                <select @bind="StoreGaugeFilterIdString" @bind:after="OnStoreGaugeFilterChanged">
+                                    <option value="">@L["Session_Store_FilterAll"]</option>
+                                    @foreach (var gauge in SessionStore.AvailableGauges)
+                                    {
+                                        <option value="@gauge.GaugeDefinitionId.ToString()">@gauge.Name</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                <label class="rc-filter-toggle">
+                                    <input type="checkbox" @bind="HideOwnedStoreOffers" @bind:after="OnStoreOfferVisibilityFilterChanged" />
+                                    <span>@L["Session_Store_HideOwned"]</span>
+                                </label>@*
+
+                                <label class="rc-filter-toggle">
+                                    <input type="checkbox" @bind="HideTooExpensiveStoreOffers" @bind:after="OnStoreOfferVisibilityFilterChanged" />
+                                    <span>@L["Session_Store_HideTooExpensive"]</span>
+                                </label> *@
+
+                                <label class="rc-filter-toggle">
+                                    <input type="checkbox" @bind="ShowConsumableStoreOffersOnly" @bind:after="OnStoreOfferVisibilityFilterChanged" />
+                                    <span>@L["Session_Store_ConsumablesOnly"]</span>
+                                </label>
+                            </div>
+
+                            <div class="rc-session-store-list">
+                                @foreach (var offer in GetVisibleStoreOffers())
+                                {
+                                    <div class="rc-session-store-offer">
+                                        <div class="rc-session-store-offer__main">
+                                            <div class="rc-session-store-offer__title">@offer.TargetName</div>
+                                            <div class="rc-session-store-offer__meta">
+                                                <span>@(offer.OfferType == SessionStoreOfferType.Talent ? L["Character_Edit_Talents"] : L["Character_Edit_Items"])</span>
+                                                <span>·</span>
+                                                <span>@offer.CurrencyGaugeName</span>
+                                                <span>·</span>
+                                                <span>@offer.Cost</span>
+                                                @if (offer.IsConsumable)
+                                                {
+                                                    <span>·</span>
+                                                    <span>@($"{offer.CurrentQuantity}/{offer.MaxQuantityPerCharacter}")</span>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <div class="rc-tool-inline-actions">
+                                            @if (PendingStoreOfferId == offer.OfferId)
+                                            {
+                                                <span class="rc-tool-muted">@L["Session_Store_BuyConfirm"]</span>
+                                                <button type="button" @onclick="@(() => ConfirmPurchaseStoreOffer(offer.OfferId))">✓</button>
+                                                <button type="button" @onclick="CancelPurchaseStoreOffer">X</button>
+                                            }
+                                            else
+                                            {
+                                                <button type="button"
+                                                        disabled="@(!offer.IsPurchasable)"
+                                                        @onclick="@(() => BeginPurchaseStoreOffer(offer.OfferId))">
+                                                    @L["Session_Store_Buy"]
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
                                 }
                             </div>
                         </div>
@@ -252,7 +344,10 @@ else
                             <div class="rc-tool-form-grid">
                                 <div class="rc-form-field">
                                     <label>@L["Character_Edit_Name"]</label>
-                                    <input @bind="NewCharacterName" />
+                                    <input value="@NewCharacterName"
+                                           maxlength="22"
+                                           @ref="NewCharacterNameInputRef"
+                                           @oninput="OnNewCharacterNameInput" />
                                 </div>
 
                                 <div class="rc-form-field rc-form-field--full">
@@ -260,6 +355,50 @@ else
                                     <textarea rows="4" @bind="NewCharacterBiography"></textarea>
                                 </div>
                             </div>
+
+                            @if (CreationTemplate.AttributePointsToDistribute > 0 && CreationTemplate.Attributes.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["CharacterCreation_AttributeDistributionTitle"]</div>
+                                    <p class="rc-tool-muted">@L["CharacterCreation_PointsRemaining", RemainingCreationAttributePoints]</p>
+
+                                    <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                        @foreach (var typeattribute in CreationTemplate.Attributes)
+                                        {
+                                            <div class="rc-form-field">
+                                                <label>@typeattribute.Name</label>
+                                                <input type="number"
+                                                       min="0"
+                                                       max="@GetCreationAttributeInputMax(typeattribute.AttributeDefinitionId)"
+                                                       value="@CreationAttributeValues[typeattribute.AttributeDefinitionId]"
+                                                       @onchange="e => OnCreationAttributeBonusChanged(typeattribute.AttributeDefinitionId, e)" />
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (CreationTemplate.DerivedStatPointsToDistribute > 0 && CreationTemplate.DerivedStats.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["CharacterCreation_DerivedStatDistributionTitle"]</div>
+                                    <p class="rc-tool-muted">@L["CharacterCreation_PointsRemaining", RemainingCreationDerivedStatPoints]</p>
+
+                                    <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                                        @foreach (var derivedStat in CreationTemplate.DerivedStats)
+                                        {
+                                            <div class="rc-form-field">
+                                                <label>@derivedStat.Name</label>
+                                                <input type="number"
+                                                       min="0"
+                                                       max="@GetCreationDerivedStatInputMax(derivedStat.DerivedStatDefinitionId)"
+                                                       value="@CreationDerivedStatValues[derivedStat.DerivedStatDefinitionId]"
+                                                       @onchange="e => OnCreationDerivedStatBonusChanged(derivedStat.DerivedStatDefinitionId, e)" />
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
 
                             @if (CreationTemplate.Traits.Count > 0)
                             {
@@ -278,6 +417,7 @@ else
                                                 else
                                                 {
                                                     <select @bind="CreationTraitSelections[trait.TraitDefinitionId]">
+                                                        <option value="">@L["CharacterCreation_SelectOptionPlaceholder"]</option>
                                                         @foreach (var option in GetSelectableCreationOptions(trait))
                                                         {
                                                             <option value="@option.TraitOptionId">@option.Name</option>
@@ -290,8 +430,62 @@ else
                                 </div>
                             }
 
+                            @if (CreationTemplate.TalentChoicesToSelect > 0 && CreationTemplate.Talents.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["CharacterCreation_TalentChoicesTitle"]</div>
+                                    <p class="rc-tool-muted">@L["CharacterCreation_ChoicesSelected", SelectedCreationTalentIds.Count, CreationTemplate.TalentChoicesToSelect]</p>
+                                    <div class="rc-character-inline-list">
+                                        @foreach (var talent in CreationTemplate.Talents)
+                                        {
+                                            <label class="rc-filter-toggle">
+                                                <input type="checkbox"
+                                                       checked="@SelectedCreationTalentIds.Contains(talent.TalentDefinitionId)"
+                                                       disabled="@IsCreationTalentDisabled(talent.TalentDefinitionId)"
+                                                       @onchange="e => ToggleCreationTalent(talent.TalentDefinitionId, e.Value is bool value && value)" />
+                                                <span>@talent.Name</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (CreationTemplate.ItemChoicesToSelect > 0 && CreationTemplate.Items.Count > 0)
+                            {
+                                <div class="rc-detail-block">
+                                    <div class="rc-detail-block__title">@L["CharacterCreation_ItemChoicesTitle"]</div>
+                                    <p class="rc-tool-muted">@L["CharacterCreation_ChoicesSelected", SelectedCreationItemIds.Count, CreationTemplate.ItemChoicesToSelect]</p>
+                                    <div class="rc-character-inline-list">
+                                        @foreach (var item in CreationTemplate.Items)
+                                        {
+                                            <label class="rc-filter-toggle">
+                                                <input type="checkbox"
+                                                       checked="@SelectedCreationItemIds.Contains(item.ItemDefinitionId)"
+                                                       disabled="@IsCreationItemDisabled(item.ItemDefinitionId)"
+                                                       @onchange="e => ToggleCreationItem(item.ItemDefinitionId, e.Value is bool value && value)" />
+                                                <span>@item.Name</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (!IsRandomCharacterCreationEnabled && !AreRequiredCreationTraitsSelected())
+                            {
+                                <p class="rc-inline-warning">@L["CharacterCreation_RequiredTraits"]</p>
+                            }
+
                             <div class="rc-tool-actions">
-                                <button type="button" @onclick="HandleCreateCharacterInline">@L["Session_Player_CreateCharacter"]</button>
+                                <label class="rc-filter-toggle">
+                                    <input type="checkbox" @bind="IsRandomCharacterCreationEnabled" />
+                                    <span>@L["CharacterCreation_RandomizeRemaining"]</span>
+                                </label>
+
+                                <button type="button"
+                                        @onclick="HandleCreateCharacterInline"
+                                        disabled="@(!CanSubmitCharacterCreation() || !CanSubmitCharacterName())">
+                                    @L["Session_Player_CreateCharacter"]
+                                </button>
                                 <button type="button" @onclick="CancelInlineCharacterCreation">@L["Common_Cancel"]</button>
                             </div>
                         </div>
@@ -368,13 +562,59 @@ else
                         {
                             @if (ShowSessionCharactersPanel)
                             {
-                                <button type="button" @onclick="() => ShowSessionCharactersPanel = false">
-                                    @L["Session_Player_ShowStreamPanel"]
-                                </button>
+                                <div class="rc-compound-button rc-journal-compound-button">
+                                    <button type="button"
+                                            class="rc-compound-button__main"
+                                            @onclick="ShowStreamView">
+                                        @L["Journal_ShowStream"]
+                                    </button>
+
+                                    <button type="button"
+                                            class="rc-compound-button__icon"
+                                            disabled="@(!CanOpenStreamPopup)"
+                                            title="@L["Stream_OpenPopup"]"
+                                            aria-label="@L["Stream_OpenPopup"]"
+                                            @onclick="OpenStreamPopup">
+                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                             viewBox="0 -960 960 960"
+                                             width="20"
+                                             height="20"
+                                             fill="currentColor"
+                                             aria-hidden="true">
+                                            <path d="M216-144q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h240v72H216v528h528v-240h72v240q0 29.7-21.15 50.85Q773.7-144 744-144H216Zm168-216-51-51 360-360H528v-72h288v288h-72v-165L384-360Z" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                @if (PublicJournal is not null && PublicJournal.PublicPages.Count > 0)
+                                {
+                                    <div class="rc-compound-button rc-journal-compound-button">
+                                        <button type="button"
+                                                class="rc-compound-button__main"
+                                                @onclick="ShowJournal">
+                                            @L["Journal_ShowJournal"]
+                                        </button>
+
+                                        <button type="button"
+                                                class="rc-compound-button__icon"
+                                                title="@L["Journal_OpenPopup"]"
+                                                aria-label="@L["Journal_OpenPopup"]"
+                                                @onclick="OpenJournalPopup">
+                                            <svg xmlns="http://www.w3.org/2000/svg"
+                                                 viewBox="0 -960 960 960"
+                                                 width="20"
+                                                 height="20"
+                                                 fill="currentColor"
+                                                 aria-hidden="true">
+                                                <path d="M216-144q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h240v72H216v528h528v-240h72v240q0 29.7-21.15 50.85Q773.7-144 744-144H216Zm168-216-51-51 360-360H528v-72h288v288h-72v-165L384-360Z" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                }
                             }
                             else
                             {
-                                <button type="button" @onclick="() => ShowSessionCharactersPanel = true">
+                                <button type="button" @onclick="ShowSessionCharactersView">
                                     @L["Session_Player_ShowSessionCharactersPanel"]
                                 </button>
                             }
@@ -382,9 +622,29 @@ else
 
                         @if (!ShowSessionCharactersPanel && PublicJournal is not null && PublicJournal.PublicPages.Count > 0)
                         {
-                            <button type="button" @onclick="ToggleJournalPanel">
-                                @(ShowJournalPanel? L["Journal_ShowStream"] : L["Journal_ShowJournal"])
-                            </button>
+                            <div class="rc-compound-button rc-journal-compound-button">
+                                <button type="button"
+                                        class="rc-compound-button__main"
+                                        @onclick="ToggleJournalPanel">
+                                    @(ShowJournalPanel ? L["Journal_ShowStream"] : L["Journal_ShowJournal"])
+                                </button>
+
+                                <button type="button"
+                                        class="rc-compound-button__icon"
+                                        disabled="@(!CanOpenCurrentSidePanelPopup)"
+                                        title="@GetCurrentSidePanelPopupLabel()"
+                                        aria-label="@GetCurrentSidePanelPopupLabel()"
+                                        @onclick="OpenCurrentSidePanelPopup">
+                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                         viewBox="0 -960 960 960"
+                                         width="20"
+                                         height="20"
+                                         fill="currentColor"
+                                         aria-hidden="true">
+                                        <path d="M216-144q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h240v72H216v528h528v-240h72v240q0 29.7-21.15 50.85Q773.7-144 744-144H216Zm168-216-51-51 360-360H528v-72h288v288h-72v-165L384-360Z" />
+                                    </svg>
+                                </button>
+                            </div>
                         }
 
                         @if (ShowEditSystemConfirm)
@@ -407,17 +667,36 @@ else
                             </button>
                         }
 
-                        @if (!ShowSessionCharactersPanel)
+                        @if (!ShowSessionCharactersPanel && !ShowJournalPanel)
                         {
                             <button type="button" @onclick="() => IsTwitchEnabled = !IsTwitchEnabled">
                                 @(IsTwitchEnabled? L["Session_Player_DisableStream"] : L["Session_Player_EnableStream"])
                             </button>
                         }
 
-                                @if (ShowSessionCharactersPanel && State.SessionGameSystemId.HasValue && State.CanEditSessionGameSystem && !ShowEditSystemConfirm)
+                        @if (ShowSessionCharactersPanel && State.SessionGameSystemId.HasValue && State.CanEditSessionGameSystem && !ShowEditSystemConfirm)
                         {
                             <button type="button" @onclick="EditSessionGameSystem">
                                 @L["Session_Player_EditSessionGameSystem"]
+                            </button>
+                        }
+
+                        @if (!ShowSessionCharactersPanel)
+                        {
+                            <button type="button"
+                                    class="rc-side-panel-popup-button"
+                                    disabled="@(CanOpenCurrentSidePanelPopup)"
+                                    title="@GetOtherSidePanelPopupLabel()"
+                                    aria-label="@GetOtherSidePanelPopupLabel()"
+                                    @onclick="OpenOtherSidePanelPopup">
+                                <svg xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 -960 960 960"
+                                        width="20"
+                                        height="20"
+                                        fill="currentColor"
+                                        aria-hidden="true">
+                                    <path d="M216-144q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h240v72H216v528h528v-240h72v240q0 29.7-21.15 50.85Q773.7-144 744-144H216Zm168-216-51-51 360-360H528v-72h288v288h-72v-165L384-360Z" />
+                                </svg>
                             </button>
                         }
                     </div>
@@ -502,11 +781,11 @@ else
 
                                                     <div class="rc-character-card__meta-row">
                                                         <span class="rc-character-chip @(character.IsAlive ? "alive" : "dead")">
-                                                            @(character.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
+                                                            @(character.IsAlive? L["Common_Alive"] : L["Common_Dead"])
                                                         </span>
 
                                                         <span class="rc-character-chip @(character.IsOnline ? "online" : "offline")">
-                                                            @(character.IsOnline ? L["Common_Online"] : L["Common_Offline"])
+                                                            @(character.IsOnline? L["Common_Online"] : L["Common_Offline"])
                                                         </span>
 
                                                         @if (character.IsNpc)
@@ -610,7 +889,7 @@ else
                                             <h5 class="rc-character-detail-panel__title">@ObservedCharacterSheet.Name</h5>
                                             <div class="rc-character-detail-panel__meta">
                                                 <span class="rc-character-chip @(ObservedCharacterSheet.IsAlive ? "alive" : "dead")">
-                                                    @(ObservedCharacterSheet.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
+                                                    @(ObservedCharacterSheet.IsAlive? L["Common_Alive"] : L["Common_Dead"])
                                                 </span>
                                             </div>
                                         </div>
@@ -686,27 +965,27 @@ else
                                             </div> *@
                                             <div class="rc-detail-block">
                                                 <div class="rc-detail-block__title">@L["Character_Edit_PlayerName"]</div>
-                                                        <div>@ObservedEditableCharacter.PlayerName</div>
+                                                <div>@ObservedEditableCharacter.PlayerName</div>
                                             </div>
 
                                             <div class="rc-tool-form-grid rc-tool-form-grid--dense">
                                                 <div class="rc-form-field">
                                                     <label>@L["Character_Edit_Name"]</label>
-                                                            <input @bind="ObservedEditableCharacter.Name" />
+                                                    <input @bind="ObservedEditableCharacter.Name" />
                                                 </div>
                                             </div>
 
                                             <div class="rc-detail-block">
                                                 <div class="rc-detail-block__title">@L["Session_Player_Attributes"]</div>
                                                 <div class="rc-tool-form-grid rc-tool-form-grid--dense">
-                                                            @foreach (var attributeItem in ObservedEditableCharacter.Attributes)
+                                                    @foreach (var attributeItem in ObservedEditableCharacter.Attributes)
                                                     {
                                                         <div class="rc-form-field">
                                                             <label>@attributeItem.Name (@attributeItem.MinValue - @attributeItem.MaxValue)</label>
                                                             <input type="number"
-                                                                    min="@attributeItem.MinValue"
-                                                                    max="@attributeItem.MaxValue"
-                                                                    @bind="attributeItem.Value" />
+                                                                   min="@attributeItem.MinValue"
+                                                                   max="@attributeItem.MaxValue"
+                                                                   @bind="attributeItem.Value" />
                                                         </div>
                                                     }
                                                 </div>
@@ -741,7 +1020,7 @@ else
                                             <div class="rc-detail-block">
                                                 <div class="rc-detail-block__title">@L["Session_Player_Traits"]</div>
                                                 <div class="rc-tool-form-grid rc-tool-form-grid--dense">
-                                                            @foreach (var traitItem in ObservedEditableCharacter.Traits)
+                                                    @foreach (var traitItem in ObservedEditableCharacter.Traits)
                                                     {
                                                         <div class="rc-form-field">
                                                             <label>@traitItem.TraitName</label>
@@ -760,7 +1039,7 @@ else
                                             <div class="rc-detail-block">
                                                 <div class="rc-detail-block__title">@L["Session_Player_Gauges"]</div>
                                                 <div class="rc-tool-form-grid rc-tool-form-grid--dense">
-                                                            @foreach (var gaugeItem in ObservedEditableCharacter.Gauges)
+                                                    @foreach (var gaugeItem in ObservedEditableCharacter.Gauges)
                                                     {
                                                         <div class="rc-form-field">
                                                             <label>
@@ -771,53 +1050,63 @@ else
                                                                 }
                                                             </label>
                                                             <input type="number"
-                                                                    min="@gaugeItem.MinValue"
-                                                                    max="@gaugeItem.MaxValue"
-                                                                    @bind="gaugeItem.Value" />
+                                                                   min="@gaugeItem.MinValue"
+                                                                   max="@gaugeItem.MaxValue"
+                                                                   @bind="gaugeItem.Value" />
                                                         </div>
                                                     }
                                                 </div>
                                             </div>
 
-                                                    <div class="rc-detail-block">
-                                                        <div class="rc-detail-block__title">@L["Character_Edit_Talents"]</div>
-                                                        @if (ObservedEditableCharacter.Talents.Count == 0)
+                                            <div class="rc-detail-block">
+                                                <div class="rc-detail-block__title">@L["Character_Edit_Talents"]</div>
+                                                @if (ObservedEditableCharacter.Talents.Count == 0)
+                                                {
+                                                    <p>@L["Character_Edit_NoTalentsDefined"]</p>
+                                                }
+                                                else
+                                                {
+                                                    <div class="rc-character-inline-list">
+                                                        @foreach (var talentItem in ObservedEditableCharacter.Talents)
                                                         {
-                                                            <p>@L["Character_Edit_NoTalentsDefined"]</p>
-                                                        }
-                                                        else
-                                                        {
-                                                            <div class="rc-character-inline-list">
-                                                                @foreach (var talentItem in ObservedEditableCharacter.Talents)
-                                                                {
-                                                                    <label class="rc-filter-toggle">
-                                                                        <input type="checkbox" @bind="talentItem.IsSelected" />
-                                                                        <span>@talentItem.Name</span>
-                                                                    </label>
-                                                                }
-                                                            </div>
+                                                            <label class="rc-filter-toggle">
+                                                                <input type="checkbox" @bind="talentItem.IsSelected" />
+                                                                <span>@talentItem.Name</span>
+                                                            </label>
                                                         }
                                                     </div>
+                                                }
+                                            </div>
 
-                                                    <div class="rc-detail-block">
-                                                        <div class="rc-detail-block__title">@L["Character_Edit_Items"]</div>
-                                                        @if (ObservedEditableCharacter.Items.Count == 0)
+                                            <div class="rc-detail-block">
+                                                <div class="rc-detail-block__title">@L["Character_Edit_Items"]</div>
+                                                @if (ObservedEditableCharacter.Items.Count == 0)
+                                                {
+                                                    <p>@L["Character_Edit_NoItemsDefined"]</p>
+                                                }
+                                                else
+                                                {
+                                                    <div class="rc-character-inline-list">
+                                                        @foreach (var item in ObservedEditableCharacter.Items)
                                                         {
-                                                            <p>@L["Character_Edit_NoItemsDefined"]</p>
-                                                        }
-                                                        else
-                                                        {
-                                                            <div class="rc-character-inline-list">
-                                                                @foreach (var item in ObservedEditableCharacter.Items)
+                                                            <div class="rc-consumable-edit-line">
+                                                                <label class="rc-filter-toggle">
+                                                                    <input type="checkbox" @bind="item.IsSelected" />
+                                                                    <span>@item.Name</span>
+                                                                </label>
+                                                                @if (item.IsConsumable && item.IsSelected)
                                                                 {
-                                                                    <label class="rc-filter-toggle">
-                                                                        <input type="checkbox" @bind="item.IsSelected" />
-                                                                        <span>@item.Name</span>
-                                                                    </label>
+                                                                    <input type="number"
+                                                                           min="0"
+                                                                           max="@item.MaxQuantityPerCharacter"
+                                                                           @bind="item.Quantity"
+                                                                           class="rc-consumable-qty-input" />
                                                                 }
                                                             </div>
                                                         }
                                                     </div>
+                                                }
+                                            </div>
 
 
                                             <div class="rc-tool-actions">
@@ -848,83 +1137,83 @@ else
                                                 }
                                             </div>
                                         }
-                                                else
-                                                {
-                                                    <div class="rc-detail-block">
-                                                        <div class="rc-detail-block__title">@L["Session_Player_Attributes"]</div>
-                                                        <ul class="rc-detail-list">
-                                                            @foreach (var item in ObservedCharacterSheet.Attributes)
-                                                            {
-                                                                <li>@item.Name : @item.Value</li>
-                                                            }
-                                                        </ul>
-                                                    </div>
-
-                                                    @if (ObservedCharacterSheet.DerivedStats.Count > 0)
+                                        else
+                                        {
+                                            <div class="rc-detail-block">
+                                                <div class="rc-detail-block__title">@L["Session_Player_Attributes"]</div>
+                                                <ul class="rc-detail-list">
+                                                    @foreach (var item in ObservedCharacterSheet.Attributes)
                                                     {
-                                                        <div class="rc-detail-block">
-                                                            <div class="rc-detail-block__title">@L["Session_Player_DerivedStats"]</div>
-                                                            <ul class="rc-detail-list">
-                                                                @foreach (var item in ObservedCharacterSheet.DerivedStats)
-                                                                {
-                                                                    <li>@item.Name : @item.Value</li>
-                                                                }
-                                                            </ul>
-                                                        </div>
+                                                        <li>@item.Name : @item.Value</li>
                                                     }
+                                                </ul>
+                                            </div>
 
-                                                    @if (ObservedCharacterSheet.Traits.Count > 0)
-                                                    {
-                                                        <div class="rc-detail-block">
-                                                            <div class="rc-detail-block__title">@L["Session_Player_Traits"]</div>
-                                                            <ul class="rc-detail-list">
-                                                                @foreach (var item in ObservedCharacterSheet.Traits)
-                                                                {
-                                                                    <li>@item.TraitName : @item.OptionName</li>
-                                                                }
-                                                            </ul>
-                                                        </div>
-                                                    }
+                                            @if (ObservedCharacterSheet.DerivedStats.Count > 0)
+                                            {
+                                                <div class="rc-detail-block">
+                                                    <div class="rc-detail-block__title">@L["Session_Player_DerivedStats"]</div>
+                                                    <ul class="rc-detail-list">
+                                                        @foreach (var item in ObservedCharacterSheet.DerivedStats)
+                                                        {
+                                                            <li>@item.Name : @item.Value</li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            }
 
-                                                    @if (ObservedCharacterSheet.Talents.Count > 0)
-                                                    {
-                                                        <div class="rc-detail-block">
-                                                            <div class="rc-detail-block__title">@L["Character_Edit_Talents"]</div>
-                                                            <ul class="rc-detail-list">
-                                                                @foreach (var item in ObservedCharacterSheet.Talents)
-                                                                {
-                                                                    <li>@item.Name</li>
-                                                                }
-                                                            </ul>
-                                                        </div>
-                                                    }
+                                            @if (ObservedCharacterSheet.Traits.Count > 0)
+                                            {
+                                                <div class="rc-detail-block">
+                                                    <div class="rc-detail-block__title">@L["Session_Player_Traits"]</div>
+                                                    <ul class="rc-detail-list">
+                                                        @foreach (var item in ObservedCharacterSheet.Traits)
+                                                        {
+                                                            <li>@item.TraitName : @item.OptionName</li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            }
 
-                                                    @if (ObservedCharacterSheet.Items.Count > 0)
-                                                    {
-                                                        <div class="rc-detail-block">
-                                                            <div class="rc-detail-block__title">@L["Character_Edit_Items"]</div>
-                                                            <ul class="rc-detail-list">
-                                                                @foreach (var item in ObservedCharacterSheet.Items)
-                                                                {
-                                                                    <li>@item.Name</li>
-                                                                }
-                                                            </ul>
-                                                        </div>
-                                                    }
+                                            @if (ObservedCharacterSheet.Talents.Count > 0)
+                                            {
+                                                <div class="rc-detail-block">
+                                                    <div class="rc-detail-block__title">@L["Character_Edit_Talents"]</div>
+                                                    <ul class="rc-detail-list">
+                                                        @foreach (var item in ObservedCharacterSheet.Talents)
+                                                        {
+                                                            <li>@item.Name</li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            }
 
-                                                    @if (ObservedCharacterSheet.Gauges.Count > 0)
-                                                    {
-                                                        <div class="rc-detail-block">
-                                                            <div class="rc-detail-block__title">@L["Session_Player_Gauges"]</div>
-                                                            <ul class="rc-detail-list">
-                                                                @foreach (var gauge in ObservedCharacterSheet.Gauges)
-                                                                {
-                                                                    <li>@gauge.Name : @gauge.Value / @gauge.MaxValue</li>
-                                                                }
-                                                            </ul>
-                                                        </div>
-                                                    }
-                                                }
+                                            @if (ObservedCharacterSheet.Items.Count > 0)
+                                            {
+                                                <div class="rc-detail-block">
+                                                    <div class="rc-detail-block__title">@L["Character_Edit_Items"]</div>
+                                                    <ul class="rc-detail-list">
+                                                        @foreach (var item in ObservedCharacterSheet.Items)
+                                                        {
+                                                            <li>@item.Name</li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            }
+
+                                            @if (ObservedCharacterSheet.Gauges.Count > 0)
+                                            {
+                                                <div class="rc-detail-block">
+                                                    <div class="rc-detail-block__title">@L["Session_Player_Gauges"]</div>
+                                                    <ul class="rc-detail-list">
+                                                        @foreach (var gauge in ObservedCharacterSheet.Gauges)
+                                                        {
+                                                            <li>@gauge.Name : @gauge.Value / @gauge.MaxValue</li>
+                                                        }
+                                                    </ul>
+                                                </div>
+                                            }
+                                        }
 
                                         @if (!string.IsNullOrWhiteSpace(ObservedCharacterPanelMessage))
                                         {
@@ -936,9 +1225,25 @@ else
                         </div>
                     </section>
                 }
-                        else if (ShowJournalPanel)
-                        {
-                            @if (CurrentPublicJournalPage is null)
+                else if (ShowJournalPanel)
+                {
+                    @if (CurrentPublicJournalPage is null)
+                    {
+                        <div class="rc-empty-panel rc-empty-panel--small">
+                            <p>@L["Journal_EmptyPage"]</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <section class="rc-journal-viewer">
+                            <div class="rc-journal-viewer__nav">
+                                <button type="button" @onclick="PreviousPublicJournalPage" disabled="@(CurrentPublicJournalPageIndex <= 0)">&lt;</button>
+                                <span class="rc-journal-viewer__page-number">@CurrentPublicJournalPage.PageNumber</span>
+                                <button type="button" @onclick="NextPublicJournalPage" disabled="@(PublicJournal is null || CurrentPublicJournalPageIndex >= PublicJournal.PublicPages.Count - 1)">&gt;</button>
+                                <span class="rc-journal-viewer__page-title">@GetJournalDisplayTitle(CurrentPublicJournalPage)</span>
+                            </div>
+
+                            @if (string.IsNullOrWhiteSpace(CurrentPublicJournalPage.ContentHtml))
                             {
                                 <div class="rc-empty-panel rc-empty-panel--small">
                                     <p>@L["Journal_EmptyPage"]</p>
@@ -946,66 +1251,50 @@ else
                             }
                             else
                             {
-                                <section class="rc-journal-viewer">
-                                    <div class="rc-journal-viewer__nav">
-                                        <button type="button" @onclick="PreviousPublicJournalPage" disabled="@(CurrentPublicJournalPageIndex <= 0)">&lt;</button>
-                                        <span class="rc-journal-viewer__page-number">@CurrentPublicJournalPage.PageNumber</span>
-                                        <button type="button" @onclick="NextPublicJournalPage" disabled="@(PublicJournal is null || CurrentPublicJournalPageIndex >= PublicJournal.PublicPages.Count - 1)">&gt;</button>
-                                        <span class="rc-journal-viewer__page-title">@GetJournalDisplayTitle(CurrentPublicJournalPage)</span>
-                                    </div>
-
-                                    @if (string.IsNullOrWhiteSpace(CurrentPublicJournalPage.ContentHtml))
-                                    {
-                                        <div class="rc-empty-panel rc-empty-panel--small">
-                                            <p>@L["Journal_EmptyPage"]</p>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="rc-journal-content">
-                                            @((MarkupString)CurrentPublicJournalPage.ContentHtml)
-                                        </div>
-                                    }
-                                </section>
+                                <div class="rc-journal-content">
+                                    @((MarkupString)CurrentPublicJournalPage.ContentHtml)
+                                </div>
                             }
-                        }
-                        else
-                        {
-                            @if (!IsTwitchEnabled)
+                        </section>
+                    }
+                }
+                else
+                {
+                    @if (!IsTwitchEnabled)
+                    {
+                        <div class="rc-empty-panel rc-empty-panel--small">
+                            <p>@L["Session_Player_StreamDisabled"]</p>
+                        </div>
+                    }
+                    else if (string.IsNullOrWhiteSpace(TwitchChannelName))
+                    {
+                        <div class="rc-empty-panel rc-empty-panel--small">
+                            <p>@L["Session_Player_NoTwitchStreamConfigured"]</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="rc-player-stream">
+                            @if (ShowTwitchChat)
                             {
-                                <div class="rc-empty-panel rc-empty-panel--small">
-                                    <p>@L["Session_Player_StreamDisabled"]</p>
-                                </div>
+                                <iframe class="rc-player-stream__chat"
+                                        src="@($"https://www.twitch.tv/embed/{TwitchChannelName}/chat?parent={TwitchParentHost}")">
+                                </iframe>
                             }
-                            else if (string.IsNullOrWhiteSpace(TwitchChannelName))
-                            {
-                                <div class="rc-empty-panel rc-empty-panel--small">
-                                    <p>@L["Session_Player_NoTwitchStreamConfigured"]</p>
-                                </div>
-                            }
-                            else
-                            {
-                                <div class="rc-player-stream">
-                                    @if (ShowTwitchChat)
-                                    {
-                                        <iframe class="rc-player-stream__chat"
-                                                src="@($"https://www.twitch.tv/embed/{TwitchChannelName}/chat?parent={TwitchParentHost}")">
-                                        </iframe>
-                                    }
 
-                                    <iframe class="rc-player-stream__video"
-                                            src="@($"https://player.twitch.tv/?channel={TwitchChannelName}&parent={TwitchParentHost}")"
-                                            allow="fullscreen">
-                                    </iframe>
-                                </div>
+                            <iframe class="rc-player-stream__video"
+                                    src="@($"https://player.twitch.tv/?channel={TwitchChannelName}&parent={TwitchParentHost}")"
+                                    allow="fullscreen">
+                            </iframe>
+                        </div>
 
-                                <div class="rc-tool-actions" style="margin-top: 0.75rem;">
-                                    <button type="button" @onclick="() => ShowTwitchChat = !ShowTwitchChat">
-                                        @(ShowTwitchChat? L["Session_Player_HideChat"] : L["Session_Player_ShowChat"])
-                                    </button>
-                                </div>
-                            }
-                        }
+                        <div class="rc-tool-actions" style="margin-top: 0.75rem;">
+                            <button type="button" @onclick="() => ShowTwitchChat = !ShowTwitchChat">
+                                @(ShowTwitchChat? L["Session_Player_HideChat"] : L["Session_Player_ShowChat"])
+                            </button>
+                        </div>
+                    }
+                }
             </div>
         </aside>
     </section>
@@ -1014,6 +1303,7 @@ else
 @code {
     [Parameter] public Guid PlayerSessionId { get; set; }
     [SupplyParameterFromQuery(Name = "restored")] public string? RestoredFlag { get; set; }
+    [CascadingParameter(Name = "RollocracyAlertSoundEnabled")] public bool IsAlertSoundEnabled { get; set; } = true;
 
     private bool IsLoaded;
     private string Message = string.Empty;
@@ -1028,6 +1318,8 @@ else
     private bool PresenceJoined;
     private IJSObjectReference? presenceModule;
     private bool leaveBeaconRegistered;
+    private bool _isDisposed;
+    private readonly System.Threading.SemaphoreSlim _hubRefreshLock = new(1, 1);
     private Guid CurrentUserId;
     private bool RedirectToLogin;
 
@@ -1054,7 +1346,11 @@ else
     private string NewCharacterName = string.Empty;
     private string NewCharacterBiography = string.Empty;
     private Dictionary<Guid, int> CreationAttributeValues = new();
-    private Dictionary<Guid, Guid> CreationTraitSelections = new();
+    private Dictionary<Guid, int> CreationDerivedStatValues = new();
+    private Dictionary<Guid, Guid?> CreationTraitSelections = new();
+    private bool IsRandomCharacterCreationEnabled;
+    private HashSet<Guid> SelectedCreationTalentIds = new();
+    private HashSet<Guid> SelectedCreationItemIds = new();
 
     private bool IsCreatingCharacterInline;
     private bool IsEditingBiography;
@@ -1062,10 +1358,29 @@ else
     private bool ShowBiographyPanel;
     private bool IsViewingDeadCharacter => ViewedDeadCharacter is not null;
 
+    private ElementReference NewCharacterNameInputRef;
+    private bool IsNewCharacterNameInputFilterAttached;
+
+    private Guid? PendingConsumableItemDefinitionId;
+    private PlayerSessionStoreDto? SessionStore;
+    private bool ShowStorePanel;
+    private Guid? StoreGaugeFilterId;
+    private string StoreGaugeFilterIdString = string.Empty;
+    private Guid? PendingStoreOfferId;
+    private bool HideOwnedStoreOffers;
+    private bool HideTooExpensiveStoreOffers;
+    private bool ShowConsumableStoreOffersOnly;
+
     private bool IsTwitchEnabled = false;
     private bool ShowTwitchChat = true;
     private bool IsTestDismissed;
     private bool IsPollDismissed;
+    private bool HighlightActiveTest;
+    private bool HighlightLatestPoll;
+    private Guid? LastAlertedActiveTestId;
+    private Guid? LastAlertedPollId;
+    private CancellationTokenSource? ActiveTestHighlightCancellation;
+    private CancellationTokenSource? LatestPollHighlightCancellation;
 
     private int DiffTestResult;
 
@@ -1077,6 +1392,75 @@ else
             : State.GameMasterTwitchLogin;
 
     private string TwitchParentHost => new Uri(Navigation.BaseUri).Host;
+
+    private bool CanAlertForCurrentTest(ActivePlayerGameTestDto? test)
+        => test is not null && !test.AlreadyRolled && test.AutoRollAtUtc >= DateTime.UtcNow;
+
+    private bool CanAlertForCurrentPoll(PollForPlayerDto? poll)
+        => poll is not null && !poll.IsClosed && !poll.HasVoted;
+
+    private async Task TriggerActiveTestAlertAsync(Guid gameTestId)
+    {
+        LastAlertedActiveTestId = gameTestId;
+        ActiveTestHighlightCancellation = await TriggerRoomAlertAsync(
+            setHighlight: value => HighlightActiveTest = value,
+            cancellationSource: ActiveTestHighlightCancellation);
+    }
+
+    private async Task TriggerLatestPollAlertAsync(Guid pollId)
+    {
+        LastAlertedPollId = pollId;
+        LatestPollHighlightCancellation = await TriggerRoomAlertAsync(
+            setHighlight: value => HighlightLatestPoll = value,
+            cancellationSource: LatestPollHighlightCancellation);
+    }
+
+    private async Task<CancellationTokenSource> TriggerRoomAlertAsync(
+    Action<bool> setHighlight,
+    CancellationTokenSource? cancellationSource)
+    {
+        cancellationSource?.Cancel();
+        cancellationSource?.Dispose();
+
+        var newCancellationSource = new CancellationTokenSource();
+        var token = newCancellationSource.Token;
+
+        setHighlight(true);
+        await InvokeAsync(StateHasChanged);
+
+        if (presenceModule is not null && IsAlertSoundEnabled)
+        {
+            try
+            {
+                await presenceModule.InvokeVoidAsync("playAlertSound");
+            }
+            catch
+            {
+            }
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(4000, token);
+                if (token.IsCancellationRequested)
+                    return;
+
+                if (_isDisposed)
+                    return;
+
+                setHighlight(false);
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (TaskCanceledException)
+            {
+            }
+        });
+
+        return newCancellationSource;
+    }
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -1095,9 +1479,10 @@ else
 
         CurrentUserId = Guid.Parse(userIdValue);
 
-        await LoadState();
-        await LoadActiveTest();
-        await LoadLatestPoll();
+        await LoadState(refreshJournal: false);
+        await LoadActiveTest(allowArrivalAlert: false);
+        await LoadLatestPoll(allowArrivalAlert: false);
+        await LoadPublicJournal();
         await InitializeHubIfNeeded();
         StartCreationCountdownIfNeeded();
 
@@ -1125,6 +1510,23 @@ else
 
             await RegisterBrowserPresenceIfNeededAsync();
         }
+
+        if (IsCreatingCharacterInline && CreationTemplate is not null && !IsNewCharacterNameInputFilterAttached)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("rollocracyRoom.attachCharacterNameFilter", NewCharacterNameInputRef);
+                IsNewCharacterNameInputFilterAttached = true;
+            }
+            catch
+            {
+            }
+        }
+
+        if ((!IsCreatingCharacterInline || CreationTemplate is null) && IsNewCharacterNameInputFilterAttached)
+        {
+            IsNewCharacterNameInputFilterAttached = false;
+        }
     }
 
     private async Task RegisterBrowserPresenceIfNeededAsync()
@@ -1141,21 +1543,52 @@ else
         leaveBeaconRegistered = true;
     }
 
-    private async Task LoadState()
+    private async Task LoadState(bool refreshJournal = true)
     {
         try
         {
             Message = string.Empty;
+            var previousState = State;
+
             State = await CharacterService.GetPlayerRoomStateAsync(PlayerSessionId);
-            await LoadPublicJournal();
+            SessionStore = await SessionService.GetPlayerSessionStoreAsync(PlayerSessionId);
+            StoreGaugeFilterIdString = StoreGaugeFilterId?.ToString() ?? string.Empty;
+
+            if (refreshJournal)
+            {
+                await LoadPublicJournal();
+            }
 
             if (State?.AliveCharacter is null)
             {
                 IsEditingBiography = false;
                 ShowBiographyPanel = false;
+                ShowStorePanel = false;
+                PendingStoreOfferId = null;
             }
 
-            ViewedDeadCharacter = null;
+            if (SessionStore?.Exists != true)
+            {
+                ShowStorePanel = false;
+                PendingStoreOfferId = null;
+                StoreGaugeFilterId = null;
+                StoreGaugeFilterIdString = string.Empty;
+            }
+            else if (!SessionStore.IsEnabled)
+            {
+                ShowStorePanel = false;
+                PendingStoreOfferId = null;
+            }
+
+            if (ViewedDeadCharacter is not null)
+            {
+                var stillExists = State?.DeadCharacters.Any(x => x.CharacterId == ViewedDeadCharacter.CharacterId) == true;
+                if (!stillExists)
+                {
+                    ViewedDeadCharacter = null;
+                }
+            }
+
             StartCreationCountdownIfNeeded();
 
             if (State is not null && !State.CanCreateNewCharacter)
@@ -1164,11 +1597,7 @@ else
                 CreationTemplate = null;
             }
 
-            if (State?.CanViewSessionCharacters == true)
-            {
-                await LoadSpecialRoleCharacters();
-            }
-            else
+            if (State?.CanViewSessionCharacters != true)
             {
                 SpecialRoleCharacters.Clear();
                 ObservedCharacterSheet = null;
@@ -1176,6 +1605,19 @@ else
                 IsObservedCharacterEditMode = false;
                 IsObservedBiographyEditMode = false;
                 ShowObservedCharacterBioPanel = false;
+                ShowSessionCharactersPanel = false;
+            }
+            else if (ShowSessionCharactersPanel)
+            {
+                await LoadSpecialRoleCharacters();
+            }
+
+            if (previousState?.AliveCharacter is not null &&
+                State?.AliveCharacter is not null &&
+                previousState.AliveCharacter.CharacterId == State.AliveCharacter.CharacterId &&
+                IsEditingBiography)
+            {
+                BiographyDraft = State.AliveCharacter.Biography ?? string.Empty;
             }
         }
         catch (Exception ex)
@@ -1184,12 +1626,36 @@ else
         }
     }
 
-    private async Task LoadActiveTest()
+    private async Task LoadActiveTest(bool allowArrivalAlert = true)
     {
         try
         {
-            ActiveTest = await GameTestService.GetActiveGameTestForPlayerAsync(PlayerSessionId);
-            IsTestDismissed = false;
+            var previousTestId = ActiveTest?.GameTestId;
+            var wasDismissed = IsTestDismissed;
+
+            var loadedTest = await GameTestService.GetActiveGameTestForPlayerAsync(PlayerSessionId);
+            ActiveTest = loadedTest;
+
+            if (loadedTest is null)
+            {
+                IsTestDismissed = false;
+                HighlightActiveTest = false;
+            }
+            else if (previousTestId != loadedTest.GameTestId)
+            {
+                IsTestDismissed = false;
+
+                if (allowArrivalAlert &&
+                    CanAlertForCurrentTest(loadedTest) &&
+                    LastAlertedActiveTestId != loadedTest.GameTestId)
+                {
+                    await TriggerActiveTestAlertAsync(loadedTest.GameTestId);
+                }
+            }
+            else
+            {
+                IsTestDismissed = wasDismissed;
+            }
         }
         catch (Exception ex)
         {
@@ -1220,8 +1686,15 @@ else
         {
             await InvokeAsync(async () =>
             {
-                await LoadState();
-                StateHasChanged();
+                await RunHubRefreshAsync(async () =>
+                {
+                    if (ShowSessionCharactersPanel && State?.CanViewSessionCharacters == true)
+                    {
+                        await LoadSpecialRoleCharacters();
+                    }
+
+                    StateHasChanged();
+                });
             });
         });
 
@@ -1229,10 +1702,12 @@ else
         {
             await InvokeAsync(async () =>
             {
-                await LoadState();
-                await LoadActiveTest();
-                await LoadLatestPoll();
-                StateHasChanged();
+                await RunHubRefreshAsync(async () =>
+                {
+                    await LoadState(refreshJournal: false);
+                    await LoadActiveTest(allowArrivalAlert: true);
+                    StateHasChanged();
+                });
             });
         });
 
@@ -1240,9 +1715,12 @@ else
         {
             await InvokeAsync(async () =>
             {
-                await LoadState();
-                await LoadActiveTest();
-                StateHasChanged();
+                await RunHubRefreshAsync(async () =>
+                {
+                    await LoadState(refreshJournal: false);
+                    await LoadActiveTest(allowArrivalAlert: true);
+                    StateHasChanged();
+                });
             });
         });
 
@@ -1250,9 +1728,11 @@ else
         {
             await InvokeAsync(async () =>
             {
-                await LoadState();
-                await LoadLatestPoll();
-                StateHasChanged();
+                await RunHubRefreshAsync(async () =>
+                {
+                    await LoadLatestPoll(allowArrivalAlert: true);
+                    StateHasChanged();
+                });
             });
         });
 
@@ -1260,12 +1740,28 @@ else
         {
             await InvokeAsync(async () =>
             {
-                await LoadPublicJournal();
-                StateHasChanged();
+                await RunHubRefreshAsync(async () =>
+                {
+                    await LoadPublicJournal();
+                    StateHasChanged();
+                });
+            });
+        });
+
+        hubConnection.On("StoreChanged", async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await RunHubRefreshAsync(async () =>
+                {
+                    await LoadState(refreshJournal: false);
+                    StateHasChanged();
+                });
             });
         });
 
         await hubConnection.StartAsync();
+
         await hubConnection.SendAsync("JoinSessionGroup", State.SessionId.ToString());
 
         if (State.AliveCharacter is not null || State.DeadCharacters.Count > 0)
@@ -1278,6 +1774,26 @@ else
 
             PresenceJoined = true;
             await RegisterBrowserPresenceIfNeededAsync();
+        }
+    }
+
+    private async Task RunHubRefreshAsync(Func<Task> action)
+    {
+        if (_isDisposed)
+            return;
+
+        await _hubRefreshLock.WaitAsync();
+
+        try
+        {
+            if (_isDisposed)
+                return;
+
+            await action();
+        }
+        finally
+        {
+            _hubRefreshLock.Release();
         }
     }
 
@@ -1295,7 +1811,7 @@ else
             await Task.Delay(1000);
 
             await GameTestService.RollForPlayerAsync(PlayerSessionId, ActiveTest.GameTestId, false);
-            await LoadActiveTest();
+            await LoadActiveTest(allowArrivalAlert: false);
         }
         catch (Exception ex)
         {
@@ -1314,23 +1830,23 @@ else
             Message = string.Empty;
 
             CreationTemplate = await CharacterService.GetCharacterCreationTemplateAsync(PlayerSessionId);
-            CreationAttributeValues.Clear();
+            CreationAttributeValues = CreationTemplate.Attributes.ToDictionary(x => x.AttributeDefinitionId, x => 0);
+            CreationDerivedStatValues = CreationTemplate.DerivedStats.ToDictionary(x => x.DerivedStatDefinitionId, x => 0);
             CreationTraitSelections.Clear();
+            SelectedCreationTalentIds.Clear();
+            SelectedCreationItemIds.Clear();
 
             foreach (var trait in CreationTemplate.Traits)
             {
                 if (trait.IsRandomSelectionGroup)
                     continue;
 
-                var firstUnlockedOption = trait.Options.FirstOrDefault(x => !x.IsLockedForCharacterCreation);
-                if (firstUnlockedOption is not null)
-                {
-                    CreationTraitSelections[trait.TraitDefinitionId] = firstUnlockedOption.TraitOptionId;
-                }
+                CreationTraitSelections[trait.TraitDefinitionId] = null;
             }
 
             NewCharacterName = string.Empty;
             NewCharacterBiography = string.Empty;
+            IsRandomCharacterCreationEnabled = false;
             IsCreatingCharacterInline = true;
         }
         catch (Exception ex)
@@ -1346,7 +1862,11 @@ else
         NewCharacterName = string.Empty;
         NewCharacterBiography = string.Empty;
         CreationAttributeValues.Clear();
+        CreationDerivedStatValues.Clear();
         CreationTraitSelections.Clear();
+        SelectedCreationTalentIds.Clear();
+        SelectedCreationItemIds.Clear();
+        IsRandomCharacterCreationEnabled = false;
         return Task.CompletedTask;
     }
 
@@ -1357,14 +1877,22 @@ else
             if (CreationTemplate is null)
                 return;
 
+            if (!CanSubmitCharacterName())
+                return;
+
             Message = string.Empty;
 
             await CharacterService.CreateCharacterAsync(
                 PlayerSessionId,
                 NewCharacterName,
                 NewCharacterBiography,
-                new Dictionary<Guid, int>(),
-                CreationTraitSelections);
+                CreationAttributeValues,
+                CreationTraitSelections
+                    .Where(x => x.Value.HasValue)
+                    .ToDictionary(x => x.Key, x => x.Value!.Value),
+                CreationDerivedStatValues,
+                SelectedCreationTalentIds.ToList(),
+                SelectedCreationItemIds.ToList());
 
             if (hubConnection is not null && !PresenceJoined && State is not null)
             {
@@ -1381,16 +1909,20 @@ else
             await SessionNotifier.NotifyCharacterStateChangedAsync(CreationTemplate.SessionId);
 
             IsCreatingCharacterInline = false;
-            await LoadState();
-            await LoadActiveTest();
-            await LoadLatestPoll();
+            await LoadState(refreshJournal: false);
+            await LoadActiveTest(allowArrivalAlert: false);
+            await LoadLatestPoll(allowArrivalAlert: false);
 
             IsCreatingCharacterInline = false;
-            CreationTemplate = null;
             NewCharacterName = string.Empty;
             NewCharacterBiography = string.Empty;
             CreationAttributeValues.Clear();
+            CreationDerivedStatValues.Clear();
             CreationTraitSelections.Clear();
+            SelectedCreationTalentIds.Clear();
+            SelectedCreationItemIds.Clear();
+            IsRandomCharacterCreationEnabled = false;
+            CreationTemplate = null;
         }
         catch (Exception ex)
         {
@@ -1470,11 +2002,21 @@ else
                 BiographyDraft);
 
             IsEditingBiography = false;
-            await LoadState();
+            await LoadState(refreshJournal: false);
         }
         catch (Exception ex)
         {
             Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ShowSessionCharactersView()
+    {
+        ShowSessionCharactersPanel = true;
+
+        if (State?.CanViewSessionCharacters == true)
+        {
+            await LoadSpecialRoleCharacters();
         }
     }
 
@@ -1618,7 +2160,8 @@ else
                     SelectedItemIds = ObservedEditableCharacter.Items
                         .Where(x => x.IsSelected)
                         .Select(x => x.DefinitionId)
-                        .ToList()
+                        .ToList(),
+                    Items = ObservedEditableCharacter.Items
                 });
 
             await LoadSpecialRoleCharacters();
@@ -1676,7 +2219,8 @@ else
                     SelectedItemIds = ObservedEditableCharacter.Items
                         .Where(x => x.IsSelected)
                         .Select(x => x.DefinitionId)
-                        .ToList()
+                        .ToList(),
+                    Items = ObservedEditableCharacter.Items
                 });
 
             await LoadSpecialRoleCharacters();
@@ -1737,6 +2281,338 @@ else
             return;
 
         Navigation.NavigateTo($"/mj/session/{State.SessionId}");
+    }
+
+
+    private int RemainingCreationAttributePoints
+        => CreationTemplate is null
+            ? 0
+            : CreationTemplate.AttributePointsToDistribute - CreationAttributeValues.Values.Sum();
+
+    private int RemainingCreationDerivedStatPoints
+        => CreationTemplate is null
+            ? 0
+            : CreationTemplate.DerivedStatPointsToDistribute - CreationDerivedStatValues.Values.Sum();
+
+    private int GetCreationAttributeInputMax(Guid attributeDefinitionId)
+    {
+        if (CreationTemplate is null || !CreationAttributeValues.ContainsKey(attributeDefinitionId))
+            return 0;
+
+        var currentValue = CreationAttributeValues[attributeDefinitionId];
+        var remaining = RemainingCreationAttributePoints;
+
+        var maxPerAttribute = CreationTemplate.MaxAttributePointsPerAttribute > 0
+            ? CreationTemplate.MaxAttributePointsPerAttribute
+            : CreationTemplate.AttributePointsToDistribute;
+
+        return Math.Max(0, Math.Min(maxPerAttribute, currentValue + remaining));
+    }
+
+    private int GetCreationDerivedStatInputMax(Guid derivedStatDefinitionId)
+    {
+        if (CreationTemplate is null || !CreationDerivedStatValues.ContainsKey(derivedStatDefinitionId))
+            return 0;
+
+        var currentValue = CreationDerivedStatValues[derivedStatDefinitionId];
+        var remaining = RemainingCreationDerivedStatPoints;
+
+        var maxPerStat = CreationTemplate.MaxDerivedStatPointsPerStat > 0
+            ? CreationTemplate.MaxDerivedStatPointsPerStat
+            : CreationTemplate.DerivedStatPointsToDistribute;
+
+        return Math.Max(0, Math.Min(maxPerStat, currentValue + remaining));
+    }
+
+    private bool IsCreationTalentDisabled(Guid talentDefinitionId)
+    {
+        if (CreationTemplate is null || CreationTemplate.TalentChoicesToSelect <= 0)
+            return false;
+
+        if (SelectedCreationTalentIds.Contains(talentDefinitionId))
+            return false;
+
+        return SelectedCreationTalentIds.Count >= CreationTemplate.TalentChoicesToSelect;
+    }
+
+    private bool IsCreationItemDisabled(Guid itemDefinitionId)
+    {
+        if (CreationTemplate is null || CreationTemplate.ItemChoicesToSelect <= 0)
+            return false;
+
+        if (SelectedCreationItemIds.Contains(itemDefinitionId))
+            return false;
+
+        return SelectedCreationItemIds.Count >= CreationTemplate.ItemChoicesToSelect;
+    }
+
+    private void OnCreationAttributeBonusChanged(Guid attributeDefinitionId, ChangeEventArgs args)
+    {
+        if (CreationTemplate is null || !CreationAttributeValues.ContainsKey(attributeDefinitionId))
+            return;
+
+        var rawValue = args.Value?.ToString();
+        var parsed = 0;
+        int.TryParse(rawValue, out parsed);
+        parsed = Math.Max(0, parsed);
+
+        if (CreationTemplate.MaxAttributePointsPerAttribute > 0)
+            parsed = Math.Min(parsed, CreationTemplate.MaxAttributePointsPerAttribute);
+
+        CreationAttributeValues[attributeDefinitionId] = parsed;
+
+        var remaining = RemainingCreationAttributePoints;
+        if (remaining < 0)
+        {
+            CreationAttributeValues[attributeDefinitionId] = Math.Max(0, parsed + remaining);
+        }
+    }
+
+    private void OnCreationDerivedStatBonusChanged(Guid derivedStatDefinitionId, ChangeEventArgs args)
+    {
+        if (CreationTemplate is null || !CreationDerivedStatValues.ContainsKey(derivedStatDefinitionId))
+            return;
+
+        var rawValue = args.Value?.ToString();
+        var parsed = 0;
+        int.TryParse(rawValue, out parsed);
+        parsed = Math.Max(0, parsed);
+
+        if (CreationTemplate.MaxDerivedStatPointsPerStat > 0)
+            parsed = Math.Min(parsed, CreationTemplate.MaxDerivedStatPointsPerStat);
+
+        CreationDerivedStatValues[derivedStatDefinitionId] = parsed;
+
+        var remaining = RemainingCreationDerivedStatPoints;
+        if (remaining < 0)
+        {
+            CreationDerivedStatValues[derivedStatDefinitionId] = Math.Max(0, parsed + remaining);
+        }
+    }
+
+    private void ToggleCreationTalent(Guid talentDefinitionId, bool isSelected)
+    {
+        if (CreationTemplate is null)
+            return;
+
+        if (isSelected)
+        {
+            if (SelectedCreationTalentIds.Count >= CreationTemplate.TalentChoicesToSelect)
+                return;
+
+            SelectedCreationTalentIds.Add(talentDefinitionId);
+        }
+        else
+        {
+            SelectedCreationTalentIds.Remove(talentDefinitionId);
+        }
+    }
+
+    private void ToggleCreationItem(Guid itemDefinitionId, bool isSelected)
+    {
+        if (CreationTemplate is null)
+            return;
+
+        if (isSelected)
+        {
+            if (SelectedCreationItemIds.Count >= CreationTemplate.ItemChoicesToSelect)
+                return;
+
+            SelectedCreationItemIds.Add(itemDefinitionId);
+        }
+        else
+        {
+            SelectedCreationItemIds.Remove(itemDefinitionId);
+        }
+    }
+
+    private void BeginConsumeItemConfirmation(Guid itemDefinitionId)
+    {
+        Message = string.Empty;
+        PendingConsumableItemDefinitionId = itemDefinitionId;
+    }
+
+    private void CancelConsumeItemConfirmation()
+    {
+        PendingConsumableItemDefinitionId = null;
+    }
+
+    private void ToggleStorePanel()
+    {
+        if (SessionStore?.Exists != true || !SessionStore.IsEnabled)
+            return;
+
+        ShowStorePanel = !ShowStorePanel;
+        PendingStoreOfferId = null;
+    }
+
+    private void CloseStorePanel()
+    {
+        ShowStorePanel = false;
+        PendingStoreOfferId = null;
+    }
+
+    private void OnStoreGaugeFilterChanged()
+    {
+        StoreGaugeFilterId = Guid.TryParse(StoreGaugeFilterIdString, out var parsed)
+            ? parsed
+            : null;
+        PendingStoreOfferId = null;
+    }
+
+    private void OnStoreOfferVisibilityFilterChanged()
+    {
+        PendingStoreOfferId = null;
+    }
+
+    private List<PlayerSessionStoreOfferDto> GetVisibleStoreOffers()
+    {
+        if (SessionStore is null)
+            return new List<PlayerSessionStoreOfferDto>();
+
+        var query = SessionStore.Offers.AsEnumerable();
+
+        if (StoreGaugeFilterId.HasValue)
+        {
+            query = query.Where(x => x.CurrencyGaugeDefinitionId == StoreGaugeFilterId.Value);
+        }
+
+        if (HideOwnedStoreOffers)
+        {
+            query = query.Where(x => !x.IsOwned || x.IsConsumable);
+        }
+
+        if (HideTooExpensiveStoreOffers)
+        {
+            query = query.Where(x => x.IsPurchasable);
+        }
+
+        if (ShowConsumableStoreOffersOnly)
+        {
+            query = query.Where(x => x.IsConsumable);
+        }
+
+        return query
+            .OrderBy(x => x.CurrencyGaugeName, StringComparer.CurrentCultureIgnoreCase)
+            .ThenBy(x => x.OfferType)
+            .ThenBy(x => x.TargetName, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+    }
+
+    private void BeginPurchaseStoreOffer(Guid offerId)
+    {
+        PendingStoreOfferId = offerId;
+    }
+
+    private void CancelPurchaseStoreOffer()
+    {
+        PendingStoreOfferId = null;
+    }
+
+    private async Task ConfirmPurchaseStoreOffer(Guid offerId)
+    {
+        try
+        {
+            Message = string.Empty;
+            PendingStoreOfferId = null;
+
+            await CharacterService.PurchaseSessionStoreOfferAsync(PlayerSessionId, offerId);
+
+            await LoadState(refreshJournal: false);
+            await LoadActiveTest(allowArrivalAlert: false);
+            await LoadLatestPoll(allowArrivalAlert: false);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ConsumeItemAsync(Guid itemDefinitionId)
+    {
+        try
+        {
+            Message = string.Empty;
+            PendingConsumableItemDefinitionId = null;
+
+            await CharacterService.ConsumeItemAsync(PlayerSessionId, itemDefinitionId);
+            await LoadState(refreshJournal: false);
+            await LoadActiveTest(allowArrivalAlert: false);
+            await LoadLatestPoll(allowArrivalAlert: false);
+        }
+        catch (Exception ex)
+        {
+            PendingConsumableItemDefinitionId = null;
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private bool AreRequiredCreationTraitsSelected()
+    {
+        if (CreationTemplate is null)
+            return false;
+
+        foreach (var trait in CreationTemplate.Traits.Where(x => !x.IsRandomSelectionGroup))
+        {
+            if (!CreationTraitSelections.TryGetValue(trait.TraitDefinitionId, out var selectedOptionId) ||
+                !selectedOptionId.HasValue ||
+                selectedOptionId.Value == Guid.Empty)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool CanSubmitCharacterCreation()
+    {
+        if (CreationTemplate is null)
+            return false;
+
+        if (IsRandomCharacterCreationEnabled)
+            return true;
+
+        if (CreationTemplate.AttributePointsToDistribute > 0 && RemainingCreationAttributePoints != 0)
+            return false;
+
+        if (CreationTemplate.DerivedStatPointsToDistribute > 0 && RemainingCreationDerivedStatPoints != 0)
+            return false;
+
+        if (!AreRequiredCreationTraitsSelected())
+            return false;
+
+        if (CreationTemplate.TalentChoicesToSelect > 0 && SelectedCreationTalentIds.Count != CreationTemplate.TalentChoicesToSelect)
+            return false;
+
+        if (CreationTemplate.ItemChoicesToSelect > 0 && SelectedCreationItemIds.Count != CreationTemplate.ItemChoicesToSelect)
+            return false;
+
+        return true;
+    }
+
+    private static readonly Regex CharacterNameAllowedCharactersRegex = new(@"[^\p{L}\p{N},'""/\- ]+", RegexOptions.Compiled);
+
+    private void OnNewCharacterNameInput(ChangeEventArgs args)
+    {
+        var rawValue = args.Value?.ToString() ?? string.Empty;
+
+        rawValue = CharacterNameAllowedCharactersRegex.Replace(rawValue, string.Empty);
+
+        if (rawValue.Length > 22)
+        {
+            rawValue = rawValue[..22];
+        }
+
+        if (!string.Equals(NewCharacterName, rawValue, StringComparison.Ordinal))
+        {
+            NewCharacterName = rawValue;
+        }
+    }
+
+    private bool CanSubmitCharacterName()
+    {
+        return !string.IsNullOrWhiteSpace(NewCharacterName);
     }
 
     private IEnumerable<CharacterCreationTraitOptionDto> GetSelectableCreationOptions(CharacterCreationTraitDto trait)
@@ -1824,6 +2700,18 @@ else
     void Open(string tag) => builder.OpenElement(seq++, tag);
     void Close() => builder.CloseElement();
     void Text(string value) => builder.AddContent(seq++, value);
+    void AddTooltipAttributes(string? tooltip, string baseClass)
+    {
+        var finalClass = string.IsNullOrWhiteSpace(tooltip)
+            ? baseClass
+            : $"{baseClass} rc-player-tooltip-surface";
+        builder.AddAttribute(seq++, "class", finalClass);
+        if (!string.IsNullOrWhiteSpace(tooltip))
+        {
+            builder.AddAttribute(seq++, "data-tooltip", tooltip);
+            builder.AddAttribute(seq++, "tabindex", "0");
+        }
+    }
 
     Open("div");
     builder.AddAttribute(seq++, "class", "rc-player-character-sheet");
@@ -1857,7 +2745,7 @@ else
         foreach (var item in sheet.Attributes)
         {
             Open("div");
-            builder.AddAttribute(seq++, "class", "rc-player-stat-card");
+            AddTooltipAttributes(item.Tooltip, "rc-player-stat-card");
             Open("div");
             builder.AddAttribute(seq++, "class", "rc-player-stat-card__label");
             Text(item.Name);
@@ -1886,7 +2774,7 @@ else
         foreach (var item in sheet.DerivedStats)
         {
             Open("div");
-            builder.AddAttribute(seq++, "class", "rc-player-stat-card");
+            AddTooltipAttributes(item.Tooltip, "rc-player-stat-card");
             Open("div");
             builder.AddAttribute(seq++, "class", "rc-player-stat-card__label");
             Text(item.Name);
@@ -1915,7 +2803,7 @@ else
         foreach (var item in sheet.Traits)
         {
             Open("div");
-            builder.AddAttribute(seq++, "class", "rc-player-pill");
+            AddTooltipAttributes(item.Tooltip, "rc-player-pill");
             Text($"{item.TraitName} : {item.OptionName}");
             Close();
         }
@@ -1937,7 +2825,7 @@ else
         foreach (var item in sheet.Talents)
         {
             Open("div");
-            builder.AddAttribute(seq++, "class", "rc-player-pill");
+            AddTooltipAttributes(item.Tooltip, "rc-player-pill");
             Text(item.Name);
             Close();
         }
@@ -1959,8 +2847,46 @@ else
         foreach (var item in sheet.Items)
         {
             Open("div");
-            builder.AddAttribute(seq++, "class", "rc-player-pill");
+            AddTooltipAttributes(item.Tooltip, "rc-player-pill rc-player-pill--item");
             Text(item.Name);
+
+            if (!isDeadView && item.IsConsumable && item.Quantity > 0)
+            {
+                if (PendingConsumableItemDefinitionId == item.Id)
+                {
+                    Open("span");
+                    builder.AddAttribute(seq++, "class", "rc-tool-muted");
+                    Text(L["Character_Item_ConfirmConsume"]);
+                    Close();
+
+                    Open("button");
+                    builder.AddAttribute(seq++, "type", "button");
+                    builder.AddAttribute(seq++, "class", "rc-round-icon-button");
+                    builder.AddAttribute(seq++, "title", L["Common_Yes"]);
+                    builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(this, () => ConsumeItemAsync(item.Id)));
+                    Text("✓");
+                    Close();
+
+                    Open("button");
+                    builder.AddAttribute(seq++, "type", "button");
+                    builder.AddAttribute(seq++, "class", "rc-round-icon-button");
+                    builder.AddAttribute(seq++, "title", L["Common_Cancel"]);
+                    builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(this, CancelConsumeItemConfirmation));
+                    Text("✕");
+                    Close();
+                }
+                else
+                {
+                    Open("button");
+                    builder.AddAttribute(seq++, "type", "button");
+                    builder.AddAttribute(seq++, "class", "rc-round-icon-button");
+                    builder.AddAttribute(seq++, "title", L["Character_Item_Consume"]);
+                    builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(this, () => BeginConsumeItemConfirmation(item.Id)));
+                    Text("⌁");
+                    Close();
+                }
+            }
+
             Close();
         }
         Close();
@@ -2042,7 +2968,12 @@ else
 
     public async ValueTask DisposeAsync()
     {
+        _isDisposed = true;
         creationCountdownTimer?.Dispose();
+        ActiveTestHighlightCancellation?.Cancel();
+        ActiveTestHighlightCancellation?.Dispose();
+        LatestPollHighlightCancellation?.Cancel();
+        LatestPollHighlightCancellation?.Dispose();
 
         if (presenceModule is not null)
         {
@@ -2129,7 +3060,7 @@ else
                 {
                     creationCountdownTimer?.Dispose();
                     creationCountdownTimer = null;
-                    await LoadState();
+                    await LoadState(refreshJournal: false);
                 }
 
                 StateHasChanged();
@@ -2139,12 +3070,36 @@ else
 
     private PollForPlayerDto? LatestPoll;
 
-    private async Task LoadLatestPoll()
+    private async Task LoadLatestPoll(bool allowArrivalAlert = true)
     {
         try
         {
-            LatestPoll = await PollService.GetLatestPollForPlayerAsync(PlayerSessionId);
-            IsPollDismissed = false;
+            var previousPollId = LatestPoll?.PollId;
+            var wasDismissed = IsPollDismissed;
+
+            var loadedPoll = await PollService.GetLatestPollForPlayerAsync(PlayerSessionId);
+            LatestPoll = loadedPoll;
+
+            if (loadedPoll is null)
+            {
+                IsPollDismissed = false;
+                HighlightLatestPoll = false;
+            }
+            else if (previousPollId != loadedPoll.PollId)
+            {
+                IsPollDismissed = false;
+
+                if (allowArrivalAlert &&
+                    CanAlertForCurrentPoll(loadedPoll) &&
+                    LastAlertedPollId != loadedPoll.PollId)
+                {
+                    await TriggerLatestPollAlertAsync(loadedPoll.PollId);
+                }
+            }
+            else
+            {
+                IsPollDismissed = wasDismissed;
+            }
         }
         catch (Exception ex)
         {
@@ -2162,7 +3117,7 @@ else
                 return;
 
             await PollService.VoteAsync(PlayerSessionId, LatestPoll.PollId, optionId);
-            await LoadLatestPoll();
+            await LoadLatestPoll(allowArrivalAlert: false);
         }
         catch (Exception ex)
         {
@@ -2204,9 +3159,102 @@ else
             PublicJournal.PublicPages.Count - 1);
     }
 
+    private bool CanOpenStreamPopup
+        => !string.IsNullOrWhiteSpace(TwitchChannelName);
+
+    private bool CanOpenJournalPopup
+        => PublicJournal is not null && PublicJournal.PublicPages.Count > 0;
+
+    private bool CanOpenCurrentSidePanelPopup
+        => ShowJournalPanel ? CanOpenStreamPopup : CanOpenJournalPopup;
+
     private void ToggleJournalPanel()
     {
         ShowJournalPanel = !ShowJournalPanel;
+
+        if (ShowJournalPanel)
+        {
+            ShowSessionCharactersPanel = false;
+        }
+    }
+
+    private async Task OpenCurrentSidePanelPopup()
+    {
+        if (ShowJournalPanel)
+        {
+            await OpenStreamPopup();
+        }
+        else
+        {
+            await OpenJournalPopup();
+        }
+    }
+
+    private async Task OpenOtherSidePanelPopup()
+    {
+        if (ShowJournalPanel)
+        {
+            await OpenJournalPopup();
+        }
+        else
+        {
+            await OpenStreamPopup();
+        }
+    }
+
+    private string GetCurrentSidePanelPopupLabel()
+    {
+        return ShowJournalPanel
+            ? L["Stream_OpenPopup"].Value
+            : L["Journal_OpenPopup"].Value;
+    }
+
+    private string GetOtherSidePanelPopupLabel()
+    {
+        return ShowJournalPanel
+            ? L["Journal_OpenPopup"].Value
+            : L["Stream_OpenPopup"].Value;
+    }
+
+    private async Task OpenJournalPopup()
+    {
+        if (!CanOpenJournalPopup)
+            return;
+
+        var url = $"/player/room/{PlayerSessionId}/journal";
+
+        await JS.InvokeVoidAsync(
+            "window.open",
+            url,
+            "RollocracyJournal",
+            "popup=yes,width=900,height=900,resizable=yes,scrollbars=yes");
+    }
+
+    private async Task OpenStreamPopup()
+    {
+        if (!CanOpenStreamPopup)
+            return;
+
+        var url = $"https://www.twitch.tv/{Uri.EscapeDataString(TwitchChannelName!)}";
+
+        await JS.InvokeVoidAsync(
+            "window.open",
+            url,
+            "RollocracyStream",
+            "popup=yes,width=1100,height=850,resizable=yes,scrollbars=yes");
+    }
+
+    private void ShowJournal()
+    {
+        ShowSessionCharactersPanel = false;
+        ShowJournalPanel = true;
+    }
+
+    private Task ShowStreamView()
+    {
+        ShowSessionCharactersPanel = false;
+        ShowJournalPanel = false;
+        return Task.CompletedTask;
     }
 
     private void PreviousPublicJournalPage()
@@ -2224,11 +3272,10 @@ else
             CurrentPublicJournalPageIndex++;
     }
 
-    private static string GetJournalDisplayTitle(SessionJournalPageDto page)
+    private string GetJournalDisplayTitle(SessionJournalPageDto page)
     {
         return string.IsNullOrWhiteSpace(page.Title)
-            ? "Nouvelle page"
+            ? L["Journal_DefaultPageTitle"].Value
             : page.Title.Trim();
     }
 }
-

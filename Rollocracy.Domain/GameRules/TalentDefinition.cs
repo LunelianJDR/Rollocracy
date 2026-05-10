@@ -1,4 +1,3 @@
-
 using System;
 using System.Collections.Generic;
 
@@ -13,6 +12,7 @@ namespace Rollocracy.Domain.GameRules
         public string? Description { get; set; }
 
         public int DisplayOrder { get; set; }
+        public bool IsSelectableAtCharacterCreation { get; set; }
 
         public ICollection<TalentModifierDefinition> Modifiers { get; set; } = new List<TalentModifierDefinition>();
     }

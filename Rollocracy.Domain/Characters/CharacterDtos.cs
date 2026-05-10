@@ -24,12 +24,14 @@ namespace Rollocracy.Domain.Characters
     {
         public string Name { get; set; } = string.Empty;
         public int Value { get; set; }
+        public string Tooltip { get; set; } = string.Empty;
     }
 
     public class CharacterDerivedStatLineDto
     {
         public string Name { get; set; } = string.Empty;
         public int Value { get; set; }
+        public string Tooltip { get; set; } = string.Empty;
     }
 
     public class CharacterMetricLineDto
@@ -42,6 +44,7 @@ namespace Rollocracy.Domain.Characters
     {
         public string TraitName { get; set; } = string.Empty;
         public string OptionName { get; set; } = string.Empty;
+        public string Tooltip { get; set; } = string.Empty;
     }
 
     public class CharacterGaugeLineDto
@@ -57,6 +60,10 @@ namespace Rollocracy.Domain.Characters
     {
         public Guid Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public bool IsConsumable { get; set; }
+        public int Quantity { get; set; }
+        public int MaxQuantityPerCharacter { get; set; }
+        public string Tooltip { get; set; } = string.Empty;
     }
 
     public class CharacterSheetDto
@@ -83,6 +90,34 @@ namespace Rollocracy.Domain.Characters
         public int MinValue { get; set; }
         public int MaxValue { get; set; }
         public int DefaultValue { get; set; }
+        public int AssignedBonus { get; set; }
+    }
+
+    public class CharacterCreationDerivedStatDto
+    {
+        public Guid DerivedStatDefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int MinValue { get; set; }
+        public int MaxValue { get; set; }
+        public int AssignedBonus { get; set; }
+    }
+
+    public class CharacterCreationTalentDto
+    {
+        public Guid TalentDefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public bool IsSelected { get; set; }
+    }
+
+    public class CharacterCreationItemDto
+    {
+        public Guid ItemDefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public bool IsSelected { get; set; }
+        public bool IsConsumable { get; set; }
+        public int MaxQuantityPerCharacter { get; set; }
     }
 
     public class CharacterCreationTraitOptionDto
@@ -106,8 +141,17 @@ namespace Rollocracy.Domain.Characters
         public Guid SessionId { get; set; }
         public Guid GameSystemId { get; set; }
         public string GameSystemName { get; set; } = string.Empty;
+        public int AttributePointsToDistribute { get; set; }
+        public int MaxAttributePointsPerAttribute { get; set; }
+        public int DerivedStatPointsToDistribute { get; set; }
+        public int MaxDerivedStatPointsPerStat { get; set; }
+        public int TalentChoicesToSelect { get; set; }
+        public int ItemChoicesToSelect { get; set; }
         public List<CharacterCreationAttributeDto> Attributes { get; set; } = new();
+        public List<CharacterCreationDerivedStatDto> DerivedStats { get; set; } = new();
         public List<CharacterCreationTraitDto> Traits { get; set; } = new();
+        public List<CharacterCreationTalentDto> Talents { get; set; } = new();
+        public List<CharacterCreationItemDto> Items { get; set; } = new();
     }
 
     public class PlayerRoomStateDto
@@ -185,6 +229,9 @@ namespace Rollocracy.Domain.Characters
         public Guid DefinitionId { get; set; }
         public string Name { get; set; } = string.Empty;
         public bool IsSelected { get; set; }
+        public bool IsConsumable { get; set; }
+        public int Quantity { get; set; }
+        public int MaxQuantityPerCharacter { get; set; }
     }
 
     public class EditableCharacterDto
@@ -214,11 +261,12 @@ namespace Rollocracy.Domain.Characters
         public List<EditableCharacterGaugeDto> Gauges { get; set; } = new();
         public List<Guid> SelectedTalentIds { get; set; } = new();
         public List<Guid> SelectedItemIds { get; set; } = new();
+        public List<EditableCharacterGrantDto> Items { get; set; } = new();
     }
 
     public class SessionGaugeDto
     {
-        public Guid SessionGaugeId {  get; set; }
+        public Guid SessionGaugeId { get; set; }
         public string Name { get; set; } = string.Empty;
         public int MinValue { get; set; }
         public int MaxValue { get; set; }

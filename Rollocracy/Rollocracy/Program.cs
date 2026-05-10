@@ -40,7 +40,7 @@ builder.Services.AddScoped(sp =>
 });
 
 builder.Services.AddDataProtection()
-    .PersistKeysToFileSystem(new DirectoryInfo("/var/www/rollocracy/dataprotection-keys"))
+    .PersistKeysToFileSystem(new DirectoryInfo("/var/lib/rollocracy/dataprotection-keys"))
     .SetApplicationName("Rollocracy");
 
 // HttpClientFactory pour les appels serveur -> Twitch

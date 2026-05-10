@@ -58,12 +58,40 @@ else
                     <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                         <div class="rc-tool-panel__header-main">
                             <h5 class="rc-tool-panel__title">@L["Test_GameMasterSectionTitle"]</h5>
-                            <p class="rc-tool-panel__subtitle">@L["Test_Target"] / @L["Test_Dice"] / @L["Test_Consequences"]</p>
+                            @* <p class="rc-tool-panel__subtitle">@L["Test_Target"] / @L["Test_Dice"] / @L["Test_Consequences"]</p> *@
                         </div>
 
                         @if (ActiveTest is null || ActiveTest.IsClosed)
                         {
                             <div class="rc-tool-inline-actions">
+                                @* <button type="button" @onclick="ShowSaveTestPreset">@L["Test_SavePreset"]</button>
+
+                                @if (TestPresets.Count > 0)
+                                {
+                                    <select @bind="SelectedTestPresetId" @bind:after="ApplySelectedTestPreset">
+                                        <option value="">@L["Test_SelectPreset"]</option>
+                                        @foreach (var preset in TestPresets)
+                                        {
+                                            <option value="@preset.PresetId">@preset.Name</option>
+                                        }
+                                    </select>
+
+                                    @if (SelectedTestPresetId.HasValue)
+                                    {
+                                        @if (!ConfirmDeleteTestPresetVisible)
+                                        {
+                                            <button type="button" @onclick="ShowDeleteTestPresetConfirmation">
+                                                @L["Test_DeletePreset"]
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" @onclick="DeleteSelectedTestPresetConfirmed">@L["Common_Yes"]</button>
+                                            <button type="button" @onclick="CancelDeleteTestPreset">@L["Common_No"]</button>
+                                        }
+                                    }
+                                } *@
+
                                 <button @onclick="CreateGameTest">@L["Test_Create"]</button>
                             </div>
                         }
@@ -74,7 +102,120 @@ else
                         <div class="rc-inline-error">@Message</div>
                     }
 
+                    @if (ShowSaveTestPresetPanel || ConfirmDeleteTestPresetVisible)
+                    {
+                        var isDeleteConfirmation = SelectedTestPresetId.HasValue && ConfirmDeleteTestPresetVisible;
+                        var isOverwriteConfirmation = ConfirmOverwriteTestPresetVisible && !ConfirmDeleteTestPresetVisible;
+
+                        <div class="rc-filter-group-card">
+                            <div class="rc-form-field">
+                                <label>@L["Test_PresetName"]</label>
+
+                                @if (isDeleteConfirmation)
+                                {
+                                    <p>
+                                        @string.Format(L["Test_ConfirmDeletePreset"], GetSelectedTestPresetName())
+                                    </p>
+                                }
+                                else
+                                {
+                                    <input @bind="NewTestPresetName" />
+                                }
+                            </div>
+
+                            @if (ConfirmOverwriteTestPresetVisible)
+                            {
+                                <div class="rc-inline-warning">@L["Test_PresetOverwriteConfirm"]</div>
+                            }
+
+                            <div class="rc-tool-inline-actions">
+                                @if (isDeleteConfirmation)
+                                {
+                                    <button type="button" @onclick="DeleteSelectedTestPresetConfirmed">
+                                        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M389-267 195-460l51-52 143 143 325-324 51 51-376 375Z" /></svg>
+                                    </button>
+                                    <button type="button" @onclick="CancelDeleteTestPreset">
+                                        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="m291-240-51-51 189-189-189-189 51-51 189 189 189-189 51 51-189 189 189 189-51 51-189-189-189 189Z" /></svg>
+                                    </button>
+                                }
+                                else if (isOverwriteConfirmation)
+                                {
+                                    <button type="button" @onclick="OverwriteTestPresetConfirmed">
+                                        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M389-267 195-460l51-52 143 143 325-324 51 51-376 375Z" /></svg>
+                                    </button>
+                                    <button type="button" @onclick="CancelOverwriteTestPreset">
+                                        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="m291-240-51-51 189-189-189-189 51-51 189 189 189-189 51 51-189 189 189 189-51 51-189-189-189 189Z" /></svg>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" @onclick="SaveTestPresetConfirmed">
+                                        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M389-267 195-460l51-52 143 143 325-324 51 51-376 375Z" /></svg>
+                                    </button>
+                                    <button type="button" @onclick="CancelSaveTestPreset">
+                                        <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="m291-240-51-51 189-189-189-189 51-51 189 189 189-189 51 51-189 189 189 189-51 51-189-189-189 189Z" /></svg>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+
                     <div class="rc-tool-form-grid">
+
+                        <div class="rc-form-field">
+                            <label>@L["Test_Presets"]</label>
+
+                            <div class="rc-inline-picker">
+
+                                <!-- SELECT -->
+                                <select @bind="SelectedTestPresetId" @bind:after="ApplySelectedTestPreset">
+                                    @if (TestPresets.Count == 0)
+                                    {
+                                        <option value="">@L["Test_SelectPreset"]</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="">@L["Test_SelectPreset"]</option>
+                                        @foreach (var preset in TestPresets)
+                                        {
+                                            <option value="@preset.PresetId">@preset.Name</option>
+                                        }
+                                    }
+                                </select>
+
+                                <!-- ACTIONS -->
+                                @if (ActiveTest is null || ActiveTest.IsClosed)
+                                {
+                                    @if (!IsEditingPreset)
+                                    {
+                                        <!-- EDIT / SAVE -->
+                                        <button type="button" @onclick="ShowSaveTestPreset">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M816-672v456q0 29.7-21.15 50.85Q773.7-144 744-144H216q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h456l144 144Zm-72 30L642-744H216v528h528v-426ZM556.5-283.5Q588-315 588-360t-31.5-76.5Q525-468 480-468t-76.5 31.5Q372-405 372-360t31.5 76.5Q435-252 480-252t76.5-31.5ZM264-552h336v-144H264v144Zm-48-77v413-528 115Z" /></svg>
+                                        </button>
+
+                                        @if (SelectedTestPresetId.HasValue)
+                                        {
+                                            <button type="button" @onclick="ShowDeleteTestPresetConfirmation">
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M312-144q-29.7 0-50.85-21.15Q240-186.3 240-216v-480h-48v-72h192v-48h192v48h192v72h-48v479.57Q720-186 698.85-165T648-144H312Zm336-552H312v480h336v-480ZM384-288h72v-336h-72v336Zm120 0h72v-336h-72v336ZM312-696v480-480Z" /></svg>
+                                            </button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <!-- VALIDATE -->
+                                        <button type="button" @onclick="ValidateEditPreset">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M389-267 195-460l51-52 143 143 325-324 51 51-376 375Z" /></svg>
+                                        </button>
+
+                                        <!-- CANCEL -->
+                                        <button type="button" @onclick="CancelEditPreset">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="m291-240-51-51 189-189-189-189 51-51 189 189 189-189 51 51-189 189 189 189-51 51-189-189-189 189Z" /></svg>
+                                        </button>
+                                    }
+                                }
+                            </div>
+                        </div>
+
                         <div class="rc-form-field">
                             <label>@L["Test_TargetKind"]</label>
                             <select @bind="NewTargetKind" @bind:after="OnTestTargetKindChanged">
@@ -135,9 +276,33 @@ else
                         @if (AssignedGameSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold)
                         {
                             <div class="rc-form-field">
-                                <label>@L["Test_SuccessThreshold"]</label>
-                                <input type="number" @bind="NewSuccessThreshold" />
+                                <label>@L["Test_SuccessThresholdMode"]</label>
+                                <select @bind="NewSuccessThresholdMode" @bind:after="OnSuccessThresholdModeChanged">
+                                    <option value="@GameTestSuccessThresholdMode.Fixed">@L["Test_SuccessThresholdMode_Fixed"]</option>
+                                    <option value="@GameTestSuccessThresholdMode.Metric">@L["Test_SuccessThresholdMode_Metric"]</option>
+                                </select>
                             </div>
+
+                            @if (NewSuccessThresholdMode == GameTestSuccessThresholdMode.Fixed)
+                            {
+                                <div class="rc-form-field">
+                                    <label>@L["Test_SuccessThreshold"]</label>
+                                    <input type="number" @bind="NewSuccessThreshold" />
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="rc-form-field">
+                                    <label>@L["Test_SuccessThresholdMetric"]</label>
+                                    <select @bind="NewSuccessThresholdMetricId">
+                                        <option value="@((Guid?)null)">@L["Test_SelectSuccessThresholdMetric"]</option>
+                                        @foreach (var metric in AvailableMetrics)
+                                        {
+                                            <option value="@metric.Id">@metric.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
                         }
                         
                         <div class="rc-form-field">
@@ -231,9 +396,11 @@ else
                                               OnlyOnline="@(NewTargetScope == TestTargetScope.OnlineLivingCharacters)"
                                               OnlyAlive="@(NewTargetScope == TestTargetScope.AllLivingCharacters)"
                                               IncludeNpcs="IncludeNpcsInTest"
+                                              BiographyNotEmpty="AdvancedFilter.BiographyNotEmpty"
                                               OnlyOnlineChanged="@(value => NewTargetScope = value ? TestTargetScope.OnlineLivingCharacters : NewTargetScope)"
                                               OnlyAliveChanged="@(value => NewTargetScope = value ? TestTargetScope.AllLivingCharacters : NewTargetScope)"
-                                              IncludeNpcsChanged="@(value => IncludeNpcsInTest = value)" />
+                                              IncludeNpcsChanged="@(value => IncludeNpcsInTest = value)"
+                                              BiographyNotEmptyChanged="@(value => AdvancedFilter.BiographyNotEmpty = value)" />
                             
                     <CharacterAdvancedFilters Filter="AdvancedFilter"
                                               TraitOptionGroups="AdvancedTraitOptionGroups"
@@ -245,8 +412,214 @@ else
                                               MetricTargets="AdvancedMetricTargets"
                                               PollOptions="AdvancedPollOptions"
                                               SelectedPollOptionOptions="AdvancedSelectedPollOptionOptions"
+                                              RandomDrawOptions="AdvancedRandomDrawOptions"
                                               NameSuggestions="AdvancedNameSuggestions"
                                               OnPollSelectionChanged="RefreshSelectedPollOptionOptionsAsync" />
+
+                    <div class="rc-filter-group-card">
+                        <div class="rc-tool-subsection__header">
+                            <div class="rc-filter-group-card__title">@L["Test_AdvancedModifiersSection"]</div>
+                            <div class="rc-tool-inline-actions">
+                                <button type="button" @onclick="ToggleAdvancedModifiersSection">
+                                    @(ShowAdvancedModifiers ? L["Common_Hide"] : L["Common_Show"])
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (ShowAdvancedModifiers)
+                        {
+                            <div class="rc-filter-groups">
+                                <div class="rc-filter-group-card">
+                                    <div class="rc-filter-group-card__title">@L["Test_AdvancedModifiersMode"]</div>
+                                    <div class="rc-filter-group-card__options">
+                                        <label class="rc-filter-toggle">
+                                            <input type="radio"
+                                                   checked="@(AdvancedModifierCombinationMode == GameTestAdvancedModifierCombinationMode.Cumulative)"
+                                                   @onchange="() => AdvancedModifierCombinationMode = GameTestAdvancedModifierCombinationMode.Cumulative" />
+                                            <span>@L["Test_AdvancedModifiersMode_Cumulative"]</span>
+                                        </label>
+
+                                        <label class="rc-filter-toggle">
+                                            <input type="radio"
+                                                   checked="@(AdvancedModifierCombinationMode == GameTestAdvancedModifierCombinationMode.HighestOnly)"
+                                                   @onchange="() => AdvancedModifierCombinationMode = GameTestAdvancedModifierCombinationMode.HighestOnly" />
+                                            <span>@L["Test_AdvancedModifiersMode_HighestOnly"]</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div class="rc-filter-group-card">
+                                    <div class="rc-tool-subsection__header">
+                                        <div class="rc-filter-group-card__title">@L["Test_AdvancedModifiersList"]</div>
+                                        <div class="rc-tool-inline-actions">
+                                            <button type="button" @onclick="AddAdvancedModifierRow">@L["Test_AdvancedModifiersAdd"]</button>
+                                        </div>
+                                    </div>
+
+                                    @if (AdvancedModifierRows.Count == 0)
+                                    {
+                                        <p class="rc-tool-muted">@L["Test_AdvancedModifiersNone"]</p>
+                                    }
+                                    else
+                                    {
+                                        <div class="rc-consequence-list">
+                                            @foreach (var row in AdvancedModifierRows)
+                                            {
+                                                <div class="rc-consequence-card">
+                                                    <div class="rc-consequence-card__grid">
+                                                        <div class="rc-form-field">
+                                                            <label>@L["Test_AdvancedModifiersSourceType"]</label>
+                                                            <select @bind="row.SourceType" @bind:after="() => OnAdvancedModifierSourceTypeChanged(row)">
+                                                                <option value="@GameTestAdvancedModifierSourceType.TraitOption">@L["MassDistribution_TraitOptionFilters"]</option>
+                                                                <option value="@GameTestAdvancedModifierSourceType.Talent">@L["MassDistribution_TalentFilters"]</option>
+                                                                <option value="@GameTestAdvancedModifierSourceType.Item">@L["MassDistribution_ItemFilters"]</option>
+                                                            </select>
+                                                        </div>
+
+                                                        <div class="rc-form-field">
+                                                            <label>@L["Test_ConsequenceValueMode"]</label>
+                                                            <select @bind="row.ValueMode" @bind:after="() => OnAdvancedModifierValueModeChanged(row)" class="@GetAdvancedModifierToneCssClass(row)">
+                                                                <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
+                                                                <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
+                                                            </select>
+                                                        </div>
+
+                                                        @if (row.ValueMode == ModifierValueMode.Fixed)
+                                                        {
+                                                            <div class="rc-form-field">
+                                                                <label>@L["Test_DifficultyValue"]</label>
+                                                                <input type="number" @bind="row.FixedValue" class="@GetAdvancedModifierToneCssClass(row)" />
+                                                            </div>
+                                                        }
+                                                        else
+                                                        {
+                                                            <div class="rc-form-field">
+                                                                <label>@L["Test_BonusMalus"]</label>
+                                                                <select @bind="row.MetricModifierMode" class="@GetAdvancedModifierToneCssClass(row)">
+                                                                    <option value="@TestModifierMode.Bonus">@L["Test_Bonus"]</option>
+                                                                    <option value="@TestModifierMode.Malus">@L["Test_Malus"]</option>
+                                                                </select>
+                                                            </div>
+
+                                                            <div class="rc-form-field">
+                                                                <label>@L["Common_SourceMetric"]</label>
+                                                                <select @bind="row.SourceMetricId" class="@GetAdvancedModifierToneCssClass(row)">
+                                                                    <option value="@((Guid?)null)">@L["Common_None"]</option>
+                                                                    @foreach (var metric in AvailableMetrics)
+                                                                    {
+                                                                        <option value="@metric.Id">@metric.Name</option>
+                                                                    }
+                                                                </select>
+                                                            </div>
+                                                        }
+                                                    </div>
+
+                                                    @if (row.SourceType == GameTestAdvancedModifierSourceType.TraitOption)
+                                                    {
+                                                        <div class="rc-filter-group-card">
+                                                            <div class="rc-filter-group-card__title">@L["MassDistribution_TraitOptionFilters"]</div>
+                                                            @foreach (var group in AdvancedTraitOptionGroups)
+                                                            {
+                                                                <div class="rc-advanced-filter-group">
+                                                                    <div class="rc-advanced-filter-group__title">@group.GroupName</div>
+                                                                    <div class="rc-inline-picker">
+                                                                        <select value="@GetAdvancedModifierSelectedTraitOptionId(row, group.GroupName)"
+                                                                                @onchange="@(e => OnAdvancedModifierTraitGroupSelectionChanged(row, group.GroupName, e.Value?.ToString()))">
+                                                                            <option value="">--</option>
+                                                                            @foreach (var item in group.Options)
+                                                                            {
+                                                                                <option value="@item.Id">@item.Name</option>
+                                                                            }
+                                                                        </select>
+                                                                        <button type="button" @onclick="@(() => AddAdvancedModifierTraitOption(row, group.GroupName))">@L["MassDistribution_AddFilter"]</button>
+                                                                    </div>
+                                                                </div>
+                                                            }
+                                                            <div class="rc-inline-pill-list">
+                                                                @foreach (var id in row.SelectedIds.ToList())
+                                                                {
+                                                                    var refItem = AdvancedTraitOptionGroups.SelectMany(x => x.Options).FirstOrDefault(x => x.Id == id);
+                                                                    if (refItem is not null)
+                                                                    {
+                                                                        <span class="rc-inline-pill rc-inline-pill--removable">
+                                                                            @refItem.Name
+                                                                            <button type="button" @onclick="@(() => RemoveAdvancedModifierSelectedId(row, id))">×</button>
+                                                                        </span>
+                                                                    }
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    else if (row.SourceType == GameTestAdvancedModifierSourceType.Talent)
+                                                    {
+                                                        <div class="rc-filter-group-card">
+                                                            <div class="rc-filter-group-card__title">@L["MassDistribution_TalentFilters"]</div>
+                                                            <div class="rc-inline-picker">
+                                                                <select @bind="row.PendingSelectedId">
+                                                                    <option value="">--</option>
+                                                                    @foreach (var item in AdvancedTalentOptions)
+                                                                    {
+                                                                        <option value="@item.Id">@item.Name</option>
+                                                                    }
+                                                                </select>
+                                                                <button type="button" @onclick="@(() => AddAdvancedModifierSelectedId(row))">@L["MassDistribution_AddFilter"]</button>
+                                                            </div>
+                                                            <div class="rc-inline-pill-list">
+                                                                @foreach (var id in row.SelectedIds.ToList())
+                                                                {
+                                                                    var refItem = AdvancedTalentOptions.FirstOrDefault(x => x.Id == id);
+                                                                    if (refItem is not null)
+                                                                    {
+                                                                        <span class="rc-inline-pill rc-inline-pill--removable">
+                                                                            @refItem.Name
+                                                                            <button type="button" @onclick="@(() => RemoveAdvancedModifierSelectedId(row, id))">×</button>
+                                                                        </span>
+                                                                    }
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="rc-filter-group-card">
+                                                            <div class="rc-filter-group-card__title">@L["MassDistribution_ItemFilters"]</div>
+                                                            <div class="rc-inline-picker">
+                                                                <select @bind="row.PendingSelectedId">
+                                                                    <option value="">--</option>
+                                                                    @foreach (var item in AdvancedItemOptions)
+                                                                    {
+                                                                        <option value="@item.Id">@item.Name</option>
+                                                                    }
+                                                                </select>
+                                                                <button type="button" @onclick="@(() => AddAdvancedModifierSelectedId(row))">@L["MassDistribution_AddFilter"]</button>
+                                                            </div>
+                                                            <div class="rc-inline-pill-list">
+                                                                @foreach (var id in row.SelectedIds.ToList())
+                                                                {
+                                                                    var refItem = AdvancedItemOptions.FirstOrDefault(x => x.Id == id);
+                                                                    if (refItem is not null)
+                                                                    {
+                                                                        <span class="rc-inline-pill rc-inline-pill--removable">
+                                                                            @refItem.Name
+                                                                            <button type="button" @onclick="@(() => RemoveAdvancedModifierSelectedId(row, id))">×</button>
+                                                                        </span>
+                                                                    }
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+
+                                                    <div class="rc-tool-inline-actions">
+                                                        <button type="button" @onclick="@(() => RemoveAdvancedModifierRow(row.RowId))">@L["Common_Remove"]</button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
                     
                     <Consequences Title="@L["Test_Consequences"]"
                                   AddButtonLabel="@L["Test_AddConsequence"]"
@@ -297,12 +670,32 @@ else
                                     <button @onclick="RollbackLatestTestConfirmed">@L["Common_Yes"]</button>
                                     <button @onclick="CancelRollback">@L["Common_No"]</button>
                                 }
+
+                                @if (CanRollbackLatestTestConsequencesOnly)
+                                {
+                                    @if (!ConfirmRollbackConsequencesOnlyVisible)
+                                    {
+                                        <button @onclick="ShowRollbackConsequencesOnlyConfirmation">
+                                            @L["Test_RollbackConsequencesOnly"]
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button @onclick="RollbackLatestTestConsequencesOnlyConfirmed">@L["Common_Yes"]</button>
+                                        <button @onclick="CancelRollbackConsequencesOnly">@L["Common_No"]</button>
+                                    }
+                                }
                             </div>
                         </div>
 
                         @if (ConfirmRollbackVisible)
                         {
                             <div class="rc-inline-warning">@L["Test_RollbackConfirmQuestion"]</div>
+                        }
+
+                        @if (ConfirmRollbackConsequencesOnlyVisible)
+                        {
+                            <div class="rc-inline-warning">@L["Test_RollbackConsequencesOnlyConfirmQuestion"]</div>
                         }
 
                         <div class="rc-test-stats-grid">
@@ -347,6 +740,11 @@ else
                             </div>
                         </div>
 
+                        @if (ActiveTest.ConsequencesCancelled)
+                        {
+                            <div class="rc-inline-warning">@L["Test_ConsequencesCancelled"]</div>
+                        }
+
                         <div class="rc-tool-subsection">
                             <div class="rc-tool-subsection__title">@L["Test_IndividualResults"]</div>
 
@@ -373,6 +771,12 @@ else
                                                                 <div class="rc-final-value @GetFinalValueClass(resultLine)">
                                                                     @resultLine.FinalValue
                                                                 </div>
+                                                                @if (ShouldDisplayResultSuccessThreshold(resultLine))
+                                                                {
+                                                                    <div class="rc-test-result-card__success-threshold">
+                                                                        @($"({L["Test_SuccessThresholdShort"]} : {resultLine.EffectiveSuccessThreshold!.Value})")
+                                                                    </div>
+                                                                }
                                                             </div>
                                                         </div>
                                                     }
@@ -415,12 +819,25 @@ else
     private bool RedirectToHome;
     private string Message = string.Empty;
 
+    private List<SessionGameTestPresetDto> TestPresets = new();
+    private Guid? SelectedTestPresetId;
+    private string NewTestPresetName = string.Empty;
+
+    private bool ShowSaveTestPresetPanel;
+    private bool ConfirmOverwriteTestPresetVisible;
+    private bool ConfirmDeleteTestPresetVisible;
+    private bool IsEditingPreset = false;
+
+    private bool ConfirmRollbackConsequencesOnlyVisible;
+
     private string SelectedAttributeId = string.Empty;
     private GameTestTargetKind NewTargetKind = GameTestTargetKind.BaseAttribute;
     private bool UseSystemDefaultDice = true;
     private int NewDiceCount = 1;
     private int NewDiceSides = 100;
     private int? NewSuccessThreshold;
+    private GameTestSuccessThresholdMode NewSuccessThresholdMode = GameTestSuccessThresholdMode.Fixed;
+    private Guid? NewSuccessThresholdMetricId;
     private List<int> GlobalSuccessThresholds = new();
 
     private bool IncludeNpcsInTest;
@@ -434,6 +851,9 @@ else
     private TestTraitFilterMode NewTraitFilterMode = TestTraitFilterMode.AndBetweenGroups;
     private HashSet<Guid> SelectedTraitOptionIds = new();
     private List<SharedConsequenceRowModel> ConsequenceRows = new();
+    private bool ShowAdvancedModifiers;
+    private GameTestAdvancedModifierCombinationMode AdvancedModifierCombinationMode = GameTestAdvancedModifierCombinationMode.Cumulative;
+    private List<AdvancedTestModifierRowModel> AdvancedModifierRows = new();
 
 
     private List<SharedConsequenceApplyOnOption> ConsequenceApplyOnOptions
@@ -611,6 +1031,7 @@ else
 
     private List<CharacterFilterReferenceItem> AdvancedPollOptions = new();
     private List<CharacterFilterReferenceItem> AdvancedSelectedPollOptionOptions = new();
+    private List<CharacterFilterReferenceItem> AdvancedRandomDrawOptions = new();
     private List<CharacterNameSuggestionItem> AdvancedNameSuggestions = new();
 
     protected override async Task OnInitializedAsync()
@@ -725,17 +1146,24 @@ else
 
         RebuildDifficultyScale();
         EnsureSuccessThresholdDefault();
+        NormalizeSuccessThresholdSelection();
         OnTestTargetKindChanged();
 
+        TestPresets = await GameTestService.GetSessionPresetsAsync(SessionId, CurrentUserId);
         await LoadCharacterSummariesAsync();
         await LoadActiveTest();
         await LoadAdvancedPollOptionsAsync();
+        await LoadAdvancedRandomDrawOptionsAsync();
         await LoadAdvancedNameSuggestionsAsync();
+
     }
 
     private async Task LoadActiveTest()
     {
         ActiveTest = await GameTestService.GetActiveGameTestForSessionAsync(SessionId);
+
+        ConfirmRollbackVisible = false;
+        ConfirmRollbackConsequencesOnlyVisible = false;
     }
 
     private async Task LoadCharacterSummariesAsync()
@@ -782,6 +1210,23 @@ else
             {
                 Id = x.OptionId,
                 Name = x.Label
+            })
+            .ToList();
+    }
+
+    private async Task LoadAdvancedRandomDrawOptionsAsync()
+    {
+        AdvancedRandomDrawOptions.Clear();
+
+        var editor = await CharacterService.GetRandomDrawEditorAsync(SessionId, CurrentUserId);
+        if (editor is null)
+            return;
+
+        AdvancedRandomDrawOptions = editor.RecentDraws
+            .Select(x => new CharacterFilterReferenceItem
+            {
+                Id = x.DrawId,
+                Name = x.Name
             })
             .ToList();
     }
@@ -840,6 +1285,9 @@ else
         if (AssignedGameSystem is null || AssignedGameSystem.TestResolutionMode != TestResolutionMode.SuccessThreshold)
             return;
 
+        if (NewSuccessThreshold.HasValue)
+            return;
+
         var diceCount = UseSystemDefaultDice ? AssignedGameSystem.DefaultTestDiceCount : NewDiceCount;
         var diceSides = UseSystemDefaultDice ? AssignedGameSystem.DefaultTestDiceSides : NewDiceSides;
 
@@ -847,7 +1295,73 @@ else
             return;
 
         var average = diceCount * (diceSides + 1) / 2.0;
-        NewSuccessThreshold = (int)Math.Ceiling(average);
+        NewSuccessThreshold = AssignedGameSystem.DefaultSuccessThreshold ?? (int)Math.Ceiling(average);
+    }
+
+    private void OnSuccessThresholdModeChanged()
+    {
+        NormalizeSuccessThresholdSelection();
+    }
+
+    private void NormalizeSuccessThresholdSelection()
+    {
+        if (AssignedGameSystem?.TestResolutionMode != TestResolutionMode.SuccessThreshold)
+        {
+            NewSuccessThresholdMode = GameTestSuccessThresholdMode.Fixed;
+            NewSuccessThresholdMetricId = null;
+            return;
+        }
+
+        if (NewSuccessThresholdMode == GameTestSuccessThresholdMode.Fixed)
+        {
+            NewSuccessThresholdMetricId = null;
+            EnsureSuccessThresholdDefault();
+            return;
+        }
+
+        NewSuccessThreshold = null;
+
+        if (NewSuccessThresholdMetricId.HasValue && AvailableMetrics.All(x => x.Id != NewSuccessThresholdMetricId.Value))
+        {
+            NewSuccessThresholdMetricId = null;
+            Message = L["Test_SuccessThresholdMetricMissing"];
+        }
+    }
+
+    private GameTestSuccessThresholdMode GetEffectiveSuccessThresholdMode()
+    {
+        if (AssignedGameSystem?.TestResolutionMode != TestResolutionMode.SuccessThreshold)
+            return GameTestSuccessThresholdMode.Fixed;
+
+        return NewSuccessThresholdMode;
+    }
+
+    private int? GetEffectiveFixedSuccessThreshold()
+    {
+        if (AssignedGameSystem?.TestResolutionMode != TestResolutionMode.SuccessThreshold)
+            return null;
+
+        return NewSuccessThresholdMode == GameTestSuccessThresholdMode.Fixed
+            ? NewSuccessThreshold
+            : null;
+    }
+
+    private Guid? GetEffectiveSuccessThresholdMetricId()
+    {
+        if (AssignedGameSystem?.TestResolutionMode != TestResolutionMode.SuccessThreshold)
+            return null;
+
+        return NewSuccessThresholdMode == GameTestSuccessThresholdMode.Metric
+            ? NewSuccessThresholdMetricId
+            : null;
+    }
+
+    private bool ShouldDisplayResultSuccessThreshold(GameMasterGameTestResultLineDto resultLine)
+    {
+        return ActiveTest?.ResolutionMode == TestResolutionMode.SuccessThreshold
+            && ActiveTest.SuccessThresholdMode == GameTestSuccessThresholdMode.Metric
+            && resultLine.HasRolled
+            && resultLine.EffectiveSuccessThreshold.HasValue;
     }
 
     private void RebuildDifficultyScale()
@@ -972,7 +1486,9 @@ else
                 DiceSides = UseSystemDefaultDice ? AssignedGameSystem.DefaultTestDiceSides : NewDiceSides,
                 CriticalSuccessValue = UseSystemDefaultDice ? AssignedGameSystem.CriticalSuccessValue : null,
                 CriticalFailureValue = UseSystemDefaultDice ? AssignedGameSystem.CriticalFailureValue : null,
-                SuccessThreshold = NewSuccessThreshold,
+                SuccessThresholdMode = GetEffectiveSuccessThresholdMode(),
+                SuccessThreshold = GetEffectiveFixedSuccessThreshold(),
+                SuccessThresholdMetricId = GetEffectiveSuccessThresholdMetricId(),
                 ModifierMode = modifierMode,
                 DifficultyValue = difficultyValue,
                 TargetScope = NewTargetScope,
@@ -996,6 +1512,7 @@ else
                     MustHaveSucceededLastTest = AdvancedFilter.MustHaveSucceededLastTest,
                     FilterOnLastTestResult = AdvancedFilter.FilterOnLastTestResult,
                     NameCharacterIds = AdvancedFilter.NameCharacterIds.ToList(),
+                    RandomDrawIds = AdvancedFilter.RandomDrawIds.ToList(),
                     ValueFilters = AdvancedFilter.ValueFilters
                         .Select(x => new CharacterValueFilterDto
                         {
@@ -1005,8 +1522,12 @@ else
                             ComparisonType = x.ComparisonType,
                             Value = x.Value
                         })
-                        .ToList()
+                        .ToList(),
+                    BiographyNotEmpty = AdvancedFilter.BiographyNotEmpty
                 },
+                AdvancedModifiersEnabled = AdvancedModifierRows.Any(IsMeaningfulAdvancedModifier),
+                AdvancedModifierCombinationMode = AdvancedModifierCombinationMode,
+                AdvancedModifiers = AdvancedModifierRows.Where(IsMeaningfulAdvancedModifier).Select(MapAdvancedModifierRowToDto).ToList(),
                 Consequences = ConsequenceRows
                     .Where(row => row.TargetDefinitionId != Guid.Empty)
                     .Where(row => row.OperationType != TestConsequenceOperationType.AddValue
@@ -1494,6 +2015,7 @@ else
     private Task CancelRollback()
     {
         ConfirmRollbackVisible = false;
+        ConfirmRollbackConsequencesOnlyVisible = false;
         return Task.CompletedTask;
     }
 
@@ -1573,5 +2095,492 @@ else
             ? "rc-consequence-pill rc-consequence-pill--positive"
             : "rc-consequence-pill rc-consequence-pill--negative";
     }
-}
 
+    private Task ShowSaveTestPreset()
+    {
+        ShowSaveTestPresetPanel = true;
+        ConfirmOverwriteTestPresetVisible = false;
+        NewTestPresetName = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelSaveTestPreset()
+    {
+        ShowSaveTestPresetPanel = false;
+        ConfirmOverwriteTestPresetVisible = false;
+        NewTestPresetName = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private Task ShowDeleteTestPresetConfirmation()
+    {
+        ConfirmDeleteTestPresetVisible = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelDeleteTestPreset()
+    {
+        ConfirmDeleteTestPresetVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveTestPresetConfirmed()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            var request = BuildGameTestPresetRequest();
+
+            await GameTestService.SaveSessionPresetAsync(
+                SessionId,
+                CurrentUserId,
+                NewTestPresetName,
+                request,
+                overwrite: false);
+
+            TestPresets = await GameTestService.GetSessionPresetsAsync(SessionId, CurrentUserId);
+            SelectedTestPresetId = TestPresets.FirstOrDefault(x => x.Name == NewTestPresetName.Trim())?.PresetId;
+
+            ShowSaveTestPresetPanel = false;
+            ConfirmOverwriteTestPresetVisible = false;
+            NewTestPresetName = string.Empty;
+
+            Message = L["Test_PresetSaved"];
+        }
+        catch (Exception ex)
+        {
+            if (ex.Message == L["Backend_TestPresetAlreadyExists"])
+            {
+                ConfirmOverwriteTestPresetVisible = true;
+                return;
+            }
+
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task OverwriteTestPresetConfirmed()
+    {
+        try
+        {
+            Message = string.Empty;
+
+            var request = BuildGameTestPresetRequest();
+
+            await GameTestService.SaveSessionPresetAsync(
+                SessionId,
+                CurrentUserId,
+                NewTestPresetName,
+                request,
+                overwrite: true);
+
+            TestPresets = await GameTestService.GetSessionPresetsAsync(SessionId, CurrentUserId);
+            SelectedTestPresetId = TestPresets.FirstOrDefault(x => x.Name == NewTestPresetName.Trim())?.PresetId;
+
+            ShowSaveTestPresetPanel = false;
+            ConfirmOverwriteTestPresetVisible = false;
+            NewTestPresetName = string.Empty;
+
+            Message = L["Test_PresetSaved"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task DeleteSelectedTestPresetConfirmed()
+    {
+        try
+        {
+            if (!SelectedTestPresetId.HasValue)
+                return;
+
+            Message = string.Empty;
+
+            await GameTestService.DeleteSessionPresetAsync(SessionId, CurrentUserId, SelectedTestPresetId.Value);
+
+            TestPresets = await GameTestService.GetSessionPresetsAsync(SessionId, CurrentUserId);
+            SelectedTestPresetId = null;
+            ConfirmDeleteTestPresetVisible = false;
+
+            Message = L["Test_PresetDeleted"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private async Task ApplySelectedTestPreset()
+    {
+        if (!SelectedTestPresetId.HasValue)
+            return;
+
+        var preset = TestPresets.FirstOrDefault(x => x.PresetId == SelectedTestPresetId.Value);
+        if (preset is null)
+            return;
+
+        ApplyGameTestPresetRequest(preset.Request);
+
+        ConfirmDeleteTestPresetVisible = false;
+        await RefreshSelectedPollOptionOptionsAsync();
+        StateHasChanged();
+    }
+
+    private Task CancelOverwriteTestPreset()
+    {
+        ConfirmOverwriteTestPresetVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private GameTestCreateRequestDto BuildGameTestPresetRequest()
+    {
+        var difficultyValue = DifficultyScaleValues.ElementAtOrDefault(SelectedDifficultyIndex);
+        var autoRollDelay = AutoRollDelayOptions.ElementAtOrDefault(SelectedAutoRollDelayIndex);
+
+        return new GameTestCreateRequestDto
+        {
+            TargetKind = NewTargetKind,
+            TargetDefinitionId = ParseSelectedAttributeId(),
+            UseSystemDefaultDice = UseSystemDefaultDice,
+            DiceCount = NewDiceCount,
+            DiceSides = NewDiceSides,
+            SuccessThresholdMode = GetEffectiveSuccessThresholdMode(),
+            SuccessThreshold = GetEffectiveFixedSuccessThreshold(),
+            SuccessThresholdMetricId = GetEffectiveSuccessThresholdMetricId(),
+            ModifierMode = difficultyValue >= 0 ? TestModifierMode.Bonus : TestModifierMode.Malus,
+            DifficultyValue = Math.Abs(difficultyValue),
+            TargetScope = NewTargetScope,
+            TraitFilterMode = NewTraitFilterMode,
+            IncludeNpcs = IncludeNpcsInTest,
+            AutoRollDelaySeconds = autoRollDelay,
+            GlobalSuccessThreshold1Percent = GlobalSuccessThresholds.Count > 0 ? GlobalSuccessThresholds[0] : null,
+            GlobalSuccessThreshold2Percent = GlobalSuccessThresholds.Count > 1 ? GlobalSuccessThresholds[1] : null,
+            GlobalSuccessThreshold3Percent = GlobalSuccessThresholds.Count > 2 ? GlobalSuccessThresholds[2] : null,
+            AdvancedFilter = CloneAdvancedFilter(AdvancedFilter),
+            TraitFilters = new List<GameTestTraitFilterGroupDto>(),
+            AdvancedModifiersEnabled = AdvancedModifierRows.Any(IsMeaningfulAdvancedModifier),
+            AdvancedModifierCombinationMode = AdvancedModifierCombinationMode,
+            AdvancedModifiers = AdvancedModifierRows
+                .Where(IsMeaningfulAdvancedModifier)
+                .Select(MapAdvancedModifierRowToDto)
+                .ToList(),
+            Consequences = ConsequenceRows.Select(MapConsequenceRowToDto).ToList()
+        };
+    }
+
+    private void ApplyGameTestPresetRequest(GameTestCreateRequestDto request)
+    {
+        NewTargetKind = request.TargetKind;
+        SelectedAttributeId = request.TargetDefinitionId == Guid.Empty
+            ? string.Empty
+            : request.TargetDefinitionId.ToString();
+
+        UseSystemDefaultDice = request.UseSystemDefaultDice;
+        NewDiceCount = request.DiceCount;
+        NewDiceSides = request.DiceSides;
+        NewSuccessThresholdMode = request.SuccessThresholdMode;
+        NewSuccessThreshold = request.SuccessThreshold;
+        NewSuccessThresholdMetricId = request.SuccessThresholdMetricId;
+        NormalizeSuccessThresholdSelection();
+        NewTargetScope = request.TargetScope;
+        NewTraitFilterMode = request.TraitFilterMode;
+        IncludeNpcsInTest = request.IncludeNpcs;
+
+        var signedDifficultyValue = request.ModifierMode == TestModifierMode.Malus
+            ? -request.DifficultyValue
+            : request.DifficultyValue;
+
+        SelectedDifficultyIndex = DifficultyScaleValues.FindIndex(x => x == signedDifficultyValue);
+        if (SelectedDifficultyIndex < 0)
+            SelectedDifficultyIndex = 0;
+
+        SelectedAutoRollDelayIndex = AutoRollDelayOptions.FindIndex(x => x == request.AutoRollDelaySeconds);
+        if (SelectedAutoRollDelayIndex < 0)
+            SelectedAutoRollDelayIndex = 0;
+
+        GlobalSuccessThresholds = new List<int>();
+        if (request.GlobalSuccessThreshold1Percent.HasValue) GlobalSuccessThresholds.Add(request.GlobalSuccessThreshold1Percent.Value);
+        if (request.GlobalSuccessThreshold2Percent.HasValue) GlobalSuccessThresholds.Add(request.GlobalSuccessThreshold2Percent.Value);
+        if (request.GlobalSuccessThreshold3Percent.HasValue) GlobalSuccessThresholds.Add(request.GlobalSuccessThreshold3Percent.Value);
+
+        AdvancedFilter = CloneAdvancedFilter(request.AdvancedFilter ?? new CharacterTargetFilterDto());
+
+        AdvancedModifierCombinationMode = request.AdvancedModifierCombinationMode;
+        AdvancedModifierRows = (request.AdvancedModifiers ?? new List<GameTestAdvancedModifierDto>())
+            .Select(MapAdvancedModifierDtoToRow)
+            .ToList();
+        ShowAdvancedModifiers = request.AdvancedModifiersEnabled || AdvancedModifierRows.Count > 0;
+
+        ConsequenceRows = request.Consequences.Select(MapConsequenceDtoToRow).ToList();
+    }
+
+    private void BeginEditPreset()
+    {
+        IsEditingPreset = true;
+    }
+
+    private async Task ValidateEditPreset()
+    {
+        IsEditingPreset = false;
+
+        if (SelectedTestPresetId.HasValue)
+        {
+            await SaveTestPresetConfirmed();
+        }
+        else
+        {
+            await ShowSaveTestPreset();
+        }
+    }
+
+    private void CancelEditPreset()
+    {
+        IsEditingPreset = false;
+    }
+
+    private string GetSelectedTestPresetName()
+    {
+        if (!SelectedTestPresetId.HasValue)
+            return string.Empty;
+
+        return TestPresets
+        .FirstOrDefault(x => x.PresetId == SelectedTestPresetId.Value)
+        ?.Name
+        ?? string.Empty;
+    }
+
+    private void ToggleAdvancedModifiersSection()
+    {
+        ShowAdvancedModifiers = !ShowAdvancedModifiers;
+    }
+
+    private string GetAdvancedModifierToneCssClass(AdvancedTestModifierRowModel row)
+    {
+        if (row.ValueMode == ModifierValueMode.Metric)
+        {
+            return row.MetricModifierMode == TestModifierMode.Bonus
+                ? "rc-consequence-pill rc-consequence-pill--positive"
+                : "rc-consequence-pill rc-consequence-pill--negative";
+        }
+
+        return row.FixedValue >= 0
+            ? "rc-consequence-pill rc-consequence-pill--positive"
+            : "rc-consequence-pill rc-consequence-pill--negative";
+    }
+
+    private void AddAdvancedModifierRow()
+    {
+        AdvancedModifierRows.Add(new AdvancedTestModifierRowModel());
+        ShowAdvancedModifiers = true;
+    }
+
+    private void RemoveAdvancedModifierRow(Guid rowId)
+    {
+        AdvancedModifierRows.RemoveAll(x => x.RowId == rowId);
+    }
+
+    private void OnAdvancedModifierSourceTypeChanged(AdvancedTestModifierRowModel row)
+    {
+        row.SelectedIds.Clear();
+        row.PendingSelectedId = string.Empty;
+        row.PendingTraitOptionIdByGroup.Clear();
+    }
+
+    private void OnAdvancedModifierValueModeChanged(AdvancedTestModifierRowModel row)
+    {
+        if (row.ValueMode == ModifierValueMode.Fixed)
+        {
+            row.SourceMetricId = null;
+            row.MetricModifierMode = TestModifierMode.Bonus;
+        }
+    }
+
+    private string GetAdvancedModifierSelectedTraitOptionId(AdvancedTestModifierRowModel row, string groupName)
+    {
+        return row.PendingTraitOptionIdByGroup.TryGetValue(groupName, out var value)
+            ? value
+            : string.Empty;
+    }
+
+    private void OnAdvancedModifierTraitGroupSelectionChanged(AdvancedTestModifierRowModel row, string groupName, string? selectedValue)
+    {
+        row.PendingTraitOptionIdByGroup[groupName] = selectedValue ?? string.Empty;
+    }
+
+    private void AddAdvancedModifierTraitOption(AdvancedTestModifierRowModel row, string groupName)
+    {
+        if (!row.PendingTraitOptionIdByGroup.TryGetValue(groupName, out var rawValue))
+            return;
+
+        if (Guid.TryParse(rawValue, out var id) && !row.SelectedIds.Contains(id))
+            row.SelectedIds.Add(id);
+    }
+
+    private void AddAdvancedModifierSelectedId(AdvancedTestModifierRowModel row)
+    {
+        if (Guid.TryParse(row.PendingSelectedId, out var id) && !row.SelectedIds.Contains(id))
+            row.SelectedIds.Add(id);
+    }
+
+    private void RemoveAdvancedModifierSelectedId(AdvancedTestModifierRowModel row, Guid id)
+    {
+        row.SelectedIds.Remove(id);
+    }
+
+    private bool IsMeaningfulAdvancedModifier(AdvancedTestModifierRowModel row)
+    {
+        if (row.SelectedIds.Count == 0)
+            return false;
+
+        if (row.ValueMode == ModifierValueMode.Metric)
+            return row.SourceMetricId.HasValue;
+
+        return row.FixedValue != 0;
+    }
+
+    private GameTestAdvancedModifierDto MapAdvancedModifierRowToDto(AdvancedTestModifierRowModel row)
+    {
+        return new GameTestAdvancedModifierDto
+        {
+            SourceType = row.SourceType,
+            SelectedIds = row.SelectedIds.ToList(),
+            ValueMode = row.ValueMode,
+            FixedValue = row.FixedValue,
+            MetricModifierMode = row.MetricModifierMode,
+            SourceMetricId = row.ValueMode == ModifierValueMode.Metric ? row.SourceMetricId : null
+        };
+    }
+
+    private AdvancedTestModifierRowModel MapAdvancedModifierDtoToRow(GameTestAdvancedModifierDto dto)
+    {
+        return new AdvancedTestModifierRowModel
+        {
+            SourceType = dto.SourceType,
+            SelectedIds = dto.SelectedIds.Distinct().ToList(),
+            ValueMode = dto.ValueMode,
+            FixedValue = dto.FixedValue,
+            MetricModifierMode = dto.MetricModifierMode,
+            SourceMetricId = dto.SourceMetricId,
+            PendingSelectedId = string.Empty,
+            PendingTraitOptionIdByGroup = new Dictionary<string, string>()
+        };
+    }
+
+    private Guid ParseSelectedAttributeId()
+    {
+        return Guid.TryParse(SelectedAttributeId, out var id) ? id : Guid.Empty;
+    }
+
+    private CharacterTargetFilterDto CloneAdvancedFilter(CharacterTargetFilterDto source)
+    {
+        return new CharacterTargetFilterDto
+        {
+            OnlyAlive = source.OnlyAlive,
+            OnlyDead = source.OnlyDead,
+            OnlyOnline = source.OnlyOnline,
+            IncludeNpcs = source.IncludeNpcs,
+            MatchAllConditions = source.MatchAllConditions,
+            TraitOptionIds = source.TraitOptionIds.ToList(),
+            TalentIds = source.TalentIds.ToList(),
+            ItemIds = source.ItemIds.ToList(),
+            PollId = source.PollId,
+            PollSelectedOptionId = source.PollSelectedOptionId,
+            FilterOnPollResponse = source.FilterOnPollResponse,
+            MustHaveSucceededLastTest = source.MustHaveSucceededLastTest,
+            FilterOnLastTestResult = source.FilterOnLastTestResult,
+            NameCharacterIds = source.NameCharacterIds.ToList(),
+            RandomDrawIds = source.RandomDrawIds.ToList(),
+            BiographyNotEmpty = source.BiographyNotEmpty,
+            ValueFilters = source.ValueFilters.Select(x => new CharacterValueFilterDto
+            {
+                TargetType = x.TargetType,
+                TargetId = x.TargetId,
+                TargetName = x.TargetName,
+                ComparisonType = x.ComparisonType,
+                Value = x.Value
+            }).ToList()
+        };
+    }
+
+    private GameTestConsequenceDraftDto MapConsequenceRowToDto(SharedConsequenceRowModel row)
+    {
+        return new GameTestConsequenceDraftDto
+        {
+            ApplyOn = row.ApplyOn,
+            OperationType = row.OperationType,
+            TargetKind = row.TargetKind,
+            TargetDefinitionId = row.TargetDefinitionId,
+            ModifierMode = row.ValueMode == ModifierValueMode.Metric ? row.ModifierMode : TestModifierMode.Bonus,
+            Value = row.Value,
+            ValueMode = row.ValueMode,
+            SourceMetricId = row.ValueMode == ModifierValueMode.Metric ? row.SourceMetricId : null
+        };
+    }
+
+    private SharedConsequenceRowModel MapConsequenceDtoToRow(GameTestConsequenceDraftDto dto)
+    {
+        return new SharedConsequenceRowModel
+        {
+            RowId = Guid.NewGuid(),
+            ApplyOn = dto.ApplyOn,
+            OperationType = dto.OperationType,
+            TargetKind = dto.TargetKind,
+            TargetDefinitionId = dto.TargetDefinitionId,
+            ModifierMode = dto.ValueMode == ModifierValueMode.Metric ? dto.ModifierMode : TestModifierMode.Bonus,
+            Value = dto.Value,
+            ValueMode = dto.ValueMode,
+            SourceMetricId = dto.ValueMode == ModifierValueMode.Metric ? dto.SourceMetricId : null
+        };
+    }
+
+    private bool CanRollbackLatestTestConsequencesOnly =>
+    ActiveTest is not null &&
+    ActiveTest.HasConsequences &&
+    !ActiveTest.ConsequencesCancelled;
+
+    private Task ShowRollbackConsequencesOnlyConfirmation()
+    {
+        ConfirmRollbackConsequencesOnlyVisible = true;
+        return Task.CompletedTask;
+    }
+
+    private Task CancelRollbackConsequencesOnly()
+    {
+        ConfirmRollbackConsequencesOnlyVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task RollbackLatestTestConsequencesOnlyConfirmed()
+    {
+        try
+        {
+            Message = string.Empty;
+            ConfirmRollbackConsequencesOnlyVisible = false;
+
+            await GameTestService.RollbackLatestTestConsequencesOnlyAsync(SessionId, CurrentUserId);
+            ActiveTest = await GameTestService.GetActiveGameTestForSessionAsync(SessionId);
+
+            Message = L["Test_RollbackConsequencesOnlySuccess"];
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
+    private sealed class AdvancedTestModifierRowModel
+    {
+        public Guid RowId { get; set; } = Guid.NewGuid();
+        public GameTestAdvancedModifierSourceType SourceType { get; set; } = GameTestAdvancedModifierSourceType.TraitOption;
+        public List<Guid> SelectedIds { get; set; } = new();
+        public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
+        public int FixedValue { get; set; }
+        public TestModifierMode MetricModifierMode { get; set; } = TestModifierMode.Bonus;
+        public Guid? SourceMetricId { get; set; }
+        public string PendingSelectedId { get; set; } = string.Empty;
+        public Dictionary<string, string> PendingTraitOptionIdByGroup { get; set; } = new();
+    }
+}

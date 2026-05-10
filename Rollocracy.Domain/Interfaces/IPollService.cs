@@ -19,5 +19,16 @@ namespace Rollocracy.Domain.Interfaces
         Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId);
 
         Task UndoLatestPollConsequencesAsync(Guid sessionId, Guid gameMasterUserAccountId);
+
+        Task<List<SessionPollPresetDto>> GetSessionPresetsAsync(Guid sessionId, Guid gameMasterUserAccountId);
+
+        Task SaveSessionPresetAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            string presetName,
+            PollCreateRequestDto request,
+            bool overwrite);
+
+        Task DeleteSessionPresetAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid presetId);
     }
 }

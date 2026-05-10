@@ -27,6 +27,8 @@ namespace Rollocracy.Domain.GameTests
 
         public int FinalValue { get; set; }
 
+        public int? EffectiveSuccessThreshold { get; set; }
+
         public bool IsSuccess { get; set; }
 
         public GameTestOutcome Outcome { get; set; } = GameTestOutcome.Failure;

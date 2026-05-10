@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.SignalR;
+﻿
+using Microsoft.AspNetCore.SignalR;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Hubs;
 
@@ -36,6 +37,11 @@ namespace Rollocracy.Services
         public async Task NotifyJournalChangedAsync(Guid sessionId)
         {
             await _hubContext.Clients.Group(sessionId.ToString()).SendAsync("JournalChanged");
+        }
+
+        public async Task NotifyStoreChangedAsync(Guid sessionId)
+        {
+            await _hubContext.Clients.Group(sessionId.ToString()).SendAsync("StoreChanged");
         }
     }
 }

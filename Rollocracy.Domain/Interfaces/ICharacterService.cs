@@ -13,8 +13,11 @@ namespace Rollocracy.Domain.Interfaces
             Guid playerSessionId,
             string name,
             string biography,
-            Dictionary<Guid, int> attributeValues,
-            Dictionary<Guid, Guid> traitSelections);
+            Dictionary<Guid, int> attributeBonusValues,
+            Dictionary<Guid, Guid> traitSelections,
+            Dictionary<Guid, int> derivedStatBonusValues,
+            List<Guid> selectedTalentIds,
+            List<Guid> selectedItemIds);
 
         Task<Character> CreateNpcAsync(
             Guid playerSessionId,
@@ -76,6 +79,10 @@ namespace Rollocracy.Domain.Interfaces
             Guid characterId,
             Guid gameMasterUserAccountId,
             UpdateCharacterRequestDto request);
+
+        Task PurchaseSessionStoreOfferAsync(Guid playerSessionId, Guid offerId);
+
+        Task ConsumeItemAsync(Guid playerSessionId, Guid itemDefinitionId);
 
     }
 }

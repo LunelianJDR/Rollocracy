@@ -1,11 +1,13 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Characters;
+using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Domain.Polls;
 using Rollocracy.Infrastructure.Persistence;
+using System.Text.Json;
 
 namespace Rollocracy.Infrastructure.Services
 {
@@ -395,6 +397,139 @@ namespace Rollocracy.Infrastructure.Services
             await _sessionNotifier.NotifyPollChangedAsync(poll.SessionId);
         }
 
+        private async Task<int> ComputeEffectiveGaugeMaxAsync(
+    RollocracyDbContext context,
+    Guid characterId,
+    Guid gaugeDefinitionId)
+        {
+            var definition = await context.GaugeDefinitions
+                .AsNoTracking()
+                .FirstAsync(x => x.Id == gaugeDefinitionId);
+
+            var traitValues = await context.CharacterTraitValues
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId)
+                .ToListAsync();
+
+            var characterTalents = await context.CharacterTalents
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId)
+                .ToListAsync();
+
+            var characterItems = await context.CharacterItems
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId)
+                .ToListAsync();
+
+            var traitOptionIds = traitValues.Select(x => x.TraitOptionId).Distinct().ToList();
+            var talentIds = characterTalents.Select(x => x.TalentDefinitionId).Distinct().ToList();
+            var itemIds = characterItems.Select(x => x.ItemDefinitionId).Distinct().ToList();
+
+            var choiceModifiers = await context.ChoiceOptionModifierDefinitions
+                .AsNoTracking()
+                .Where(x => traitOptionIds.Contains(x.ChoiceOptionDefinitionId))
+                .ToListAsync();
+
+            var talentModifiers = await context.TalentModifierDefinitions
+                .AsNoTracking()
+                .Where(x => talentIds.Contains(x.TalentDefinitionId))
+                .ToListAsync();
+
+            var itemModifiers = await context.ItemModifierDefinitions
+                .AsNoTracking()
+                .Where(x => itemIds.Contains(x.ItemDefinitionId))
+                .ToListAsync();
+
+            var characterModifiers = await context.CharacterModifiers
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId)
+                .ToListAsync();
+
+            var choiceBonus = choiceModifiers
+                .Where(x => x.TargetType == ModifierTargetType.Gauge &&
+                            x.TargetId == gaugeDefinitionId &&
+                            x.ValueMode != ModifierValueMode.Metric)
+                .Sum(x => x.Value);
+
+            var talentBonus = talentModifiers
+                .Where(x => x.TargetType == ModifierTargetType.Gauge &&
+                            x.TargetId == gaugeDefinitionId &&
+                            x.ValueMode != ModifierValueMode.Metric)
+                .Sum(x => x.AddValue);
+
+            var itemBonus = itemModifiers
+                .Where(x => x.TargetType == ModifierTargetType.Gauge &&
+                            x.TargetId == gaugeDefinitionId &&
+                            x.ValueMode != ModifierValueMode.Metric)
+                .Sum(x => x.AddValue);
+
+            var persistentBonus = characterModifiers
+                .Where(x => x.TargetType == CharacterEffectTargetType.Gauge &&
+                            x.TargetId == gaugeDefinitionId)
+                .Sum(x => x.AddValue);
+
+            return Math.Max(definition.MinValue, definition.MaxValue + choiceBonus + talentBonus + itemBonus + persistentBonus);
+        }
+
+        private async Task UpdateCharacterAliveStateAsync(
+            RollocracyDbContext context,
+            Guid? gameSystemId,
+            Guid characterId,
+            Character character)
+        {
+            if (!gameSystemId.HasValue)
+                return;
+
+            var healthGaugeDefinitions = await context.GaugeDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId.Value && x.IsHealthGauge)
+                .ToListAsync();
+
+            if (healthGaugeDefinitions.Count == 0)
+                return;
+
+            var healthGaugeDefinitionIds = healthGaugeDefinitions
+                .Select(x => x.Id)
+                .ToList();
+
+            var persistedHealthGaugeValues = await context.CharacterGaugeValues
+                .AsNoTracking()
+                .Where(x => x.CharacterId == characterId && healthGaugeDefinitionIds.Contains(x.GaugeDefinitionId))
+                .ToListAsync();
+
+            var trackedHealthGaugeValues = context.ChangeTracker
+                .Entries<CharacterGaugeValue>()
+                .Where(x =>
+                    x.Entity.CharacterId == characterId &&
+                    healthGaugeDefinitionIds.Contains(x.Entity.GaugeDefinitionId))
+                .GroupBy(x => x.Entity.GaugeDefinitionId)
+                .ToDictionary(x => x.Key, x => x.Last().Entity.Value);
+
+            var isAlive = healthGaugeDefinitions.All(definition =>
+            {
+                if (trackedHealthGaugeValues.TryGetValue(definition.Id, out var trackedValue))
+                    return trackedValue > 0;
+
+                var persistedValue = persistedHealthGaugeValues.FirstOrDefault(x => x.GaugeDefinitionId == definition.Id)?.Value
+                    ?? definition.DefaultValue;
+
+                return persistedValue > 0;
+            });
+
+            if (isAlive)
+            {
+                character.IsAlive = true;
+                character.DiedAtUtc = null;
+            }
+            else
+            {
+                if (character.IsAlive)
+                    character.DiedAtUtc = DateTime.UtcNow;
+
+                character.IsAlive = false;
+            }
+        }
+
         public async Task ClosePollAsync(Guid sessionId, Guid gameMasterUserAccountId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -442,14 +577,13 @@ namespace Rollocracy.Infrastructure.Services
                     .Select(x => x.consequence)
                     .ToList();
 
-                // 1) Legacy : Attribute / Gauge restent sur l'ancien mécanisme
-                // pour conserver le rollback actuel jusqu'à 5D.3.
                 var legacyConsequences = voteConsequences
                     .Where(c =>
                         c.OperationType == TestConsequenceOperationType.AddValue &&
                         c.ValueMode != ModifierValueMode.Metric &&
                         (c.TargetKind == TestConsequenceTargetKind.Attribute ||
-                         c.TargetKind == TestConsequenceTargetKind.Gauge))
+                         c.TargetKind == TestConsequenceTargetKind.Gauge ||
+                         c.TargetKind == TestConsequenceTargetKind.SessionGauge))
                     .ToList();
 
                 foreach (var consequence in legacyConsequences)
@@ -471,7 +605,28 @@ namespace Rollocracy.Infrastructure.Services
                             var previousCharacterDiedAt = character.DiedAtUtc;
                             var previousValue = gaugeValue.Value;
 
-                            gaugeValue.Value += signedValue;
+                            var gaugeDefinition = await context.GaugeDefinitions
+                                .AsNoTracking()
+                                .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId);
+
+                            if (gaugeDefinition != null)
+                            {
+                                var effectiveMax = await ComputeEffectiveGaugeMaxAsync(
+                                    context,
+                                    vote.CharacterId,
+                                    consequence.TargetDefinitionId);
+
+                                gaugeValue.Value = Math.Clamp(
+                                    gaugeValue.Value + signedValue,
+                                    gaugeDefinition.MinValue,
+                                    effectiveMax);
+
+                                await UpdateCharacterAliveStateAsync(
+                                    context,
+                                    session.GameSystemId,
+                                    vote.CharacterId,
+                                    character);
+                            }
 
                             hasAppliedEffects = true;
 
@@ -669,6 +824,104 @@ namespace Rollocracy.Infrastructure.Services
 
             await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
             await _sessionNotifier.NotifyPollChangedAsync(sessionId);
+        }
+
+        public async Task<List<SessionPollPresetDto>> GetSessionPresetsAsync(Guid sessionId, Guid gameMasterUserAccountId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var sessionExists = await context.Sessions
+                .AsNoTracking()
+                .AnyAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (!sessionExists)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var presets = await context.SessionPollPresets
+                .AsNoTracking()
+                .Where(x => x.SessionId == sessionId)
+                .OrderBy(x => x.Name)
+                .ToListAsync();
+
+            return presets.Select(x => new SessionPollPresetDto
+            {
+                PresetId = x.Id,
+                SessionId = x.SessionId,
+                Name = x.Name,
+                CreatedAtUtc = x.CreatedAtUtc,
+                UpdatedAtUtc = x.UpdatedAtUtc,
+                Request = DeserializePollPresetPayload(x.PayloadJson)
+            }).ToList();
+        }
+
+        public async Task SaveSessionPresetAsync(
+            Guid sessionId,
+            Guid gameMasterUserAccountId,
+            string presetName,
+            PollCreateRequestDto request,
+            bool overwrite)
+        {
+            var normalizedName = (presetName ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(normalizedName))
+                throw new Exception(_localizer["Backend_PollPresetNameRequired"]);
+
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var sessionExists = await context.Sessions
+                .AsNoTracking()
+                .AnyAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (!sessionExists)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var existing = await context.SessionPollPresets
+                .FirstOrDefaultAsync(x => x.SessionId == sessionId && x.Name == normalizedName);
+
+            var payloadJson = JsonSerializer.Serialize(request);
+
+            if (existing is null)
+            {
+                context.SessionPollPresets.Add(new SessionPollPreset
+                {
+                    Id = Guid.NewGuid(),
+                    SessionId = sessionId,
+                    Name = normalizedName,
+                    PayloadJson = payloadJson,
+                    CreatedAtUtc = DateTime.UtcNow,
+                    UpdatedAtUtc = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                if (!overwrite)
+                    throw new Exception(_localizer["Backend_PollPresetAlreadyExists"]);
+
+                existing.PayloadJson = payloadJson;
+                existing.UpdatedAtUtc = DateTime.UtcNow;
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        public async Task DeleteSessionPresetAsync(Guid sessionId, Guid gameMasterUserAccountId, Guid presetId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var sessionExists = await context.Sessions
+                .AsNoTracking()
+                .AnyAsync(s => s.Id == sessionId && s.GameMasterUserAccountId == gameMasterUserAccountId);
+
+            if (!sessionExists)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            var preset = await context.SessionPollPresets
+                .FirstOrDefaultAsync(x => x.Id == presetId && x.SessionId == sessionId);
+
+            if (preset is null)
+                throw new Exception(_localizer["Backend_PollPresetNotFound"]);
+
+            context.SessionPollPresets.Remove(preset);
+            await context.SaveChangesAsync();
         }
 
         public async Task UndoLatestPollConsequencesAsync(Guid sessionId, Guid gameMasterUserAccountId)
@@ -1635,6 +1888,21 @@ namespace Rollocracy.Infrastructure.Services
                 TestConsequenceOperationType.RevokeItem => consequence.TargetDefinitionId != Guid.Empty,
                 _ => false
             };
+        }
+
+        private static PollCreateRequestDto DeserializePollPresetPayload(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new PollCreateRequestDto();
+
+            try
+            {
+                return JsonSerializer.Deserialize<PollCreateRequestDto>(json) ?? new PollCreateRequestDto();
+            }
+            catch
+            {
+                return new PollCreateRequestDto();
+            }
         }
     }
 }

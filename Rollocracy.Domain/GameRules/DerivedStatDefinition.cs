@@ -17,5 +17,7 @@ namespace Rollocracy.Domain.GameRules
         public ComputedValueRoundMode RoundMode { get; set; } = ComputedValueRoundMode.Ceiling;
 
         public int DisplayOrder { get; set; }
+        public int CreationDistributionPoints { get; set; }
+        public int MaxCreationDistributionPerCharacter { get; set; }
     }
 }

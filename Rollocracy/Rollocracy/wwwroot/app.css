@@ -4131,3 +4131,21 @@ html[data-theme="dark"] .rc-journal-popup-page .rc-journal-viewer__nav > button:
 .rc-account-email-edit__masked {
     justify-content: flex-start;
 }
+
+/* =========================================================
+   II-1 - FAMILLES D'OBJETS DANS EDIT GAME SYSTEM
+   ========================================================= */
+
+.rc-item-family-editor {
+    margin-bottom: 1rem;
+}
+
+.rc-item-family-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 0.75rem;
+}
+
+.rc-item-family-card {
+    min-width: 0;
+}

@@ -15,7 +15,6 @@
 @inject IHubContext<SessionHub> SessionHubContext
 @inject IStringLocalizer<SharedTexts> L
 
-
 <p>@L["Session_Join_GameMasterLabel"] : @mjUsername</p>
 <p>@L["Session_Join_SessionLabel"] : @sessionSlug</p>
 
@@ -25,7 +24,14 @@
 }
 else if (!IsAuthenticated)
 {
-    <p>@L["Session_Join_MustBeLoggedIn"]</p>
+    <div class="rc-filter-group-card">
+        <p>@L["Session_Join_MustBeLoggedIn"]</p>
+
+        <div class="rc-tool-actions">
+            <button type="button" @onclick="GoToLogin">@L["Auth_Login_Action"]</button>
+            <button type="button" @onclick="GoToRegister">@L["Auth_Register_Title"]</button>
+        </div>
+    </div>
 }
 else if (Session is null)
 {
@@ -70,6 +76,8 @@ else
     private string SessionPassword = string.Empty;
     private string Message = string.Empty;
 
+    private string CurrentJoinPath => $"/{mjUsername}/{sessionSlug}";
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
@@ -97,6 +105,16 @@ else
         }
 
         IsLoaded = true;
+    }
+
+    private void GoToLogin()
+    {
+        Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(CurrentJoinPath)}");
+    }
+
+    private void GoToRegister()
+    {
+        Navigation.NavigateTo($"/register?returnUrl={Uri.EscapeDataString(CurrentJoinPath)}");
     }
 
     private async Task HandleJoinSession()

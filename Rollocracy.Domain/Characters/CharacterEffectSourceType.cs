@@ -5,6 +5,7 @@ namespace Rollocracy.Domain.Characters
     {
         MassDistribution = 0,
         Test = 1,
-        Poll = 2
+        Poll = 2,
+        Item = 4
     }
 }

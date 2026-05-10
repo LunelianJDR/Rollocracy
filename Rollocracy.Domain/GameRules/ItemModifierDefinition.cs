@@ -9,6 +9,8 @@ namespace Rollocracy.Domain.GameRules
 
         public Guid ItemDefinitionId { get; set; }
 
+        public ModifierOperationType OperationType { get; set; }
+
         public ModifierTargetType TargetType { get; set; }
 
         public Guid TargetId { get; set; }
@@ -18,6 +20,8 @@ namespace Rollocracy.Domain.GameRules
         public ModifierValueMode ValueMode { get; set; }
 
         public Guid? SourceMetricId { get; set; }
+
+        public bool FillGaugeCurrentValueOnly { get; set; }
 
         public ItemDefinition? ItemDefinition { get; set; }
     }

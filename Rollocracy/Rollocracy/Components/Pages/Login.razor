@@ -39,7 +39,7 @@
                 <div class="rc-inline-error">@L["Auth_Login_TwitchError"]</div>
             }
 
-            <form method="post" action="/auth/login" class="rc-auth-form">
+            <form method="post" action="@LoginActionUrl" class="rc-auth-form">
                 <div class="rc-form-field">
                     <label for="username">@L["Common_Username"]</label>
                     <input id="username" name="Username" autocomplete="username" />
@@ -55,6 +55,11 @@
                     <span>@L["Auth_Login_RememberMe"]</span>
                 </label>
 
+                @if (!string.IsNullOrWhiteSpace(ReturnUrl))
+                {
+                    <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+                }
+
                 <div class="rc-tool-actions">
                     <button type="submit">@L["Auth_Login_Action"]</button>
                 </div>
@@ -64,13 +69,12 @@
         </article>
 
         <article class="rc-auth-panel">
-            <div class="rc-tool-panel__header-main">
+            @* <div class="rc-tool-panel__header-main">
                 <h2 class="rc-tool-panel__title">@L["Auth_Login_AlternativeTitle"]</h2>
                 <p class="rc-tool-panel__subtitle">@L["Auth_Login_AlternativeSubtitle"]</p>
-            </div>
+            </div> *@
 
             <div class="rc-auth-stack">
-                <!-- Connexion directe Twitch -->
                 <a class="rc-auth-link-button" href="/auth/twitch/login?language=fr">
                     @L["Auth_Login_WithTwitch"]
                 </a>
@@ -79,7 +83,7 @@
 
                 <div class="rc-auth-divider"></div>
 
-                <a class="rc-auth-link-button" href="/register">@L["Auth_Login_CreateAccount"]</a>
+                <a class="rc-auth-link-button" href="@RegisterUrl">@L["Auth_Login_CreateAccount"]</a>
             </div>
         </article>
     </div>
@@ -91,24 +95,39 @@
     private bool HasResetSuccess;
     private bool HasVerifiedEmail;
     private bool HasTwitchError;
+    private string ReturnUrl = string.Empty;
+
+    private string RegisterUrl =>
+        string.IsNullOrWhiteSpace(ReturnUrl)
+            ? "/register"
+            : $"/register?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
+
+    private string LoginActionUrl =>
+        string.IsNullOrWhiteSpace(ReturnUrl)
+            ? "/auth/login"
+            : $"/auth/login?returnUrl={Uri.EscapeDataString(ReturnUrl)}";
 
     protected override void OnInitialized()
     {
         var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
 
-        if (!string.IsNullOrWhiteSpace(uri.Query) && uri.Query.Contains("error=1"))
+        if (query.ContainsKey("error") && query["error"] == "1")
             HasError = true;
 
-        if (!string.IsNullOrWhiteSpace(uri.Query) && uri.Query.Contains("registered=1"))
+        if (query.ContainsKey("registered") && query["registered"] == "1")
             HasRegistered = true;
 
-        if (!string.IsNullOrWhiteSpace(uri.Query) && uri.Query.Contains("reset=1"))
+        if (query.ContainsKey("reset") && query["reset"] == "1")
             HasResetSuccess = true;
 
-        if (!string.IsNullOrWhiteSpace(uri.Query) && uri.Query.Contains("verified=1"))
+        if (query.ContainsKey("verified") && query["verified"] == "1")
             HasVerifiedEmail = true;
 
-        if (!string.IsNullOrWhiteSpace(uri.Query) && uri.Query.Contains("twitch_error=1"))
+        if (query.ContainsKey("twitch_error") && query["twitch_error"] == "1")
             HasTwitchError = true;
+
+        if (query.TryGetValue("returnUrl", out var returnUrlValue))
+            ReturnUrl = returnUrlValue.ToString();
     }
 }

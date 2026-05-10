@@ -33,6 +33,8 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<CharacterModifier> CharacterModifiers => Set<CharacterModifier>();
 
         public DbSet<SessionJournalPage> SessionJournalPages => Set<SessionJournalPage>();
+        public DbSet<SessionStore> SessionStores => Set<SessionStore>();
+        public DbSet<SessionStoreOffer> SessionStoreOffers => Set<SessionStoreOffer>();
 
         public DbSet<AttributeDefinition> AttributeDefinitions => Set<AttributeDefinition>();
         public DbSet<DerivedStatDefinition> DerivedStatDefinitions => Set<DerivedStatDefinition>();
@@ -57,6 +59,8 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<GameTestAppliedEffect> GameTestAppliedEffects => Set<GameTestAppliedEffect>();
 
         public DbSet<SessionPoll> SessionPolls => Set<SessionPoll>();
+        public DbSet<SessionGameTestPreset> SessionGameTestPresets => Set<SessionGameTestPreset>();
+        public DbSet<SessionPollPreset> SessionPollPresets => Set<SessionPollPreset>();
         public DbSet<SessionPollOption> SessionPollOptions => Set<SessionPollOption>();
         public DbSet<SessionPollVote> SessionPollVotes => Set<SessionPollVote>();
         public DbSet<SessionPollEligibleCharacter> SessionPollEligibleCharacters => Set<SessionPollEligibleCharacter>();
@@ -399,8 +403,8 @@ namespace Rollocracy.Infrastructure.Persistence
                     .HasColumnType("text");
 
                 entity.Property(x => x.ResultSnapshotJson)
-                   
-                
+
+
                 .HasColumnType("text");
             });
 
@@ -461,6 +465,52 @@ namespace Rollocracy.Infrastructure.Persistence
                 entity.HasIndex(x => x.SessionPollId);
                 entity.HasIndex(x => x.CharacterId);
                 entity.HasIndex(x => new { x.SessionPollId, x.CharacterId }).IsUnique();
+            });
+
+            modelBuilder.Entity<SessionGameTestPreset>(entity =>
+            {
+                entity.HasIndex(x => x.SessionId);
+                entity.HasIndex(x => new { x.SessionId, x.Name }).IsUnique();
+
+                entity.Property(x => x.Name)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.PayloadJson)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.CreatedAtUtc)
+                    .HasColumnType("timestamp with time zone");
+
+                entity.Property(x => x.UpdatedAtUtc)
+                    .HasColumnType("timestamp with time zone");
+            });
+
+            modelBuilder.Entity<SessionPollPreset>(entity =>
+            {
+                entity.HasIndex(x => x.SessionId);
+                entity.HasIndex(x => new { x.SessionId, x.Name }).IsUnique();
+
+                entity.Property(x => x.Name)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.PayloadJson)
+                    .HasColumnType("text");
+
+                entity.Property(x => x.CreatedAtUtc)
+                    .HasColumnType("timestamp with time zone");
+
+                entity.Property(x => x.UpdatedAtUtc)
+                    .HasColumnType("timestamp with time zone");
+            });
+            modelBuilder.Entity<SessionStore>(entity =>
+            {
+                entity.HasIndex(x => x.SessionId).IsUnique();
+            });
+
+            modelBuilder.Entity<SessionStoreOffer>(entity =>
+            {
+                entity.HasIndex(x => x.SessionStoreId);
+                entity.HasIndex(x => new { x.SessionStoreId, x.DisplayOrder });
             });
         }
     }

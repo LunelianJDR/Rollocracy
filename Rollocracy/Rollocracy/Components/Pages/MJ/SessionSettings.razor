@@ -39,10 +39,10 @@ else
                         <h4 class="rc-tool-panel__title">@L["Session_Settings_Title"]</h4>
                         <p class="rc-tool-panel__subtitle">@L["Session_Settings_Subtitle"]</p>
                     </div>
-
+@* 
                     <div class="rc-tool-actions">
-                        <button type="button" @onclick="BackToSession">@L["Session_BackToSession"]</button>
-                    </div>
+                        <button type="button" @onclick="GoToStore">@L["Session_Settings_ManageStore"]</button>
+                    </div> *@
                 </div>
 
                 @if (!string.IsNullOrWhiteSpace(Message))
@@ -96,13 +96,13 @@ else
                                 @if (Settings.IsActive)
                                 {
                                     <button type="button" @onclick="DeactivateSession">
-                                        @L["Session_List_Deactivate"]
+                                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M320-640v320-320Zm-80 400v-480h480v480H240Zm80-80h320v-320H320v320Z" /></svg>
                                     </button>
                                 }
                                 else
                                 {
                                     <button type="button" @onclick="ActivateSession">
-                                        @L["Session_List_Activate"]
+                                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M320-200v-560l440 280-440 280Zm80-280Zm0 134 210-134-210-134v268Z" /></svg>
                                     </button>
                                 }
                             </div>
@@ -373,6 +373,22 @@ else
                                 </div>
                             </div>
 
+                            <div class="rc-form-field">
+                                <label></label>
+                                <label class="rc-filter-toggle">
+                                    <input type="checkbox" @bind="item.IsConsumable" />
+                                    <span>@L["GameSystem_Editor_ItemIsConsumable"]</span>
+                                </label>
+                            </div>
+
+                            @if (item.IsConsumable)
+                            {
+                                <div class="rc-form-field">
+                                    <label>@L["GameSystem_Editor_ItemMaxQuantityPerCharacter"]</label>
+                                    <input type="number" min="1" @bind="item.MaxQuantityPerCharacter" />
+                                </div>
+                            }
+
                             <div class="rc-tool-actions">
                                 <button type="button" @onclick="() => AddSessionItemModifierRow(item)">
                                     @L["GameSystem_Editor_AddItemModifierRow"]
@@ -405,6 +421,19 @@ else
                                             }
                                         </select>
                                     </div>
+
+                                    @if (modifier.TargetType == ModifierTargetType.Gauge && item.IsConsumable)
+                                    {
+                                        <div class="rc-form-field">
+                                            <label>@L["GameSystem_Editor_ItemModifierAffectsMaximum"]</label>
+                                            <label class="rc-filter-toggle">
+                                                <input type="checkbox"
+                                                       checked="@SessionItemGaugeModifierAffectsMaximum(modifier)"
+                                                       @onchange="e => SetSessionItemGaugeModifierAffectsMaximum(modifier, e.Value is bool value && value)" />
+                                                <span>@L["GameSystem_Editor_ItemModifierAffectsMaximum"]</span>
+                                            </label>
+                                        </div>
+                                    }
 
                                     <div class="rc-form-field">
                                         <label>@L["GameSystem_Editor_ModifierValueMode"]</label>
@@ -1001,7 +1030,9 @@ else
             TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
             Value = 0,
             ValueMode = ModifierValueMode.Fixed,
-            SourceMetricId = CurrentSystemEditor?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId
+            SourceMetricId = CurrentSystemEditor?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId,
+            OperationType = ModifierOperationType.AddValue,
+            FillGaugeCurrentValueOnly = false
         });
     }
 
@@ -1063,5 +1094,20 @@ else
         {
             Message = $"{L["Common_Error"]} : {ex.Message}";
         }
+    }
+
+    private bool SessionItemGaugeModifierAffectsMaximum(EditableModifierDefinitionDto modifier)
+    {
+        return !modifier.FillGaugeCurrentValueOnly;
+    }
+
+    private void SetSessionItemGaugeModifierAffectsMaximum(EditableModifierDefinitionDto modifier, bool affectsMaximum)
+    {
+        modifier.FillGaugeCurrentValueOnly = !affectsMaximum;
+    }
+
+    private void GoToStore()
+    {
+        Navigation.NavigateTo($"/mj/session/{SessionId}/store");
     }
 }

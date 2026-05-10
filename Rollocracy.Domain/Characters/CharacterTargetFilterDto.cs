@@ -37,5 +37,10 @@ namespace Rollocracy.Domain.Characters
 
         // Nouveau : filtre texte sur nom de personnage ou de joueur
         public List<Guid> NameCharacterIds { get; set; } = new();
+
+        // Filtre par présence dans un ou plusieurs tirages au sort récents (OR interne)
+        public List<Guid> RandomDrawIds { get; set; } = new();
+
+        public bool BiographyNotEmpty { get; set; }
     }
 }

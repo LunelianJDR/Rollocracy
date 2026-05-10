@@ -10,5 +10,7 @@ namespace Rollocracy.Domain.Characters
         public Guid CharacterId { get; set; }
 
         public Guid ItemDefinitionId { get; set; }
+
+        public int Quantity { get; set; } = 1;
     }
 }

@@ -8,7 +8,7 @@
 
         bool RemovePlayerPresence(Guid sessionId, Guid playerSessionId);
 
-        void TouchPlayerPresence(Guid sessionId, Guid playerSessionId, bool isGameMaster);
+        bool TouchPlayerPresence(Guid sessionId, Guid playerSessionId, bool isGameMaster);
 
         int GetConnectedPlayersCount(Guid sessionId);
 

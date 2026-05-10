@@ -7,6 +7,7 @@
 @using Rollocracy.Domain.GameRules
 @using Rollocracy.Localization
 @using Microsoft.JSInterop
+@using System.Text.Json
 
 @inject IJSRuntime JS
 @inject Rollocracy.Domain.Interfaces.IGameSystemService GameSystemService
@@ -29,7 +30,7 @@ else if (CurrentSystem is null)
 }
 else
 {
-    <section class="rc-tool-section">
+    <section class="rc-tool-section rc-gs-editor-page">
         <div class="rc-tool-layout rc-tool-layout--top">
             <div class="rc-tool-panel">
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
@@ -37,11 +38,9 @@ else
                         <h4 class="rc-tool-panel__title">@CurrentSystem.Name</h4>
                         <p class="rc-tool-panel__subtitle">@L["GameSystem_Editor_Subtitle"]</p>
                     </div>
-
                     <div class="rc-tool-actions">
                         <button type="button" @onclick="BackToOrigin">@GetReturnButtonLabel()</button>
                         <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
-
                         @if (CurrentSystem.CanUndoLastChange)
                         {
                             <button type="button" @onclick="UndoLastChange">@L["GameSystem_Editor_UndoLastChange"]</button>
@@ -49,68 +48,40 @@ else
                     </div>
                 </div>
 
-                @if (!string.IsNullOrWhiteSpace(Message))
-                {
-                    <p>@Message</p>
-                }
                 @if (ShowSharedConfirm)
                 {
                     <div class="rc-filter-group-card">
                         <p>@L["GameSystem_Editor_SharedConfirmMessage"]</p>
-
                         <div class="rc-tool-actions">
-                            <button type="button" @onclick="ConfirmSharedSave">
-                                @L["Common_Yes"]
-                            </button>
-                            <button type="button" @onclick="CancelSharedSave">
-                                @L["Common_Cancel"]
-                            </button>
+                            <button type="button" @onclick="ConfirmSharedSave">@L["Common_Yes"]</button>
+                            <button type="button" @onclick="CancelSharedSave">@L["Common_Cancel"]</button>
                         </div>
                     </div>
                 }
 
-                <div class="rc-test-stats-grid">
-                    <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsAttributes"]</span>
-                        <span class="rc-stat-card__value">@CurrentSystem.Attributes.Count(x => !x.IsDeleted)</span>
+                @if (!string.IsNullOrWhiteSpace(Message))
+                {
+                    <div class="rc-inline-warning rc-inline-warning--soft">
+                        <p>@Message</p>
                     </div>
+                }
 
-                    <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsDerivedStats"]</span>
-                        <span class="rc-stat-card__value">@CurrentSystem.DerivedStats.Count(x => !x.IsDeleted)</span>
-                    </div>
-
-                    <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsMetrics"]</span>
-                        <span class="rc-stat-card__value">@CurrentSystem.Metrics.Count(x => !x.IsDeleted)</span>
-                    </div>
-
-                    <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsTraits"]</span>
-                        <span class="rc-stat-card__value">@CurrentSystem.Traits.Count(x => !x.IsDeleted)</span>
-                    </div>
+                <div class="@(HasPendingUnsavedChanges ? "rc-editor-save-state rc-editor-save-state--dirty" : "rc-editor-save-state rc-editor-save-state--saved")">
+                    <strong>@(HasPendingUnsavedChanges ? L["GameSystem_Editor_PendingChangesTitle"] : L["GameSystem_Editor_AllChangesSavedTitle"])</strong>
+                    <span>@(HasPendingUnsavedChanges ? L["GameSystem_Editor_PendingChangesBody"] : L["GameSystem_Editor_AllChangesSavedBody"])</span>
                 </div>
 
                 <div class="rc-test-stats-grid">
-                    <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsGauges"]</span>
-                        <span class="rc-stat-card__value">@CurrentSystem.Gauges.Count(x => !x.IsDeleted)</span>
-                    </div>
-
-                    <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsTalents"]</span>
-                        <span class="rc-stat-card__value">@CurrentSystem.Talents.Count(x => !x.IsDeleted)</span>
-                    </div>
-
-                    <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsItems"]</span>
-                        <span class="rc-stat-card__value">@CurrentSystem.Items.Count(x => !x.IsDeleted)</span>
-                    </div>
-
-                    <div class="rc-stat-card">
-                        <span class="rc-stat-card__label">@L["GameSystem_Editor_StatsSessions"]</span>
-                        <span class="rc-stat-card__value">@CurrentSystem.ImpactedSessions.Count</span>
-                    </div>
+                    <div class="rc-stat-card"><span class="rc-stat-card__label">@L["GameSystem_Editor_StatsAttributes"]</span><span class="rc-stat-card__value">@GetCategoryCountLabel(EditorCategory.Attributes)</span></div>
+                    <div class="rc-stat-card"><span class="rc-stat-card__label">@L["GameSystem_Editor_StatsDerivedStats"]</span><span class="rc-stat-card__value">@GetCategoryCountLabel(EditorCategory.DerivedStats)</span></div>
+                    <div class="rc-stat-card"><span class="rc-stat-card__label">@L["GameSystem_Editor_StatsMetrics"]</span><span class="rc-stat-card__value">@GetCategoryCountLabel(EditorCategory.Metrics)</span></div>
+                    <div class="rc-stat-card"><span class="rc-stat-card__label">@L["GameSystem_Editor_StatsTraits"]</span><span class="rc-stat-card__value">@GetCategoryCountLabel(EditorCategory.Traits)</span></div>
+                </div>
+                <div class="rc-test-stats-grid">
+                    <div class="rc-stat-card"><span class="rc-stat-card__label">@L["GameSystem_Editor_StatsGauges"]</span><span class="rc-stat-card__value">@GetCategoryCountLabel(EditorCategory.Gauges)</span></div>
+                    <div class="rc-stat-card"><span class="rc-stat-card__label">@L["GameSystem_Editor_StatsTalents"]</span><span class="rc-stat-card__value">@GetCategoryCountLabel(EditorCategory.Talents)</span></div>
+                    <div class="rc-stat-card"><span class="rc-stat-card__label">@L["GameSystem_Editor_StatsItems"]</span><span class="rc-stat-card__value">@GetCategoryCountLabel(EditorCategory.Items)</span></div>
+                    <div class="rc-stat-card"><span class="rc-stat-card__label">@L["GameSystem_Editor_StatsSessions"]</span><span class="rc-stat-card__value">@CurrentSystem.ImpactedSessions.Count</span></div>
                 </div>
 
                 @if (!CurrentSystem.IsLockedToSessionCopy && CurrentSystem.ImpactedSessions.Count > 0)
@@ -141,1200 +112,570 @@ else
                         <h4 class="rc-tool-panel__title">@L["GameSystem_Editor_GeneralSection"]</h4>
                         <p class="rc-tool-panel__subtitle">@L["GameSystem_Editor_GeneralSectionSubtitle"]</p>
                     </div>
-
-                    <div class="rc-tool-actions">
-                        <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
-                    </div>
                 </div>
-
                 <div class="rc-tool-form-grid rc-tool-form-grid--dense">
-                    <div class="rc-form-field">
-                        <label>@L["Common_Name"]</label>
-                        <input @bind="CurrentSystem.Name" />
-                    </div>
-
-                    <div class="rc-form-field">
-                        <label>@L["GameSystem_ResolutionMode"]</label>
-                        <select @bind="CurrentSystem.TestResolutionMode">
-                            <option value="@TestResolutionMode.SuccessThreshold">@L["Resolution_SuccessThreshold"]</option>
-                            <option value="@TestResolutionMode.RollUnderAttribute">@L["Resolution_RollUnderAttribute"]</option>
-                        </select>
-                    </div>
-
-                    <div class="rc-form-field">
-                        <label>@L["GameSystem_Editor_DefaultTestDiceCount"]</label>
-                        <input type="number" @bind="CurrentSystem.DefaultTestDiceCount" />
-                    </div>
-
-                    <div class="rc-form-field">
-                        <label>@L["GameSystem_Editor_DefaultTestDiceSides"]</label>
-                        <input type="number" @bind="CurrentSystem.DefaultTestDiceSides" />
-                    </div>
-
-                    <div class="rc-form-field">
-                        <label>@GetCriticalSuccessLabel()</label>
-                        <input type="number" @bind="CurrentSystem.CriticalSuccessValue" />
-                    </div>
-
-                    <div class="rc-form-field">
-                        <label>@GetCriticalFailureLabel()</label>
-                        <input type="number" @bind="CurrentSystem.CriticalFailureValue" />
-                    </div>
-
+                    <div class="rc-form-field"><label>@L["Common_Name"]</label><input @bind="CurrentSystem.Name" /></div>
+                    <div class="rc-form-field"><label>@L["GameSystem_ResolutionMode"]</label><select @bind="CurrentSystem.TestResolutionMode"><option value="@TestResolutionMode.SuccessThreshold">@L["Resolution_SuccessThreshold"]</option><option value="@TestResolutionMode.RollUnderAttribute">@L["Resolution_RollUnderAttribute"]</option></select></div>
+                    <div class="rc-form-field"><label>@L["GameSystem_Editor_DefaultTestDiceCount"]</label><input type="number" @bind="CurrentSystem.DefaultTestDiceCount" /></div>
+                    <div class="rc-form-field"><label>@L["GameSystem_Editor_DefaultTestDiceSides"]</label><input type="number" @bind="CurrentSystem.DefaultTestDiceSides" /></div>
+                    @if (CurrentSystem.TestResolutionMode == TestResolutionMode.SuccessThreshold)
+                    {
+                        <div class="rc-form-field"><label>@L["GameSystem_Editor_DefaultSuccessThreshold"]</label><input type="number" min="1" @bind="CurrentSystem.DefaultSuccessThreshold" /></div>
+                    }
+                    <div class="rc-form-field"><label>@GetCriticalSuccessLabel()</label><input type="number" @bind="CurrentSystem.CriticalSuccessValue" /></div>
+                    <div class="rc-form-field"><label>@GetCriticalFailureLabel()</label><input type="number" @bind="CurrentSystem.CriticalFailureValue" /></div>
                     @if (CurrentSystem.CanEditGenericFlag && !CurrentSystem.IsLockedToSessionCopy)
                     {
-                        <div class="rc-form-field">
-                            <label>@L["GameSystem_Editor_IsGeneric"]</label>
-                            <label class="rc-filter-toggle">
-                                <input type="checkbox" @bind="CurrentSystem.IsGeneric" />
-                                <span>@L["Common_Yes"]</span>
-                            </label>
-                        </div>
+                        <div class="rc-form-field"><label>@L["GameSystem_Editor_IsGeneric"]</label><label class="rc-filter-toggle"><input type="checkbox" @bind="CurrentSystem.IsGeneric" /><span>@L["Common_Yes"]</span></label></div>
                     }
-
-                    <div class="rc-form-field rc-form-field--full">
-                        <label>@L["Common_Description"]</label>
-                        <textarea rows="4" @bind="CurrentSystem.Description"></textarea>
-                    </div>
+                    <div class="rc-form-field rc-form-field--full"><label>@L["Common_Description"]</label><textarea rows="4" @bind="CurrentSystem.Description"></textarea></div>
                 </div>
             </div>
         </div>
 
-        <details class="rc-collapse-section" open>
-            <summary class="rc-collapse-section__summary">
-                <div class="rc-collapse-section__summary-main">
-                    <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_AttributesSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_AttributesSubtitle"]</div>
-                </div>
-                        <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
-                            <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
+        <div class="rc-editor-shell">
+            <div class="rc-editor-sidebar">
+                <div class="@GetCategoryCardCssClass(EditorCategory.Attributes)">
+                    <div class="rc-editor-category-card__header">
+                        <div class="rc-filter-group-card__title">
+                            @L["GameSystem_Editor_AttributesSection"]
+                            <button type="button" class="rc-editor-category-card__title-button" @onclick="() => ToggleCategorySelection(EditorCategory.Attributes)"><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="m403-96-22-114q-23-9-44.5-21T296-259l-110 37-77-133 87-76q-2-12-3-24t-1-25q0-13 1-25t3-24l-87-76 77-133 110 37q19-16 40.5-28t44.5-21l22-114h154l22 114q23 9 44.5 21t40.5 28l110-37 77 133-87 76q2 12 3 24t1 25q0 13-1 25t-3 24l87 76-77 133-110-37q-19 16-40.5 28T579-210L557-96H403Zm59-72h36l19-99q38-7 71-26t57-48l96 32 18-30-76-67q6-17 9.5-35.5T696-480q0-20-3.5-38.5T683-554l76-67-18-30-96 32q-24-29-57-48t-71-26l-19-99h-36l-19 99q-38 7-71 26t-57 48l-96-32-18 30 76 67q-6 17-9.5 35.5T264-480q0 20 3.5 38.5T277-406l-76 67 18 30 96-32q24 29 57 48t71 26l19 99Zm18-168q60 0 102-42t42-102q0-60-42-102t-102-42q-60 0-102 42t-42 102q0 60 42 102t102 42Zm0-144Z" /></svg></button>
+                        </div>
+                        <div class="rc-tool-inline-actions">
+                            @if (!IsCategoryCollapsed(EditorCategory.Attributes))
+                            {
+                                <button type="button" disabled="@IsCategoryLimitReached(EditorCategory.Attributes)" @onclick="AddAndSelectAttribute">@L["GameSystem_Editor_AddAttributeRow"]</button>
+                            }
+                            <button type="button" @onclick="() => ToggleCategoryCollapse(EditorCategory.Attributes)">@GetCategoryCollapseLabel(EditorCategory.Attributes)</button>
                         </div>
                     </div>
-            </summary>
-
-            <div class="rc-collapse-section__body">
-                <div class="rc-tool-panel">
-                    <div class="rc-tool-actions">
-                        <button type="button" @onclick="AddAttributeRow">@L["GameSystem_Editor_AddAttributeRow"]</button>
-                    </div>
-
-                    @if (CurrentSystem.Attributes.Count == 0)
+                    @if (!IsCategoryCollapsed(EditorCategory.Attributes))
                     {
-                        <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["GameSystem_Editor_NoAttributes"]</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="rc-consequence-list">
+                        <div class="rc-editor-list">
                             @foreach (var attributeItem in CurrentSystem.Attributes)
                             {
-                                <article class="rc-filter-group-card">
-                                    @if (attributeItem.IsDeleted)
-                                    {
-                                        <div class="rc-inline-warning">
-                                            <p><strong>@attributeItem.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
-                                        </div>
-
-                                        <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => attributeItem.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Name"]</label>
-                                                <input @bind="attributeItem.Name" />
-                                            </div>
-
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Min"]</label>
-                                                <input type="number" @bind="attributeItem.MinValue" />
-                                            </div>
-
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Max"]</label>
-                                                <input type="number" @bind="attributeItem.MaxValue" />
-                                            </div>
-                                            <div class="rc-form-field">
-                                                <label>@L["GameSystem_Editor_DefaultMode"]</label>
-                                                <select @bind="attributeItem.DefaultValueMode">
-                                                    <option value="@BaseValueGenerationMode.Fixed">@L["GameSystem_Editor_DefaultModeFixed"]</option>
-                                                    <option value="@BaseValueGenerationMode.DiceExpression">@L["GameSystem_Editor_DefaultModeDice"]</option>
-                                                </select>
-                                            </div>
-
-                                            @if (attributeItem.DefaultValueMode == BaseValueGenerationMode.DiceExpression)
-                                            {
-                                                <div class="rc-form-field">
-                                                    <label>@L["GameSystem_Editor_DefaultFlatBonus"]</label>
-                                                    <input type="number" @bind="attributeItem.DefaultValueFlatBonus" />
-                                                </div>
-                                            }
-                                            else
-                                            {
-                                                <div class="rc-form-field">
-                                                    <label>@L["Common_DefaultValue"]</label>
-                                                    <input type="number" @bind="attributeItem.DefaultValue" />
-                                                </div>
-                                            }
-
-                                            @if (attributeItem.DefaultValueMode == BaseValueGenerationMode.DiceExpression)
-                                            {
-                                                <div class="rc-form-field">
-                                                    <label>@L["GameSystem_Editor_DefaultDiceCount"]</label>
-                                                    <input type="number" @bind="attributeItem.DefaultValueDiceCount" />
-                                                </div>
-
-                                                <div class="rc-form-field">
-                                                    <label>@L["GameSystem_Editor_DefaultDiceSides"]</label>
-                                                    <input type="number" @bind="attributeItem.DefaultValueDiceSides" />
-                                                </div>
-                                            }
-                                        </div>
-
-                                        <div class="rc-tool-actions">
-                                            @if (attributeItem.AttributeDefinitionId.HasValue)
-                                            {
-                                                <button type="button" @onclick="() => attributeItem.IsDeleted = true">@L["Common_Remove"]</button>
-                                            }
-                                            else
-                                            {
-                                                <button type="button" @onclick="() => CurrentSystem.Attributes.Remove(attributeItem)">@L["Common_Remove"]</button>
-                                            }
-                                        </div>
-                                    }
-                                </article>
+                                <button type="button" class="@GetEditorListItemClass(EditorCategory.Attributes, GetAttributeKey(attributeItem), attributeItem.IsDeleted)" @onclick="() => ToggleEditorSelection(EditorCategory.Attributes, GetAttributeKey(attributeItem))">
+                                    <span class="rc-editor-list-item__title">@DisplayNameOrPlaceholder(attributeItem.Name)</span>
+                                    <span class="rc-editor-list-item__summary">@GetAttributeSummary(attributeItem)</span>
+                                </button>
                             }
                         </div>
                     }
                 </div>
-            </div>
-        </details>
 
-        <details class="rc-collapse-section">
-            <summary class="rc-collapse-section__summary">
-                <div class="rc-collapse-section__summary-main">
-                    <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_DerivedStatsSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_DerivedStatsHelp"]</div>
-                    </div>
-
-                    <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
-                        <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
-                    </div>
-                </div>
-            </summary>
-
-            <div class="rc-collapse-section__body">
-                <div class="rc-tool-panel">
-                    <div class="rc-tool-actions">
-                        <button type="button" @onclick="AddDerivedStatRow">@L["GameSystem_Editor_AddDerivedStatRow"]</button>
-                    </div>
-
-                    @if (CurrentSystem.DerivedStats.Count == 0)
-                    {
-                        <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["GameSystem_Editor_NoDerivedStats"]</p>
+                <div class="@GetCategoryCardCssClass(EditorCategory.DerivedStats)">
+                    <div class="rc-editor-category-card__header">
+                        <div class="rc-filter-group-card__title">
+                            @L["GameSystem_Editor_DerivedStatsSection"]
+                            <button type="button" class="rc-editor-category-card__title-button" @onclick="() => ToggleCategorySelection(EditorCategory.DerivedStats)"><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="m403-96-22-114q-23-9-44.5-21T296-259l-110 37-77-133 87-76q-2-12-3-24t-1-25q0-13 1-25t3-24l-87-76 77-133 110 37q19-16 40.5-28t44.5-21l22-114h154l22 114q23 9 44.5 21t40.5 28l110-37 77 133-87 76q2 12 3 24t1 25q0 13-1 25t-3 24l87 76-77 133-110-37q-19 16-40.5 28T579-210L557-96H403Zm59-72h36l19-99q38-7 71-26t57-48l96 32 18-30-76-67q6-17 9.5-35.5T696-480q0-20-3.5-38.5T683-554l76-67-18-30-96 32q-24-29-57-48t-71-26l-19-99h-36l-19 99q-38 7-71 26t-57 48l-96-32-18 30 76 67q-6 17-9.5 35.5T264-480q0 20 3.5 38.5T277-406l-76 67 18 30 96-32q24 29 57 48t71 26l19 99Zm18-168q60 0 102-42t42-102q0-60-42-102t-102-42q-60 0-102 42t-42 102q0 60 42 102t102 42Zm0-144Z" /></svg></button>
                         </div>
-                    }
-                    else
+                        <div class="rc-tool-inline-actions">
+                            @if (!IsCategoryCollapsed(EditorCategory.DerivedStats))
+                            {
+                                <button type="button" disabled="@IsCategoryLimitReached(EditorCategory.DerivedStats)" @onclick="AddAndSelectDerivedStat">@L["GameSystem_Editor_AddDerivedStatRow"]</button>
+                            }
+                            <button type="button" @onclick="() => ToggleCategoryCollapse(EditorCategory.DerivedStats)">@GetCategoryCollapseLabel(EditorCategory.DerivedStats)</button>
+                        </div>
+                    </div>
+                    @if (!IsCategoryCollapsed(EditorCategory.DerivedStats))
                     {
-                        <div class="rc-consequence-list">
+                        <div class="rc-editor-list">
                             @foreach (var derivedStat in CurrentSystem.DerivedStats)
                             {
-                                <article class="rc-filter-group-card">
-                                    @if (derivedStat.IsDeleted)
-                                    {
-                                        <div class="rc-inline-warning">
-                                            <p><strong>@derivedStat.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
-                                        </div>
+                                <button type="button" class="@GetEditorListItemClass(EditorCategory.DerivedStats, GetDerivedStatKey(derivedStat), derivedStat.IsDeleted)" @onclick="() => ToggleEditorSelection(EditorCategory.DerivedStats, GetDerivedStatKey(derivedStat))">
+                                    <span class="rc-editor-list-item__title">@DisplayNameOrPlaceholder(derivedStat.Name)</span>
+                                    <span class="rc-editor-list-item__summary">@GetDerivedStatSummary(derivedStat)</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
 
-                                        <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => derivedStat.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Name"]</label>
-                                                <input @bind="derivedStat.Name" />
-                                            </div>
+                <div class="@GetCategoryCardCssClass(EditorCategory.Metrics)">
+                    <div class="rc-editor-category-card__header">
+                        <div class="rc-filter-group-card__title">
+                            @L["GameSystem_Editor_MetricsSection"]
+                            <button type="button" class="rc-editor-category-card__title-button" @onclick="() => ToggleCategorySelection(EditorCategory.Metrics)"><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M444-288h72v-240h-72v240Zm61.5-322.29q10.5-10.29 10.5-25.5t-10.29-25.71q-10.29-10.5-25.5-10.5t-25.71 10.29q-10.5 10.29-10.5 25.5t10.29 25.71q10.29 10.5 25.5 10.5t25.71-10.29ZM480.28-96Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Zm-.28-72q130 0 221-91t91-221q0-130-91-221t-221-91q-130 0-221 91t-91 221q0 130 91 221t221 91Zm0-312Z" /></svg></button>
+                        </div>
+                        <div class="rc-tool-inline-actions">
+                            @if (!IsCategoryCollapsed(EditorCategory.Metrics))
+                            {
+                                <button type="button" disabled="@IsCategoryLimitReached(EditorCategory.Metrics)" @onclick="AddAndSelectMetric">@L["GameSystem_Editor_AddMetricRow"]</button>
+                            }
+                            <button type="button" @onclick="() => ToggleCategoryCollapse(EditorCategory.Metrics)">@GetCategoryCollapseLabel(EditorCategory.Metrics)</button>
+                        </div>
+                    </div>
+                    @if (!IsCategoryCollapsed(EditorCategory.Metrics))
+                    {
+                        <div class="rc-editor-list">
+                            @foreach (var metric in CurrentSystem.Metrics)
+                            {
+                                <button type="button" class="@GetEditorListItemClass(EditorCategory.Metrics, GetMetricKey(metric), metric.IsDeleted)" @onclick="() => ToggleEditorSelection(EditorCategory.Metrics, GetMetricKey(metric))">
+                                    <span class="rc-editor-list-item__title">@DisplayNameOrPlaceholder(metric.Name)</span>
+                                    <span class="rc-editor-list-item__summary">@GetMetricSummary(metric)</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
 
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Min"]</label>
-                                                <input type="number" @bind="derivedStat.MinValue" />
-                                            </div>
+                <div class="@GetCategoryCardCssClass(EditorCategory.Traits)">
+                    <div class="rc-editor-category-card__header">
+                        <div class="rc-filter-group-card__title">
+                            @L["GameSystem_Editor_TraitsSection"]
+                            <button type="button" class="rc-editor-category-card__title-button" @onclick="() => ToggleCategorySelection(EditorCategory.Traits)"><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M444-288h72v-240h-72v240Zm61.5-322.29q10.5-10.29 10.5-25.5t-10.29-25.71q-10.29-10.5-25.5-10.5t-25.71 10.29q-10.5 10.29-10.5 25.5t10.29 25.71q10.29 10.5 25.5 10.5t25.71-10.29ZM480.28-96Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Zm-.28-72q130 0 221-91t91-221q0-130-91-221t-221-91q-130 0-221 91t-91 221q0 130 91 221t221 91Zm0-312Z" /></svg></button>
+                        </div>
+                        <div class="rc-tool-inline-actions">
+                            @if (!IsCategoryCollapsed(EditorCategory.Traits))
+                            {
+                                <button type="button" disabled="@IsCategoryLimitReached(EditorCategory.Traits)" @onclick="AddAndSelectTrait">@L["GameSystem_Editor_AddTraitRow"]</button>
+                            }
+                            <button type="button" @onclick="() => ToggleCategoryCollapse(EditorCategory.Traits)">@GetCategoryCollapseLabel(EditorCategory.Traits)</button>
+                        </div>
+                    </div>
+                    @if (!IsCategoryCollapsed(EditorCategory.Traits))
+                    {
+                        <div class="rc-editor-list">
+                            @foreach (var trait in CurrentSystem.Traits)
+                            {
+                                <button type="button" class="@GetEditorListItemClass(EditorCategory.Traits, GetTraitKey(trait), trait.IsDeleted)" @onclick="() => ToggleEditorSelection(EditorCategory.Traits, GetTraitKey(trait))">
+                                    <span class="rc-editor-list-item__title">@DisplayNameOrPlaceholder(trait.Name)</span>
+                                    <span class="rc-editor-list-item__summary">@GetTraitSummary(trait)</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
 
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Max"]</label>
-                                                <input type="number" @bind="derivedStat.MaxValue" />
-                                            </div>
+                <div class="@GetCategoryCardCssClass(EditorCategory.Gauges)">
+                    <div class="rc-editor-category-card__header">
+                        <div class="rc-filter-group-card__title">
+                            @L["GameSystem_Editor_GaugesSection"]
+                            <button type="button" class="rc-editor-category-card__title-button" @onclick="() => ToggleCategorySelection(EditorCategory.Gauges)"><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="M444-288h72v-240h-72v240Zm61.5-322.29q10.5-10.29 10.5-25.5t-10.29-25.71q-10.29-10.5-25.5-10.5t-25.71 10.29q-10.5 10.29-10.5 25.5t10.29 25.71q10.29 10.5 25.5 10.5t25.71-10.29ZM480.28-96Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Zm-.28-72q130 0 221-91t91-221q0-130-91-221t-221-91q-130 0-221 91t-91 221q0 130 91 221t221 91Zm0-312Z" /></svg></button>
+                        </div>
+                        <div class="rc-tool-inline-actions">
+                            @if (!IsCategoryCollapsed(EditorCategory.Gauges))
+                            {
+                                <button type="button" disabled="@IsCategoryLimitReached(EditorCategory.Gauges)" @onclick="AddAndSelectGauge">@L["GameSystem_Editor_AddGaugeRow"]</button>
+                            }
+                            <button type="button" @onclick="() => ToggleCategoryCollapse(EditorCategory.Gauges)">@GetCategoryCollapseLabel(EditorCategory.Gauges)</button>
+                        </div>
+                    </div>
+                    @if (!IsCategoryCollapsed(EditorCategory.Gauges))
+                    {
+                        <div class="rc-editor-list">
+                            @foreach (var gauge in CurrentSystem.Gauges)
+                            {
+                                <button type="button" class="@GetEditorListItemClass(EditorCategory.Gauges, GetGaugeKey(gauge), gauge.IsDeleted)" @onclick="() => ToggleEditorSelection(EditorCategory.Gauges, GetGaugeKey(gauge))">
+                                    <span class="rc-editor-list-item__title">@DisplayNameOrPlaceholder(gauge.Name)</span>
+                                    <span class="rc-editor-list-item__summary">@GetGaugeSummary(gauge)</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
 
-                                            <div class="rc-form-field">
-                                                <label>@L["GameSystem_Editor_RoundMode"]</label>
-                                                <select @bind="derivedStat.RoundMode">
-                                                    <option value="@ComputedValueRoundMode.Ceiling">@L["GameSystem_Editor_RoundModeCeiling"]</option>
-                                                    <option value="@ComputedValueRoundMode.Floor">@L["GameSystem_Editor_RoundModeFloor"]</option>
-                                                    <option value="@ComputedValueRoundMode.Nearest">@L["GameSystem_Editor_RoundModeNearest"]</option>
-                                                    <option value="@ComputedValueRoundMode.None">@L["GameSystem_Editor_RoundModeNone"]</option>
-                                                </select>
-                                            </div>
+                <div class="@GetCategoryCardCssClass(EditorCategory.Talents)">
+                    <div class="rc-editor-category-card__header">
+                        <div class="rc-filter-group-card__title">
+                            @L["GameSystem_Editor_TalentsSection"]
+                            <button type="button" class="rc-editor-category-card__title-button" @onclick="() => ToggleCategorySelection(EditorCategory.Talents)"><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="m403-96-22-114q-23-9-44.5-21T296-259l-110 37-77-133 87-76q-2-12-3-24t-1-25q0-13 1-25t3-24l-87-76 77-133 110 37q19-16 40.5-28t44.5-21l22-114h154l22 114q23 9 44.5 21t40.5 28l110-37 77 133-87 76q2 12 3 24t1 25q0 13-1 25t-3 24l87 76-77 133-110-37q-19 16-40.5 28T579-210L557-96H403Zm59-72h36l19-99q38-7 71-26t57-48l96 32 18-30-76-67q6-17 9.5-35.5T696-480q0-20-3.5-38.5T683-554l76-67-18-30-96 32q-24-29-57-48t-71-26l-19-99h-36l-19 99q-38 7-71 26t-57 48l-96-32-18 30 76 67q-6 17-9.5 35.5T264-480q0 20 3.5 38.5T277-406l-76 67 18 30 96-32q24 29 57 48t71 26l19 99Zm18-168q60 0 102-42t42-102q0-60-42-102t-102-42q-60 0-102 42t-42 102q0 60 42 102t102 42Zm0-144Z" /></svg></button>
+                        </div>
+                        <div class="rc-tool-inline-actions">
+                            @if (!IsCategoryCollapsed(EditorCategory.Talents))
+                            {
+                                <button type="button" disabled="@IsCategoryLimitReached(EditorCategory.Talents)" @onclick="AddAndSelectTalent">@L["GameSystem_Editor_AddTalentRow"]</button>
+                            }
+                            <button type="button" @onclick="() => ToggleCategoryCollapse(EditorCategory.Talents)">@GetCategoryCollapseLabel(EditorCategory.Talents)</button>
+                        </div>
+                    </div>
+                    @if (!IsCategoryCollapsed(EditorCategory.Talents))
+                    {
+                        <div class="rc-editor-list">
+                            @foreach (var talent in CurrentSystem.Talents)
+                            {
+                                <button type="button" class="@GetEditorListItemClass(EditorCategory.Talents, GetTalentKey(talent), talent.IsDeleted)" @onclick="() => ToggleEditorSelection(EditorCategory.Talents, GetTalentKey(talent))">
+                                    <span class="rc-editor-list-item__title">@DisplayNameOrPlaceholder(talent.Name)</span>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
 
-                                            <div class="rc-form-field">
-                                                <label>@L["GameSystem_Editor_DisplayOrder"]</label>
-                                                <input type="number" @bind="derivedStat.DisplayOrder" />
-                                            </div>
-                                        </div>
-
-                                        <div class="rc-tool-subsection">
-                                            <div class="rc-tool-subsection__header">
-                                                <div class="rc-tool-subsection__title">@L["EditGameSystem_DerivedStatComponents"]</div>
-                                                <div class="rc-tool-inline-actions">
-                                                    <button type="button" @onclick="() => AddDerivedComponentRow(derivedStat)">
-                                                        @L["GameSystem_Editor_AddDerivedComponentRow"]
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            @foreach (var component in derivedStat.Components)
-                                            {
-                                                <div class="rc-filter-group-card">
-                                                    @if (component.IsDeleted)
-                                                    {
-                                                        <span><strong>@GetBaseAttributeName(component.AttributeDefinitionId)</strong> - @L["GameSystem_Editor_PendingDeletion"]</span>
-                                                        <div class="rc-tool-actions">
-                                                            <button type="button" @onclick="() => component.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
-                                                        </div>
-                                                    }
-                                                    else
-                                                    {
-                                                        <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
-                                                            <div class="rc-form-field">
-                                                                <label>@L["GameSystem_Editor_ComponentAttribute"]</label>
-                                                                <select @key="GetEditableBaseAttributesRenderKey()" @bind="component.AttributeTemporaryKey">
-                                                                    @foreach (var attributeRef in GetEditableBaseAttributes())
-                                                                    {
-                                                                        <option @key="attributeRef.TemporaryKey" value="@attributeRef.TemporaryKey">@attributeRef.Name</option>
-                                                                    }
-                                                                </select>
-                                                            </div>
-
-                                                            <div class="rc-form-field">
-                                                                <label>@L["GameSystem_Editor_ComponentWeight"]</label>
-                                                                <input type="number" @bind="component.Weight" />
-                                                                <!--<span class="rc-tool-muted">@L["GameSystem_Editor_ComponentWeightHelp"]</span>-->
-                                                            </div>
-                                                        </div>
-
-                                                        <div class="rc-tool-actions">
-                                                            @if (component.DerivedStatComponentId.HasValue)
-                                                            {
-                                                                <button type="button" @onclick="() => component.IsDeleted = true">@L["Common_Remove"]</button>
-                                                            }
-                                                            else
-                                                            {
-                                                                <button type="button" @onclick="() => derivedStat.Components.Remove(component)">@L["Common_Remove"]</button>
-                                                            }
-                                                        </div>
-                                                    }
-                                                </div>
-                                            }
-                                        </div>
-
-                                        <div class="rc-tool-actions">
-                                            @if (derivedStat.DerivedStatDefinitionId.HasValue)
-                                            {
-                                                <button type="button" @onclick="() => derivedStat.IsDeleted = true">@L["Common_Remove"]</button>
-                                            }
-                                            else
-                                            {
-                                                <button type="button" @onclick="() => CurrentSystem.DerivedStats.Remove(derivedStat)">@L["Common_Remove"]</button>
-                                            }
-                                        </div>
-                                    }
-                                </article>
+                <div class="@GetCategoryCardCssClass(EditorCategory.Items)">
+                    <div class="rc-editor-category-card__header">
+                        <div class="rc-filter-group-card__title">
+                            @L["GameSystem_Editor_ItemsSection"]
+                            <button type="button" class="rc-editor-category-card__title-button" @onclick="() => ToggleCategorySelection(EditorCategory.Items)"><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor"><path d="m403-96-22-114q-23-9-44.5-21T296-259l-110 37-77-133 87-76q-2-12-3-24t-1-25q0-13 1-25t3-24l-87-76 77-133 110 37q19-16 40.5-28t44.5-21l22-114h154l22 114q23 9 44.5 21t40.5 28l110-37 77 133-87 76q2 12 3 24t1 25q0 13-1 25t-3 24l87 76-77 133-110-37q-19 16-40.5 28T579-210L557-96H403Zm59-72h36l19-99q38-7 71-26t57-48l96 32 18-30-76-67q6-17 9.5-35.5T696-480q0-20-3.5-38.5T683-554l76-67-18-30-96 32q-24-29-57-48t-71-26l-19-99h-36l-19 99q-38 7-71 26t-57 48l-96-32-18 30 76 67q-6 17-9.5 35.5T264-480q0 20 3.5 38.5T277-406l-76 67 18 30 96-32q24 29 57 48t71 26l19 99Zm18-168q60 0 102-42t42-102q0-60-42-102t-102-42q-60 0-102 42t-42 102q0 60 42 102t102 42Zm0-144Z" /></svg></button>
+                        </div>
+                        <div class="rc-tool-inline-actions">
+                            @if (!IsCategoryCollapsed(EditorCategory.Items))
+                            {
+                                <button type="button" disabled="@IsCategoryLimitReached(EditorCategory.Items)" @onclick="AddAndSelectItem">@L["GameSystem_Editor_AddItemRow"]</button>
+                            }
+                            <button type="button" @onclick="() => ToggleCategoryCollapse(EditorCategory.Items)">@GetCategoryCollapseLabel(EditorCategory.Items)</button>
+                        </div>
+                    </div>
+                    @if (!IsCategoryCollapsed(EditorCategory.Items))
+                    {
+                        <div class="rc-editor-list">
+                            @foreach (var item in CurrentSystem.Items)
+                            {
+                                <button type="button" class="@GetEditorListItemClass(EditorCategory.Items, GetItemKey(item), item.IsDeleted)" @onclick="() => ToggleEditorSelection(EditorCategory.Items, GetItemKey(item))">
+                                    <span class="rc-editor-list-item__title">@DisplayNameOrPlaceholder(item.Name)</span>
+                                </button>
                             }
                         </div>
                     }
                 </div>
             </div>
-        </details>
 
-        <details class="rc-collapse-section">
-            <summary class="rc-collapse-section__summary">
-                <div class="rc-collapse-section__summary-main">
-                    <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_MetricsSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_MetricsHelp"]</div>
+            <div class="rc-editor-detail-panel rc-tool-panel">
+                @if (SelectedEditorCategory is null)
+                {
+                    <div class="rc-empty-panel"><p>@L["GameSystem_Editor_SelectElementHint"]</p></div>
+                }
+                else
+                {
+                    <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
+                        <div class="rc-tool-panel__header-main">
+                            <h4 class="rc-tool-panel__title">@GetSelectedEditorTitle()</h4>
+                            <p class="rc-tool-panel__subtitle">@GetSelectedEditorSubtitle()</p>
+                        </div>
+                        <div class="rc-tool-actions">
+                            <button type="button" @onclick="ApplySelectedEditorChanges">@L["Common_Save"]</button>
+                            <button type="button" @onclick="CancelSelectedEditorChanges">@L["Common_Cancel"]</button>
+                            <button type="button" @onclick="DeleteSelectedEditor">@L["Common_Remove"]</button>
+                        </div>
                     </div>
-
-                    <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
-                        <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
-                    </div>
-                </div>
-            </summary>
-
-            <div class="rc-collapse-section__body">
-                <div class="rc-tool-panel">
-                    <div class="rc-tool-actions">
-                        <button type="button" @onclick="AddMetricRow">@L["GameSystem_Editor_AddMetricRow"]</button>
-                    </div>
-
-                    @if (CurrentSystem.Metrics.Count == 0)
+                    @if (SelectedEditorCategory == EditorCategory.Attributes && SelectedEditorKey is null)
                     {
-                        <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["GameSystem_Editor_NoMetrics"]</p>
+                        <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                            <div class="rc-form-field"><label>@L["GameSystem_Editor_AttributeCreationDistributionPoints"]</label><input type="number" @bind="AttributeCreationDistributionPointsDraft" disabled="@(CurrentSystem.Attributes.Count == 0)" /></div>
+                            <div class="rc-form-field"><label>@L["GameSystem_Editor_AttributeCreationDistributionMaxPerStat"]</label><input type="number" @bind="AttributeCreationDistributionMaxDraft" disabled="@(CurrentSystem.Attributes.Count == 0)" /></div>
                         </div>
                     }
-                    else
+                    else if (SelectedEditorCategory == EditorCategory.DerivedStats && SelectedEditorKey is null)
                     {
-                        <div class="rc-consequence-list">
-                            @foreach (var metric in CurrentSystem.Metrics)
+                        <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                            <div class="rc-form-field"><label>@L["GameSystem_Editor_DerivedCreationDistributionPoints"]</label><input type="number" @bind="DerivedStatCreationDistributionPointsDraft" disabled="@(CurrentSystem.DerivedStats.Count == 0)" /></div>
+                            <div class="rc-form-field"><label>@L["GameSystem_Editor_DerivedCreationDistributionMaxPerStat"]</label><input type="number" @bind="DerivedStatCreationDistributionMaxDraft" disabled="@(CurrentSystem.DerivedStats.Count == 0)" /></div>
+                        </div>
+                    }
+                    else if (SelectedEditorCategory == EditorCategory.Talents && SelectedEditorKey is null)
+                    {
+                        <div class="rc-tool-form-grid rc-tool-form-grid--dense"><div class="rc-form-field"><label>@L["GameSystem_Editor_StartingTalentChoices"]</label><input type="number" @bind="StartingTalentChoicesDraft" /></div></div>
+                    }
+                    else if (SelectedEditorCategory == EditorCategory.Items && SelectedEditorKey is null)
+                    {
+                        <div class="rc-tool-form-grid rc-tool-form-grid--dense"><div class="rc-form-field"><label>@L["GameSystem_Editor_StartingItemChoices"]</label><input type="number" @bind="StartingItemChoicesDraft" /></div></div>
+                    }
+                    else if (SelectedEditorCategory == EditorCategory.Attributes && SelectedAttributeDraft is not null)
+                    {
+                        <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
+                            <div class="rc-form-field"><label>@L["Common_Name"]</label><input @bind="SelectedAttributeDraft.Name" /></div>
+                            <div class="rc-form-field"><label>@L["Common_Min"]</label><input type="number" @bind="SelectedAttributeDraft.MinValue" /></div>
+                            <div class="rc-form-field"><label>@L["Common_Max"]</label><input type="number" @bind="SelectedAttributeDraft.MaxValue" /></div>
+                            <div class="rc-form-field"><label>@L["GameSystem_Editor_DefaultMode"]</label><select @bind="SelectedAttributeDraft.DefaultValueMode"><option value="@BaseValueGenerationMode.Fixed">@L["GameSystem_Editor_DefaultModeFixed"]</option><option value="@BaseValueGenerationMode.DiceExpression">@L["GameSystem_Editor_DefaultModeDice"]</option></select></div>
+                            @if (SelectedAttributeDraft.DefaultValueMode == BaseValueGenerationMode.DiceExpression)
                             {
-                                <article class="rc-filter-group-card">
-                                    @if (metric.IsDeleted)
+                                <div class="rc-form-field"><label>@L["GameSystem_Editor_DefaultFlatBonus"]</label><input type="number" @bind="SelectedAttributeDraft.DefaultValueFlatBonus" /></div>
+                                <div class="rc-form-field"><label>@L["GameSystem_Editor_DefaultDiceCount"]</label><input type="number" @bind="SelectedAttributeDraft.DefaultValueDiceCount" /></div>
+                                <div class="rc-form-field"><label>@L["GameSystem_Editor_DefaultDiceSides"]</label><input type="number" @bind="SelectedAttributeDraft.DefaultValueDiceSides" /></div>
+                            }
+                            else
+                            {
+                                <div class="rc-form-field"><label>@L["Common_DefaultValue"]</label><input type="number" @bind="SelectedAttributeDraft.DefaultValue" /></div>
+                            }
+                        </div>
+                    }
+                    else if (SelectedEditorCategory == EditorCategory.DerivedStats && SelectedDerivedStatDraft is not null)
+                    {
+                        <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
+                            <div class="rc-form-field"><label>@L["Common_Name"]</label><input @bind="SelectedDerivedStatDraft.Name" /></div>
+                            <div class="rc-form-field"><label>@L["Common_Min"]</label><input type="number" @bind="SelectedDerivedStatDraft.MinValue" /></div>
+                            <div class="rc-form-field"><label>@L["Common_Max"]</label><input type="number" @bind="SelectedDerivedStatDraft.MaxValue" /></div>
+                            <div class="rc-form-field"><label>@L["GameSystem_Editor_RoundMode"]</label><select @bind="SelectedDerivedStatDraft.RoundMode"><option value="@ComputedValueRoundMode.Ceiling">@L["GameSystem_Editor_RoundModeCeiling"]</option><option value="@ComputedValueRoundMode.Floor">@L["GameSystem_Editor_RoundModeFloor"]</option><option value="@ComputedValueRoundMode.Nearest">@L["GameSystem_Editor_RoundModeNearest"]</option><option value="@ComputedValueRoundMode.None">@L["GameSystem_Editor_RoundModeNone"]</option></select></div>
+                            <div class="rc-form-field"><label>@L["GameSystem_Editor_DisplayOrder"]</label><input type="number" @bind="SelectedDerivedStatDraft.DisplayOrder" /></div>
+                        </div>
+                        <div class="rc-tool-subsection">
+                            <div class="rc-tool-subsection__header"><div class="rc-tool-subsection__title">@L["EditGameSystem_DerivedStatComponents"]</div><div class="rc-tool-inline-actions"><button type="button" @onclick="() => AddDerivedComponentRow(SelectedDerivedStatDraft)">@L["GameSystem_Editor_AddDerivedComponentRow"]</button></div></div>
+                            @foreach (var component in SelectedDerivedStatDraft.Components)
+                            {
+                                <div class="rc-filter-group-card">
+                                    @if (component.IsDeleted)
                                     {
-                                        <div class="rc-inline-warning">
-                                            <p><strong>@metric.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
-                                        </div>
-
-                                        <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => metric.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
-                                        </div>
+                                        <span><strong>@ResolveAttributeNameFromTemporaryKeyOrId(component.AttributeTemporaryKey, component.AttributeDefinitionId)</strong> - @L["GameSystem_Editor_PendingDeletion"]</span>
+                                        <div class="rc-tool-actions"><button type="button" @onclick="() => component.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button></div>
                                     }
                                     else
                                     {
                                         <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
-                                            @if (IsVoteWeightMetric(metric))
+                                            <div class="rc-form-field">
+                                                <label>@L["GameSystem_Editor_ComponentAttribute"]</label><select @key="GetEditableBaseAttributesRenderKey()" @bind="component.AttributeTemporaryKey">
+                                                @foreach (var attributeRef in GetEditableBaseAttributes())
+                                                {
+                                                    <option @key="attributeRef.TemporaryKey" value="@attributeRef.TemporaryKey">@attributeRef.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="rc-form-field"><label>@L["GameSystem_Editor_ComponentWeight"]</label><input type="number" @bind="component.Weight" /></div>
+                                    </div>
+                                    <div class="rc-tool-actions">
+                                        @if (component.DerivedStatComponentId.HasValue)
+                                        {
+                                            <button type="button" @onclick="() => component.IsDeleted = true">@L["Common_Remove"]</button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" @onclick="() => SelectedDerivedStatDraft.Components.Remove(component)">@L["Common_Remove"]</button>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                    else if (SelectedEditorCategory == EditorCategory.Metrics && SelectedMetricDraft is not null)
+                {
+                    <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
+                        @if (IsVoteWeightMetric(SelectedMetricDraft))
+                        {
+                            <div class="rc-form-field rc-form-field--readonly"><label>@L["Common_Name"]</label><div class="rc-readonly-value">@SelectedMetricDraft.Name</div></div>
+                        }
+                        else
+                        {
+                            <div class="rc-form-field"><label>@L["Common_Name"]</label><input @bind="SelectedMetricDraft.Name" /></div>
+                        }
+                        <div class="rc-form-field"><label>@L["GameSystem_Editor_MetricBaseValue"]</label><input type="number" @bind="SelectedMetricDraft.BaseValue" /></div>
+                        <div class="rc-form-field"><label>@L["Common_Min"]</label><input type="number" @bind="SelectedMetricDraft.MinValue" /></div>
+                        <div class="rc-form-field"><label>@L["Common_Max"]</label><input type="number" @bind="SelectedMetricDraft.MaxValue" /></div>
+                        <div class="rc-form-field"><label>@L["GameSystem_Editor_RoundMode"]</label><select @bind="SelectedMetricDraft.RoundMode"><option value="@ComputedValueRoundMode.Ceiling">@L["GameSystem_Editor_RoundModeCeiling"]</option><option value="@ComputedValueRoundMode.Floor">@L["GameSystem_Editor_RoundModeFloor"]</option><option value="@ComputedValueRoundMode.Nearest">@L["GameSystem_Editor_RoundModeNearest"]</option>@* <option value="@ComputedValueRoundMode.None">@L["GameSystem_Editor_RoundModeNone"]</option> *@</select></div>
+                        <div class="rc-form-field"><label>@L["GameSystem_Editor_DisplayOrder"]</label><input type="number" @bind="SelectedMetricDraft.DisplayOrder" /></div>
+                    </div>
+                    <div class="rc-tool-subsection">
+                        <div class="rc-tool-subsection__header"><div class="rc-tool-subsection__title">@L["GameSystem_Editor_MetricFormulaSection"]</div><div class="rc-tool-inline-actions"><button type="button" @onclick="() => AddMetricFormulaStepRow(SelectedMetricDraft)">@L["GameSystem_Editor_AddMetricFormulaStepRow"]</button></div></div>
+                        @foreach (var step in SelectedMetricDraft.FormulaSteps.OrderBy(x => x.Order).ThenBy(x => x.MetricFormulaStepId))
+                        {
+                            <div class="rc-filter-group-card">
+                                @if (step.IsDeleted)
+                                {
+                                    <span>@GetMetricFormulaStepSummary(step) - @L["GameSystem_Editor_PendingDeletion"]</span>
+                                    <div class="rc-tool-actions"><button type="button" @onclick="() => step.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button></div>
+                                }
+                                else
+                                {
+                                    <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
+                                        <div class="rc-form-field"><label>@L["GameSystem_Editor_MetricFormulaOperation"]</label><select @bind="step.OperationType"><option value="@MetricFormulaOperationType.Add">@L["GameSystem_Editor_MetricFormulaOperation_Add"]</option><option value="@MetricFormulaOperationType.Subtract">@L["GameSystem_Editor_MetricFormulaOperation_Subtract"]</option><option value="@MetricFormulaOperationType.Multiply">@L["GameSystem_Editor_MetricFormulaOperation_Multiply"]</option><option value="@MetricFormulaOperationType.Divide">@L["GameSystem_Editor_MetricFormulaOperation_Divide"]</option></select></div>
+                                        <div class="rc-form-field"><label>@L["GameSystem_Editor_MetricFormulaSourceType"]</label><select value="@step.SourceType.ToString()" @onchange="e => ChangeMetricFormulaSourceType(step, e.Value?.ToString())"><option value="@MetricFormulaSourceType.BaseAttribute">@L["GameSystem_Editor_MetricFormulaSource_BaseAttribute"]</option><option value="@MetricFormulaSourceType.Gauge">@L["GameSystem_Editor_MetricFormulaSource_Gauge"]</option><option value="@MetricFormulaSourceType.DerivedStat">@L["GameSystem_Editor_MetricFormulaSource_DerivedStat"]</option><option value="@MetricFormulaSourceType.Metric">@L["GameSystem_Editor_MetricFormulaSource_Metric"]</option><option value="@MetricFormulaSourceType.Constant">@L["GameSystem_Editor_MetricFormulaSource_Constant"]</option></select></div>
+                                        @if (step.SourceType == MetricFormulaSourceType.Constant)
+                                        {
+                                            <div class="rc-form-field"><label>@L["GameSystem_Editor_MetricFormulaConstantValue"]</label><input type="number" step="0.01" @bind="step.ConstantValue" /></div>
+                                        }
+                                        else
+                                        {
+                                            var options = GetMetricFormulaSourceOptions(SelectedMetricDraft, step.SourceType);
+                                            <div class="rc-form-field">
+                                                <label>@L["GameSystem_Editor_MetricFormulaSourceValue"]</label><select value="@(step.SourceId?.ToString() ?? string.Empty)" @onchange="e => ChangeMetricFormulaSourceId(step, e.Value?.ToString())">
+                                                @foreach (var option in options)
+                                                {
+                                                    <option value="@option.Id">@option.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                    }
+                                </div>
+                                <div class="rc-tool-actions">
+                                    @if (step.MetricFormulaStepId.HasValue)
+                                    {
+                                        <button type="button" @onclick="() => step.IsDeleted = true">@L["Common_Remove"]</button>
+                                    }
+                                    else
+                                    {
+
+                                        <button type="button" @onclick="() => SelectedMetricDraft.FormulaSteps.Remove(step)">@L["Common_Remove"]</button>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+                    else if (SelectedEditorCategory == EditorCategory.Traits && SelectedTraitDraft is not null)
+            {
+                <div class="rc-tool-form-grid"><div class="rc-form-field"><label>@L["Common_Name"]</label><input @bind="SelectedTraitDraft.Name" /></div><div class="rc-form-field"><label></label><label class="rc-filter-toggle"><input type="checkbox" @bind="SelectedTraitDraft.IsRandomSelectionGroup" /><span>@L["GameSystem_Editor_TraitIsRandomGroup"]</span></label></div></div>
+                <div class="rc-tool-subsection">
+                    <div class="rc-tool-subsection__header"><div class="rc-tool-subsection__title">@L["GameSystem_Editor_TraitOptionsSection"]</div><div class="rc-tool-inline-actions"><button type="button" disabled="@IsTraitOptionLimitReached(SelectedTraitDraft)" @onclick="() => AddTraitOptionRow(SelectedTraitDraft)">@L["GameSystem_Editor_AddTraitOptionRow"]</button></div></div>
+                    @foreach (var option in SelectedTraitDraft.Options)
+                    {
+                        <div class="rc-filter-group-card">
+                            @if (option.IsDeleted)
+                            {
+                                <div class="rc-inline-warning"><p><strong>@option.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p></div>
+                                <div class="rc-tool-actions"><button type="button" @onclick="() => option.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button></div>
+                            }
+                            else
+                            {
+                                <div class="rc-tool-form-grid"><div class="rc-form-field"><label>@L["Common_Name"]</label><input @bind="option.Name" /></div><div class="rc-form-field"><label></label><label class="rc-filter-toggle"><input type="checkbox" @bind="option.IsLockedForCharacterCreation" /><span>@L["GameSystem_Editor_TraitOptionLockedForCreation"]</span></label></div></div>
+                                <div class="rc-tool-subsection">
+                                    <div class="rc-tool-subsection__header"><div class="rc-tool-subsection__title">@L["GameSystem_Editor_ChoiceModifiersSection"]</div><div class="rc-tool-inline-actions"><button type="button" @onclick="() => AddTraitOptionModifierRow(option)">@L["GameSystem_Editor_AddChoiceModifierRow"]</button></div></div>
+                                    @foreach (var modifier in option.Modifiers)
+                                    {
+                                        <div class="rc-filter-group-card">
+                                            <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
+                                                <div class="rc-form-field"><label>@L["GameSystem_Editor_ModifierOperation"]</label><select value="@modifier.OperationType.ToString()" @onchange="e => ChangeModifierOperationType(modifier, e.Value?.ToString())"><option value="@ModifierOperationType.AddValue">@L["GameSystem_Editor_ModifierOperation_Add"]</option><option value="@ModifierOperationType.Grant">@L["GameSystem_Editor_ModifierOperation_Grant"]</option></select></div>
+                                                <div class="rc-form-field">
+                                                    <label>@L["GameSystem_Editor_ModifierTargetType"]</label><select value="@modifier.TargetType.ToString()" @onchange="e => ChangeModifierTargetType(modifier, e.Value?.ToString())">
+                                                    @if (modifier.OperationType == ModifierOperationType.Grant)
+                                                    {
+                                                        <option value="@ModifierTargetType.Talent">@L["GameSystem_Editor_ModifierTarget_Talent"]</option>
+                                                        <option value="@ModifierTargetType.Item">@L["GameSystem_Editor_ModifierTarget_Item"]</option>
+                                                    }
+                                                    else
+                                                    {
+
+                                                        <option value="@ModifierTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_BaseAttribute"]</option>
+                                                        <option value="@ModifierTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option>
+                                                        <option value="@ModifierTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option>
+                                                        <option value="@ModifierTargetType.Gauge">@L["GameSystem_Editor_ModifierTarget_Gauge"]</option>
+                                                    }
+                                                </select>
+                                            </div>
+                                            <div class="rc-form-field">
+                                                <label>@L["GameSystem_Editor_ModifierTarget"]</label><select @bind="modifier.TargetId">
+                                                @foreach (var optionItem in GetModifierTargetOptions(modifier.TargetType))
+                                                {
+                                                    <option value="@optionItem.Id">@optionItem.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        @if (modifier.OperationType == ModifierOperationType.AddValue)
+                                        {
+                                            <div class="rc-form-field"><label>@L["GameSystem_Editor_ModifierValueMode"]</label><select @bind="modifier.ValueMode"><option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option><option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option></select></div>
+                                            @if (modifier.ValueMode == ModifierValueMode.Fixed)
                                             {
-                                                <div class="rc-form-field rc-form-field--readonly">
-                                                    <label>@L["Common_Name"]</label>
-                                                    <div class="rc-readonly-value">@metric.Name</div>
-                                                </div>
+                                                <div class="rc-form-field"><label>@L["GameSystem_Editor_ModifierValue"]</label><input type="number" @bind="modifier.Value" /></div>
                                             }
                                             else
                                             {
                                                 <div class="rc-form-field">
-                                                    <label>@L["Common_Name"]</label>
-                                                    <input @bind="metric.Name" />
-                                                </div>
-                                            }
-
-                                            <div class="rc-form-field">
-                                                <label>@L["GameSystem_Editor_MetricBaseValue"]</label>
-                                                <input type="number" @bind="metric.BaseValue" />
-                                            </div>
-
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Min"]</label>
-                                                <input type="number" @bind="metric.MinValue" />
-                                            </div>
-
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Max"]</label>
-                                                <input type="number" @bind="metric.MaxValue" />
-                                            </div>
-
-                                            <div class="rc-form-field">
-                                                <label>@L["GameSystem_Editor_RoundMode"]</label>
-                                                <select @bind="metric.RoundMode">
-                                                    <option value="@ComputedValueRoundMode.Ceiling">@L["GameSystem_Editor_RoundModeCeiling"]</option>
-                                                    <option value="@ComputedValueRoundMode.Floor">@L["GameSystem_Editor_RoundModeFloor"]</option>
-                                                    <option value="@ComputedValueRoundMode.Nearest">@L["GameSystem_Editor_RoundModeNearest"]</option>
-                                                    <option value="@ComputedValueRoundMode.None">@L["GameSystem_Editor_RoundModeNone"]</option>
+                                                    <label>@L["GameSystem_Editor_ModifierSourceMetric"]</label><select @bind="modifier.SourceMetricId">
+                                                    @foreach (var metricRef in GetEditableMetrics())
+                                                    {
+                                                        <option value="@metricRef.MetricDefinitionId">@metricRef.Name</option>
+                                                    }
                                                 </select>
                                             </div>
-
-                                            <div class="rc-form-field">
-                                                <label>@L["GameSystem_Editor_DisplayOrder"]</label>
-                                                <input type="number" @bind="metric.DisplayOrder" />
-                                            </div>
-                                        </div>
-
-                                        <div class="rc-tool-subsection">
-                                            <div class="rc-tool-subsection__header">
-                                                <div class="rc-tool-subsection__title">@L["GameSystem_Editor_MetricFormulaSection"]</div>
-                                                <div class="rc-tool-inline-actions">
-                                                    <button type="button" @onclick="() => AddMetricFormulaStepRow(metric)">
-                                                        @L["GameSystem_Editor_AddMetricFormulaStepRow"]
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            @foreach (var step in metric.FormulaSteps.OrderBy(x => x.Order).ThenBy(x => x.MetricFormulaStepId))
-                                            {
-                                                <div class="rc-filter-group-card">
-                                                    @if (step.IsDeleted)
-                                                    {
-                                                        <span>@GetMetricFormulaStepSummary(step) - @L["GameSystem_Editor_PendingDeletion"]</span>
-                                                        <div class="rc-tool-actions">
-                                                            <button type="button" @onclick="() => step.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
-                                                        </div>
-                                                    }
-                                                    else
-                                                    {
-                                                        <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
-                                                            <div class="rc-form-field">
-                                                                <label>@L["GameSystem_Editor_MetricFormulaOperation"]</label>
-                                                                <select @bind="step.OperationType">
-                                                                    <option value="@MetricFormulaOperationType.Add">@L["GameSystem_Editor_MetricFormulaOperation_Add"]</option>
-                                                                    <option value="@MetricFormulaOperationType.Subtract">@L["GameSystem_Editor_MetricFormulaOperation_Subtract"]</option>
-                                                                    <option value="@MetricFormulaOperationType.Multiply">@L["GameSystem_Editor_MetricFormulaOperation_Multiply"]</option>
-                                                                    <option value="@MetricFormulaOperationType.Divide">@L["GameSystem_Editor_MetricFormulaOperation_Divide"]</option>
-                                                                </select>
-                                                            </div>
-
-                                                            <div class="rc-form-field">
-                                                                <label>@L["GameSystem_Editor_MetricFormulaSourceType"]</label>
-                                                                <select value="@step.SourceType.ToString()" @onchange="e => ChangeMetricFormulaSourceType(step, e.Value?.ToString())">
-                                                                    <option value="@MetricFormulaSourceType.BaseAttribute">@L["GameSystem_Editor_MetricFormulaSource_BaseAttribute"]</option>
-                                                                    <option value="@MetricFormulaSourceType.Gauge">@L["GameSystem_Editor_MetricFormulaSource_Gauge"]</option>
-                                                                    <option value="@MetricFormulaSourceType.DerivedStat">@L["GameSystem_Editor_MetricFormulaSource_DerivedStat"]</option>
-                                                                    <option value="@MetricFormulaSourceType.Metric">@L["GameSystem_Editor_MetricFormulaSource_Metric"]</option>
-                                                                    <option value="@MetricFormulaSourceType.Constant">@L["GameSystem_Editor_MetricFormulaSource_Constant"]</option>
-                                                                </select>
-                                                            </div>
-
-                                                            @if (step.SourceType == MetricFormulaSourceType.Constant)
-                                                            {
-                                                                <div class="rc-form-field">
-                                                                    <label>@L["GameSystem_Editor_MetricFormulaConstantValue"]</label>
-                                                                    <input type="number" step="0.01" @bind="step.ConstantValue" />
-                                                                </div>
-                                                            }
-                                                            else
-                                                            {
-                                                                var options = GetMetricFormulaSourceOptions(metric, step.SourceType);
-
-                                                                <div class="rc-form-field">
-                                                                    <label>@L["GameSystem_Editor_MetricFormulaSourceValue"]</label>
-                                                                    <select value="@(step.SourceId?.ToString() ?? string.Empty)" @onchange="e => ChangeMetricFormulaSourceId(step, e.Value?.ToString())">
-                                                                        @foreach (var option in options)
-                                                                        {
-                                                                            <option value="@option.Id">@option.Name</option>
-                                                                        }
-                                                                    </select>
-                                                                </div>
-                                                            }
-                                                        </div>
-
-                                                        <div class="rc-tool-actions">
-                                                            @if (step.MetricFormulaStepId.HasValue)
-                                                            {
-                                                                <button type="button" @onclick="() => step.IsDeleted = true">@L["Common_Remove"]</button>
-                                                            }
-                                                            else
-                                                            {
-                                                                <button type="button" @onclick="() => metric.FormulaSteps.Remove(step)">@L["Common_Remove"]</button>
-                                                            }
-                                                        </div>
-                                                    }
-                                                </div>
-                                            }
-                                        </div>
-
-                                        <div class="rc-tool-subsection">
-                                            <div class="rc-tool-subsection__header">
-                                                <div class="rc-tool-subsection__title">@L["GameSystem_Editor_MetricComponentsSection"]</div>
-                                                <div class="rc-tool-inline-actions">
-                                                    <button type="button" @onclick="() => AddMetricComponentRow(metric)">
-                                                        @L["GameSystem_Editor_AddMetricComponentRow"]
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            @foreach (var component in metric.Components)
-                                            {
-                                                <div class="rc-filter-group-card">
-                                                    @if (component.IsDeleted)
-                                                    {
-                                                        <span><strong>@GetBaseAttributeName(component.AttributeDefinitionId)</strong> - @L["GameSystem_Editor_PendingDeletion"]</span>
-                                                        <div class="rc-tool-actions">
-                                                            <button type="button" @onclick="() => component.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
-                                                        </div>
-                                                    }
-                                                    else
-                                                    {
-                                                        <div class="rc-tool-form-grid">
-                                                            <div class="rc-form-field">
-                                                                <label>@L["GameSystem_Editor_ComponentAttribute"]</label>
-                                                                <select @bind="component.AttributeDefinitionId">
-                                                                    @foreach (var attributeRef in CurrentSystem.AvailableBaseAttributes)
-                                                                    {
-                                                                        <option value="@attributeRef.AttributeDefinitionId">@attributeRef.Name</option>
-                                                                    }
-                                                                </select>
-                                                            </div>
-
-                                                            <div class="rc-form-field">
-                                                                <label>@L["GameSystem_Editor_ComponentWeight"]</label>
-                                                                <input type="number" @bind="component.Weight" />
-                                                                <span class="rc-tool-muted">@L["GameSystem_Editor_ComponentWeightHelp"]</span>
-                                                            </div>
-                                                        </div>
-
-                                                        <div class="rc-tool-actions">
-                                                            @if (component.MetricComponentId.HasValue)
-                                                            {
-                                                                <button type="button" @onclick="() => component.IsDeleted = true">@L["Common_Remove"]</button>
-                                                            }
-                                                            else
-                                                            {
-                                                                <button type="button" @onclick="() => metric.Components.Remove(component)">@L["Common_Remove"]</button>
-                                                            }
-                                                        </div>
-                                                    }
-                                                </div>
-                                            }
-                                        </div>
-
-                                        <div class="rc-tool-actions">
-                                            @if (IsVoteWeightMetric(metric))
-                                            {
-                                                <span class="rc-tool-muted">@L["GameSystem_Editor_VoteWeightMetricLocked"]</span>
-                                            }
-                                            else if (metric.MetricDefinitionId.HasValue)
-                                            {
-                                                <button type="button" @onclick="() => metric.IsDeleted = true">@L["Common_Remove"]</button>
-                                            }
-                                            else
-                                            {
-                                                <button type="button" @onclick="() => CurrentSystem.Metrics.Remove(metric)">@L["Common_Remove"]</button>
-                                            }
-                                        </div>
+                                        }
                                     }
-                                </article>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
-        </details>
-
-        <details class="rc-collapse-section">
-            <summary class="rc-collapse-section__summary">
-                <div class="rc-collapse-section__summary-main">
-                    <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_TraitsSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_TraitsSubtitle"]</div>
+                                </div>
+                                <div class="rc-tool-actions"><button type="button" @onclick="() => option.Modifiers.Remove(modifier)">@L["Common_Remove"]</button></div>
+                            </div>
+                        }
                     </div>
-
-                    <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
-                        <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
-                    </div>
-                </div>
-            </summary>
-
-            <div class="rc-collapse-section__body">
-                <div class="rc-tool-panel">
                     <div class="rc-tool-actions">
-                        <button type="button" @onclick="AddTraitRow">@L["EditGameSystem_AddTraitRow"]</button>
+                        @if (option.TraitOptionId.HasValue)
+                        {
+                            <button type="button" @onclick="() => option.IsDeleted = true">@L["Common_Remove"]</button>
+                        }
+                        else
+                        {
+
+                            <button type="button" @onclick="() => SelectedTraitDraft.Options.Remove(option)">@L["Common_Remove"]</button>
+                        }
                     </div>
-
-                    @if (CurrentSystem.Traits.Count == 0)
-                    {
-                        <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["GameSystem_Editor_NoTraits"]</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="rc-consequence-list">
-                            @foreach (var trait in CurrentSystem.Traits)
-                            {
-                                <article class="rc-filter-group-card">
-                                    @if (trait.IsDeleted)
-                                    {
-                                        <div class="rc-inline-warning">
-                                            <p><strong>@trait.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
-                                        </div>
-
-                                        <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => trait.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="rc-tool-form-grid">
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Name"]</label>
-                                                <input @bind="trait.Name" />
-                                            </div>
-                                        
-                                            <div class="rc-form-field">
-                                                <label></label>
-                                                <label class="rc-filter-toggle">
-                                                    <input type="checkbox" @bind="trait.IsRandomSelectionGroup" />
-                                                    <span>@L["GameSystem_Editor_TraitIsRandomGroup"]</span>
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        <div class="rc-tool-subsection">
-                                            <div class="rc-tool-subsection__header">
-                                                <div class="rc-tool-subsection__title">@L["GameSystem_Editor_TraitOptionsSection"]</div>
-                                                <div class="rc-tool-inline-actions">
-                                                    <button type="button" @onclick="() => AddTraitOptionRow(trait)">
-                                                        @L["GameSystem_Editor_AddTraitOptionRow"]
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            @foreach (var option in trait.Options)
-                                            {
-                                                <div class="rc-filter-group-card">
-                                                    @if (option.IsDeleted)
-                                                    {
-                                                        <span><strong>@option.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</span>
-                                                        <div class="rc-tool-actions">
-                                                            <button type="button" @onclick="() => option.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
-                                                        </div>
-                                                    }
-                                                    else
-                                                    {
-                                                        <div class="rc-tool-form-grid">
-                                                            <div class="rc-form-field">
-                                                                <label>@L["Common_Name"]</label>
-                                                                <input @bind="option.Name" />
-                                                            </div>
-                                                            <div class="rc-form-field">
-                                                                <label></label>
-                                                                <label class="rc-filter-toggle">
-                                                                    <input type="checkbox" @bind="option.IsLockedForCharacterCreation" />
-                                                                    <span>@L["GameSystem_Editor_TraitOptionLockedForCreation"]</span>
-                                                                </label>
-                                                            </div>
-                                                        </div>
-
-                                                        
-
-                                                        <div class="rc-tool-subsection">
-                                                            <div class="rc-tool-subsection__header">
-                                                                <div class="rc-tool-subsection__title">@L["GameSystem_Editor_ChoiceModifiersSection"]</div>
-                                                                <div class="rc-tool-inline-actions">
-                                                                    <button type="button" @onclick="() => AddTraitOptionModifierRow(option)">
-                                                                        @L["GameSystem_Editor_AddChoiceModifierRow"]
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-
-                                                            @foreach (var modifier in option.Modifiers)
-                                                            {
-                                                                <div class="rc-filter-group-card">
-                                                                    <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
-                                                                        <div class="rc-form-field">
-                                                                            <label>@L["GameSystem_Editor_ModifierOperation"]</label>
-                                                                            <select value="@modifier.OperationType.ToString()" @onchange="e => ChangeModifierOperationType(modifier, e.Value?.ToString())">
-                                                                                <option value="@ModifierOperationType.AddValue">@L["GameSystem_Editor_ModifierOperation_Add"]</option>
-                                                                                <option value="@ModifierOperationType.Grant">@L["GameSystem_Editor_ModifierOperation_Grant"]</option>
-                                                                            </select>
-                                                                        </div>
-
-                                                                        <div class="rc-form-field">
-                                                                            <label>@L["GameSystem_Editor_ModifierTargetType"]</label>
-                                                                            <select value="@modifier.TargetType.ToString()" @onchange="e => ChangeModifierTargetType(modifier, e.Value?.ToString())">
-                                                                                @if (modifier.OperationType == ModifierOperationType.Grant)
-                                                                                {
-                                                                                    <option value="@ModifierTargetType.Talent">@L["GameSystem_Editor_ModifierTarget_Talent"]</option>
-                                                                                    <option value="@ModifierTargetType.Item">@L["GameSystem_Editor_ModifierTarget_Item"]</option>
-                                                                                }
-                                                                                else
-                                                                                {
-                                                                                    <option value="@ModifierTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_BaseAttribute"]</option>
-                                                                                    <option value="@ModifierTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option>
-                                                                                    <option value="@ModifierTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option>
-                                                                                    <option value="@ModifierTargetType.Gauge">@L["GameSystem_Editor_ModifierTarget_Gauge"]</option>
-                                                                                }
-                                                                            </select>
-                                                                        </div>
-
-                                                                        <div class="rc-form-field">
-                                                                            <label>@L["GameSystem_Editor_ModifierTarget"]</label>
-                                                                            <select @bind="modifier.TargetId">
-                                                                                @foreach (var optionItem in GetModifierTargetOptions(modifier.TargetType))
-                                                                                {
-                                                                                    <option value="@optionItem.Id">@optionItem.Name</option>
-                                                                                }
-                                                                            </select>
-                                                                        </div>
-
-                                                                        @if (modifier.OperationType == ModifierOperationType.AddValue)
-                                                                        {
-                                                                            <div class="rc-form-field">
-                                                                                <label>@L["GameSystem_Editor_ModifierValueMode"]</label>
-                                                                                <select @bind="modifier.ValueMode">
-                                                                                    <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
-                                                                                    <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
-                                                                                </select>
-                                                                            </div>
-
-                                                                            @if (modifier.ValueMode == ModifierValueMode.Fixed)
-                                                                            {
-                                                                                <div class="rc-form-field">
-                                                                                    <label>@L["GameSystem_Editor_ModifierValue"]</label>
-                                                                                    <input type="number" @bind="modifier.Value" />
-                                                                                </div>
-                                                                            }
-                                                                            else
-                                                                            {
-                                                                                <div class="rc-form-field">
-                                                                                    <label>@L["GameSystem_Editor_ModifierSourceMetric"]</label>
-                                                                                    <select @bind="modifier.SourceMetricId">
-                                                                                        @foreach (var metricRef in CurrentSystem.AvailableMetrics)
-                                                                                        {
-                                                                                            <option value="@metricRef.MetricDefinitionId">@metricRef.Name</option>
-                                                                                        }
-                                                                                    </select>
-                                                                                </div>
-                                                                            }
-                                                                        }
-
-                                                                    </div>
-
-                                                                    <div class="rc-tool-actions">
-                                                                        <button type="button" @onclick="() => option.Modifiers.Remove(modifier)">
-                                                                            @L["Common_Remove"]
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            }
-                                                        </div>
-
-                                                        <div class="rc-tool-actions">
-                                                            @if (option.TraitOptionId.HasValue)
-                                                            {
-                                                                <button type="button" @onclick="() => option.IsDeleted = true">@L["Common_Remove"]</button>
-                                                            }
-                                                            else
-                                                            {
-                                                                <button type="button" @onclick="() => trait.Options.Remove(option)">@L["Common_Remove"]</button>
-                                                            }
-                                                        </div>
-                                                    }
-                                                </div>
-                                            }
-                                        </div>
-
-                                        <div class="rc-tool-actions">
-                                            @if (trait.TraitDefinitionId.HasValue)
-                                            {
-                                                <button type="button" @onclick="() => trait.IsDeleted = true">@L["Common_Remove"]</button>
-                                            }
-                                            else
-                                            {
-                                                <button type="button" @onclick="() => CurrentSystem.Traits.Remove(trait)">@L["Common_Remove"]</button>
-                                            }
-                                        </div>
-                                    }
-                                </article>
-                            }
-                        </div>
-                    }
-                </div>
+                }
             </div>
-        </details>
+        }
+    </div>
+}
+                    else if (SelectedEditorCategory == EditorCategory.Gauges && SelectedGaugeDraft is not null)
+{
+    <div class="rc-tool-form-grid rc-tool-form-grid--very-dense"><div class="rc-form-field"><label>@L["Common_Name"]</label><input @bind="SelectedGaugeDraft.Name" /></div><div class="rc-form-field"><label>@L["Common_Min"]</label><input type="number" @bind="SelectedGaugeDraft.MinValue" /></div><div class="rc-form-field"><label>@L["Common_Max"]</label><input type="number" @bind="SelectedGaugeDraft.MaxValue" /></div><div class="rc-form-field"><label>@L["Common_DefaultValue"]</label><input type="number" @bind="SelectedGaugeDraft.DefaultValue" /></div><div class="rc-form-field"><label class="rc-filter-toggle"><input type="checkbox" @bind="SelectedGaugeDraft.IsHealthGauge" /><span>@L["GameSystem_Editor_IsHealthGauge"]</span></label></div></div>
+}
+else if (SelectedEditorCategory == EditorCategory.Talents && SelectedTalentDraft is not null)
+{
+    <div class="rc-tool-form-grid"><div class="rc-form-field"><label>@L["Common_Name"]</label><input @bind="SelectedTalentDraft.Name" /></div><div class="rc-form-field"><label>@L["GameSystem_Editor_DisplayOrder"]</label><input type="number" @bind="SelectedTalentDraft.DisplayOrder" /></div><div class="rc-form-field rc-form-field--full"><label>@L["Common_Description"]</label><textarea rows="3" @bind="SelectedTalentDraft.Description"></textarea></div><div class="rc-form-field"><label></label><label class="rc-filter-toggle"><input type="checkbox" @bind="SelectedTalentDraft.IsSelectableAtCharacterCreation" /><span>@L["GameSystem_Editor_IsSelectableAtCharacterCreation"]</span></label></div></div>
+    <div class="rc-tool-subsection">
+        <div class="rc-tool-subsection__header"><div class="rc-tool-subsection__title">@L["GameSystem_Editor_TalentModifiersSection"]</div><div class="rc-tool-inline-actions"><button type="button" @onclick="() => AddTalentModifierRow(SelectedTalentDraft)">@L["GameSystem_Editor_AddTalentModifierRow"]</button></div></div>@foreach (var modifier in SelectedTalentDraft.Modifiers) {
+        <div class="rc-filter-group-card">
+            <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
+                <div class="rc-form-field"><label>@L["GameSystem_Editor_ModifierTargetType"]</label><select value="@modifier.TargetType.ToString()" @onchange="e => ChangeModifierTargetType(modifier, e.Value?.ToString())"><option value="@ModifierTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_BaseAttribute"]</option><option value="@ModifierTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option><option value="@ModifierTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option><option value="@ModifierTargetType.Gauge">@L["GameSystem_Editor_ModifierTarget_Gauge"]</option></select></div><div class="rc-form-field">
+                <label>@L["GameSystem_Editor_ModifierTarget"]</label><select @bind="modifier.TargetId">
+                @foreach (var optionItem in GetModifierTargetOptions(modifier.TargetType))
+                {
+                    <option value="@optionItem.Id">@optionItem.Name</option>
+                }
+            </select>
+        </div><div class="rc-form-field"><label>@L["GameSystem_Editor_ModifierValueMode"]</label><select @bind="modifier.ValueMode"><option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option><option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option></select></div>@if (modifier.ValueMode == ModifierValueMode.Fixed) {
+        <div class="rc-form-field"><label>@L["GameSystem_Editor_ModifierValue"]</label><input type="number" @bind="modifier.Value" /></div>
+    }
+else
+    {
 
-        <details class="rc-collapse-section">
-            <summary class="rc-collapse-section__summary">
-                <div class="rc-collapse-section__summary-main">
-                    <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_GaugesSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_GaugesSubtitle"]</div>
-                    </div>
-
-                    <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
-                        <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
-                    </div>
-                </div>
-            </summary>
-
-            <div class="rc-collapse-section__body">
-                <div class="rc-tool-panel">
-                    <div class="rc-tool-actions">
-                        <button type="button" @onclick="AddGaugeRow">@L["GameSystem_Editor_AddGaugeRow"]</button>
-                    </div>
-
-                    @if (CurrentSystem.Gauges.Count == 0)
-                    {
-                        <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["GameSystem_Editor_NoGauges"]</p>
-                        </div>
+        <div class="rc-form-field">
+            <label>@L["GameSystem_Editor_ModifierSourceMetric"]</label><select @bind="modifier.SourceMetricId">
+            @foreach (var metricRef in GetEditableMetrics())
+            {
+                <option value="@metricRef.MetricDefinitionId">@metricRef.Name</option>
+            }
+        </select>
+    </div>
+}
+</div><div class="rc-tool-actions"><button type="button" @onclick="() => SelectedTalentDraft.Modifiers.Remove(modifier)">@L["Common_Remove"]</button></div>
+</div>
+                        }
+</div>
                     }
-                    else
-                    {
-                        <div class="rc-consequence-list">
-                            @foreach (var gauge in CurrentSystem.Gauges)
-                            {
-                                <article class="rc-filter-group-card">
-                                    @if (gauge.IsDeleted)
-                                    {
-                                        <div class="rc-inline-warning">
-                                            <p><strong>@gauge.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
-                                        </div>
+                    else if (SelectedEditorCategory == EditorCategory.Items && SelectedItemDraft is not null)
+{
+    <div class="rc-tool-form-grid">
+        <div class="rc-form-field"><label>@L["Common_Name"]</label><input @bind="SelectedItemDraft.Name" /></div><div class="rc-form-field"><label>@L["GameSystem_Editor_DisplayOrder"]</label><input type="number" @bind="SelectedItemDraft.DisplayOrder" /></div><div class="rc-form-field rc-form-field--full"><label>@L["Common_Description"]</label><textarea rows="3" @bind="SelectedItemDraft.Description"></textarea></div><div class="rc-form-field"><label></label><label class="rc-filter-toggle"><input type="checkbox" @bind="SelectedItemDraft.IsSelectableAtCharacterCreation" /><span>@L["GameSystem_Editor_IsSelectableAtCharacterCreation"]</span></label></div><div class="rc-form-field"><label></label><label class="rc-filter-toggle"><input type="checkbox" @bind="SelectedItemDraft.IsConsumable" /><span>@L["GameSystem_Editor_ItemIsConsumable"]</span></label></div>@if (SelectedItemDraft.IsConsumable) {
+        <div class="rc-form-field"><label>@L["GameSystem_Editor_ItemMaxQuantityPerCharacter"]</label><input type="number" min="1" @bind="SelectedItemDraft.MaxQuantityPerCharacter" /></div>
+    }
+</div>
+<div class="rc-tool-subsection">
+    <div class="rc-tool-subsection__header"><div class="rc-tool-subsection__title">@L["GameSystem_Editor_ItemModifiersSection"]</div><div class="rc-tool-inline-actions"><button type="button" @onclick="() => AddItemModifierRow(SelectedItemDraft)">@L["GameSystem_Editor_AddItemModifierRow"]</button></div></div>@foreach (var modifier in SelectedItemDraft.Modifiers) {
+    <div class="rc-filter-group-card">
+        <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
+            <div class="rc-form-field"><label>@L["GameSystem_Editor_ModifierTargetType"]</label><select value="@modifier.TargetType.ToString()" @onchange="e => ChangeModifierTargetType(modifier, e.Value?.ToString())"><option value="@ModifierTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_BaseAttribute"]</option><option value="@ModifierTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option><option value="@ModifierTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option><option value="@ModifierTargetType.Gauge">@L["GameSystem_Editor_ModifierTarget_Gauge"]</option></select></div><div class="rc-form-field">
+            <label>@L["GameSystem_Editor_ModifierTarget"]</label><select @bind="modifier.TargetId">
+            @foreach (var optionItem in GetModifierTargetOptions(modifier.TargetType))
+            {
+                <option value="@optionItem.Id">@optionItem.Name</option>
+            }
+        </select>
+    </div>@if (modifier.OperationType == ModifierOperationType.AddValue && modifier.TargetType == ModifierTargetType.Gauge && SelectedItemDraft.IsConsumable) {
+    <div class="rc-form-field"><label>@L["GameSystem_Editor_ItemModifierAffectsMaximum"]</label><label class="rc-filter-toggle"><input type="checkbox" checked="@ItemGaugeModifierAffectsMaximum(modifier)" @onchange="e => SetItemGaugeModifierAffectsMaximum(modifier, e.Value is bool value && value)" /><span>@L["GameSystem_Editor_ItemModifierAffectsMaximum"]</span></label></div>
+}
+<div class="rc-form-field"><label>@L["GameSystem_Editor_ModifierValueMode"]</label><select @bind="modifier.ValueMode"><option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option><option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option></select></div>@if (modifier.ValueMode == ModifierValueMode.Fixed) {
+<div class="rc-form-field"><label>@L["GameSystem_Editor_ModifierValue"]</label><input type="number" @bind="modifier.Value" /></div>
+                        } else
+{
 
-                                        <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => gauge.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Name"]</label>
-                                                <input @bind="gauge.Name" />
-                                            </div>
-
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Min"]</label>
-                                                <input type="number" @bind="gauge.MinValue" />
-                                            </div>
-
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Max"]</label>
-                                                <input type="number" @bind="gauge.MaxValue" />
-                                            </div>
-
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Default"]</label>
-                                                <input type="number" @bind="gauge.DefaultValue" />
-                                            </div>
-
-                                            <div class="rc-form-field">
-                                                <label class="rc-filter-toggle">
-                                                    <input type="checkbox" @bind="gauge.IsHealthGauge" />
-                                                    <span>@L["GameSystem_Editor_IsHealthGauge"]</span>
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        <div class="rc-tool-actions">
-                                            @if (gauge.GaugeDefinitionId.HasValue)
-                                            {
-                                                <button type="button" @onclick="() => gauge.IsDeleted = true">@L["Common_Remove"]</button>
-                                            }
-                                            else
-                                            {
-                                                <button type="button" @onclick="() => CurrentSystem.Gauges.Remove(gauge)">@L["Common_Remove"]</button>
-                                            }
-                                        </div>
-                                    }
-                                </article>
-                            }
-                        </div>
+    <div class="rc-form-field">
+        <label>@L["GameSystem_Editor_ModifierSourceMetric"]</label><select @bind="modifier.SourceMetricId">
+        @foreach (var metricRef in GetEditableMetrics())
+        {
+            <option value="@metricRef.MetricDefinitionId">@metricRef.Name</option>
+        }
+    </select>
+</div>
+                        }
+</div><div class="rc-tool-actions"><button type="button" @onclick="() => SelectedItemDraft.Modifiers.Remove(modifier)">@L["Common_Remove"]</button></div>
+</div>
+                        }
+</div>
                     }
-                </div>
-            </div>
-        </details>
+                }
+</div>
+</div>
 
-        <details class="rc-collapse-section">
-            <summary class="rc-collapse-section__summary">
-                <div class="rc-collapse-section__summary-main">
-                    <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_TalentsSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_TalentsSubtitle"]</div>
-                    </div>
-
-                    <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
-                        <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
-                    </div>
-                </div>
-            </summary>
-
-            <div class="rc-collapse-section__body">
-                <div class="rc-tool-panel">
-                    <div class="rc-tool-actions">
-                        <button type="button" @onclick="AddTalentRow">@L["GameSystem_Editor_AddTalentRow"]</button>
-                    </div>
-
-                    @if (CurrentSystem.Talents.Count == 0)
-                    {
-                        <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["GameSystem_Editor_NoTalents"]</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="rc-consequence-list">
-                            @foreach (var talent in CurrentSystem.Talents)
-                            {
-                                <article class="rc-filter-group-card">
-                                    @if (talent.IsDeleted)
-                                    {
-                                        <div class="rc-inline-warning">
-                                            <p><strong>@talent.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
-                                        </div>
-
-                                        <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => talent.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="rc-tool-form-grid">
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Name"]</label>
-                                                <input @bind="talent.Name" />
-                                            </div>
-
-                                            <div class="rc-form-field">
-                                                <label>@L["GameSystem_Editor_DisplayOrder"]</label>
-                                                <input type="number" @bind="talent.DisplayOrder" />
-                                            </div>
-
-                                            <div class="rc-form-field rc-form-field--full">
-                                                <label>@L["Common_Description"]</label>
-                                                <textarea rows="3" @bind="talent.Description"></textarea>
-                                            </div>
-                                        </div>
-
-                                        <div class="rc-tool-subsection">
-                                            <div class="rc-tool-subsection__header">
-                                                <div class="rc-tool-subsection__title">@L["GameSystem_Editor_TalentModifiersSection"]</div>
-                                                <div class="rc-tool-inline-actions">
-                                                    <button type="button" @onclick="() => AddTalentModifierRow(talent)">
-                                                        @L["GameSystem_Editor_AddTalentModifierRow"]
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            @foreach (var modifier in talent.Modifiers)
-                                            {
-                                                <div class="rc-filter-group-card">
-                                                    <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
-                                                        <div class="rc-form-field">
-                                                            <label>@L["GameSystem_Editor_ModifierTargetType"]</label>
-                                                            <select value="@modifier.TargetType.ToString()" @onchange="e => ChangeModifierTargetType(modifier, e.Value?.ToString())">
-                                                                <option value="@ModifierTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_BaseAttribute"]</option>
-                                                                <option value="@ModifierTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option>
-                                                                <option value="@ModifierTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option>
-                                                                <option value="@ModifierTargetType.Gauge">@L["GameSystem_Editor_ModifierTarget_Gauge"]</option>
-                                                            </select>
-                                                        </div>
-
-                                                        <div class="rc-form-field">
-                                                            <label>@L["GameSystem_Editor_ModifierTarget"]</label>
-                                                            <select @bind="modifier.TargetId">
-                                                                @foreach (var optionItem in GetModifierTargetOptions(modifier.TargetType))
-                                                                {
-                                                                    <option value="@optionItem.Id">@optionItem.Name</option>
-                                                                }
-                                                            </select>
-                                                        </div>
-
-                                                        <div class="rc-form-field">
-                                                            <label>@L["GameSystem_Editor_ModifierValueMode"]</label>
-                                                            <select @bind="modifier.ValueMode">
-                                                                <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
-                                                                <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
-                                                            </select>
-                                                        </div>
-
-                                                        @if (modifier.ValueMode == ModifierValueMode.Fixed)
-                                                        {
-                                                            <div class="rc-form-field">
-                                                                <label>@L["GameSystem_Editor_ModifierValue"]</label>
-                                                                <input type="number" @bind="modifier.Value" />
-                                                            </div>
-                                                        }
-                                                        else
-                                                        {
-                                                            <div class="rc-form-field">
-                                                                <label>@L["GameSystem_Editor_ModifierSourceMetric"]</label>
-                                                                <select @bind="modifier.SourceMetricId">
-                                                                    @foreach (var metricRef in CurrentSystem.AvailableMetrics)
-                                                                    {
-                                                                        <option value="@metricRef.MetricDefinitionId">@metricRef.Name</option>
-                                                                    }
-                                                                </select>
-                                                            </div>
-                                                        }
-                                                    </div>
-
-                                                    <div class="rc-tool-actions">
-                                                        <button type="button" @onclick="() => talent.Modifiers.Remove(modifier)">
-                                                            @L["Common_Remove"]
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            }
-                                        </div>
-
-                                        <div class="rc-tool-actions">
-                                            @if (talent.TalentDefinitionId.HasValue)
-                                            {
-                                                <button type="button" @onclick="() => talent.IsDeleted = true">@L["Common_Remove"]</button>
-                                            }
-                                            else
-                                            {
-                                                <button type="button" @onclick="() => CurrentSystem.Talents.Remove(talent)">@L["Common_Remove"]</button>
-                                            }
-                                        </div>
-                                    }
-                                </article>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
-        </details>
-
-        <details class="rc-collapse-section">
-            <summary class="rc-collapse-section__summary">
-                <div class="rc-collapse-section__summary-main">
-                    <div class="rc-collapse-section__summary-text">
-                        <div class="rc-collapse-section__title">@L["GameSystem_Editor_ItemsSection"]</div>
-                        <div class="rc-collapse-section__subtitle">@L["GameSystem_Editor_ItemsSubtitle"]</div>
-                    </div>
-
-                    <div class="rc-collapse-section__summary-actions" @onclick:stopPropagation="true">
-                        <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
-                    </div>
-                </div>
-            </summary>
-
-
-            <div class="rc-collapse-section__body">
-                <div class="rc-tool-panel">
-                    <div class="rc-tool-actions">
-                        <button type="button" @onclick="AddItemRow">@L["GameSystem_Editor_AddItemRow"]</button>
-                    </div>
-
-                    @if (CurrentSystem.Items.Count == 0)
-                    {
-                        <div class="rc-empty-panel rc-empty-panel--small">
-                            <p>@L["GameSystem_Editor_NoItems"]</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="rc-consequence-list">
-                            @foreach (var item in CurrentSystem.Items)
-                            {
-                                <article class="rc-filter-group-card">
-                                    @if (item.IsDeleted)
-                                    {
-                                        <div class="rc-inline-warning">
-                                            <p><strong>@item.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
-                                        </div>
-
-                                        <div class="rc-tool-actions">
-                                            <button type="button" @onclick="() => item.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="rc-tool-form-grid">
-                                            <div class="rc-form-field">
-                                                <label>@L["Common_Name"]</label>
-                                                <input @bind="item.Name" />
-                                            </div>
-
-                                            <div class="rc-form-field">
-                                                <label>@L["GameSystem_Editor_DisplayOrder"]</label>
-                                                <input type="number" @bind="item.DisplayOrder" />
-                                            </div>
-
-                                            <div class="rc-form-field rc-form-field--full">
-                                                <label>@L["Common_Description"]</label>
-                                                <textarea rows="3" @bind="item.Description"></textarea>
-                                            </div>
-                                        </div>
-
-                                        <div class="rc-tool-subsection">
-                                            <div class="rc-tool-subsection__header">
-                                                <div class="rc-tool-subsection__title">@L["GameSystem_Editor_ItemModifiersSection"]</div>
-                                                <div class="rc-tool-inline-actions">
-                                                    <button type="button" @onclick="() => AddItemModifierRow(item)">
-                                                        @L["GameSystem_Editor_AddItemModifierRow"]
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            @foreach (var modifier in item.Modifiers)
-                                            {
-                                                <div class="rc-filter-group-card">
-                                                    <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
-                                                        <div class="rc-form-field">
-                                                            <label>@L["GameSystem_Editor_ModifierTargetType"]</label>
-                                                            <select value="@modifier.TargetType.ToString()" @onchange="e => ChangeModifierTargetType(modifier, e.Value?.ToString())">
-                                                                <option value="@ModifierTargetType.BaseAttribute">@L["GameSystem_Editor_ModifierTarget_BaseAttribute"]</option>
-                                                                <option value="@ModifierTargetType.DerivedStat">@L["GameSystem_Editor_ModifierTarget_DerivedStat"]</option>
-                                                                <option value="@ModifierTargetType.Metric">@L["GameSystem_Editor_ModifierTarget_Metric"]</option>
-                                                                <option value="@ModifierTargetType.Gauge">@L["GameSystem_Editor_ModifierTarget_Gauge"]</option>
-                                                            </select>
-                                                        </div>
-
-                                                        <div class="rc-form-field">
-                                                            <label>@L["GameSystem_Editor_ModifierTarget"]</label>
-                                                            <select @bind="modifier.TargetId">
-                                                                @foreach (var optionItem in GetModifierTargetOptions(modifier.TargetType))
-                                                                {
-                                                                    <option value="@optionItem.Id">@optionItem.Name</option>
-                                                                }
-                                                            </select>
-                                                        </div>
-
-                                                        <div class="rc-form-field">
-                                                            <label>@L["GameSystem_Editor_ModifierValueMode"]</label>
-                                                            <select @bind="modifier.ValueMode">
-                                                                <option value="@ModifierValueMode.Fixed">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
-                                                                <option value="@ModifierValueMode.Metric">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
-                                                            </select>
-                                                        </div>
-
-                                                        @if (modifier.ValueMode == ModifierValueMode.Fixed)
-                                                        {
-                                                            <div class="rc-form-field">
-                                                                <label>@L["GameSystem_Editor_ModifierValue"]</label>
-                                                                <input type="number" @bind="modifier.Value" />
-                                                            </div>
-                                                        }
-                                                        else
-                                                        {
-                                                            <div class="rc-form-field">
-                                                                <label>@L["GameSystem_Editor_ModifierSourceMetric"]</label>
-                                                                <select @bind="modifier.SourceMetricId">
-                                                                    @foreach (var metricRef in CurrentSystem.AvailableMetrics)
-                                                                    {
-                                                                        <option value="@metricRef.MetricDefinitionId">@metricRef.Name</option>
-                                                                    }
-                                                                </select>
-                                                            </div>
-                                                        }
-                                                    </div>
-
-                                                    <div class="rc-tool-actions">
-                                                        <button type="button" @onclick="() => item.Modifiers.Remove(modifier)">
-                                                            @L["Common_Remove"]
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            }
-                                        </div>
-
-                                        <div class="rc-tool-actions">
-                                            @if (item.ItemDefinitionId.HasValue)
-                                            {
-                                                <button type="button" @onclick="() => item.IsDeleted = true">@L["Common_Remove"]</button>
-                                            }
-                                            else
-                                            {
-                                                <button type="button" @onclick="() => CurrentSystem.Items.Remove(item)">@L["Common_Remove"]</button>
-                                            }
-                                        </div>
-                                    }
-                                </article>
-                            }
-                        </div>
-                    }
-                </div>
-            </div>
-        </details>
-    </section>
+<div class="rc-tool-actions rc-tool-actions--right rc-editor-footer-actions">
+    <button type="button" @onclick="BackToOrigin">@GetReturnButtonLabel()</button>
+    <button type="button" @onclick="SaveChanges">@L["Common_Save"]</button>
+</div>
+</section>
 }
 
 @code {
@@ -1353,6 +694,7 @@ else
     private bool RedirectToHome;
     private string Message = string.Empty;
     private bool ShowSharedConfirm;
+    private string ReferenceCleanupConfirmationMessage = string.Empty;
     private GameSystemEditorDto? CurrentSystem;
 
     protected override async Task OnInitializedAsync()
@@ -1407,6 +749,14 @@ else
         Message = string.Empty;
         ShowSharedConfirm = false;
         CurrentSystem = await GameSystemService.GetGameSystemEditorAsync(GameSystemId, CurrentUserId);
+
+        if (CurrentSystem is not null)
+        {
+            RefreshLoadedSnapshot();
+            SelectedEditorCategory = null;
+            SelectedEditorKey = null;
+            ClearEditorDrafts();
+        }
     }
 
     private bool CanReturnToOrigin()
@@ -1473,39 +823,59 @@ else
     }
 
     private string GetEditableBaseAttributesRenderKey()
-{
-    var attributes = GetEditableBaseAttributes();
+    {
+        var attributes = GetEditableBaseAttributes();
 
-    return string.Join("|", attributes.Select(x => $"{x.TemporaryKey}:{x.Name}"));
-}
+        return string.Join("|", attributes.Select(x => $"{x.TemporaryKey}:{x.Name}"));
+    }
+
+
+    private List<EditableMetricDefinitionDto> GetEditableMetrics()
+    {
+        if (CurrentSystem is null)
+            return new List<EditableMetricDefinitionDto>();
+
+        return CurrentSystem.Metrics
+            .Where(x => !x.IsDeleted && x.MetricDefinitionId.HasValue)
+            .ToList();
+    }
 
     private void AddAttributeRow()
     {
-        if (CurrentSystem is null)
+        if (CurrentSystem is null || IsCategoryLimitReached(EditorCategory.Attributes))
             return;
 
         var tempKey = Guid.NewGuid().ToString("N");
 
         CurrentSystem.Attributes.Add(new EditableAttributeDefinitionDto
         {
+            AttributeDefinitionId = Guid.NewGuid(),
             TemporaryKey = tempKey,
             Name = string.Empty,
             MinValue = 0,
             MaxValue = 20,
             DefaultValue = 10,
+            CreationDistributionPoints = 0,
+            MaxCreationDistributionPerCharacter = 0,
             DefaultValueMode = BaseValueGenerationMode.Fixed
         });
     }
 
     private void AddDerivedStatRow()
     {
-        CurrentSystem?.DerivedStats.Add(new EditableDerivedStatDefinitionDto
+        if (CurrentSystem is null || IsCategoryLimitReached(EditorCategory.DerivedStats))
+            return;
+
+        CurrentSystem.DerivedStats.Add(new EditableDerivedStatDefinitionDto
         {
+            DerivedStatDefinitionId = Guid.NewGuid(),
             Name = string.Empty,
             MinValue = 0,
             MaxValue = 100,
             RoundMode = ComputedValueRoundMode.Ceiling,
-            DisplayOrder = CurrentSystem.DerivedStats.Count
+            DisplayOrder = CurrentSystem.DerivedStats.Count,
+            CreationDistributionPoints = 0,
+            MaxCreationDistributionPerCharacter = 0
         });
     }
 
@@ -1539,10 +909,16 @@ else
 
     private void AddMetricRow()
     {
-        CurrentSystem?.Metrics.Add(new EditableMetricDefinitionDto
+        if (CurrentSystem is null || IsCategoryLimitReached(EditorCategory.Metrics))
+            return;
+
+        var metricId = Guid.NewGuid();
+
+        CurrentSystem.Metrics.Add(new EditableMetricDefinitionDto
         {
+            MetricDefinitionId = metricId,
             Name = string.Empty,
-            TemporaryKey = Guid.NewGuid().ToString("N"),
+            TemporaryKey = metricId.ToString("N"),
             BaseValue = 0,
             MinValue = 0,
             MaxValue = 100,
@@ -1553,10 +929,10 @@ else
 
     private void AddMetricComponentRow(EditableMetricDefinitionDto metric)
     {
-        if (CurrentSystem is null || CurrentSystem.AvailableBaseAttributes.Count == 0)
+        if (CurrentSystem is null || GetEditableBaseAttributes().Count == 0)
             return;
 
-        var attribute = CurrentSystem.AvailableBaseAttributes.First();
+        var attribute = GetEditableBaseAttributes().First();
 
         metric.Components.Add(new EditableMetricComponentDto
         {
@@ -1568,7 +944,7 @@ else
 
     private void AddMetricFormulaStepRow(EditableMetricDefinitionDto metric)
     {
-        var firstAttribute = CurrentSystem?.AvailableBaseAttributes.FirstOrDefault();
+        var firstAttribute = GetEditableBaseAttributes().FirstOrDefault();
 
         metric.FormulaSteps.Add(new EditableMetricFormulaStepDto
         {
@@ -1589,7 +965,7 @@ else
 
         return sourceType switch
         {
-            MetricFormulaSourceType.BaseAttribute => CurrentSystem.AvailableBaseAttributes
+            MetricFormulaSourceType.BaseAttribute => GetEditableBaseAttributes()
                 .Select(x => new MetricFormulaSourceOption(x.AttributeDefinitionId, x.Name))
                 .ToList(),
 
@@ -1633,8 +1009,28 @@ else
             return;
         }
 
-        var firstOption = GetMetricFormulaSourceOptions(CurrentSystem!.Metrics.First(x => x.FormulaSteps.Contains(step)), sourceType).FirstOrDefault();
+        var parentMetric = FindMetricContainingStep(step);
+        if (parentMetric is null)
+        {
+            step.SourceId = null;
+            return;
+        }
+
+        var firstOption = GetMetricFormulaSourceOptions(parentMetric, sourceType).FirstOrDefault();
         step.SourceId = firstOption?.Id;
+    }
+
+    private EditableMetricDefinitionDto? FindMetricContainingStep(EditableMetricFormulaStepDto step)
+    {
+        if (CurrentSystem is null)
+            return null;
+
+        return CurrentSystem.Metrics.FirstOrDefault(x => x.FormulaSteps.Contains(step));
+    }
+
+    private static string FormatMetricConstant(decimal value)
+    {
+        return value.ToString("0.####");
     }
 
     private string GetMetricFormulaStepSummary(EditableMetricFormulaStepDto step)
@@ -1649,7 +1045,7 @@ else
         };
 
         var source = step.SourceType == MetricFormulaSourceType.Constant
-            ? step.ConstantValue.ToString()
+            ? FormatMetricConstant(step.ConstantValue)
             : GetMetricFormulaSourceLabel(step);
 
         return $"{operation} {source}";
@@ -1662,11 +1058,11 @@ else
 
         return step.SourceType switch
         {
-            MetricFormulaSourceType.BaseAttribute => CurrentSystem.AvailableBaseAttributes.FirstOrDefault(x => x.AttributeDefinitionId == step.SourceId.Value)?.Name ?? step.SourceName,
+            MetricFormulaSourceType.BaseAttribute => GetEditableBaseAttributes().FirstOrDefault(x => x.AttributeDefinitionId == step.SourceId.Value)?.Name ?? step.SourceName,
             MetricFormulaSourceType.Gauge => CurrentSystem.Gauges.FirstOrDefault(x => x.GaugeDefinitionId == step.SourceId.Value)?.Name ?? step.SourceName,
             MetricFormulaSourceType.DerivedStat => CurrentSystem.DerivedStats.FirstOrDefault(x => x.DerivedStatDefinitionId == step.SourceId.Value)?.Name ?? step.SourceName,
             MetricFormulaSourceType.Metric => CurrentSystem.Metrics.FirstOrDefault(x => x.MetricDefinitionId == step.SourceId.Value)?.Name ?? step.SourceName,
-            MetricFormulaSourceType.Constant => step.ConstantValue.ToString(),
+            MetricFormulaSourceType.Constant => FormatMetricConstant(step.ConstantValue),
             _ => step.SourceName
         };
     }
@@ -1697,17 +1093,23 @@ else
 
     private void AddTraitRow()
     {
-        CurrentSystem?.Traits.Add(new EditableTraitDefinitionDto { Name = string.Empty });
+        if (CurrentSystem is null || IsCategoryLimitReached(EditorCategory.Traits))
+            return;
+
+        CurrentSystem.Traits.Add(new EditableTraitDefinitionDto { TraitDefinitionId = Guid.NewGuid(), Name = string.Empty });
     }
 
     private void AddTraitOptionRow(EditableTraitDefinitionDto trait)
     {
-        trait.Options.Add(new EditableTraitOptionDto { Name = string.Empty });
+        if (IsTraitOptionLimitReached(trait))
+            return;
+
+        trait.Options.Add(new EditableTraitOptionDto { TraitOptionId = Guid.NewGuid(), Name = string.Empty });
     }
 
     private void AddTraitOptionModifierRow(EditableTraitOptionDto option)
     {
-        var firstAttribute = CurrentSystem?.AvailableBaseAttributes.FirstOrDefault();
+        var firstAttribute = GetEditableBaseAttributes().FirstOrDefault();
 
         option.Modifiers.Add(new EditableModifierDefinitionDto
         {
@@ -1715,14 +1117,18 @@ else
             TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
             Value = 0,
             ValueMode = ModifierValueMode.Fixed,
-            SourceMetricId = CurrentSystem?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId
+            SourceMetricId = GetEditableMetrics().FirstOrDefault()?.MetricDefinitionId
         });
     }
 
     private void AddGaugeRow()
     {
-        CurrentSystem?.Gauges.Add(new EditableGaugeDefinitionDto
+        if (CurrentSystem is null || IsCategoryLimitReached(EditorCategory.Gauges))
+            return;
+
+        CurrentSystem.Gauges.Add(new EditableGaugeDefinitionDto
         {
+            GaugeDefinitionId = Guid.NewGuid(),
             Name = string.Empty,
             MinValue = 0,
             MaxValue = 10,
@@ -1732,17 +1138,22 @@ else
 
     private void AddTalentRow()
     {
-        CurrentSystem?.Talents.Add(new EditableTalentDefinitionDto
+        if (CurrentSystem is null || IsCategoryLimitReached(EditorCategory.Talents))
+            return;
+
+        CurrentSystem.Talents.Add(new EditableTalentDefinitionDto
         {
+            TalentDefinitionId = Guid.NewGuid(),
             Name = string.Empty,
             Description = string.Empty,
-            DisplayOrder = CurrentSystem.Talents.Count
+            DisplayOrder = CurrentSystem.Talents.Count,
+            IsSelectableAtCharacterCreation = false
         });
     }
 
     private void AddTalentModifierRow(EditableTalentDefinitionDto talent)
     {
-        var firstAttribute = CurrentSystem?.AvailableBaseAttributes.FirstOrDefault();
+        var firstAttribute = GetEditableBaseAttributes().FirstOrDefault();
 
         talent.Modifiers.Add(new EditableModifierDefinitionDto
         {
@@ -1750,23 +1161,28 @@ else
             TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
             Value = 0,
             ValueMode = ModifierValueMode.Fixed,
-            SourceMetricId = CurrentSystem?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId
+            SourceMetricId = GetEditableMetrics().FirstOrDefault()?.MetricDefinitionId
         });
     }
 
     private void AddItemRow()
     {
-        CurrentSystem?.Items.Add(new EditableItemDefinitionDto
+        if (CurrentSystem is null || IsCategoryLimitReached(EditorCategory.Items))
+            return;
+
+        CurrentSystem.Items.Add(new EditableItemDefinitionDto
         {
+            ItemDefinitionId = Guid.NewGuid(),
             Name = string.Empty,
             Description = string.Empty,
-            DisplayOrder = CurrentSystem.Items.Count
+            DisplayOrder = CurrentSystem.Items.Count,
+            IsSelectableAtCharacterCreation = false
         });
     }
 
     private void AddItemModifierRow(EditableItemDefinitionDto item)
     {
-        var firstAttribute = CurrentSystem?.AvailableBaseAttributes.FirstOrDefault();
+        var firstAttribute = GetEditableBaseAttributes().FirstOrDefault();
 
         item.Modifiers.Add(new EditableModifierDefinitionDto
         {
@@ -1774,7 +1190,9 @@ else
             TargetId = firstAttribute?.AttributeDefinitionId ?? Guid.Empty,
             Value = 0,
             ValueMode = ModifierValueMode.Fixed,
-            SourceMetricId = CurrentSystem?.AvailableMetrics.FirstOrDefault()?.MetricDefinitionId
+            SourceMetricId = GetEditableMetrics().FirstOrDefault()?.MetricDefinitionId,
+            OperationType = ModifierOperationType.AddValue,
+            FillGaugeCurrentValueOnly = false
         });
     }
 
@@ -1785,7 +1203,7 @@ else
 
         return targetType switch
         {
-            ModifierTargetType.BaseAttribute => CurrentSystem.AvailableBaseAttributes
+            ModifierTargetType.BaseAttribute => GetEditableBaseAttributes()
                 .Select(x => new ModifierTargetOption(x.AttributeDefinitionId, x.Name))
                 .ToList(),
 
@@ -1875,7 +1293,7 @@ else
             .FirstOrDefault(x => x.Id == modifier.TargetId)?.Name ?? string.Empty;
 
         var value = modifier.ValueMode == ModifierValueMode.Metric
-            ? CurrentSystem.AvailableMetrics.FirstOrDefault(x => x.MetricDefinitionId == modifier.SourceMetricId)?.Name ?? string.Empty
+            ? GetEditableMetrics().FirstOrDefault(x => x.MetricDefinitionId == modifier.SourceMetricId)?.Name ?? string.Empty
             : modifier.Value.ToString();
 
         return $"{modifier.OperationType} {targetName} : {value}";
@@ -1907,6 +1325,88 @@ else
         return $"{L["GameSystem_Editor_CriticalFailureValue"]} {sign}";
     }
 
+    private int AttributeCreationDistributionPoints
+    {
+        get => CurrentSystem?.Attributes.FirstOrDefault(x => !x.IsDeleted)?.CreationDistributionPoints ?? 0;
+        set
+        {
+            if (CurrentSystem is null)
+                return;
+
+            foreach (var attribute in CurrentSystem.Attributes.Where(x => !x.IsDeleted))
+                attribute.CreationDistributionPoints = value;
+        }
+    }
+
+    private int AttributeCreationDistributionMax
+    {
+        get => CurrentSystem?.Attributes.FirstOrDefault(x => !x.IsDeleted)?.MaxCreationDistributionPerCharacter ?? 0;
+        set
+        {
+            if (CurrentSystem is null)
+                return;
+
+            foreach (var attribute in CurrentSystem.Attributes.Where(x => !x.IsDeleted))
+                attribute.MaxCreationDistributionPerCharacter = value;
+        }
+    }
+
+    private int DerivedStatCreationDistributionPoints
+    {
+        get => CurrentSystem?.DerivedStats.FirstOrDefault(x => !x.IsDeleted)?.CreationDistributionPoints ?? 0;
+        set
+        {
+            if (CurrentSystem is null)
+                return;
+
+            foreach (var derivedStat in CurrentSystem.DerivedStats.Where(x => !x.IsDeleted))
+                derivedStat.CreationDistributionPoints = value;
+        }
+    }
+
+    private int DerivedStatCreationDistributionMax
+    {
+        get => CurrentSystem?.DerivedStats.FirstOrDefault(x => !x.IsDeleted)?.MaxCreationDistributionPerCharacter ?? 0;
+        set
+        {
+            if (CurrentSystem is null)
+                return;
+
+            foreach (var derivedStat in CurrentSystem.DerivedStats.Where(x => !x.IsDeleted))
+                derivedStat.MaxCreationDistributionPerCharacter = value;
+        }
+    }
+
+    private void ApplyCreationConfigurationAcrossDefinitions()
+    {
+        if (CurrentSystem is null)
+            return;
+
+        if (CurrentSystem.Attributes.Count > 0)
+        {
+            var attributePoints = CurrentSystem.Attributes.First().CreationDistributionPoints;
+            var attributeMax = CurrentSystem.Attributes.First().MaxCreationDistributionPerCharacter;
+
+            foreach (var attribute in CurrentSystem.Attributes.Where(x => !x.IsDeleted))
+            {
+                attribute.CreationDistributionPoints = attributePoints;
+                attribute.MaxCreationDistributionPerCharacter = attributeMax;
+            }
+        }
+
+        if (CurrentSystem.DerivedStats.Count > 0)
+        {
+            var derivedPoints = CurrentSystem.DerivedStats.First().CreationDistributionPoints;
+            var derivedMax = CurrentSystem.DerivedStats.First().MaxCreationDistributionPerCharacter;
+
+            foreach (var derivedStat in CurrentSystem.DerivedStats.Where(x => !x.IsDeleted))
+            {
+                derivedStat.CreationDistributionPoints = derivedPoints;
+                derivedStat.MaxCreationDistributionPerCharacter = derivedMax;
+            }
+        }
+    }
+
     private async Task SaveChanges()
     {
         await SaveChangesInternal(false);
@@ -1924,7 +1424,7 @@ else
         return Task.CompletedTask;
     }
 
-    private async Task SaveChangesInternal(bool confirmShared)
+    private async Task SaveChangesInternal(bool confirmShared, bool confirmReferenceCleanup = false)
     {
         if (CurrentSystem is null)
             return;
@@ -1949,6 +1449,8 @@ else
 
             PrepareMetricsForSave(CurrentSystem.Metrics);
 
+            ApplyCreationConfigurationAcrossDefinitions();
+
             var request = new GameSystemApplyChangesRequestDto
             {
                 Name = CurrentSystem.Name,
@@ -1958,8 +1460,12 @@ else
                 DefaultTestDiceSides = CurrentSystem.DefaultTestDiceSides,
                 CriticalSuccessValue = CurrentSystem.CriticalSuccessValue,
                 CriticalFailureValue = CurrentSystem.CriticalFailureValue,
+                DefaultSuccessThreshold = CurrentSystem.DefaultSuccessThreshold,
                 ConfirmSharedSystemChanges = confirmShared,
+                ConfirmDeletedReferenceCleanup = confirmReferenceCleanup,
                 IsGeneric = CurrentSystem.IsGeneric,
+                StartingTalentChoices = CurrentSystem.StartingTalentChoices,
+                StartingItemChoices = CurrentSystem.StartingItemChoices,
                 Attributes = CurrentSystem.Attributes,
                 DerivedStats = CurrentSystem.DerivedStats,
                 Metrics = CurrentSystem.Metrics,
@@ -2014,4 +1520,779 @@ else
     {
         await JS.InvokeVoidAsync("window.scrollTo", 0, 0);
     }
+
+    private bool ItemGaugeModifierAffectsMaximum(EditableModifierDefinitionDto modifier)
+    {
+        return !modifier.FillGaugeCurrentValueOnly;
+    }
+
+    private void SetItemGaugeModifierAffectsMaximum(EditableModifierDefinitionDto modifier, bool affectsMaximum)
+    {
+        modifier.FillGaugeCurrentValueOnly = !affectsMaximum;
+    }
+    private GameSystemEditorDto? LoadedSystemSnapshot;
+    private EditorCategory? SelectedEditorCategory;
+    private string? SelectedEditorKey;
+    private HashSet<EditorCategory> CollapsedEditorCategories { get; } = new();
+
+
+    private EditableAttributeDefinitionDto? SelectedAttributeDraft;
+    private EditableDerivedStatDefinitionDto? SelectedDerivedStatDraft;
+    private EditableMetricDefinitionDto? SelectedMetricDraft;
+    private EditableTraitDefinitionDto? SelectedTraitDraft;
+    private EditableGaugeDefinitionDto? SelectedGaugeDraft;
+    private EditableTalentDefinitionDto? SelectedTalentDraft;
+    private EditableItemDefinitionDto? SelectedItemDraft;
+
+    private int AttributeCreationDistributionPointsDraft;
+    private int AttributeCreationDistributionMaxDraft;
+    private int DerivedStatCreationDistributionPointsDraft;
+    private int DerivedStatCreationDistributionMaxDraft;
+    private int StartingTalentChoicesDraft;
+    private int StartingItemChoicesDraft;
+
+    private const int MaxStandardCategoryElements = 48;
+    private const int MaxTraitDefinitions = 15;
+    private const int MaxTraitOptionsPerTrait = 20;
+
+    private bool IsCategoryCollapsed(EditorCategory category)
+    {
+        return CollapsedEditorCategories.Contains(category);
+    }
+
+    private void ToggleCategoryCollapse(EditorCategory category)
+    {
+        if (!CollapsedEditorCategories.Add(category))
+            CollapsedEditorCategories.Remove(category);
+    }
+
+    private string GetCategoryCollapseLabel(EditorCategory category)
+    {
+        return IsCategoryCollapsed(category) ? "▸" : "▾";
+    }
+
+    private int GetActiveCategoryCount(EditorCategory category)
+    {
+        if (CurrentSystem is null)
+            return 0;
+
+        return category switch
+        {
+            EditorCategory.Attributes => CurrentSystem.Attributes.Count(x => !x.IsDeleted),
+            EditorCategory.DerivedStats => CurrentSystem.DerivedStats.Count(x => !x.IsDeleted),
+            EditorCategory.Metrics => CurrentSystem.Metrics.Count(x => !x.IsDeleted),
+            EditorCategory.Traits => CurrentSystem.Traits.Count(x => !x.IsDeleted),
+            EditorCategory.Gauges => CurrentSystem.Gauges.Count(x => !x.IsDeleted),
+            EditorCategory.Talents => CurrentSystem.Talents.Count(x => !x.IsDeleted),
+            EditorCategory.Items => CurrentSystem.Items.Count(x => !x.IsDeleted),
+            _ => 0
+        };
+    }
+
+    private static int GetCategoryLimit(EditorCategory category)
+    {
+        return category == EditorCategory.Traits
+            ? MaxTraitDefinitions
+            : MaxStandardCategoryElements;
+    }
+
+    private string GetCategoryCountLabel(EditorCategory category)
+    {
+        var count = GetActiveCategoryCount(category);
+        var warningThreshold = category == EditorCategory.Traits ? 12 : 45;
+
+        return count >= warningThreshold
+            ? $"{count}/{GetCategoryLimit(category)}"
+            : count.ToString();
+    }
+
+    private bool IsCategoryLimitReached(EditorCategory category)
+    {
+        return GetActiveCategoryCount(category) >= GetCategoryLimit(category);
+    }
+
+    private static bool IsTraitOptionLimitReached(EditableTraitDefinitionDto? trait)
+    {
+        return trait is not null && trait.Options.Count(x => !x.IsDeleted) >= MaxTraitOptionsPerTrait;
+    }
+
+    private bool HasPendingUnsavedChanges => CurrentSystem is not null && LoadedSystemSnapshot is not null && SerializeForChangeTracking(CurrentSystem) != SerializeForChangeTracking(LoadedSystemSnapshot);
+
+    private enum EditorCategory
+    {
+        Attributes,
+        DerivedStats,
+        Metrics,
+        Traits,
+        Gauges,
+        Talents,
+        Items
+    }
+
+    private string SerializeForChangeTracking(object? value)
+        => JsonSerializer.Serialize(value);
+
+    private string GetCategoryCardCssClass(EditorCategory category)
+        => IsCategoryDirty(category)
+            ? "rc-editor-category-card is-dirty"
+            : "rc-editor-category-card";
+
+    private bool IsCategoryDirty(EditorCategory category)
+    {
+        if (CurrentSystem is null || LoadedSystemSnapshot is null)
+            return false;
+
+        return category switch
+        {
+            EditorCategory.Attributes => SerializeForChangeTracking(CurrentSystem.Attributes)
+                != SerializeForChangeTracking(LoadedSystemSnapshot.Attributes),
+
+            EditorCategory.DerivedStats => SerializeForChangeTracking(CurrentSystem.DerivedStats)
+                != SerializeForChangeTracking(LoadedSystemSnapshot.DerivedStats),
+
+            EditorCategory.Metrics => SerializeForChangeTracking(CurrentSystem.Metrics)
+                != SerializeForChangeTracking(LoadedSystemSnapshot.Metrics),
+
+            EditorCategory.Traits => SerializeForChangeTracking(CurrentSystem.Traits)
+                != SerializeForChangeTracking(LoadedSystemSnapshot.Traits),
+
+            EditorCategory.Gauges => SerializeForChangeTracking(CurrentSystem.Gauges)
+                != SerializeForChangeTracking(LoadedSystemSnapshot.Gauges),
+
+            EditorCategory.Talents => SerializeForChangeTracking(new
+            {
+                CurrentSystem.StartingTalentChoices,
+                CurrentSystem.Talents
+            }) != SerializeForChangeTracking(new
+            {
+                LoadedSystemSnapshot.StartingTalentChoices,
+                LoadedSystemSnapshot.Talents
+            }),
+
+            EditorCategory.Items => SerializeForChangeTracking(new
+            {
+                CurrentSystem.StartingItemChoices,
+                CurrentSystem.Items
+            }) != SerializeForChangeTracking(new
+            {
+                LoadedSystemSnapshot.StartingItemChoices,
+                LoadedSystemSnapshot.Items
+            }),
+
+            _ => false
+        };
+    }
+
+    private static T DeepClone<T>(T source)
+    {
+        var json = JsonSerializer.Serialize(source);
+        return JsonSerializer.Deserialize<T>(json)!;
+    }
+
+    private void RefreshLoadedSnapshot()
+    {
+        if (CurrentSystem is null)
+            return;
+
+        LoadedSystemSnapshot = DeepClone(CurrentSystem);
+    }
+
+    private void InitializeCategoryDraft(EditorCategory category)
+    {
+        if (CurrentSystem is null)
+            return;
+
+        switch (category)
+        {
+            case EditorCategory.Attributes:
+                AttributeCreationDistributionPointsDraft = AttributeCreationDistributionPoints;
+                AttributeCreationDistributionMaxDraft = AttributeCreationDistributionMax;
+                break;
+            case EditorCategory.DerivedStats:
+                DerivedStatCreationDistributionPointsDraft = DerivedStatCreationDistributionPoints;
+                DerivedStatCreationDistributionMaxDraft = DerivedStatCreationDistributionMax;
+                break;
+            case EditorCategory.Talents:
+                StartingTalentChoicesDraft = CurrentSystem.StartingTalentChoices;
+                break;
+            case EditorCategory.Items:
+                StartingItemChoicesDraft = CurrentSystem.StartingItemChoices;
+                break;
+        }
+    }
+
+    private void ClearEditorDrafts()
+    {
+        SelectedAttributeDraft = null;
+        SelectedDerivedStatDraft = null;
+        SelectedMetricDraft = null;
+        SelectedTraitDraft = null;
+        SelectedGaugeDraft = null;
+        SelectedTalentDraft = null;
+        SelectedItemDraft = null;
+    }
+
+    private void ToggleCategorySelection(EditorCategory category)
+    {
+        if (SelectedEditorCategory == category && SelectedEditorKey is null)
+        {
+            SelectedEditorCategory = null;
+            SelectedEditorKey = null;
+            ClearEditorDrafts();
+            return;
+        }
+
+        SelectedEditorCategory = category;
+        SelectedEditorKey = null;
+        ClearEditorDrafts();
+        InitializeCategoryDraft(category);
+    }
+
+    private void ToggleEditorSelection(EditorCategory category, string key)
+    {
+        if (SelectedEditorCategory == category && SelectedEditorKey == key)
+        {
+            SelectedEditorCategory = null;
+            SelectedEditorKey = null;
+            ClearEditorDrafts();
+            return;
+        }
+
+        SelectedEditorCategory = category;
+        SelectedEditorKey = key;
+        ClearEditorDrafts();
+        LoadSelectedDraft();
+    }
+
+    private void LoadSelectedDraft()
+    {
+        if (CurrentSystem is null || SelectedEditorCategory is null || string.IsNullOrWhiteSpace(SelectedEditorKey))
+            return;
+
+        switch (SelectedEditorCategory)
+        {
+            case EditorCategory.Attributes:
+                if (FindAttribute(CurrentSystem, SelectedEditorKey) is { } attribute)
+                    SelectedAttributeDraft = DeepClone(attribute);
+                break;
+            case EditorCategory.DerivedStats:
+                if (FindDerivedStat(CurrentSystem, SelectedEditorKey) is { } derived)
+                    SelectedDerivedStatDraft = DeepClone(derived);
+                break;
+            case EditorCategory.Metrics:
+                if (FindMetric(CurrentSystem, SelectedEditorKey) is { } metric)
+                    SelectedMetricDraft = DeepClone(metric);
+                break;
+            case EditorCategory.Traits:
+                if (FindTrait(CurrentSystem, SelectedEditorKey) is { } trait)
+                    SelectedTraitDraft = DeepClone(trait);
+                break;
+            case EditorCategory.Gauges:
+                if (FindGauge(CurrentSystem, SelectedEditorKey) is { } gauge)
+                    SelectedGaugeDraft = DeepClone(gauge);
+                break;
+            case EditorCategory.Talents:
+                if (FindTalent(CurrentSystem, SelectedEditorKey) is { } talent)
+                    SelectedTalentDraft = DeepClone(talent);
+                break;
+            case EditorCategory.Items:
+                if (FindItem(CurrentSystem, SelectedEditorKey) is { } item)
+                    SelectedItemDraft = DeepClone(item);
+                break;
+        }
+    }
+
+    private string GetSelectedEditorTitle()
+    {
+        if (SelectedEditorCategory is null)
+            return string.Empty;
+
+        if (SelectedEditorKey is null)
+        {
+            return SelectedEditorCategory switch
+            {
+                EditorCategory.Attributes => L["GameSystem_Editor_AttributesSection"],
+                EditorCategory.DerivedStats => L["GameSystem_Editor_DerivedStatsSection"],
+                EditorCategory.Metrics => L["GameSystem_Editor_MetricsSection"],
+                EditorCategory.Traits => L["GameSystem_Editor_TraitsSection"],
+                EditorCategory.Gauges => L["GameSystem_Editor_GaugesSection"],
+                EditorCategory.Talents => L["GameSystem_Editor_TalentsSection"],
+                EditorCategory.Items => L["GameSystem_Editor_ItemsSection"],
+                _ => string.Empty
+            };
+        }
+
+        return SelectedEditorCategory switch
+        {
+            EditorCategory.Attributes => DisplayNameOrPlaceholder(SelectedAttributeDraft?.Name),
+            EditorCategory.DerivedStats => DisplayNameOrPlaceholder(SelectedDerivedStatDraft?.Name),
+            EditorCategory.Metrics => DisplayNameOrPlaceholder(SelectedMetricDraft?.Name),
+            EditorCategory.Traits => DisplayNameOrPlaceholder(SelectedTraitDraft?.Name),
+            EditorCategory.Gauges => DisplayNameOrPlaceholder(SelectedGaugeDraft?.Name),
+            EditorCategory.Talents => DisplayNameOrPlaceholder(SelectedTalentDraft?.Name),
+            EditorCategory.Items => DisplayNameOrPlaceholder(SelectedItemDraft?.Name),
+            _ => string.Empty
+        };
+    }
+
+    private string GetSelectedEditorSubtitle()
+    {
+        if (SelectedEditorCategory is null)
+            return string.Empty;
+
+        if (SelectedEditorKey is null)
+        {
+            return SelectedEditorCategory switch
+            {
+                EditorCategory.Attributes => L["GameSystem_Editor_AttributesSubtitle"],
+                EditorCategory.DerivedStats => L["GameSystem_Editor_DerivedStatsHelp"],
+                EditorCategory.Metrics => L["GameSystem_Editor_MetricsHelp"],
+                EditorCategory.Traits => L["GameSystem_Editor_TraitsSubtitle"],
+                EditorCategory.Gauges => L["GameSystem_Editor_GaugesSubtitle"],
+                EditorCategory.Talents => L["GameSystem_Editor_TalentsSubtitle"],
+                EditorCategory.Items => L["GameSystem_Editor_ItemsSubtitle"],
+                _ => string.Empty
+            };
+        }
+
+        return SelectedEditorCategory switch
+        {
+            EditorCategory.Attributes when SelectedAttributeDraft is not null => GetAttributeSummary(SelectedAttributeDraft),
+            EditorCategory.DerivedStats when SelectedDerivedStatDraft is not null => GetDerivedStatSummary(SelectedDerivedStatDraft),
+            EditorCategory.Metrics when SelectedMetricDraft is not null => GetMetricSummary(SelectedMetricDraft),
+            EditorCategory.Traits when SelectedTraitDraft is not null => GetTraitSummary(SelectedTraitDraft),
+            EditorCategory.Gauges when SelectedGaugeDraft is not null => GetGaugeSummary(SelectedGaugeDraft),
+            EditorCategory.Talents when SelectedTalentDraft is not null => GetSimpleNameSummary(SelectedTalentDraft.Description),
+            EditorCategory.Items when SelectedItemDraft is not null => GetSimpleNameSummary(SelectedItemDraft.Description),
+            _ => string.Empty
+        };
+    }
+
+    private string GetEditorListItemClass(EditorCategory category, string key, bool isDeleted)
+    {
+        var result = "rc-editor-list-item";
+        if (SelectedEditorCategory == category && SelectedEditorKey == key)
+            result += " is-selected";
+        if (isDeleted)
+            result += " is-deleted";
+        return result;
+    }
+
+    private string DisplayNameOrPlaceholder(string? name)
+        => string.IsNullOrWhiteSpace(name) ? L["GameSystem_Editor_UntitledElement"] : name.Trim();
+
+    private string GetSimpleNameSummary(string? description)
+        => string.IsNullOrWhiteSpace(description) ? L["GameSystem_Editor_NoDescriptionSummary"] : description.Trim();
+
+    private string GetAttributeSummary(EditableAttributeDefinitionDto attribute)
+    {
+        var (min, max) = GetAttributeDefaultRange(attribute);
+        return $"{min} {L["Common_To"]} {max}";
+    }
+
+    private (int Min, int Max) GetAttributeDefaultRange(EditableAttributeDefinitionDto attribute)
+    {
+        if (attribute.DefaultValueMode == BaseValueGenerationMode.DiceExpression)
+        {
+            var diceCount = Math.Max(0, attribute.DefaultValueDiceCount);
+            var diceSides = Math.Max(0, attribute.DefaultValueDiceSides);
+            var flatBonus = attribute.DefaultValueFlatBonus;
+            var min = flatBonus + (diceCount > 0 && diceSides > 0 ? diceCount : 0);
+            var max = flatBonus + (diceCount > 0 && diceSides > 0 ? diceCount * diceSides : 0);
+            return (min, max);
+        }
+
+        return (attribute.DefaultValue, attribute.DefaultValue);
+    }
+
+    private string GetDerivedStatSummary(EditableDerivedStatDefinitionDto derivedStat)
+    {
+        var names = derivedStat.Components
+            .Where(x => !x.IsDeleted)
+            .Select(x => ResolveAttributeNameFromTemporaryKeyOrId(x.AttributeTemporaryKey, x.AttributeDefinitionId))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct()
+            .ToList();
+
+        return names.Count == 0 ? L["GameSystem_Editor_NoDerivedComponentsSummary"] : JoinHumanReadable(names);
+    }
+
+    private string GetMetricSummary(EditableMetricDefinitionDto metric)
+    {
+        var parts = new List<string>();
+        if (metric.BaseValue != 0)
+            parts.Add(metric.BaseValue.ToString());
+
+        foreach (var step in metric.FormulaSteps.Where(x => !x.IsDeleted).OrderBy(x => x.Order).ThenBy(x => x.MetricFormulaStepId))
+        {
+            var source = step.SourceType == MetricFormulaSourceType.Constant
+                ? FormatMetricConstant(step.ConstantValue)
+                : GetMetricFormulaSourceLabel(step);
+
+            if (string.IsNullOrWhiteSpace(source))
+                continue;
+
+            var op = step.OperationType switch
+            {
+                MetricFormulaOperationType.Add => "+",
+                MetricFormulaOperationType.Subtract => "-",
+                MetricFormulaOperationType.Multiply => "×",
+                MetricFormulaOperationType.Divide => "/",
+                _ => "+"
+            };
+
+            if (parts.Count == 0 && op == "+")
+                parts.Add(source);
+            else
+                parts.Add($"{op} {source}");
+        }
+
+        return parts.Count == 0 ? L["GameSystem_Editor_NoMetricFormulaSummary"] : string.Join(" ", parts);
+    }
+
+    private string GetTraitSummary(EditableTraitDefinitionDto trait)
+    {
+        var options = trait.Options
+            .Where(x => !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name))
+            .Select(x => x.Name.Trim())
+            .Take(5)
+            .ToList();
+
+        if (options.Count == 0)
+            return L["GameSystem_Editor_NoTraitOptionsSummary"];
+
+        var hasMore = trait.Options.Count(x => !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)) > 4;
+        var visible = options.Take(4).ToList();
+        var summary = string.Join(", ", visible);
+        return hasMore ? $"{summary}…" : summary;
+    }
+
+    private string GetGaugeSummary(EditableGaugeDefinitionDto gauge)
+    {
+        var typeLabel = gauge.IsHealthGauge ? L["GameSystem_Editor_GaugeHealthType"] : L["GameSystem_Editor_GaugeStandardType"];
+        return $"{gauge.DefaultValue} | {typeLabel}";
+    }
+
+    private string JoinHumanReadable(IReadOnlyList<string> items)
+    {
+        if (items.Count == 0)
+            return string.Empty;
+        if (items.Count == 1)
+            return items[0];
+        if (items.Count == 2)
+            return $"{items[0]} {L["Common_And"]} {items[1]}";
+        return string.Join(", ", items.Take(items.Count - 1)) + $" {L["Common_And"]} {items[^1]}";
+    }
+
+    private string ResolveAttributeNameFromTemporaryKeyOrId(string? temporaryKey, Guid attributeDefinitionId)
+    {
+        if (CurrentSystem is null)
+            return string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(temporaryKey))
+        {
+            var byKey = CurrentSystem.Attributes.FirstOrDefault(x => !x.IsDeleted && x.TemporaryKey == temporaryKey);
+            if (byKey is not null)
+                return byKey.Name;
+        }
+
+        return GetBaseAttributeName(attributeDefinitionId);
+    }
+
+    private string GetAttributeKey(EditableAttributeDefinitionDto item)
+        => !string.IsNullOrWhiteSpace(item.TemporaryKey) ? item.TemporaryKey : item.AttributeDefinitionId?.ToString("N") ?? Guid.NewGuid().ToString("N");
+    private string GetDerivedStatKey(EditableDerivedStatDefinitionDto item)
+        => item.DerivedStatDefinitionId?.ToString("N") ?? $"derived-{CurrentSystem?.DerivedStats.IndexOf(item) ?? 0}";
+    private string GetMetricKey(EditableMetricDefinitionDto item)
+        => !string.IsNullOrWhiteSpace(item.TemporaryKey) ? item.TemporaryKey : item.MetricDefinitionId?.ToString("N") ?? $"metric-{CurrentSystem?.Metrics.IndexOf(item) ?? 0}";
+    private string GetTraitKey(EditableTraitDefinitionDto item)
+        => item.TraitDefinitionId?.ToString("N") ?? $"trait-{CurrentSystem?.Traits.IndexOf(item) ?? 0}";
+    private string GetGaugeKey(EditableGaugeDefinitionDto item)
+        => item.GaugeDefinitionId?.ToString("N") ?? $"gauge-{CurrentSystem?.Gauges.IndexOf(item) ?? 0}";
+    private string GetTalentKey(EditableTalentDefinitionDto item)
+        => item.TalentDefinitionId?.ToString("N") ?? $"talent-{CurrentSystem?.Talents.IndexOf(item) ?? 0}";
+    private string GetItemKey(EditableItemDefinitionDto item)
+        => item.ItemDefinitionId?.ToString("N") ?? $"item-{CurrentSystem?.Items.IndexOf(item) ?? 0}";
+
+    private static EditableAttributeDefinitionDto? FindAttribute(GameSystemEditorDto system, string key)
+        => system.Attributes.FirstOrDefault(x => (!string.IsNullOrWhiteSpace(x.TemporaryKey) && x.TemporaryKey == key) || (x.AttributeDefinitionId?.ToString("N") == key));
+    private static EditableDerivedStatDefinitionDto? FindDerivedStat(GameSystemEditorDto system, string key)
+        => system.DerivedStats.FirstOrDefault(x => x.DerivedStatDefinitionId?.ToString("N") == key || $"derived-{system.DerivedStats.IndexOf(x)}" == key);
+    private static EditableMetricDefinitionDto? FindMetric(GameSystemEditorDto system, string key)
+        => system.Metrics.FirstOrDefault(x => (!string.IsNullOrWhiteSpace(x.TemporaryKey) && x.TemporaryKey == key) || (x.MetricDefinitionId?.ToString("N") == key));
+    private static EditableTraitDefinitionDto? FindTrait(GameSystemEditorDto system, string key)
+        => system.Traits.FirstOrDefault(x => x.TraitDefinitionId?.ToString("N") == key || $"trait-{system.Traits.IndexOf(x)}" == key);
+    private static EditableGaugeDefinitionDto? FindGauge(GameSystemEditorDto system, string key)
+        => system.Gauges.FirstOrDefault(x => x.GaugeDefinitionId?.ToString("N") == key || $"gauge-{system.Gauges.IndexOf(x)}" == key);
+    private static EditableTalentDefinitionDto? FindTalent(GameSystemEditorDto system, string key)
+        => system.Talents.FirstOrDefault(x => x.TalentDefinitionId?.ToString("N") == key || $"talent-{system.Talents.IndexOf(x)}" == key);
+    private static EditableItemDefinitionDto? FindItem(GameSystemEditorDto system, string key)
+        => system.Items.FirstOrDefault(x => x.ItemDefinitionId?.ToString("N") == key || $"item-{system.Items.IndexOf(x)}" == key);
+
+    private void AddAndSelectAttribute()
+    {
+        if (IsCategoryLimitReached(EditorCategory.Attributes))
+            return;
+
+        AddAttributeRow();
+        if (CurrentSystem?.Attributes.LastOrDefault() is { } item)
+            ToggleEditorSelection(EditorCategory.Attributes, GetAttributeKey(item));
+    }
+    private void AddAndSelectDerivedStat()
+    {
+        if (IsCategoryLimitReached(EditorCategory.DerivedStats))
+            return;
+
+        AddDerivedStatRow();
+        if (CurrentSystem?.DerivedStats.LastOrDefault() is { } item)
+            ToggleEditorSelection(EditorCategory.DerivedStats, GetDerivedStatKey(item));
+    }
+    private void AddAndSelectMetric()
+    {
+        if (IsCategoryLimitReached(EditorCategory.Metrics))
+            return;
+
+        AddMetricRow();
+        if (CurrentSystem?.Metrics.LastOrDefault() is { } item)
+            ToggleEditorSelection(EditorCategory.Metrics, GetMetricKey(item));
+    }
+    private void AddAndSelectTrait()
+    {
+        if (IsCategoryLimitReached(EditorCategory.Traits))
+            return;
+
+        AddTraitRow();
+        if (CurrentSystem?.Traits.LastOrDefault() is { } item)
+            ToggleEditorSelection(EditorCategory.Traits, GetTraitKey(item));
+    }
+    private void AddAndSelectGauge()
+    {
+        if (IsCategoryLimitReached(EditorCategory.Gauges))
+            return;
+
+        AddGaugeRow();
+        if (CurrentSystem?.Gauges.LastOrDefault() is { } item)
+            ToggleEditorSelection(EditorCategory.Gauges, GetGaugeKey(item));
+    }
+    private void AddAndSelectTalent()
+    {
+        if (IsCategoryLimitReached(EditorCategory.Talents))
+            return;
+
+        AddTalentRow();
+        if (CurrentSystem?.Talents.LastOrDefault() is { } item)
+            ToggleEditorSelection(EditorCategory.Talents, GetTalentKey(item));
+    }
+    private void AddAndSelectItem()
+    {
+        if (IsCategoryLimitReached(EditorCategory.Items))
+            return;
+
+        AddItemRow();
+        if (CurrentSystem?.Items.LastOrDefault() is { } item)
+            ToggleEditorSelection(EditorCategory.Items, GetItemKey(item));
+    }
+
+    private void ApplySelectedEditorChanges()
+    {
+        if (CurrentSystem is null || SelectedEditorCategory is null)
+            return;
+
+        if (SelectedEditorKey is null)
+        {
+            switch (SelectedEditorCategory)
+            {
+                case EditorCategory.Attributes:
+                    AttributeCreationDistributionPoints = AttributeCreationDistributionPointsDraft;
+                    AttributeCreationDistributionMax = AttributeCreationDistributionMaxDraft;
+                    break;
+                case EditorCategory.DerivedStats:
+                    DerivedStatCreationDistributionPoints = DerivedStatCreationDistributionPointsDraft;
+                    DerivedStatCreationDistributionMax = DerivedStatCreationDistributionMaxDraft;
+                    break;
+                case EditorCategory.Talents:
+                    CurrentSystem.StartingTalentChoices = StartingTalentChoicesDraft;
+                    break;
+                case EditorCategory.Items:
+                    CurrentSystem.StartingItemChoices = StartingItemChoicesDraft;
+                    break;
+            }
+            return;
+        }
+
+        switch (SelectedEditorCategory)
+        {
+            case EditorCategory.Attributes when SelectedAttributeDraft is not null:
+                ReplaceInList(CurrentSystem.Attributes, FindAttribute(CurrentSystem, SelectedEditorKey), DeepClone(SelectedAttributeDraft));
+                break;
+            case EditorCategory.DerivedStats when SelectedDerivedStatDraft is not null:
+                ReplaceInList(CurrentSystem.DerivedStats, FindDerivedStat(CurrentSystem, SelectedEditorKey), DeepClone(SelectedDerivedStatDraft));
+                break;
+            case EditorCategory.Metrics when SelectedMetricDraft is not null:
+                ReplaceInList(CurrentSystem.Metrics, FindMetric(CurrentSystem, SelectedEditorKey), DeepClone(SelectedMetricDraft));
+                break;
+            case EditorCategory.Traits when SelectedTraitDraft is not null:
+                ReplaceInList(CurrentSystem.Traits, FindTrait(CurrentSystem, SelectedEditorKey), DeepClone(SelectedTraitDraft));
+                break;
+            case EditorCategory.Gauges when SelectedGaugeDraft is not null:
+                ReplaceInList(CurrentSystem.Gauges, FindGauge(CurrentSystem, SelectedEditorKey), DeepClone(SelectedGaugeDraft));
+                break;
+            case EditorCategory.Talents when SelectedTalentDraft is not null:
+                ReplaceInList(CurrentSystem.Talents, FindTalent(CurrentSystem, SelectedEditorKey), DeepClone(SelectedTalentDraft));
+                break;
+            case EditorCategory.Items when SelectedItemDraft is not null:
+                ReplaceInList(CurrentSystem.Items, FindItem(CurrentSystem, SelectedEditorKey), DeepClone(SelectedItemDraft));
+                break;
+        }
+
+        LoadSelectedDraft();
+    }
+
+    private static void ReplaceInList<T>(List<T> list, T? currentItem, T replacement) where T : class
+    {
+        if (currentItem is null)
+            return;
+        var index = list.IndexOf(currentItem);
+        if (index >= 0)
+            list[index] = replacement;
+    }
+
+    private void CancelSelectedEditorChanges()
+    {
+        if (CurrentSystem is null || SelectedEditorCategory is null || LoadedSystemSnapshot is null)
+            return;
+
+        if (SelectedEditorKey is null)
+        {
+            InitializeCategoryDraft(SelectedEditorCategory.Value);
+            return;
+        }
+
+        switch (SelectedEditorCategory)
+        {
+            case EditorCategory.Attributes:
+                RestoreItem(CurrentSystem.Attributes, LoadedSystemSnapshot.Attributes, SelectedEditorKey, GetAttributeKey);
+                break;
+            case EditorCategory.DerivedStats:
+                RestoreItem(CurrentSystem.DerivedStats, LoadedSystemSnapshot.DerivedStats, SelectedEditorKey, GetDerivedStatKey);
+                break;
+            case EditorCategory.Metrics:
+                RestoreItem(CurrentSystem.Metrics, LoadedSystemSnapshot.Metrics, SelectedEditorKey, GetMetricKey);
+                break;
+            case EditorCategory.Traits:
+                RestoreItem(CurrentSystem.Traits, LoadedSystemSnapshot.Traits, SelectedEditorKey, GetTraitKey);
+                break;
+            case EditorCategory.Gauges:
+                RestoreItem(CurrentSystem.Gauges, LoadedSystemSnapshot.Gauges, SelectedEditorKey, GetGaugeKey);
+                break;
+            case EditorCategory.Talents:
+                RestoreItem(CurrentSystem.Talents, LoadedSystemSnapshot.Talents, SelectedEditorKey, GetTalentKey);
+                break;
+            case EditorCategory.Items:
+                RestoreItem(CurrentSystem.Items, LoadedSystemSnapshot.Items, SelectedEditorKey, GetItemKey);
+                break;
+        }
+
+        LoadSelectedDraft();
+    }
+
+    private void RestoreItem<T>(List<T> currentList, List<T> loadedList, string key, Func<T, string> keySelector) where T : class
+    {
+        var currentItem = currentList.FirstOrDefault(x => keySelector(x) == key);
+        var loadedItem = loadedList.FirstOrDefault(x => keySelector(x) == key);
+
+        if (loadedItem is null)
+        {
+            if (currentItem is not null)
+                currentList.Remove(currentItem);
+            SelectedEditorCategory = null;
+            SelectedEditorKey = null;
+            ClearEditorDrafts();
+            return;
+        }
+
+        if (currentItem is null)
+        {
+            currentList.Add(DeepClone(loadedItem));
+        }
+        else
+        {
+            var index = currentList.IndexOf(currentItem);
+            currentList[index] = DeepClone(loadedItem);
+        }
+    }
+
+    private void DeleteSelectedEditor()
+    {
+        if (CurrentSystem is null || SelectedEditorCategory is null)
+            return;
+
+        if (SelectedEditorKey is null)
+        {
+            switch (SelectedEditorCategory)
+            {
+                case EditorCategory.Attributes:
+                    AttributeCreationDistributionPointsDraft = 0;
+                    AttributeCreationDistributionMaxDraft = 0;
+                    AttributeCreationDistributionPoints = 0;
+                    AttributeCreationDistributionMax = 0;
+                    break;
+                case EditorCategory.DerivedStats:
+                    DerivedStatCreationDistributionPointsDraft = 0;
+                    DerivedStatCreationDistributionMaxDraft = 0;
+                    DerivedStatCreationDistributionPoints = 0;
+                    DerivedStatCreationDistributionMax = 0;
+                    break;
+                case EditorCategory.Talents:
+                    StartingTalentChoicesDraft = 0;
+                    CurrentSystem.StartingTalentChoices = 0;
+                    break;
+                case EditorCategory.Items:
+                    StartingItemChoicesDraft = 0;
+                    CurrentSystem.StartingItemChoices = 0;
+                    break;
+            }
+            return;
+        }
+
+        switch (SelectedEditorCategory)
+        {
+            case EditorCategory.Attributes when FindAttribute(CurrentSystem, SelectedEditorKey) is { } attribute:
+                DeleteOrMark(attribute.AttributeDefinitionId.HasValue, attribute, CurrentSystem.Attributes);
+                break;
+            case EditorCategory.DerivedStats when FindDerivedStat(CurrentSystem, SelectedEditorKey) is { } derived:
+                DeleteOrMark(derived.DerivedStatDefinitionId.HasValue, derived, CurrentSystem.DerivedStats);
+                break;
+            case EditorCategory.Metrics when FindMetric(CurrentSystem, SelectedEditorKey) is { } metric:
+                if (!IsVoteWeightMetric(metric)) DeleteOrMark(metric.MetricDefinitionId.HasValue, metric, CurrentSystem.Metrics);
+                break;
+            case EditorCategory.Traits when FindTrait(CurrentSystem, SelectedEditorKey) is { } trait:
+                DeleteOrMark(trait.TraitDefinitionId.HasValue, trait, CurrentSystem.Traits);
+                break;
+            case EditorCategory.Gauges when FindGauge(CurrentSystem, SelectedEditorKey) is { } gauge:
+                DeleteOrMark(gauge.GaugeDefinitionId.HasValue, gauge, CurrentSystem.Gauges);
+                break;
+            case EditorCategory.Talents when FindTalent(CurrentSystem, SelectedEditorKey) is { } talent:
+                DeleteOrMark(talent.TalentDefinitionId.HasValue, talent, CurrentSystem.Talents);
+                break;
+            case EditorCategory.Items when FindItem(CurrentSystem, SelectedEditorKey) is { } item:
+                DeleteOrMark(item.ItemDefinitionId.HasValue, item, CurrentSystem.Items);
+                break;
+        }
+
+        SelectedEditorCategory = null;
+        SelectedEditorKey = null;
+        ClearEditorDrafts();
+    }
+
+    private static void DeleteOrMark<T>(bool existsInDb, T item, List<T> list) where T : class
+    {
+        var prop = typeof(T).GetProperty("IsDeleted");
+        if (existsInDb && prop is not null)
+            prop.SetValue(item, true);
+        else
+            list.Remove(item);
+    }
+
+
 }

@@ -410,10 +410,20 @@ else
                                     <div class="rc-character-inline-list">
                                         @foreach (var item in SelectedEditableCharacter.Items)
                                         {
-                                            <label class="rc-filter-toggle">
-                                                <input type="checkbox" @bind="item.IsSelected" />
-                                                <span>@item.Name</span>
-                                            </label>
+                                            <div class="rc-consumable-edit-line">
+                                                <label class="rc-filter-toggle">
+                                                    <input type="checkbox" @bind="item.IsSelected" />
+                                                    <span>@item.Name</span>
+                                                </label>
+                                                @if (item.IsConsumable && item.IsSelected)
+                                                {
+                                                    <input type="number"
+                                                           min="0"
+                                                           max="@item.MaxQuantityPerCharacter"
+                                                           @bind="item.Quantity"
+                                                           class="rc-consumable-qty-input" />
+                                                }
+                                            </div>
                                         }
                                     </div>
                                 }
@@ -824,7 +834,8 @@ else
                     SelectedItemIds = SelectedEditableCharacter.Items
                         .Where(x => x.IsSelected)
                         .Select(x => x.DefinitionId)
-                        .ToList()
+                        .ToList(),
+                    Items = SelectedEditableCharacter.Items
                 });
 
             await RefreshSessionVisuals();
@@ -882,7 +893,8 @@ else
                     SelectedItemIds = SelectedEditableCharacter.Items
                         .Where(x => x.IsSelected)
                         .Select(x => x.DefinitionId)
-                        .ToList()
+                        .ToList(),
+                    Items = SelectedEditableCharacter.Items
                 });
 
             await RefreshSessionVisuals();
@@ -923,4 +935,3 @@ else
         }
     }
 }
-

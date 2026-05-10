@@ -4105,52 +4105,190 @@
 	<data name="Admin_NewPlannedFeature" xml:space="preserve">
 		<value>New planned feature</value>
 	</data>
-	<data name="Admin_NewSubscriptionPlan" xml:space="preserve"><value>New plan</value></data>
-	<data name="Admin_OpenEditor" xml:space="preserve"><value>Edit</value></data>
-	<data name="Admin_PatchNoteNotFound" xml:space="preserve"><value>Patch note not found.</value></data>
-	<data name="Admin_PatchNotes_List" xml:space="preserve"><value>Existing patch notes</value></data>
-	<data name="Admin_PatchNotes_Subtitle" xml:space="preserve"><value>Create, edit and publish bilingual version notes.</value></data>
-	<data name="Admin_PatchNotes_Title" xml:space="preserve"><value>Patch notes</value></data>
-	<data name="Admin_PatchNoteVersionAlreadyExists" xml:space="preserve"><value>A patch note already exists for this version.</value></data>
-	<data name="Admin_PatchNoteVersionRequired" xml:space="preserve"><value>The version number is required.</value></data>
-	<data name="Admin_PlannedFeatureNotFound" xml:space="preserve"><value>Planned feature not found.</value></data>
-	<data name="Admin_PlannedFeatures_List" xml:space="preserve"><value>Planned features</value></data>
-	<data name="Admin_PlannedFeatures_Subtitle" xml:space="preserve"><value>Edit the planned features shown on the home page.</value></data>
-	<data name="Admin_PlannedFeatures_Title" xml:space="preserve"><value>Planned features</value></data>
-	<data name="Admin_PlannedFeatureTextRequired" xml:space="preserve"><value>A French or English text is required.</value></data>
-	<data name="Admin_Published" xml:space="preserve"><value>Published</value></data>
-	<data name="Admin_Saved" xml:space="preserve"><value>Saved.</value></data>
-	<data name="Admin_SendPasswordReset" xml:space="preserve"><value>Password reset</value></data>
-	<data name="Admin_SendVerificationEmail" xml:space="preserve"><value>Email verification</value></data>
-	<data name="Admin_Sessions_Subtitle" xml:space="preserve"><value>Review sessions, their characters and status.</value></data>
-	<data name="Admin_Sessions_Title" xml:space="preserve"><value>Sessions</value></data>
-	<data name="Admin_Stats_Characters" xml:space="preserve"><value>Alive / total characters</value></data>
-	<data name="Admin_Stats_GameMasters" xml:space="preserve"><value>GM accounts</value></data>
-	<data name="Admin_Stats_Sessions" xml:space="preserve"><value>Active / total sessions</value></data>
-	<data name="Admin_Stats_Users" xml:space="preserve"><value>Users</value></data>
-	<data name="Admin_Subscription" xml:space="preserve"><value>Subscription</value></data>
-	<data name="Admin_SubscriptionPlanCodeAlreadyExists" xml:space="preserve"><value>This plan code already exists.</value></data>
-	<data name="Admin_SubscriptionPlanCodeRequired" xml:space="preserve"><value>The plan code is required.</value></data>
-	<data name="Admin_SubscriptionPlanDeleteBlocked" xml:space="preserve"><value>This plan is used by at least one subscription and cannot be deleted.</value></data>
-	<data name="Admin_SubscriptionPlanNameRequired" xml:space="preserve"><value>The plan name is required.</value></data>
-	<data name="Admin_SubscriptionPlanNotFound" xml:space="preserve"><value>Subscription plan not found.</value></data>
-	<data name="Admin_SubscriptionPlans_Subtitle" xml:space="preserve"><value>Create, edit, activate or deactivate subscription plans.</value></data>
-	<data name="Admin_SubscriptionPlans_Title" xml:space="preserve"><value>Subscription plans</value></data>
-	<data name="Admin_Subtitle" xml:space="preserve"><value>General Rollocracy administration.</value></data>
-	<data name="Admin_Title" xml:space="preserve"><value>Administration</value></data>
-	<data name="Admin_UsedBySessions" xml:space="preserve"><value>Linked sessions</value></data>
-	<data name="Admin_Users" xml:space="preserve"><value>Users</value></data>
-	<data name="Admin_Users_Subtitle" xml:space="preserve"><value>Review and edit registered accounts.</value></data>
-	<data name="Admin_Users_Title" xml:space="preserve"><value>Users</value></data>
-	<data name="Admin_Version" xml:space="preserve"><value>Version</value></data>
-	<data name="Common_Refresh" xml:space="preserve"><value>Refresh</value></data>
-	<data name="Common_Search" xml:space="preserve"><value>Search</value></data>
-	<data name="Home_Patchnote_VersionLabel" xml:space="preserve"><value>Version {0}</value></data>
-	<data name="Home_Patchnote_VersionTitle" xml:space="preserve"><value>Patch note — version {0}</value></data>
-	<data name="Home_Project_NoPatchnotes" xml:space="preserve"><value>No published patch notes yet.</value></data>
-	<data name="Home_Project_NoPlannedFeatures" xml:space="preserve"><value>No published planned features yet.</value></data>
-	<data name="Navigation_Administration" xml:space="preserve"><value>Administration</value></data>
-	<data name="Account_Settings_HideEmail" xml:space="preserve"><value>Hide email</value></data>
-	<data name="Account_Settings_ShowEmail" xml:space="preserve"><value>Show email</value></data>
-
+	<data name="Admin_NewSubscriptionPlan" xml:space="preserve">
+	<value>New plan</value>
+</data>
+	<data name="Admin_OpenEditor" xml:space="preserve">
+	<value>Edit</value>
+</data>
+	<data name="Admin_PatchNoteNotFound" xml:space="preserve">
+	<value>Patch note not found.</value>
+</data>
+	<data name="Admin_PatchNotes_List" xml:space="preserve">
+	<value>Existing patch notes</value>
+</data>
+	<data name="Admin_PatchNotes_Subtitle" xml:space="preserve">
+	<value>Create, edit and publish bilingual version notes.</value>
+</data>
+	<data name="Admin_PatchNotes_Title" xml:space="preserve">
+	<value>Patch notes</value>
+</data>
+	<data name="Admin_PatchNoteVersionAlreadyExists" xml:space="preserve">
+	<value>A patch note already exists for this version.</value>
+</data>
+	<data name="Admin_PatchNoteVersionRequired" xml:space="preserve">
+	<value>The version number is required.</value>
+</data>
+	<data name="Admin_PlannedFeatureNotFound" xml:space="preserve">
+	<value>Planned feature not found.</value>
+</data>
+	<data name="Admin_PlannedFeatures_List" xml:space="preserve">
+	<value>Planned features</value>
+</data>
+	<data name="Admin_PlannedFeatures_Subtitle" xml:space="preserve">
+	<value>Edit the planned features shown on the home page.</value>
+</data>
+	<data name="Admin_PlannedFeatures_Title" xml:space="preserve">
+	<value>Planned features</value>
+</data>
+	<data name="Admin_PlannedFeatureTextRequired" xml:space="preserve">
+	<value>A French or English text is required.</value>
+</data>
+	<data name="Admin_Published" xml:space="preserve">
+	<value>Published</value>
+</data>
+	<data name="Admin_Saved" xml:space="preserve">
+	<value>Saved.</value>
+</data>
+	<data name="Admin_SendPasswordReset" xml:space="preserve">
+	<value>Password reset</value>
+</data>
+	<data name="Admin_SendVerificationEmail" xml:space="preserve">
+	<value>Email verification</value>
+</data>
+	<data name="Admin_Sessions_Subtitle" xml:space="preserve">
+	<value>Review sessions, their characters and status.</value>
+</data>
+	<data name="Admin_Sessions_Title" xml:space="preserve">
+	<value>Sessions</value>
+</data>
+	<data name="Admin_Stats_Characters" xml:space="preserve">
+	<value>Alive / total characters</value>
+</data>
+	<data name="Admin_Stats_GameMasters" xml:space="preserve">
+	<value>GM accounts</value>
+</data>
+	<data name="Admin_Stats_Sessions" xml:space="preserve">
+	<value>Active / total sessions</value>
+</data>
+	<data name="Admin_Stats_Users" xml:space="preserve">
+	<value>Users</value>
+</data>
+	<data name="Admin_Subscription" xml:space="preserve">
+	<value>Subscription</value>
+</data>
+	<data name="Admin_SubscriptionPlanCodeAlreadyExists" xml:space="preserve">
+	<value>This plan code already exists.</value>
+</data>
+	<data name="Admin_SubscriptionPlanCodeRequired" xml:space="preserve">
+	<value>The plan code is required.</value>
+</data>
+	<data name="Admin_SubscriptionPlanDeleteBlocked" xml:space="preserve">
+	<value>This plan is used by at least one subscription and cannot be deleted.</value>
+</data>
+	<data name="Admin_SubscriptionPlanNameRequired" xml:space="preserve">
+	<value>The plan name is required.</value>
+</data>
+	<data name="Admin_SubscriptionPlanNotFound" xml:space="preserve">
+	<value>Subscription plan not found.</value>
+</data>
+	<data name="Admin_SubscriptionPlans_Subtitle" xml:space="preserve">
+	<value>Create, edit, activate or deactivate subscription plans.</value>
+</data>
+	<data name="Admin_SubscriptionPlans_Title" xml:space="preserve">
+	<value>Subscription plans</value>
+</data>
+	<data name="Admin_Subtitle" xml:space="preserve">
+	<value>General Rollocracy administration.</value>
+</data>
+	<data name="Admin_Title" xml:space="preserve">
+	<value>Administration</value>
+</data>
+	<data name="Admin_UsedBySessions" xml:space="preserve">
+	<value>Linked sessions</value>
+</data>
+	<data name="Admin_Users" xml:space="preserve">
+	<value>Users</value>
+</data>
+	<data name="Admin_Users_Subtitle" xml:space="preserve">
+	<value>Review and edit registered accounts.</value>
+</data>
+	<data name="Admin_Users_Title" xml:space="preserve">
+	<value>Users</value>
+</data>
+	<data name="Admin_Version" xml:space="preserve">
+	<value>Version</value>
+</data>
+	<data name="Common_Refresh" xml:space="preserve">
+	<value>Refresh</value>
+</data>
+	<data name="Common_Search" xml:space="preserve">
+	<value>Search</value>
+</data>
+	<data name="Home_Patchnote_VersionLabel" xml:space="preserve">
+	<value>Version {0}</value>
+</data>
+	<data name="Home_Patchnote_VersionTitle" xml:space="preserve">
+	<value>Patch note — version {0}</value>
+</data>
+	<data name="Home_Project_NoPatchnotes" xml:space="preserve">
+	<value>No published patch notes yet.</value>
+</data>
+	<data name="Home_Project_NoPlannedFeatures" xml:space="preserve">
+	<value>No published planned features yet.</value>
+</data>
+	<data name="Navigation_Administration" xml:space="preserve">
+	<value>Administration</value>
+</data>
+	<data name="Account_Settings_HideEmail" xml:space="preserve">
+	<value>Hide email</value>
+</data>
+	<data name="Account_Settings_ShowEmail" xml:space="preserve">
+	<value>Show email</value>
+</data>
+<data name="GameSystem_Editor_StatsItemFamilies" xml:space="preserve">
+  <value>Item families</value>
+</data>
+	<data name="GameSystem_Editor_ItemFamiliesSection" xml:space="preserve">
+  <value>Item families</value>
+</data>
+	<data name="GameSystem_Editor_ItemFamiliesHelp" xml:space="preserve">
+  <value>Create up to 15 families to limit how many items each character can own and keep active.</value>
+</data>
+	<data name="GameSystem_Editor_AddItemFamilyRow" xml:space="preserve">
+  <value>Add family</value>
+</data>
+	<data name="GameSystem_Editor_NoItemFamilies" xml:space="preserve">
+  <value>No item family configured.</value>
+</data>
+	<data name="GameSystem_Editor_ItemFamilyDeletionHelp" xml:space="preserve">
+  <value>When saved, items attached to this family will be detached.</value>
+</data>
+	<data name="GameSystem_Editor_ItemFamilyMaxOwned" xml:space="preserve">
+  <value>Owned limit</value>
+</data>
+	<data name="GameSystem_Editor_ItemFamilyMaxActive" xml:space="preserve">
+  <value>Active limit</value>
+</data>
+	<data name="GameSystem_Editor_ItemFamily" xml:space="preserve">
+  <value>Item family</value>
+</data>
+	<data name="GameSystem_Editor_NoItemFamily" xml:space="preserve">
+  <value>No family</value>
+</data>
+	<data name="Backend_ItemFamilyLimitExceeded" xml:space="preserve">
+  <value>A game system cannot contain more than 15 item families.</value>
+</data>
+	<data name="Backend_ItemFamilyNameRequired" xml:space="preserve">
+  <value>The item family name is required.</value>
+</data>
+	<data name="Backend_ItemFamilyMaxOwnedInvalid" xml:space="preserve">
+  <value>The owned limit of an item family must be between 1 and 99.</value>
+</data>
+	<data name="Backend_ItemFamilyMaxActiveInvalid" xml:space="preserve">
+  <value>The active limit of an item family must be between 0 and the owned limit.</value>
+</data>
+	<data name="Backend_ItemFamilyInvalidSelection" xml:space="preserve">
+  <value>An item references an item family that does not exist or has been deleted.</value>
+</data>
 </root>

@@ -392,9 +392,9 @@ else
 
     private void NewPatchNote()
     {
-        var nextDisplayOrder = Dashboard.PatchNotes.Count == 0
-            ? 1
-            : Dashboard.PatchNotes.Max(x => x.DisplayOrder) + 1;
+        var nextDisplayOrder = Dashboard?.PatchNotes.Count > 0
+            ? Dashboard.PatchNotes.Max(x => x.DisplayOrder) + 1
+            : 1;
 
         PatchNoteEditor = new AdminPatchNoteSaveDto
         {
@@ -406,7 +406,6 @@ else
         NewPatchNoteEntryFr = string.Empty;
         NewPatchNoteEntryEn = string.Empty;
     }
-
     private void EditPatchNote(AdminPatchNoteDto patchNote)
     {
         PatchNoteEditor = new AdminPatchNoteSaveDto

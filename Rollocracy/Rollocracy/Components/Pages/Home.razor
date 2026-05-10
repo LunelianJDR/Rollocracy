@@ -79,7 +79,6 @@
             <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                 <div class="rc-tool-panel__header-main">
                     <h3 class="rc-tool-panel__title">@L["Home_Videos_Title"]</h3>
-                    <p class="rc-tool-panel__subtitle">@L["Home_Videos_Subtitle"]</p>
                 </div>
             </div>
 
@@ -96,7 +95,7 @@
             <div class="rc-tool-section">
                 <p class="rc-tool-muted">@L[SelectedVideo.DescriptionResourceKey]</p>
 
-                <iframe width="100%"
+                <iframe class="rc-home-video-frame"
                         height="420"
                         src="@SelectedVideo.EmbedUrl"
                         title="@L[SelectedVideo.TabResourceKey]"
@@ -112,13 +111,12 @@
             <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                 <div class="rc-tool-panel__header-main">
                     <h3 class="rc-tool-panel__title">@L["Home_Project_Title"]</h3>
-                    <p class="rc-tool-panel__subtitle">@L["Home_Project_Subtitle"]</p>
                 </div>
 
                 <div class="rc-tool-actions">
                     <button type="button" @onclick="ShowPatchnotesView">@L["Home_Project_ViewPatchnotes"]</button>
                     <button type="button" @onclick="ShowPlannedFeaturesView">@L["Home_Project_ViewPlannedFeatures"]</button>
-                    <button type="button" @onclick="OpenBugReportForm">@L["Home_Project_ReportBug"]</button>
+                    @* <button type="button" @onclick="OpenBugReportForm" disabled>@L["Home_Project_ReportBug"]</button> *@
                 </div>
             </div>
 

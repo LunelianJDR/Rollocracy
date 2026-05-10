@@ -70,12 +70,32 @@ namespace Rollocracy.Controllers
         }
 
         [HttpPost("/auth/login")]
-        public async Task<IActionResult> LoginForm([FromForm] LoginRequest request)
+        public async Task<IActionResult> LoginForm([FromForm] LoginRequest request, [FromQuery] string? returnUrl = null)
         {
             var success = await SignInUserAsync(request.Username, request.Password, request.RememberMe);
 
             if (!success)
+            {
+                var failedReturnUrl = !string.IsNullOrWhiteSpace(request.ReturnUrl)
+                    ? request.ReturnUrl
+                    : returnUrl;
+
+                if (!string.IsNullOrWhiteSpace(failedReturnUrl))
+                {
+                    return Redirect($"/login?error=1&returnUrl={Uri.EscapeDataString(failedReturnUrl)}");
+                }
+
                 return Redirect("/login?error=1");
+            }
+
+            var effectiveReturnUrl = !string.IsNullOrWhiteSpace(request.ReturnUrl)
+                ? request.ReturnUrl
+                : returnUrl;
+
+            if (!string.IsNullOrWhiteSpace(effectiveReturnUrl) && Url.IsLocalUrl(effectiveReturnUrl))
+            {
+                return Redirect(effectiveReturnUrl);
+            }
 
             return Redirect("/");
         }
@@ -309,5 +329,6 @@ namespace Rollocracy.Controllers
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
         public bool RememberMe { get; set; }
+        public string? ReturnUrl { get; set; }
     }
 }

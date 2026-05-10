@@ -1,5 +1,4 @@
-﻿
-@page "/account/settings"
+﻿@page "/account/settings"
 @attribute [Authorize]
 @rendermode InteractiveServer
 @using System.Security.Claims
@@ -18,6 +17,7 @@
 @inject NavigationManager Navigation
 @inject HttpClient Http
 @inject IStringLocalizer<SharedTexts> L
+@inject IJSRuntime JS
 
 <PageTitle>@L["Account_Settings_Title"]</PageTitle>
 
@@ -41,7 +41,7 @@ else
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
                         <h4 class="rc-tool-panel__title">@L["Account_Settings_Title"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["Account_Settings_Subtitle"]</p>
+                        @* <p class="rc-tool-panel__subtitle">@L["Account_Settings_Subtitle"]</p> *@
                     </div>
                 </div>
 
@@ -67,7 +67,7 @@ else
                                         title="@(ShowAccountEmail ? L["Account_Settings_HideEmail"] : L["Account_Settings_ShowEmail"])"
                                         aria-label="@(ShowAccountEmail ? L["Account_Settings_HideEmail"] : L["Account_Settings_ShowEmail"])"
                                         @onclick="ToggleAccountEmailVisibility">
-                                    👁
+                                    @(ShowAccountEmail ? "🙈" : "👁️")
                                 </button>
                             }
                         </span>
@@ -89,42 +89,20 @@ else
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
                         <h4 class="rc-tool-panel__title">@L["Account_Settings_GeneralSection"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["Account_Settings_GeneralSubtitle"]</p>
+                        @* <p class="rc-tool-panel__subtitle">@L["Account_Settings_GeneralSubtitle"]</p> *@
                     </div>
                 </div>
 
                 <div class="rc-tool-form-grid">
                     <div class="rc-form-field rc-form-field--full">
                         <label>@L["Account_Settings_Email"]</label>
-
-                        <div class="rc-account-email-edit">
-                            @if (ShowAccountEmail)
-                            {
-                                <input class="rc-account-email-edit__input"
-                                       @bind="EditableEmail"
-                                       type="email" />
-                            }
-                            else
-                            {
-                                <div class="rc-readonly-value rc-account-email-edit__masked">
-                                    @GetDisplayedEditableEmail()
-                                </div>
-                            }
-
-                            <button type="button"
-                                    class="rc-round-icon-button"
-                                    title="@(ShowAccountEmail ? L["Account_Settings_HideEmail"] : L["Account_Settings_ShowEmail"])"
-                                    aria-label="@(ShowAccountEmail ? L["Account_Settings_HideEmail"] : L["Account_Settings_ShowEmail"])"
-                                    @onclick="ToggleAccountEmailVisibility">
-                                👁
-                            </button>
-                        </div>
+                        <input @bind="EditableEmail" type="email" />
                     </div>
 
                     <div class="rc-form-field">
                         <label>@L["Account_Settings_EmailVerificationStatus"]</label>
                         <div class="rc-readonly-value">
-                            @(Settings.IsEmailVerified? L["Account_Settings_EmailVerified"] : L["Account_Settings_EmailNotVerifiedYet"])
+                            @(Settings.IsEmailVerified ? L["Account_Settings_EmailVerified"] : L["Account_Settings_EmailNotVerifiedYet"])
                         </div>
                     </div>
 
@@ -151,7 +129,7 @@ else
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
                         <h4 class="rc-tool-panel__title">@L["Account_Settings_IdentitySection"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["Account_Settings_IdentitySubtitle"]</p>
+                        @* <p class="rc-tool-panel__subtitle">@L["Account_Settings_IdentitySubtitle"]</p> *@
                     </div>
                 </div>
 
@@ -183,7 +161,7 @@ else
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
                         <h4 class="rc-tool-panel__title">@L["Account_Settings_SecuritySection"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["Account_Settings_SecuritySubtitle"]</p>
+                        @* <p class="rc-tool-panel__subtitle">@L["Account_Settings_SecuritySubtitle"]</p> *@
                     </div>
                 </div>
 
@@ -198,7 +176,7 @@ else
                     <div class="rc-form-field">
                         <label>@L["Account_Settings_EmailVerificationStatus"]</label>
                         <div class="rc-readonly-value">
-                            @(Settings.IsEmailVerified? L["Account_Settings_EmailVerified"] : L["Account_Settings_EmailNotVerifiedYet"])
+                            @(Settings.IsEmailVerified ? L["Account_Settings_EmailVerified"] : L["Account_Settings_EmailNotVerifiedYet"])
                         </div>
                     </div>
 
@@ -247,7 +225,7 @@ else
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
                         <h4 class="rc-tool-panel__title">@L["Account_Settings_TwitchSection"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["Account_Settings_TwitchSubtitle"]</p>
+                        @* <p class="rc-tool-panel__subtitle">@L["Account_Settings_TwitchSubtitle"]</p> *@
                     </div>
                 </div>
 
@@ -261,10 +239,10 @@ else
                         </div>
                     </div>
 
-                    <div class="rc-form-field">
+                    @* <div class="rc-form-field">
                         <label>@L["Account_Settings_TwitchOAuthNoticeLabel"]</label>
                         <div class="rc-readonly-value">@L["Account_Settings_TwitchOAuthNotice"]</div>
-                    </div>
+                    </div> *@
                 </div>
 
                 @if (Settings.IsTwitchLinked &&
@@ -293,7 +271,7 @@ else
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
                         <h4 class="rc-tool-panel__title">@L["Account_Settings_GameMasterSection"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["Account_Settings_GameMasterSubtitle"]</p>
+                        @* <p class="rc-tool-panel__subtitle">@L["Account_Settings_GameMasterSubtitle"]</p> *@
                     </div>
                 </div>
 
@@ -330,7 +308,7 @@ else
                 <div class="rc-tool-panel__header rc-tool-panel__header--top-aligned">
                     <div class="rc-tool-panel__header-main">
                         <h4 class="rc-tool-panel__title">@L["Account_Settings_SubscriptionSection"]</h4>
-                        <p class="rc-tool-panel__subtitle">@L["Account_Settings_SubscriptionSubtitle"]</p>
+                        @* <p class="rc-tool-panel__subtitle">@L["Account_Settings_SubscriptionSubtitle"]</p> *@
                     </div>
                 </div>
 
@@ -445,9 +423,16 @@ else
                                             </button>
                                         }
                                     }
-                                    else
+                                    else if (plan.Code == "aventurier" || plan.Code == "heros" || plan.Code == "champion")
                                     {
                                         <button type="button" @onclick="() => SelectSubscriptionPlan(plan.PlanId)">
+                                            @GetPlanActionLabel(plan)
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" @onclick="() => SelectSubscriptionPlan(plan.PlanId)" disabled>
+                                            @* On désactive les abonnements trops gros pour l'instant *@
                                             @GetPlanActionLabel(plan)
                                         </button>
                                     }
@@ -527,7 +512,6 @@ else
             EditableEmail = Settings.Email ?? string.Empty;
             EditableLanguage = Settings.Language;
             NewUsername = Settings.Username;
-            ShowAccountEmail = false;
         }
         catch
         {
@@ -724,17 +708,6 @@ else
         return MaskEmail(Settings.Email);
     }
 
-    private string GetDisplayedEditableEmail()
-    {
-        if (string.IsNullOrWhiteSpace(EditableEmail))
-            return L["Account_Settings_NoEmail"].Value;
-
-        if (ShowAccountEmail)
-            return EditableEmail;
-
-        return MaskEmail(EditableEmail);
-    }
-
     private static string MaskEmail(string email)
     {
         var trimmed = email.Trim();
@@ -779,6 +752,8 @@ else
 
             await LoadSettingsAsync();
             Message = L["Account_Settings_SubscriptionActionCompleted"];
+
+            await JS.InvokeVoidAsync("open", "https://ko-fi.com/lunelianjdr/tiers", "_blank");
         }
         catch (Exception ex)
         {
