@@ -17,6 +17,9 @@ namespace Rollocracy.Domain.GameRules
         public string? Description { get; set; }
 
         public int DisplayOrder { get; set; }
+
+        public Guid? ItemFamilyDefinitionId { get; set; }
+
         public bool IsSelectableAtCharacterCreation { get; set; }
         public bool IsConsumable { get; set; }
         public int MaxQuantityPerCharacter { get; set; }

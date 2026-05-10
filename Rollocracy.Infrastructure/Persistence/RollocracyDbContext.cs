@@ -71,6 +71,7 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<TalentDefinition> TalentDefinitions => Set<TalentDefinition>();
         public DbSet<TalentModifierDefinition> TalentModifierDefinitions => Set<TalentModifierDefinition>();
 
+        public DbSet<ItemFamilyDefinition> ItemFamilyDefinitions => Set<ItemFamilyDefinition>();
         public DbSet<ItemDefinition> ItemDefinitions => Set<ItemDefinition>();
         public DbSet<ItemModifierDefinition> ItemModifierDefinitions => Set<ItemModifierDefinition>();
 
@@ -427,10 +428,31 @@ namespace Rollocracy.Infrastructure.Persistence
                     .HasColumnType("timestamp with time zone");
             });
 
+            modelBuilder.Entity<ItemFamilyDefinition>(entity =>
+            {
+                entity.HasIndex(x => x.GameSystemId);
+                entity.HasIndex(x => new { x.GameSystemId, x.DisplayOrder });
+
+                entity.Property(x => x.Name)
+                    .HasColumnType("text");
+
+                entity.ToTable(table =>
+                {
+                    table.HasCheckConstraint(
+                        "CK_ItemFamilyDefinitions_MaxOwned_Range",
+                        "\"MaxOwned\" >= 1 AND \"MaxOwned\" <= 99");
+
+                    table.HasCheckConstraint(
+                        "CK_ItemFamilyDefinitions_MaxActive_Range",
+                        "\"MaxActive\" >= 0 AND \"MaxActive\" <= \"MaxOwned\"");
+                });
+            });
+
             modelBuilder.Entity<ItemDefinition>(entity =>
             {
                 entity.HasIndex(x => x.GameSystemId);
                 entity.HasIndex(x => x.SessionId);
+                entity.HasIndex(x => x.ItemFamilyDefinitionId);
                 entity.HasIndex(x => new { x.GameSystemId, x.DisplayOrder });
                 entity.HasIndex(x => new { x.SessionId, x.DisplayOrder });
 
@@ -439,6 +461,11 @@ namespace Rollocracy.Infrastructure.Persistence
 
                 entity.Property(x => x.Description)
                     .HasColumnType("text");
+
+                entity.HasOne<ItemFamilyDefinition>()
+                    .WithMany()
+                    .HasForeignKey(x => x.ItemFamilyDefinitionId)
+                    .OnDelete(DeleteBehavior.SetNull);
 
                 entity.ToTable(table =>
                 {

@@ -81,6 +81,7 @@ else
                     <div class="rc-stat-card"><span class="rc-stat-card__label">@L["GameSystem_Editor_StatsGauges"]</span><span class="rc-stat-card__value">@GetCategoryCountLabel(EditorCategory.Gauges)</span></div>
                     <div class="rc-stat-card"><span class="rc-stat-card__label">@L["GameSystem_Editor_StatsTalents"]</span><span class="rc-stat-card__value">@GetCategoryCountLabel(EditorCategory.Talents)</span></div>
                     <div class="rc-stat-card"><span class="rc-stat-card__label">@L["GameSystem_Editor_StatsItems"]</span><span class="rc-stat-card__value">@GetCategoryCountLabel(EditorCategory.Items)</span></div>
+                    <div class="rc-stat-card"><span class="rc-stat-card__label">@L["GameSystem_Editor_StatsItemFamilies"]</span><span class="rc-stat-card__value">@GetActiveItemFamilyCount()</span></div>
                     <div class="rc-stat-card"><span class="rc-stat-card__label">@L["GameSystem_Editor_StatsSessions"]</span><span class="rc-stat-card__value">@CurrentSystem.ImpactedSessions.Count</span></div>
                 </div>
 
@@ -368,7 +369,75 @@ else
                     }
                     else if (SelectedEditorCategory == EditorCategory.Items && SelectedEditorKey is null)
                     {
-                        <div class="rc-tool-form-grid rc-tool-form-grid--dense"><div class="rc-form-field"><label>@L["GameSystem_Editor_StartingItemChoices"]</label><input type="number" @bind="StartingItemChoicesDraft" /></div></div>
+                        <div class="rc-tool-form-grid rc-tool-form-grid--dense">
+                            <div class="rc-form-field">
+                                <label>@L["GameSystem_Editor_StartingItemChoices"]</label>
+                                <input type="number" @bind="StartingItemChoicesDraft" />
+                            </div>
+                        </div>
+
+                        <div class="rc-tool-subsection rc-item-family-editor">
+                            <div class="rc-tool-subsection__header">
+                                <div>
+                                    <div class="rc-tool-subsection__title">@L["GameSystem_Editor_ItemFamiliesSection"]</div>
+                                    <p class="rc-tool-muted">@L["GameSystem_Editor_ItemFamiliesHelp"]</p>
+                                </div>
+                                <div class="rc-tool-inline-actions">
+                                    <button type="button" disabled="@(GetActiveItemFamilyDraftCount() >= MaxItemFamilies)" @onclick="AddItemFamilyDraftRow">@L["GameSystem_Editor_AddItemFamilyRow"]</button>
+                                </div>
+                            </div>
+
+                            @if (ItemFamiliesDraft.Count == 0)
+                            {
+                                <div class="rc-empty-panel rc-empty-panel--small">
+                                    <p>@L["GameSystem_Editor_NoItemFamilies"]</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="rc-item-family-list">
+                                    @foreach (var family in ItemFamiliesDraft.OrderBy(x => x.DisplayOrder).ThenBy(x => x.Name))
+                                    {
+                                        <article class="rc-filter-group-card rc-item-family-card">
+                                            @if (family.IsDeleted)
+                                            {
+                                                <div class="rc-inline-warning">
+                                                    <p><strong>@family.Name</strong> - @L["GameSystem_Editor_PendingDeletion"]</p>
+                                                    <p>@L["GameSystem_Editor_ItemFamilyDeletionHelp"]</p>
+                                                </div>
+                                                <div class="rc-tool-actions">
+                                                    <button type="button" @onclick="() => family.IsDeleted = false">@L["GameSystem_Editor_Restore"]</button>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="rc-tool-form-grid rc-tool-form-grid--very-dense">
+                                                    <div class="rc-form-field">
+                                                        <label>@L["Common_Name"]</label>
+                                                        <input @bind="family.Name" />
+                                                    </div>
+                                                    <div class="rc-form-field">
+                                                        <label>@L["GameSystem_Editor_ItemFamilyMaxOwned"]</label>
+                                                        <input type="number" min="1" max="99" @bind="family.MaxOwned" />
+                                                    </div>
+                                                    <div class="rc-form-field">
+                                                        <label>@L["GameSystem_Editor_ItemFamilyMaxActive"]</label>
+                                                        <input type="number" min="0" max="@family.MaxOwned" @bind="family.MaxActive" />
+                                                    </div>
+                                                    <div class="rc-form-field">
+                                                        <label>@L["GameSystem_Editor_DisplayOrder"]</label>
+                                                        <input type="number" @bind="family.DisplayOrder" />
+                                                    </div>
+                                                </div>
+                                                <div class="rc-tool-actions">
+                                                    <button type="button" @onclick="() => DeleteItemFamilyDraft(family)">@L["Common_Remove"]</button>
+                                                </div>
+                                            }
+                                        </article>
+                                    }
+                                </div>
+                            }
+                        </div>
                     }
                     else if (SelectedEditorCategory == EditorCategory.Attributes && SelectedAttributeDraft is not null)
                     {
@@ -630,8 +699,11 @@ else
                     else if (SelectedEditorCategory == EditorCategory.Items && SelectedItemDraft is not null)
 {
     <div class="rc-tool-form-grid">
-        <div class="rc-form-field"><label>@L["Common_Name"]</label><input @bind="SelectedItemDraft.Name" /></div><div class="rc-form-field"><label>@L["GameSystem_Editor_DisplayOrder"]</label><input type="number" @bind="SelectedItemDraft.DisplayOrder" /></div><div class="rc-form-field rc-form-field--full"><label>@L["Common_Description"]</label><textarea rows="3" @bind="SelectedItemDraft.Description"></textarea></div><div class="rc-form-field"><label></label><label class="rc-filter-toggle"><input type="checkbox" @bind="SelectedItemDraft.IsSelectableAtCharacterCreation" /><span>@L["GameSystem_Editor_IsSelectableAtCharacterCreation"]</span></label></div><div class="rc-form-field"><label></label><label class="rc-filter-toggle"><input type="checkbox" @bind="SelectedItemDraft.IsConsumable" /><span>@L["GameSystem_Editor_ItemIsConsumable"]</span></label></div>@if (SelectedItemDraft.IsConsumable) {
-        <div class="rc-form-field"><label>@L["GameSystem_Editor_ItemMaxQuantityPerCharacter"]</label><input type="number" min="1" @bind="SelectedItemDraft.MaxQuantityPerCharacter" /></div>
+        <div class="rc-form-field"><label>@L["Common_Name"]</label><input @bind="SelectedItemDraft.Name" /></div><div class="rc-form-field"><label>@L["GameSystem_Editor_DisplayOrder"]</label><input type="number" @bind="SelectedItemDraft.DisplayOrder" /></div><div class="rc-form-field"><label>@L["GameSystem_Editor_ItemFamily"]</label><select @bind="SelectedItemDraft.ItemFamilyDefinitionId"><option value="">@L["GameSystem_Editor_NoItemFamily"]</option>@foreach (var family in GetActiveItemFamilies()) {
+        <option value="@family.ItemFamilyDefinitionId">@family.Name</option>
+    }
+</select></div><div class="rc-form-field rc-form-field--full"><label>@L["Common_Description"]</label><textarea rows="3" @bind="SelectedItemDraft.Description"></textarea></div><div class="rc-form-field"><label></label><label class="rc-filter-toggle"><input type="checkbox" @bind="SelectedItemDraft.IsSelectableAtCharacterCreation" /><span>@L["GameSystem_Editor_IsSelectableAtCharacterCreation"]</span></label></div><div class="rc-form-field"><label></label><label class="rc-filter-toggle"><input type="checkbox" @bind="SelectedItemDraft.IsConsumable" /><span>@L["GameSystem_Editor_ItemIsConsumable"]</span></label></div>@if (SelectedItemDraft.IsConsumable) {
+<div class="rc-form-field"><label>@L["GameSystem_Editor_ItemMaxQuantityPerCharacter"]</label><input type="number" min="1" @bind="SelectedItemDraft.MaxQuantityPerCharacter" /></div>
     }
 </div>
 <div class="rc-tool-subsection">
@@ -1472,6 +1544,7 @@ else
                 Traits = CurrentSystem.Traits,
                 Gauges = CurrentSystem.Gauges,
                 Talents = CurrentSystem.Talents,
+                ItemFamilies = CurrentSystem.ItemFamilies,
                 Items = CurrentSystem.Items
             };
 
@@ -1543,6 +1616,7 @@ else
     private EditableGaugeDefinitionDto? SelectedGaugeDraft;
     private EditableTalentDefinitionDto? SelectedTalentDraft;
     private EditableItemDefinitionDto? SelectedItemDraft;
+    private List<EditableItemFamilyDefinitionDto> ItemFamiliesDraft = new();
 
     private int AttributeCreationDistributionPointsDraft;
     private int AttributeCreationDistributionMaxDraft;
@@ -1553,6 +1627,7 @@ else
 
     private const int MaxStandardCategoryElements = 48;
     private const int MaxTraitDefinitions = 15;
+    private const int MaxItemFamilies = 15;
     private const int MaxTraitOptionsPerTrait = 20;
 
     private bool IsCategoryCollapsed(EditorCategory category)
@@ -1587,6 +1662,17 @@ else
             EditorCategory.Items => CurrentSystem.Items.Count(x => !x.IsDeleted),
             _ => 0
         };
+    }
+
+
+    private int GetActiveItemFamilyCount()
+    {
+        return CurrentSystem?.ItemFamilies.Count(x => !x.IsDeleted) ?? 0;
+    }
+
+    private int GetActiveItemFamilyDraftCount()
+    {
+        return ItemFamiliesDraft.Count(x => !x.IsDeleted);
     }
 
     private static int GetCategoryLimit(EditorCategory category)
@@ -1672,10 +1758,12 @@ else
             EditorCategory.Items => SerializeForChangeTracking(new
             {
                 CurrentSystem.StartingItemChoices,
+                CurrentSystem.ItemFamilies,
                 CurrentSystem.Items
             }) != SerializeForChangeTracking(new
             {
                 LoadedSystemSnapshot.StartingItemChoices,
+                LoadedSystemSnapshot.ItemFamilies,
                 LoadedSystemSnapshot.Items
             }),
 
@@ -1717,6 +1805,7 @@ else
                 break;
             case EditorCategory.Items:
                 StartingItemChoicesDraft = CurrentSystem.StartingItemChoices;
+                ItemFamiliesDraft = DeepClone(CurrentSystem.ItemFamilies);
                 break;
         }
     }
@@ -1730,6 +1819,7 @@ else
         SelectedGaugeDraft = null;
         SelectedTalentDraft = null;
         SelectedItemDraft = null;
+        ItemFamiliesDraft = new();
     }
 
     private void ToggleCategorySelection(EditorCategory category)
@@ -2083,6 +2173,59 @@ else
         if (CurrentSystem?.Talents.LastOrDefault() is { } item)
             ToggleEditorSelection(EditorCategory.Talents, GetTalentKey(item));
     }
+
+    private IEnumerable<EditableItemFamilyDefinitionDto> GetActiveItemFamilies()
+    {
+        return CurrentSystem?.ItemFamilies
+            .Where(x => !x.IsDeleted && x.ItemFamilyDefinitionId.HasValue)
+            .OrderBy(x => x.DisplayOrder)
+            .ThenBy(x => x.Name)
+            ?? Enumerable.Empty<EditableItemFamilyDefinitionDto>();
+    }
+
+    private void AddItemFamilyDraftRow()
+    {
+        if (GetActiveItemFamilyDraftCount() >= MaxItemFamilies)
+            return;
+
+        ItemFamiliesDraft.Add(new EditableItemFamilyDefinitionDto
+        {
+            ItemFamilyDefinitionId = Guid.NewGuid(),
+            Name = string.Empty,
+            MaxOwned = 1,
+            MaxActive = 0,
+            DisplayOrder = ItemFamiliesDraft.Count
+        });
+    }
+
+    private void DeleteItemFamilyDraft(EditableItemFamilyDefinitionDto family)
+    {
+        if (family.ItemFamilyDefinitionId.HasValue && CurrentSystem?.ItemFamilies.Any(x => x.ItemFamilyDefinitionId == family.ItemFamilyDefinitionId) == true)
+        {
+            family.IsDeleted = true;
+            return;
+        }
+
+        ItemFamiliesDraft.Remove(family);
+    }
+
+    private void DetachItemsFromDeletedFamiliesInEditor()
+    {
+        if (CurrentSystem is null)
+            return;
+
+        var deletedFamilyIds = CurrentSystem.ItemFamilies
+            .Where(x => x.IsDeleted && x.ItemFamilyDefinitionId.HasValue)
+            .Select(x => x.ItemFamilyDefinitionId!.Value)
+            .ToHashSet();
+
+        if (deletedFamilyIds.Count == 0)
+            return;
+
+        foreach (var item in CurrentSystem.Items.Where(x => x.ItemFamilyDefinitionId.HasValue && deletedFamilyIds.Contains(x.ItemFamilyDefinitionId.Value)))
+            item.ItemFamilyDefinitionId = null;
+    }
+
     private void AddAndSelectItem()
     {
         if (IsCategoryLimitReached(EditorCategory.Items))
@@ -2115,6 +2258,8 @@ else
                     break;
                 case EditorCategory.Items:
                     CurrentSystem.StartingItemChoices = StartingItemChoicesDraft;
+                    CurrentSystem.ItemFamilies = DeepClone(ItemFamiliesDraft);
+                    DetachItemsFromDeletedFamiliesInEditor();
                     break;
             }
             return;

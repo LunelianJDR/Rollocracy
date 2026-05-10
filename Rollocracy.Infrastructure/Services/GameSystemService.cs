@@ -501,6 +501,7 @@ namespace Rollocracy.Infrastructure.Services
             var metricMap = new Dictionary<Guid, Guid>();
             var talentMap = new Dictionary<Guid, Guid>();
             var itemMap = new Dictionary<Guid, Guid>();
+            var itemFamilyMap = new Dictionary<Guid, Guid>();
 
             var sourceAttributes = await context.AttributeDefinitions
                 .AsNoTracking()
@@ -662,6 +663,28 @@ namespace Rollocracy.Infrastructure.Services
                 talentMap[sourceTalent.Id] = clonedTalentId;
             }
 
+            var sourceItemFamilies = await context.ItemFamilyDefinitions
+                .AsNoTracking()
+                .Where(f => f.GameSystemId == sourceSystem.Id)
+                .ToListAsync();
+
+            foreach (var sourceFamily in sourceItemFamilies)
+            {
+                var clonedFamilyId = Guid.NewGuid();
+
+                context.ItemFamilyDefinitions.Add(new ItemFamilyDefinition
+                {
+                    Id = clonedFamilyId,
+                    GameSystemId = clonedSystem.Id,
+                    Name = sourceFamily.Name,
+                    MaxOwned = sourceFamily.MaxOwned,
+                    MaxActive = sourceFamily.MaxActive,
+                    DisplayOrder = sourceFamily.DisplayOrder
+                });
+
+                itemFamilyMap[sourceFamily.Id] = clonedFamilyId;
+            }
+
             var sourceItems = await context.ItemDefinitions
                 .AsNoTracking()
                 .Where(i => i.GameSystemId == sourceSystem.Id)
@@ -678,6 +701,9 @@ namespace Rollocracy.Infrastructure.Services
                     Name = sourceItem.Name,
                     Description = sourceItem.Description,
                     DisplayOrder = sourceItem.DisplayOrder,
+                    ItemFamilyDefinitionId = sourceItem.ItemFamilyDefinitionId.HasValue && itemFamilyMap.TryGetValue(sourceItem.ItemFamilyDefinitionId.Value, out var clonedFamilyId)
+                        ? clonedFamilyId
+                        : null,
                     IsSelectableAtCharacterCreation = sourceItem.IsSelectableAtCharacterCreation,
                     IsConsumable = sourceItem.IsConsumable,
                     MaxQuantityPerCharacter = sourceItem.MaxQuantityPerCharacter
@@ -981,6 +1007,13 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => talents.Select(t => t.Id).Contains(x.TalentDefinitionId))
                 .ToListAsync();
 
+            var itemFamilies = await context.ItemFamilyDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == system.Id)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.Name)
+                .ToListAsync();
+
             var items = await context.ItemDefinitions
                 .AsNoTracking()
                 .Where(x => x.GameSystemId == system.Id)
@@ -1190,12 +1223,21 @@ namespace Rollocracy.Infrastructure.Services
                         SourceMetricId = m.SourceMetricId
                     }).ToList()
                 }).ToList(),
+                ItemFamilies = itemFamilies.Select(f => new EditableItemFamilyDefinitionDto
+                {
+                    ItemFamilyDefinitionId = f.Id,
+                    Name = f.Name,
+                    MaxOwned = f.MaxOwned,
+                    MaxActive = f.MaxActive,
+                    DisplayOrder = f.DisplayOrder
+                }).ToList(),
                 Items = items.Select(i => new EditableItemDefinitionDto
                 {
                     ItemDefinitionId = i.Id,
                     Name = i.Name,
                     Description = i.Description ?? "",
                     DisplayOrder = i.DisplayOrder,
+                    ItemFamilyDefinitionId = i.ItemFamilyDefinitionId,
                     IsSelectableAtCharacterCreation = i.IsSelectableAtCharacterCreation,
                     IsConsumable = i.IsConsumable,
                     MaxQuantityPerCharacter = i.MaxQuantityPerCharacter,
@@ -1252,6 +1294,9 @@ namespace Rollocracy.Infrastructure.Services
             foreach (var talent in request.Talents.Where(x => !x.IsDeleted))
                 talent.TalentDefinitionId ??= Guid.NewGuid();
 
+            foreach (var family in request.ItemFamilies.Where(x => !x.IsDeleted))
+                family.ItemFamilyDefinitionId ??= Guid.NewGuid();
+
             foreach (var item in request.Items.Where(x => !x.IsDeleted))
                 item.ItemDefinitionId ??= Guid.NewGuid();
 
@@ -1262,6 +1307,20 @@ namespace Rollocracy.Infrastructure.Services
                 if (modifier.Id == Guid.Empty)
                     modifier.Id = Guid.NewGuid();
             }
+        }
+
+        private static void DetachItemsFromDeletedFamilies(GameSystemApplyChangesRequestDto request)
+        {
+            var deletedItemFamilyIds = request.ItemFamilies
+                .Where(x => x.IsDeleted && x.ItemFamilyDefinitionId.HasValue)
+                .Select(x => x.ItemFamilyDefinitionId!.Value)
+                .ToHashSet();
+
+            if (deletedItemFamilyIds.Count == 0)
+                return;
+
+            foreach (var item in request.Items.Where(x => x.ItemFamilyDefinitionId.HasValue && deletedItemFamilyIds.Contains(x.ItemFamilyDefinitionId.Value)))
+                item.ItemFamilyDefinitionId = null;
         }
 
         private void ValidateNoReferencesToDeletedDefinitions(GameSystemApplyChangesRequestDto request)
@@ -1281,6 +1340,10 @@ namespace Rollocracy.Infrastructure.Services
             var deletedGaugeIds = request.Gauges.Where(x => x.IsDeleted && x.GaugeDefinitionId.HasValue).Select(x => x.GaugeDefinitionId!.Value).ToHashSet();
             var deletedTalentIds = request.Talents.Where(x => x.IsDeleted && x.TalentDefinitionId.HasValue).Select(x => x.TalentDefinitionId!.Value).ToHashSet();
             var deletedItemIds = request.Items.Where(x => x.IsDeleted && x.ItemDefinitionId.HasValue).Select(x => x.ItemDefinitionId!.Value).ToHashSet();
+            var deletedItemFamilyIds = request.ItemFamilies.Where(x => x.IsDeleted && x.ItemFamilyDefinitionId.HasValue).Select(x => x.ItemFamilyDefinitionId!.Value).ToHashSet();
+
+            foreach (var item in request.Items.Where(x => x.ItemFamilyDefinitionId.HasValue && deletedItemFamilyIds.Contains(x.ItemFamilyDefinitionId.Value)))
+                item.ItemFamilyDefinitionId = null;
 
             var deletedAttributeKeys = request.Attributes.Where(x => x.IsDeleted && !string.IsNullOrWhiteSpace(x.TemporaryKey)).Select(x => x.TemporaryKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
@@ -1461,6 +1524,7 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             EnsureEditableRequestIds(request);
+            DetachItemsFromDeletedFamilies(request);
 
             if (request.ConfirmDeletedReferenceCleanup)
                 RemoveReferencesToDeletedDefinitions(request);
@@ -1475,6 +1539,7 @@ namespace Rollocracy.Infrastructure.Services
             ValidateModifierDefinitions(request.Traits, request.Talents, request.Items, request.Attributes, request.DerivedStats, request.Metrics, request.Gauges);
             ValidateHealthGaugeRule(request.Gauges);
             ValidateCatalogTalents(request.Talents, request.StartingTalentChoices);
+            ValidateItemFamilies(request.ItemFamilies, request.Items);
             ValidateCatalogItems(request.Items, request.StartingItemChoices);
 
             var affectedCharacters = await GetCharactersUsingSystemAsync(context, system.Id);
@@ -1521,6 +1586,7 @@ namespace Rollocracy.Infrastructure.Services
             await context.SaveChangesAsync();
 
             await SyncTalentsAsync(context, system.Id, affectedCharacters.Select(c => c.Id).ToList(), request.Talents);
+            await SyncItemFamiliesAsync(context, system.Id, request.ItemFamilies);
             await SyncItemsAsync(context, system.Id, affectedCharacters.Select(c => c.Id).ToList(), request.Items);
             await context.SaveChangesAsync();
 
@@ -1623,6 +1689,10 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => currentTalentIds.Contains(x.TalentDefinitionId))
                 .ToListAsync();
 
+            var currentItemFamilies = await context.ItemFamilyDefinitions
+                .Where(x => x.GameSystemId == system.Id)
+                .ToListAsync();
+
             var currentItems = await context.ItemDefinitions
                 .Where(x => x.GameSystemId == system.Id)
                 .ToListAsync();
@@ -1677,6 +1747,7 @@ namespace Rollocracy.Infrastructure.Services
             context.GaugeDefinitions.RemoveRange(currentGauges);
             context.TalentDefinitions.RemoveRange(currentTalents);
             context.ItemDefinitions.RemoveRange(currentItems);
+            context.ItemFamilyDefinitions.RemoveRange(currentItemFamilies);
 
             foreach (var attribute in payload.Attributes)
                 context.AttributeDefinitions.Add(attribute);
@@ -1710,6 +1781,9 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var modifier in payload.TalentModifiers)
                 context.TalentModifierDefinitions.Add(modifier);
+
+            foreach (var family in payload.ItemFamilies)
+                context.ItemFamilyDefinitions.Add(family);
 
             foreach (var item in payload.Items)
                 context.ItemDefinitions.Add(item);
@@ -2414,6 +2488,11 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => talentIds.Contains(x.TalentDefinitionId))
                 .ToListAsync();
 
+            var itemFamilies = await context.ItemFamilyDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == system.Id)
+                .ToListAsync();
+
             var items = await context.ItemDefinitions
                 .AsNoTracking()
                 .Where(x => x.GameSystemId == system.Id)
@@ -2477,6 +2556,7 @@ namespace Rollocracy.Infrastructure.Services
                 Gauges = gaugeDefinitions.Select(CloneGauge).ToList(),
                 Talents = talents.Select(CloneTalent).ToList(),
                 TalentModifiers = talentModifiers.Select(CloneTalentModifier).ToList(),
+                ItemFamilies = itemFamilies.Select(CloneItemFamily).ToList(),
                 Items = items.Select(CloneItem).ToList(),
                 ItemModifiers = itemModifiers.Select(CloneItemModifier).ToList(),
                 ChoiceOptionModifiers = choiceOptionModifiers.Select(CloneChoiceOptionModifier).ToList(),
@@ -2635,6 +2715,17 @@ namespace Rollocracy.Infrastructure.Services
             SourceMetricId = x.SourceMetricId
         };
 
+
+        private static ItemFamilyDefinition CloneItemFamily(ItemFamilyDefinition x) => new()
+        {
+            Id = x.Id,
+            GameSystemId = x.GameSystemId,
+            Name = x.Name,
+            MaxOwned = x.MaxOwned,
+            MaxActive = x.MaxActive,
+            DisplayOrder = x.DisplayOrder
+        };
+
         private static ItemDefinition CloneItem(ItemDefinition x) => new()
         {
             Id = x.Id,
@@ -2642,6 +2733,7 @@ namespace Rollocracy.Infrastructure.Services
             Name = x.Name,
             Description = x.Description,
             DisplayOrder = x.DisplayOrder,
+            ItemFamilyDefinitionId = x.ItemFamilyDefinitionId,
             IsSelectableAtCharacterCreation = x.IsSelectableAtCharacterCreation,
             IsConsumable = x.IsConsumable,
             MaxQuantityPerCharacter = x.MaxQuantityPerCharacter
@@ -3303,6 +3395,41 @@ namespace Rollocracy.Infrastructure.Services
                 throw new Exception(_localizer["Backend_StartingTalentChoicesExceedAvailable"]);
         }
 
+        private void ValidateItemFamilies(
+            List<EditableItemFamilyDefinitionDto> requestFamilies,
+            List<EditableItemDefinitionDto> requestItems)
+        {
+            var activeFamilies = requestFamilies
+                .Where(x => !x.IsDeleted)
+                .ToList();
+
+            if (activeFamilies.Count > 15)
+                throw new Exception(_localizer["Backend_ItemFamilyLimitExceeded"]);
+
+            var activeFamilyIds = activeFamilies
+                .Where(x => x.ItemFamilyDefinitionId.HasValue)
+                .Select(x => x.ItemFamilyDefinitionId!.Value)
+                .ToHashSet();
+
+            foreach (var family in activeFamilies)
+            {
+                if (string.IsNullOrWhiteSpace(family.Name))
+                    throw new Exception(_localizer["Backend_ItemFamilyNameRequired"]);
+
+                if (family.MaxOwned < 1 || family.MaxOwned > 99)
+                    throw new Exception(_localizer["Backend_ItemFamilyMaxOwnedInvalid"]);
+
+                if (family.MaxActive < 0 || family.MaxActive > family.MaxOwned)
+                    throw new Exception(_localizer["Backend_ItemFamilyMaxActiveInvalid"]);
+            }
+
+            foreach (var item in requestItems.Where(x => !x.IsDeleted && x.ItemFamilyDefinitionId.HasValue))
+            {
+                if (!activeFamilyIds.Contains(item.ItemFamilyDefinitionId.Value))
+                    throw new Exception(_localizer["Backend_ItemFamilyInvalidSelection"]);
+            }
+        }
+
         private void ValidateCatalogItems(List<EditableItemDefinitionDto> requestItems, int startingItemChoices)
         {
             var availableForCreation = 0;
@@ -3402,6 +3529,64 @@ namespace Rollocracy.Infrastructure.Services
             }
         }
 
+        private async Task SyncItemFamiliesAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            List<EditableItemFamilyDefinitionDto> requestFamilies)
+        {
+            var currentFamilies = await context.ItemFamilyDefinitions
+                .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var currentFamilyById = currentFamilies.ToDictionary(x => x.Id, x => x);
+
+            var requestExistingIds = requestFamilies
+                .Where(x => x.ItemFamilyDefinitionId.HasValue)
+                .Select(x => x.ItemFamilyDefinitionId!.Value)
+                .ToHashSet();
+
+            var removedIds = requestFamilies
+                .Where(x => x.ItemFamilyDefinitionId.HasValue && x.IsDeleted)
+                .Select(x => x.ItemFamilyDefinitionId!.Value)
+                .Union(currentFamilies.Where(x => !requestExistingIds.Contains(x.Id)).Select(x => x.Id))
+                .Distinct()
+                .ToList();
+
+            if (removedIds.Count > 0)
+            {
+                var linkedItems = await context.ItemDefinitions
+                    .Where(x => x.ItemFamilyDefinitionId.HasValue && removedIds.Contains(x.ItemFamilyDefinitionId.Value))
+                    .ToListAsync();
+
+                foreach (var item in linkedItems)
+                    item.ItemFamilyDefinitionId = null;
+
+                context.ItemFamilyDefinitions.RemoveRange(currentFamilies.Where(x => removedIds.Contains(x.Id)));
+            }
+
+            foreach (var family in requestFamilies.Where(x => x.ItemFamilyDefinitionId.HasValue && !x.IsDeleted && !string.IsNullOrWhiteSpace(x.Name)))
+            {
+                var familyId = family.ItemFamilyDefinitionId.GetValueOrDefault();
+
+                if (!currentFamilyById.TryGetValue(familyId, out var entity))
+                {
+                    entity = new ItemFamilyDefinition
+                    {
+                        Id = familyId,
+                        GameSystemId = gameSystemId
+                    };
+
+                    context.ItemFamilyDefinitions.Add(entity);
+                    currentFamilyById[entity.Id] = entity;
+                }
+
+                entity.Name = family.Name.Trim();
+                entity.MaxOwned = family.MaxOwned;
+                entity.MaxActive = family.MaxActive;
+                entity.DisplayOrder = family.DisplayOrder;
+            }
+        }
+
         private async Task SyncItemsAsync(
             RollocracyDbContext context,
             Guid gameSystemId,
@@ -3458,6 +3643,7 @@ namespace Rollocracy.Infrastructure.Services
                 entity.Name = item.Name.Trim();
                 entity.Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim();
                 entity.DisplayOrder = item.DisplayOrder;
+                entity.ItemFamilyDefinitionId = item.ItemFamilyDefinitionId;
                 entity.IsSelectableAtCharacterCreation = item.IsSelectableAtCharacterCreation;
                 entity.IsConsumable = item.IsConsumable;
                 entity.MaxQuantityPerCharacter = item.IsConsumable ? item.MaxQuantityPerCharacter : 0;
@@ -3474,6 +3660,7 @@ namespace Rollocracy.Infrastructure.Services
                     Name = item.Name.Trim(),
                     Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim(),
                     DisplayOrder = item.DisplayOrder,
+                    ItemFamilyDefinitionId = item.ItemFamilyDefinitionId,
                     IsSelectableAtCharacterCreation = item.IsSelectableAtCharacterCreation,
                     IsConsumable = item.IsConsumable,
                     MaxQuantityPerCharacter = item.IsConsumable ? item.MaxQuantityPerCharacter : 0
@@ -3783,6 +3970,7 @@ namespace Rollocracy.Infrastructure.Services
             public List<GaugeDefinition> Gauges { get; set; } = new();
             public List<TalentDefinition> Talents { get; set; } = new();
             public List<TalentModifierDefinition> TalentModifiers { get; set; } = new();
+            public List<ItemFamilyDefinition> ItemFamilies { get; set; } = new();
             public List<ItemDefinition> Items { get; set; } = new();
             public List<ItemModifierDefinition> ItemModifiers { get; set; } = new();
             public List<ChoiceOptionModifierDefinition> ChoiceOptionModifiers { get; set; } = new();

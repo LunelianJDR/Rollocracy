@@ -919,6 +919,7 @@ namespace Rollocracy.Infrastructure.Services
                 Name = item.Name,
                 Description = item.Description ?? string.Empty,
                 DisplayOrder = item.DisplayOrder,
+                ItemFamilyDefinitionId = item.ItemFamilyDefinitionId,
                 IsDeleted = false,
                 IsConsumable = item.IsConsumable,
                 MaxQuantityPerCharacter = item.MaxQuantityPerCharacter,
@@ -974,6 +975,7 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             await ValidateSessionItemNamesAsync(context, sessionId, gameSystemId, requestItems);
+            await ValidateSessionItemFamiliesAsync(context, gameSystemId, requestItems);
             await SyncSessionItemsAsync(context, sessionId, affectedCharacterIds, requestItems);
             await SyncSessionItemModifiersAsync(context, requestItems);
 
@@ -1361,6 +1363,30 @@ namespace Rollocracy.Infrastructure.Services
             };
         }
 
+        private async Task ValidateSessionItemFamiliesAsync(
+            RollocracyDbContext context,
+            Guid gameSystemId,
+            List<EditableItemDefinitionDto> requestItems)
+        {
+            var requestedFamilyIds = requestItems
+                .Where(x => !x.IsDeleted && x.ItemFamilyDefinitionId.HasValue)
+                .Select(x => x.ItemFamilyDefinitionId!.Value)
+                .Distinct()
+                .ToList();
+
+            if (requestedFamilyIds.Count == 0)
+                return;
+
+            var validFamilyIds = await context.ItemFamilyDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId && requestedFamilyIds.Contains(x.Id))
+                .Select(x => x.Id)
+                .ToListAsync();
+
+            if (validFamilyIds.Count != requestedFamilyIds.Count)
+                throw new Exception(_localizer["Backend_ItemFamilyInvalidSelection"]);
+        }
+
         private async Task ValidateSessionItemNamesAsync(
             RollocracyDbContext context,
             Guid sessionId,
@@ -1428,6 +1454,7 @@ namespace Rollocracy.Infrastructure.Services
                 entity.Name = item.Name.Trim();
                 entity.Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim();
                 entity.DisplayOrder = item.DisplayOrder;
+                entity.ItemFamilyDefinitionId = item.ItemFamilyDefinitionId;
                 entity.IsConsumable = item.IsConsumable;
                 entity.MaxQuantityPerCharacter = item.IsConsumable
                     ? Math.Max(1, item.MaxQuantityPerCharacter)
@@ -1445,6 +1472,7 @@ namespace Rollocracy.Infrastructure.Services
                     SessionId = sessionId,
                     Name = item.Name.Trim(),
                     Description = string.IsNullOrWhiteSpace(item.Description) ? null : item.Description.Trim(),
+                    ItemFamilyDefinitionId = item.ItemFamilyDefinitionId,
                     IsConsumable = item.IsConsumable,
                     MaxQuantityPerCharacter = item.IsConsumable
                         ? Math.Max(1, item.MaxQuantityPerCharacter)
