@@ -3,7 +3,7 @@
 
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.Extensions.Localization 
+@using Microsoft.Extensions.Localization
 @using Rollocracy.Domain.Characters
 @using Rollocracy.Domain.Entities
 @using Rollocracy.Domain.GameRules
@@ -39,7 +39,7 @@ else
                         <h4 class="rc-tool-panel__title">@L["Session_Settings_Title"]</h4>
                         <p class="rc-tool-panel__subtitle">@L["Session_Settings_Subtitle"]</p>
                     </div>
-@* 
+                    @* 
                     <div class="rc-tool-actions">
                         <button type="button" @onclick="GoToStore">@L["Session_Settings_ManageStore"]</button>
                     </div> *@
@@ -88,26 +88,26 @@ else
                 </div>
 
                 <div class="rc-form-field rc-form-field--readonly">
-                        <label>@L["Session_IsActive"]</label>
-                        <div class="rc-inline-info">
-                            <div class="rc-readonly-value">@(Settings.IsActive? L["Common_Yes"] : L["Common_No"])</div>
+                    <label>@L["Session_IsActive"]</label>
+                    <div class="rc-inline-info">
+                        <div class="rc-readonly-value">@(Settings.IsActive ? L["Common_Yes"] : L["Common_No"])</div>
 
-                            <div class="rc-inline-picker">
-                                @if (Settings.IsActive)
-                                {
-                                    <button type="button" @onclick="DeactivateSession">
+                        <div class="rc-inline-picker">
+                            @if (Settings.IsActive)
+                            {
+                                <button type="button" @onclick="DeactivateSession">
                                     <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M320-640v320-320Zm-80 400v-480h480v480H240Zm80-80h320v-320H320v320Z" /></svg>
-                                    </button>
-                                }
-                                else
-                                {
-                                    <button type="button" @onclick="ActivateSession">
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" @onclick="ActivateSession">
                                     <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M320-200v-560l440 280-440 280Zm80-280Zm0 134 210-134-210-134v268Z" /></svg>
-                                    </button>
-                                }
-                            </div>
+                                </button>
+                            }
                         </div>
                     </div>
+                </div>
 
                 <div class="rc-tool-actions">
                     <button type="button" @onclick="SaveSettings">@L["Common_Save"]</button>
@@ -380,6 +380,24 @@ else
                                     <span>@L["GameSystem_Editor_ItemIsConsumable"]</span>
                                 </label>
                             </div>
+
+                            @if (CurrentSystemEditor?.ItemFamilies?.Any(x => !x.IsDeleted && x.ItemFamilyDefinitionId.HasValue) == true)
+                            {
+                                <div class="rc-form-field">
+                                    <label>@L["GameSystem_Editor_ItemFamily"]</label>
+                                    <select value="@GetNullableGuidValue(item.ItemFamilyDefinitionId)"
+                                            @onchange="e => ChangeSessionItemFamily(item, e.Value?.ToString())">
+                                        <option value="">@L["GameSystem_Editor_NoItemFamily"]</option>
+                                        @foreach (var family in CurrentSystemEditor.ItemFamilies
+                                            .Where(x => !x.IsDeleted && x.ItemFamilyDefinitionId.HasValue)
+                                            .OrderBy(x => x.DisplayOrder)
+                                            .ThenBy(x => x.Name))
+                                        {
+                                            <option value="@family.ItemFamilyDefinitionId.Value.ToString()">@family.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
 
                             @if (item.IsConsumable)
                             {
@@ -1008,6 +1026,16 @@ else
             Rollocracy.Domain.GameRules.TestResolutionMode.RollUnderAttribute => L["Resolution_RollUnderAttribute"],
             _ => mode.ToString()
         };
+    }
+
+    private static string GetNullableGuidValue(Guid? value)
+        => value.HasValue ? value.Value.ToString() : string.Empty;
+
+    private void ChangeSessionItemFamily(EditableItemDefinitionDto item, string? rawValue)
+    {
+        item.ItemFamilyDefinitionId = Guid.TryParse(rawValue, out var familyId)
+            ? familyId
+            : null;
     }
 
     private void AddSessionItemRow()

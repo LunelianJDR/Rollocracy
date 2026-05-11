@@ -109,11 +109,11 @@ else
 
                                     <div class="rc-character-card__meta-row">
                                         <span class="rc-character-chip @(character.IsAlive ? "alive" : "dead")">
-                                            @(character.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                            @(character.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
                                         </span>
 
                                         <span class="rc-character-chip @(character.IsOnline ? "online" : "offline")">
-                                            @(character.IsOnline? L["Common_Online"] : L["Common_Offline"])
+                                            @(character.IsOnline ? L["Common_Online"] : L["Common_Offline"])
                                         </span>
 
                                         @if (character.IsNpc)
@@ -213,7 +213,7 @@ else
                             <h5 class="rc-character-detail-panel__title">@SelectedCharacterSheet.Name</h5>
                             <div class="rc-character-detail-panel__meta">
                                 <span class="rc-character-chip @(SelectedCharacterSheet.IsAlive ? "alive" : "dead")">
-                                    @(SelectedCharacterSheet.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                    @(SelectedCharacterSheet.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
                                 </span>
                                 @if (SelectedCharacterSummary?.IsNpc == true)
                                 {
@@ -410,11 +410,12 @@ else
                                     <div class="rc-character-inline-list">
                                         @foreach (var item in SelectedEditableCharacter.Items)
                                         {
-                                            <div class="rc-consumable-edit-line">
-                                                <label class="rc-filter-toggle">
+                                            <div class="rc-consumable-edit-line rc-character-item-edit-line">
+                                                <label class="rc-filter-toggle rc-character-item-edit-line__owned">
                                                     <input type="checkbox" @bind="item.IsSelected" />
                                                     <span>@item.Name</span>
                                                 </label>
+
                                                 @if (item.IsConsumable && item.IsSelected)
                                                 {
                                                     <input type="number"
@@ -422,6 +423,17 @@ else
                                                            max="@item.MaxQuantityPerCharacter"
                                                            @bind="item.Quantity"
                                                            class="rc-consumable-qty-input" />
+                                                }
+                                                else if (!item.IsConsumable && item.IsSelected)
+                                                {
+                                                    var activationDisabled = !item.IsActive && !item.CanActivate;
+                                                    <label class="@(activationDisabled ? "rc-filter-toggle rc-item-active-toggle rc-item-active-toggle--disabled" : "rc-filter-toggle rc-item-active-toggle")"
+                                                           title="@(activationDisabled && !string.IsNullOrWhiteSpace(item.ActivationBlockedReason) ? item.ActivationBlockedReason : item.IsActive ? L["Character_Item_Active"] : L["Character_Item_Inactive"])">
+                                                        <input type="checkbox"
+                                                               @bind="item.IsActive"
+                                                               disabled="@activationDisabled" />
+                                                        <span>@(item.IsActive ? L["Character_Item_Active"] : L["Character_Item_Inactive"])</span>
+                                                    </label>
                                                 }
                                             </div>
                                         }

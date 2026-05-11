@@ -1497,7 +1497,9 @@ namespace Rollocracy.Infrastructure.Services
                         CharacterId = row.character.Id,
                         ItemDefinitionId = x.Key,
                         Quantity = quantity,
-                        IsActive = existing?.IsActive ?? true
+                        IsActive = definition.IsConsumable
+                            ? true
+                            : x.Value.IsActive
                     };
                 })
                 .ToList();
@@ -1996,6 +1998,12 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => x.CharacterId == character.Id)
                 .ToListAsync();
 
+            var itemFamilies = await context.ItemFamilyDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var itemFamilyNames = itemFamilies.ToDictionary(x => x.Id, x => x.Name);
             var characterItemIds = characterItems.Select(x => x.ItemDefinitionId).ToList();
 
             var computed = await ComputeCharacterContextAsync(context, playerSession.Id, gameSystemId, character.Id);
@@ -2079,6 +2087,10 @@ namespace Rollocracy.Infrastructure.Services
                     .Select(i =>
                     {
                         var ownedItem = characterItems.FirstOrDefault(x => x.ItemDefinitionId == i.Id);
+                        var family = i.ItemFamilyDefinitionId.HasValue
+                            ? itemFamilies.FirstOrDefault(x => x.Id == i.ItemFamilyDefinitionId.Value)
+                            : null;
+
                         return new EditableCharacterGrantDto
                         {
                             DefinitionId = i.Id,
@@ -2086,7 +2098,25 @@ namespace Rollocracy.Infrastructure.Services
                             IsSelected = ownedItem is not null,
                             IsConsumable = i.IsConsumable,
                             Quantity = ownedItem?.Quantity ?? (i.IsConsumable ? 0 : 1),
-                            MaxQuantityPerCharacter = i.MaxQuantityPerCharacter
+                            MaxQuantityPerCharacter = i.MaxQuantityPerCharacter,
+                            IsActive = ownedItem?.IsActive ?? true,
+                            ItemFamilyDefinitionId = i.ItemFamilyDefinitionId,
+                            ItemFamilyName = i.ItemFamilyDefinitionId.HasValue && itemFamilyNames.TryGetValue(i.ItemFamilyDefinitionId.Value, out var familyName)
+                                ? familyName
+                                : string.Empty,
+                            FamilyOwnedCount = family is null ? 0 : CharacterItemFamilyRules.GetOwnedCount(character.Id, family.Id, characterItems, itemDefinitions),
+                            FamilyMaxOwned = family?.MaxOwned ?? 0,
+                            FamilyActiveCount = family is null ? 0 : CharacterItemFamilyRules.GetActiveCount(character.Id, family.Id, characterItems, itemDefinitions),
+                            FamilyMaxActive = family?.MaxActive ?? 0,
+                            CanActivate = ownedItem is not null && CharacterItemFamilyRules.CanActivateItemFromSheet(
+                                character.Id,
+                                i.Id,
+                                characterItems,
+                                itemDefinitions,
+                                itemFamilies),
+                            ActivationBlockedReason = i.ItemFamilyDefinitionId.HasValue
+                                ? _localizer["Backend_ItemFamilyActiveLimitReached"]
+                                : string.Empty
                         };
                     })
                     .ToList()
@@ -2765,6 +2795,22 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     var ownedItem = directCharacterItems.FirstOrDefault(x => x.ItemDefinitionId == i.Id);
                     var quantity = ownedItem?.Quantity ?? (i.IsConsumable ? 0 : 1);
+                    var family = i.ItemFamilyDefinitionId.HasValue
+                        ? itemFamilies.FirstOrDefault(x => x.Id == i.ItemFamilyDefinitionId.Value)
+                        : null;
+                    var effectTooltip = BuildItemEffectTooltip(
+                        allOwnedItemModifiers.Where(x => x.ItemDefinitionId == i.Id).ToList(),
+                        attributeNames,
+                        derivedNames,
+                        metricNames,
+                        gaugeNames,
+                        talentNames,
+                        itemNames,
+                        metricValues,
+                        i.IsConsumable);
+                    var familyTooltip = family is null
+                        ? string.Empty
+                        : BuildItemFamilyTooltipPart(characterId, family, directCharacterItems, ownedItemDefinitions);
 
                     return new CharacterNameLineDto
                     {
@@ -2778,6 +2824,10 @@ namespace Rollocracy.Infrastructure.Services
                         ItemFamilyName = i.ItemFamilyDefinitionId.HasValue && itemFamilyNames.TryGetValue(i.ItemFamilyDefinitionId.Value, out var familyName)
                             ? familyName
                             : string.Empty,
+                        FamilyOwnedCount = family is null ? 0 : CharacterItemFamilyRules.GetOwnedCount(characterId, family.Id, directCharacterItems, ownedItemDefinitions),
+                        FamilyMaxOwned = family?.MaxOwned ?? 0,
+                        FamilyActiveCount = family is null ? 0 : CharacterItemFamilyRules.GetActiveCount(characterId, family.Id, directCharacterItems, ownedItemDefinitions),
+                        FamilyMaxActive = family?.MaxActive ?? 0,
                         CanActivate = ownedItem is not null && CharacterItemFamilyRules.CanActivateItemFromSheet(
                             characterId,
                             i.Id,
@@ -2787,16 +2837,7 @@ namespace Rollocracy.Infrastructure.Services
                         ActivationBlockedReason = i.ItemFamilyDefinitionId.HasValue
                             ? _localizer["Backend_ItemFamilyActiveLimitReached"]
                             : string.Empty,
-                        Tooltip = BuildItemEffectTooltip(
-                            allOwnedItemModifiers.Where(x => x.ItemDefinitionId == i.Id).ToList(),
-                            attributeNames,
-                            derivedNames,
-                            metricNames,
-                            gaugeNames,
-                            talentNames,
-                            itemNames,
-                            metricValues,
-                            i.IsConsumable)
+                        Tooltip = string.Join("\n", new[] { effectTooltip, familyTooltip }.Where(x => !string.IsNullOrWhiteSpace(x)))
                     };
                 })
                 .ToList();
@@ -3084,6 +3125,23 @@ namespace Rollocracy.Infrastructure.Services
                 .ToList();
 
             return string.Join(", ", parts);
+        }
+
+        private string BuildItemFamilyTooltipPart(
+            Guid characterId,
+            ItemFamilyDefinition family,
+            List<CharacterItem> characterItems,
+            List<ItemDefinition> itemDefinitions)
+        {
+            var ownedCount = CharacterItemFamilyRules.GetOwnedCount(characterId, family.Id, characterItems, itemDefinitions);
+            var activeCount = CharacterItemFamilyRules.GetActiveCount(characterId, family.Id, characterItems, itemDefinitions);
+
+            return string.Join("\n", new[]
+            {
+                $"{_localizer["Character_ItemFamily_Label"]} : {family.Name}",
+                $"{_localizer["Character_ItemFamily_OwnedCounter"]} : {ownedCount}/{family.MaxOwned}",
+                $"{_localizer["Character_ItemFamily_ActiveCounter"]} : {activeCount}/{family.MaxActive}"
+            });
         }
 
         private string BuildItemEffectTooltip(

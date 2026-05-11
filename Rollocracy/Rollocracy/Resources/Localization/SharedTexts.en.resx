@@ -4306,4 +4306,13 @@
 	<data name="Backend_ItemFamilyActiveLimitReached" xml:space="preserve">
   <value>The active item limit for this family has been reached.</value>
 </data>
+	<data name="Character_ItemFamily_Label" xml:space="preserve">
+  <value>Family</value>
+</data>
+	<data name="Character_ItemFamily_OwnedCounter" xml:space="preserve">
+  <value>Owned</value>
+</data>
+	<data name="Character_ItemFamily_ActiveCounter" xml:space="preserve">
+  <value>Active</value>
+</data>
 </root>

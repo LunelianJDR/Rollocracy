@@ -4155,7 +4155,10 @@ html[data-theme="dark"] .rc-journal-popup-page .rc-journal-viewer__nav > button:
    ========================================================= */
 
 .rc-player-pill--inactive {
-    opacity: 0.62;
+    opacity: 1;
+    color: var(--rc-text-soft);
+    border-style: dashed;
+    background: color-mix(in srgb, var(--rc-surface-2) 78%, var(--rc-bg) 22%);
 }
 
 .rc-item-active-toggle {
@@ -4179,4 +4182,55 @@ html[data-theme="dark"] .rc-journal-popup-page .rc-journal-viewer__nav > button:
 
     .rc-item-active-toggle--disabled span {
         color: var(--rc-text-soft);
+    }
+
+/* =========================================================
+   II-4 - INFOS COMPACTES DES FAMILLES D'OBJETS
+   ========================================================= */
+
+.rc-item-family-compact {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.82rem;
+}
+
+/* =========================================================
+   II-4 PATCH - ÉDITION MJ DES ITEMS
+   ========================================================= */
+
+.rc-character-item-edit-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.35rem 0.65rem;
+    border: 1px solid var(--rc-border);
+    border-radius: 999px;
+    background: var(--rc-surface-2);
+}
+
+    .rc-character-item-edit-line > .rc-filter-toggle {
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+    }
+
+        .rc-character-item-edit-line > .rc-filter-toggle:hover {
+            background: transparent;
+            border-color: transparent;
+            transform: none;
+        }
+
+    .rc-character-item-edit-line .rc-item-active-toggle {
+        margin-left: 0;
+        padding-left: 0.55rem;
+        border-left: 1px solid var(--rc-border);
+        border-radius: 0;
+    }
+
+    .rc-character-item-edit-line .rc-consumable-qty-input {
+        min-height: 34px;
+        padding-top: 0.35rem;
+        padding-bottom: 0.35rem;
     }

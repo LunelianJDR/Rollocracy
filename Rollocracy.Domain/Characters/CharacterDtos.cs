@@ -66,6 +66,10 @@ namespace Rollocracy.Domain.Characters
         public bool IsActive { get; set; } = true;
         public Guid? ItemFamilyDefinitionId { get; set; }
         public string ItemFamilyName { get; set; } = string.Empty;
+        public int FamilyOwnedCount { get; set; }
+        public int FamilyMaxOwned { get; set; }
+        public int FamilyActiveCount { get; set; }
+        public int FamilyMaxActive { get; set; }
         public bool CanActivate { get; set; } = true;
         public string ActivationBlockedReason { get; set; } = string.Empty;
         public string Tooltip { get; set; } = string.Empty;
@@ -237,6 +241,15 @@ namespace Rollocracy.Domain.Characters
         public bool IsConsumable { get; set; }
         public int Quantity { get; set; }
         public int MaxQuantityPerCharacter { get; set; }
+        public bool IsActive { get; set; } = true;
+        public Guid? ItemFamilyDefinitionId { get; set; }
+        public string ItemFamilyName { get; set; } = string.Empty;
+        public int FamilyOwnedCount { get; set; }
+        public int FamilyMaxOwned { get; set; }
+        public int FamilyActiveCount { get; set; }
+        public int FamilyMaxActive { get; set; }
+        public bool CanActivate { get; set; } = true;
+        public string ActivationBlockedReason { get; set; } = string.Empty;
     }
 
     public class EditableCharacterDto
