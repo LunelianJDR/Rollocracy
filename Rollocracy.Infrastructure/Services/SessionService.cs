@@ -1286,6 +1286,23 @@ namespace Rollocracy.Infrastructure.Services
                     .Where(x => x.CharacterId == aliveCharacter.Id)
                     .ToListAsync();
 
+            var relevantItemDefinitionIds = itemIds
+                .Concat(ownedItems.Select(x => x.ItemDefinitionId))
+                .Distinct()
+                .ToList();
+
+            var relevantItemDefinitions = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(x => relevantItemDefinitionIds.Contains(x.Id))
+                .ToListAsync();
+
+            var itemFamilies = session.GameSystemId.HasValue
+                ? await context.ItemFamilyDefinitions
+                    .AsNoTracking()
+                    .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                    .ToListAsync()
+                : new List<ItemFamilyDefinition>();
+
             return new PlayerSessionStoreDto
             {
                 Exists = true,
@@ -1337,9 +1354,20 @@ namespace Rollocracy.Infrastructure.Services
                     var ownedQuantity = ownedItem?.Quantity ?? 0;
                     var itemOwned = item.IsConsumable ? ownedQuantity > 0 : ownedItem is not null;
 
+                    var familyAllowsPurchase = aliveCharacter is not null &&
+                        CharacterItemFamilyRules.CanAddItem(
+                            aliveCharacter.Id,
+                            item,
+                            1,
+                            ownedItems,
+                            relevantItemDefinitions,
+                            itemFamilies,
+                            out _);
+
                     var canBuy = store.IsEnabled &&
                                  aliveCharacter is not null &&
                                  hasEnoughCurrency &&
+                                 familyAllowsPurchase &&
                                  (item.IsConsumable
                                     ? ownedQuantity < item.MaxQuantityPerCharacter
                                     : ownedItem is null);

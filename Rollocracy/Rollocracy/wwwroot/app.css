@@ -4168,3 +4168,15 @@ html[data-theme="dark"] .rc-journal-popup-page .rc-journal-viewer__nav > button:
     .rc-item-active-toggle span {
         white-space: nowrap;
     }
+
+/* =========================================================
+   II-3 - CONTRAINTES DE FAMILLES D'OBJETS
+   ========================================================= */
+
+.rc-item-active-toggle--disabled {
+    opacity: 0.58;
+}
+
+    .rc-item-active-toggle--disabled span {
+        color: var(--rc-text-soft);
+    }

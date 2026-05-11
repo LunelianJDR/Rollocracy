@@ -4294,4 +4294,16 @@
 	<data name="Backend_ConsumableItemCannotBeActivated" xml:space="preserve">
   <value>Un objet consommable ne peut pas être activé ou désactivé.</value>
 </data>
+	<data name="Backend_ItemAlreadyOwned" xml:space="preserve">
+  <value>Le personnage possède déjà cet objet.</value>
+</data>
+	<data name="Backend_ItemMaxQuantityReached" xml:space="preserve">
+  <value>La quantité maximale de cet objet est déjà atteinte.</value>
+</data>
+	<data name="Backend_ItemFamilyOwnedLimitReached" xml:space="preserve">
+  <value>La limite d'objets possédés pour cette famille est atteinte.</value>
+</data>
+	<data name="Backend_ItemFamilyActiveLimitReached" xml:space="preserve">
+  <value>La limite d'objets actifs pour cette famille est atteinte.</value>
+</data>
 </root>

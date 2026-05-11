@@ -443,6 +443,11 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(i => i.GameSystemId == gameSystemId && i.IsSelectableAtCharacterCreation)
                 .ToListAsync();
 
+            var itemFamilies = await context.ItemFamilyDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
             var character = new Character
             {
                 Id = Guid.NewGuid(),
@@ -619,17 +624,40 @@ namespace Rollocracy.Infrastructure.Services
                 });
             }
 
+            var pendingCharacterItems = new List<CharacterItem>();
+
             foreach (var selectedItemId in selectedItemIds)
             {
                 var selectedItemDefinition = selectableItems.First(x => x.Id == selectedItemId);
-                context.CharacterItems.Add(new CharacterItem
+
+                if (!CharacterItemFamilyRules.CanAddItem(
+                        character.Id,
+                        selectedItemDefinition,
+                        1,
+                        pendingCharacterItems,
+                        selectableItems,
+                        itemFamilies,
+                        out var itemAddErrorKey))
+                {
+                    throw new Exception(_localizer[itemAddErrorKey]);
+                }
+
+                var entity = new CharacterItem
                 {
                     Id = Guid.NewGuid(),
                     CharacterId = character.Id,
                     ItemDefinitionId = selectedItemId,
-                    Quantity = selectedItemDefinition.IsConsumable ? 1 : 1,
-                    IsActive = true
-                });
+                    Quantity = 1,
+                    IsActive = selectedItemDefinition.IsConsumable || CharacterItemFamilyRules.ShouldActivateNewNonConsumableItem(
+                        character.Id,
+                        selectedItemDefinition,
+                        pendingCharacterItems,
+                        selectableItems,
+                        itemFamilies)
+                };
+
+                context.CharacterItems.Add(entity);
+                pendingCharacterItems.Add(entity);
             }
 
             foreach (var derivedStatDefinition in derivedStatDefinitions)
@@ -1448,6 +1476,50 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => itemDefinitions.Any(i => i.Id == x.DefinitionId))
                 .ToDictionary(x => x.DefinitionId, x => x);
 
+            var itemFamilies = await context.ItemFamilyDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var proposedCharacterItems = requestedItemStates
+                .Where(x => x.Value.IsSelected && (!x.Value.IsConsumable || x.Value.Quantity > 0))
+                .Select(x =>
+                {
+                    var definition = itemDefinitions.First(i => i.Id == x.Key);
+                    var existing = characterItems.FirstOrDefault(ci => ci.ItemDefinitionId == x.Key);
+                    var quantity = definition.IsConsumable
+                        ? Math.Clamp(x.Value.Quantity, 1, Math.Max(1, definition.MaxQuantityPerCharacter))
+                        : 1;
+
+                    return new CharacterItem
+                    {
+                        Id = existing?.Id ?? Guid.NewGuid(),
+                        CharacterId = row.character.Id,
+                        ItemDefinitionId = x.Key,
+                        Quantity = quantity,
+                        IsActive = existing?.IsActive ?? true
+                    };
+                })
+                .ToList();
+
+            if (!CharacterItemFamilyRules.ValidateOwnedLimits(
+                    row.character.Id,
+                    proposedCharacterItems,
+                    itemDefinitions,
+                    itemFamilies,
+                    out var inventoryValidationErrorKey))
+            {
+                throw new Exception(_localizer[inventoryValidationErrorKey]);
+            }
+
+            CharacterItemFamilyRules.NormalizeActiveItems(
+                row.character.Id,
+                proposedCharacterItems,
+                itemDefinitions,
+                itemFamilies);
+
+            var proposedItemsByDefinitionId = proposedCharacterItems.ToDictionary(x => x.ItemDefinitionId, x => x);
+
             var existingTalentIds = characterTalents.Select(x => x.TalentDefinitionId).ToHashSet();
             var existingItemIds = characterItems.Select(x => x.ItemDefinitionId).ToHashSet();
 
@@ -1499,7 +1571,9 @@ namespace Rollocracy.Infrastructure.Services
                     CharacterId = row.character.Id,
                     ItemDefinitionId = itemIdToAdd,
                     Quantity = quantity <= 0 ? 1 : quantity,
-                    IsActive = true
+                    IsActive = proposedItemsByDefinitionId.TryGetValue(itemIdToAdd, out var proposedAddedItem)
+                        ? proposedAddedItem.IsActive
+                        : true
                 });
             }
 
@@ -1517,11 +1591,15 @@ namespace Rollocracy.Infrastructure.Services
 
                 if (itemDefinition.IsConsumable)
                 {
-                    existingItem.Quantity = Math.Clamp(requestedItem.Quantity, 0, itemDefinition.MaxQuantityPerCharacter);
+                    existingItem.Quantity = proposedItemsByDefinitionId.TryGetValue(existingItem.ItemDefinitionId, out var proposedExistingItem)
+                        ? proposedExistingItem.Quantity
+                        : Math.Clamp(requestedItem.Quantity, 0, itemDefinition.MaxQuantityPerCharacter);
                 }
                 else
                 {
                     existingItem.Quantity = requestedItem.IsSelected ? 1 : 0;
+                    if (proposedItemsByDefinitionId.TryGetValue(existingItem.ItemDefinitionId, out var proposedExistingItem))
+                        existingItem.IsActive = proposedExistingItem.IsActive;
                 }
             }
 
@@ -1549,6 +1627,14 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var itemIdToAdd in itemIdsToAdd)
             {
+                var addedItemDefinition = itemDefinitions.First(x => x.Id == itemIdToAdd);
+                if (addedItemDefinition.IsConsumable ||
+                    !proposedItemsByDefinitionId.TryGetValue(itemIdToAdd, out var proposedAddedItem) ||
+                    !proposedAddedItem.IsActive)
+                {
+                    continue;
+                }
+
                 await ApplyGaugeModifiersFromItemInventoryChangeAsync(
                     context,
                     gameSystemId,
@@ -2260,7 +2346,6 @@ namespace Rollocracy.Infrastructure.Services
                 .ToListAsync();
 
             var directCharacterItems = await context.CharacterItems
-                .AsNoTracking()
                 .Where(x => x.CharacterId == characterId)
                 .ToListAsync();
 
@@ -2273,6 +2358,18 @@ namespace Rollocracy.Infrastructure.Services
                 .AsNoTracking()
                 .Where(i => ownedItemDefinitionIds.Contains(i.Id))
                 .ToListAsync();
+
+            var itemFamilies = await context.ItemFamilyDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            if (CharacterItemFamilyRules.NormalizeActiveItems(characterId, directCharacterItems, ownedItemDefinitions, itemFamilies))
+            {
+                await context.SaveChangesAsync();
+            }
+
+            var itemFamilyNames = itemFamilies.ToDictionary(x => x.Id, x => x.Name);
 
             var passiveDirectCharacterItemIds = directCharacterItems
                 .Where(x =>
@@ -2677,6 +2774,19 @@ namespace Rollocracy.Infrastructure.Services
                         Quantity = quantity,
                         MaxQuantityPerCharacter = i.MaxQuantityPerCharacter,
                         IsActive = ownedItem?.IsActive ?? true,
+                        ItemFamilyDefinitionId = i.ItemFamilyDefinitionId,
+                        ItemFamilyName = i.ItemFamilyDefinitionId.HasValue && itemFamilyNames.TryGetValue(i.ItemFamilyDefinitionId.Value, out var familyName)
+                            ? familyName
+                            : string.Empty,
+                        CanActivate = ownedItem is not null && CharacterItemFamilyRules.CanActivateItemFromSheet(
+                            characterId,
+                            i.Id,
+                            directCharacterItems,
+                            ownedItemDefinitions,
+                            itemFamilies),
+                        ActivationBlockedReason = i.ItemFamilyDefinitionId.HasValue
+                            ? _localizer["Backend_ItemFamilyActiveLimitReached"]
+                            : string.Empty,
                         Tooltip = BuildItemEffectTooltip(
                             allOwnedItemModifiers.Where(x => x.ItemDefinitionId == i.Id).ToList(),
                             attributeNames,
@@ -3326,14 +3436,49 @@ namespace Rollocracy.Infrastructure.Services
             if (itemDefinition.IsConsumable)
                 throw new Exception(_localizer["Backend_ConsumableItemCannotBeActivated"]);
 
-            var characterItem = await context.CharacterItems
-                .FirstOrDefaultAsync(x => x.CharacterId == character.Id && x.ItemDefinitionId == itemDefinitionId);
+            var characterItems = await context.CharacterItems
+                .Where(x => x.CharacterId == character.Id)
+                .ToListAsync();
+
+            var characterItem = characterItems
+                .FirstOrDefault(x => x.ItemDefinitionId == itemDefinitionId);
 
             if (characterItem == null)
                 throw new Exception(_localizer["Backend_CharacterItemNotFound"]);
 
             if (characterItem.IsActive == isActive)
                 return;
+
+            if (isActive)
+            {
+                var allRelevantItemDefinitionIds = characterItems
+                    .Select(x => x.ItemDefinitionId)
+                    .Append(itemDefinition.Id)
+                    .Distinct()
+                    .ToList();
+
+                var itemDefinitions = await context.ItemDefinitions
+                    .AsNoTracking()
+                    .Where(x => allRelevantItemDefinitionIds.Contains(x.Id))
+                    .ToListAsync();
+
+                var itemFamilies = await context.ItemFamilyDefinitions
+                    .AsNoTracking()
+                    .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                    .ToListAsync();
+
+                if (!CharacterItemFamilyRules.CanActivateItem(
+                        character.Id,
+                        characterItem,
+                        itemDefinition,
+                        characterItems,
+                        itemDefinitions,
+                        itemFamilies,
+                        out var activationErrorKey))
+                {
+                    throw new Exception(_localizer[activationErrorKey]);
+                }
+            }
 
             characterItem.IsActive = isActive;
 
@@ -3658,13 +3803,49 @@ namespace Rollocracy.Infrastructure.Services
                 if (itemDefinition == null)
                     throw new Exception(_localizer["Backend_SessionStoreInvalidTarget"]);
 
-                var existingItem = await context.CharacterItems
-                    .FirstOrDefaultAsync(x => x.CharacterId == character.Id && x.ItemDefinitionId == itemDefinition.Id);
+                var characterItems = await context.CharacterItems
+                    .Where(x => x.CharacterId == character.Id)
+                    .ToListAsync();
+
+                var existingItem = characterItems
+                    .FirstOrDefault(x => x.ItemDefinitionId == itemDefinition.Id);
+
+                var relevantItemDefinitionIds = characterItems
+                    .Select(x => x.ItemDefinitionId)
+                    .Append(itemDefinition.Id)
+                    .Distinct()
+                    .ToList();
+
+                var relevantItemDefinitions = await context.ItemDefinitions
+                    .AsNoTracking()
+                    .Where(x => relevantItemDefinitionIds.Contains(x.Id))
+                    .ToListAsync();
+
+                var itemFamilies = await context.ItemFamilyDefinitions
+                    .AsNoTracking()
+                    .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                    .ToListAsync();
+
+                if (!CharacterItemFamilyRules.CanAddItem(
+                        character.Id,
+                        itemDefinition,
+                        1,
+                        characterItems,
+                        relevantItemDefinitions,
+                        itemFamilies,
+                        out var itemAddErrorKey))
+                {
+                    throw new Exception(_localizer[itemAddErrorKey]);
+                }
 
                 if (!itemDefinition.IsConsumable)
                 {
-                    if (existingItem != null)
-                        throw new Exception(_localizer["Backend_SessionStoreOfferAlreadyOwned"]);
+                    var shouldActivate = CharacterItemFamilyRules.ShouldActivateNewNonConsumableItem(
+                        character.Id,
+                        itemDefinition,
+                        characterItems,
+                        relevantItemDefinitions,
+                        itemFamilies);
 
                     context.CharacterItems.Add(new CharacterItem
                     {
@@ -3672,29 +3853,30 @@ namespace Rollocracy.Infrastructure.Services
                         CharacterId = character.Id,
                         ItemDefinitionId = itemDefinition.Id,
                         Quantity = 1,
-                        IsActive = true
+                        IsActive = shouldActivate
                     });
 
-                    grantedNonConsumableItemDefinitionId = itemDefinition.Id;
+                    if (shouldActivate)
+                        grantedNonConsumableItemDefinitionId = itemDefinition.Id;
                 }
                 else
                 {
                     if (existingItem is null)
                     {
-                        context.CharacterItems.Add(new CharacterItem
+                        var entity = new CharacterItem
                         {
                             Id = Guid.NewGuid(),
                             CharacterId = character.Id,
                             ItemDefinitionId = itemDefinition.Id,
                             Quantity = 1,
                             IsActive = true
-                        });
+                        };
+
+                        context.CharacterItems.Add(entity);
+                        characterItems.Add(entity);
                     }
                     else
                     {
-                        if (existingItem.Quantity >= itemDefinition.MaxQuantityPerCharacter)
-                            throw new Exception(_localizer["Backend_SessionStoreConsumableLimitReached"]);
-
                         existingItem.Quantity += 1;
                     }
                 }

@@ -64,6 +64,10 @@ namespace Rollocracy.Domain.Characters
         public int Quantity { get; set; }
         public int MaxQuantityPerCharacter { get; set; }
         public bool IsActive { get; set; } = true;
+        public Guid? ItemFamilyDefinitionId { get; set; }
+        public string ItemFamilyName { get; set; } = string.Empty;
+        public bool CanActivate { get; set; } = true;
+        public string ActivationBlockedReason { get; set; } = string.Empty;
         public string Tooltip { get; set; } = string.Empty;
     }
 

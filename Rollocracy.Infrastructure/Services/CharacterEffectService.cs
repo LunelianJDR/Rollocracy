@@ -102,6 +102,11 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(i => i.GameSystemId == gameSystemId || i.SessionId == sessionId)
                 .ToListAsync();
 
+            var itemFamilies = await context.ItemFamilyDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
             ValidateEffects(
                 effects,
                 attributeDefinitions,
@@ -174,6 +179,8 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(v => normalizedCharacterIds.Contains(v.CharacterId))
                 .ToListAsync();
 
+            var orderedEffects = OrderEffectsForInventoryConstraints(effects);
+
             foreach (var character in characters)
             {
                 var attributeValues = allAttributeValues.Where(x => x.CharacterId == character.Id).ToList();
@@ -182,7 +189,7 @@ namespace Rollocracy.Infrastructure.Services
                 var characterItems = allCharacterItems.Where(x => x.CharacterId == character.Id).ToList();
                 var characterModifiers = allCharacterModifiers.Where(x => x.CharacterId == character.Id).ToList();
 
-                foreach (var effect in effects)
+                foreach (var effect in orderedEffects)
                 {
                     await ApplySingleEffectAsync(
                         context,
@@ -202,6 +209,7 @@ namespace Rollocracy.Infrastructure.Services
                         itemModifiers,
                         talentDefinitions,
                         itemDefinitions,
+                        itemFamilies,
                         attributeValues,
                         gaugeValues,
                         characterTalents,
@@ -723,6 +731,38 @@ namespace Rollocracy.Infrastructure.Services
             }
         }
 
+        private static List<CharacterEffectDefinitionDto> OrderEffectsForInventoryConstraints(
+            List<CharacterEffectDefinitionDto> effects)
+        {
+            return effects
+                .Select((effect, index) => new
+                {
+                    Effect = effect,
+                    Index = index
+                })
+                .OrderBy(x => GetEffectApplicationPriority(x.Effect))
+                .ThenBy(x => x.Index)
+                .Select(x => x.Effect)
+                .ToList();
+        }
+
+        private static int GetEffectApplicationPriority(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.TargetType == CharacterEffectTargetType.Item &&
+                effect.OperationType == CharacterEffectOperationType.RevokeItem)
+            {
+                return 0;
+            }
+
+            if (effect.TargetType == CharacterEffectTargetType.Item &&
+                effect.OperationType == CharacterEffectOperationType.GrantItem)
+            {
+                return 2;
+            }
+
+            return 1;
+        }
+
         private async Task ApplySingleEffectAsync(
             RollocracyDbContext context,
             Character character,
@@ -741,6 +781,7 @@ namespace Rollocracy.Infrastructure.Services
             List<ItemModifierDefinition> itemModifiers,
             List<TalentDefinition> talentDefinitions,
             List<ItemDefinition> itemDefinitions,
+            List<ItemFamilyDefinition> itemFamilies,
             List<CharacterAttributeValue> attributeValues,
             List<CharacterGaugeValue> gaugeValues,
             List<CharacterTalent> characterTalents,
@@ -949,6 +990,19 @@ namespace Rollocracy.Infrastructure.Services
                         var itemDefinition = itemDefinitions.First(x => x.Id == effect.TargetId);
                         var existingItem = characterItems.FirstOrDefault(x => x.ItemDefinitionId == effect.TargetId);
 
+                        if (!CharacterItemFamilyRules.CanAddItem(
+                                character.Id,
+                                itemDefinition,
+                                1,
+                                characterItems,
+                                itemDefinitions,
+                                itemFamilies,
+                                out _))
+                        {
+                            // II-3 : un effet item impossible est ignoré sans annuler les autres effets du lot.
+                            break;
+                        }
+
                         if (itemDefinition.IsConsumable)
                         {
                             if (existingItem is null)
@@ -967,49 +1021,57 @@ namespace Rollocracy.Infrastructure.Services
                             }
                             else
                             {
-                                existingItem.Quantity = Math.Min(
-                                    existingItem.Quantity + 1,
-                                    Math.Max(1, itemDefinition.MaxQuantityPerCharacter));
+                                existingItem.Quantity += 1;
                             }
                         }
                         else
                         {
                             if (existingItem is null)
                             {
+                                var shouldActivate = CharacterItemFamilyRules.ShouldActivateNewNonConsumableItem(
+                                    character.Id,
+                                    itemDefinition,
+                                    characterItems,
+                                    itemDefinitions,
+                                    itemFamilies);
+
                                 var entity = new CharacterItem
                                 {
                                     Id = Guid.NewGuid(),
                                     CharacterId = character.Id,
                                     ItemDefinitionId = effect.TargetId,
                                     Quantity = 1,
-                                    IsActive = true
+                                    IsActive = shouldActivate
                                 };
 
                                 context.CharacterItems.Add(entity);
                                 characterItems.Add(entity);
 
-                                await ApplyGaugeModifiersFromItemAsync(
-                                    context,
-                                    character,
-                                    effect.TargetId,
-                                    true,
-                                    gaugeDefinitions,
-                                    attributeDefinitions,
-                                    derivedDefinitions,
-                                    metricDefinitions,
-                                    derivedComponents,
-                                    metricComponents,
-                                    metricFormulaSteps,
-                                    traitValues,
-                                    choiceModifiers,
-                                    talentModifiers,
-                                    itemModifiers,
-                                    itemDefinitions,
-                                    attributeValues,
-                                    gaugeValues,
-                                    characterTalents,
-                                    characterItems,
-                                    characterModifiers);
+                                if (shouldActivate)
+                                {
+                                    await ApplyGaugeModifiersFromItemAsync(
+                                        context,
+                                        character,
+                                        effect.TargetId,
+                                        true,
+                                        gaugeDefinitions,
+                                        attributeDefinitions,
+                                        derivedDefinitions,
+                                        metricDefinitions,
+                                        derivedComponents,
+                                        metricComponents,
+                                        metricFormulaSteps,
+                                        traitValues,
+                                        choiceModifiers,
+                                        talentModifiers,
+                                        itemModifiers,
+                                        itemDefinitions,
+                                        attributeValues,
+                                        gaugeValues,
+                                        characterTalents,
+                                        characterItems,
+                                        characterModifiers);
+                                }
                             }
                         }
 

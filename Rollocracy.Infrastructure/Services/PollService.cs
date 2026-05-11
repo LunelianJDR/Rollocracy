@@ -1067,7 +1067,9 @@ namespace Rollocracy.Infrastructure.Services
                             {
                                 Id = Guid.NewGuid(),
                                 CharacterId = effect.CharacterId,
-                                ItemDefinitionId = effect.TargetDefinitionId
+                                ItemDefinitionId = effect.TargetDefinitionId,
+                                Quantity = 1,
+                                IsActive = true
                             });
                         }
                     }

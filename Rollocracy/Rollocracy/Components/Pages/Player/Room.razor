@@ -2874,12 +2874,20 @@ else
             if (!isDeadView && !item.IsConsumable)
             {
                 Open("label");
-                builder.AddAttribute(seq++, "class", "rc-filter-toggle rc-item-active-toggle");
-                builder.AddAttribute(seq++, "title", item.IsActive ? L["Character_Item_Active"] : L["Character_Item_Inactive"]);
+                var activationDisabled = !item.IsActive && !item.CanActivate;
+
+                builder.AddAttribute(seq++, "class", activationDisabled
+                    ? "rc-filter-toggle rc-item-active-toggle rc-item-active-toggle--disabled"
+                    : "rc-filter-toggle rc-item-active-toggle");
+                builder.AddAttribute(seq++, "title", activationDisabled && !string.IsNullOrWhiteSpace(item.ActivationBlockedReason)
+                    ? item.ActivationBlockedReason
+                    : item.IsActive ? L["Character_Item_Active"] : L["Character_Item_Inactive"]);
 
                 Open("input");
                 builder.AddAttribute(seq++, "type", "checkbox");
                 builder.AddAttribute(seq++, "checked", item.IsActive);
+                if (activationDisabled)
+                    builder.AddAttribute(seq++, "disabled", true);
                 builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => ToggleCharacterItemActive(item.Id, e.Value is bool value && value)));
                 Close();
 

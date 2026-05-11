@@ -346,7 +346,9 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     Id = value.Id,
                     CharacterId = value.CharacterId,
-                    ItemDefinitionId = value.ItemDefinitionId
+                    ItemDefinitionId = value.ItemDefinitionId,
+                    Quantity = value.Quantity,
+                    IsActive = value.IsActive
                 });
             }
 
@@ -465,7 +467,9 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     Id = x.Id,
                     CharacterId = x.CharacterId,
-                    ItemDefinitionId = x.ItemDefinitionId
+                    ItemDefinitionId = x.ItemDefinitionId,
+                    Quantity = x.Quantity,
+                    IsActive = x.IsActive
                 }).ToList(),
                 CharacterModifiers = characterModifiers.Select(x => new CharacterModifierUndoState
                 {
@@ -537,6 +541,8 @@ namespace Rollocracy.Infrastructure.Services
             public Guid Id { get; set; }
             public Guid CharacterId { get; set; }
             public Guid ItemDefinitionId { get; set; }
+            public int Quantity { get; set; } = 1;
+            public bool IsActive { get; set; } = true;
         }
 
         private sealed class CharacterModifierUndoState
