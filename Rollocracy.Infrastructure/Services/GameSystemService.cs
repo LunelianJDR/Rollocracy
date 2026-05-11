@@ -3396,8 +3396,8 @@ namespace Rollocracy.Infrastructure.Services
         }
 
         private void ValidateItemFamilies(
-            List<EditableItemFamilyDefinitionDto> requestFamilies,
-            List<EditableItemDefinitionDto> requestItems)
+    List<EditableItemFamilyDefinitionDto> requestFamilies,
+    List<EditableItemDefinitionDto> requestItems)
         {
             var activeFamilies = requestFamilies
                 .Where(x => !x.IsDeleted)
@@ -3408,7 +3408,7 @@ namespace Rollocracy.Infrastructure.Services
 
             var activeFamilyIds = activeFamilies
                 .Where(x => x.ItemFamilyDefinitionId.HasValue)
-                .Select(x => x.ItemFamilyDefinitionId!.Value)
+                .Select(x => x.ItemFamilyDefinitionId.GetValueOrDefault())
                 .ToHashSet();
 
             foreach (var family in activeFamilies)
@@ -3425,7 +3425,9 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var item in requestItems.Where(x => !x.IsDeleted && x.ItemFamilyDefinitionId.HasValue))
             {
-                if (!activeFamilyIds.Contains(item.ItemFamilyDefinitionId.Value))
+                var itemFamilyDefinitionId = item.ItemFamilyDefinitionId.GetValueOrDefault();
+
+                if (!activeFamilyIds.Contains(itemFamilyDefinitionId))
                     throw new Exception(_localizer["Backend_ItemFamilyInvalidSelection"]);
             }
         }

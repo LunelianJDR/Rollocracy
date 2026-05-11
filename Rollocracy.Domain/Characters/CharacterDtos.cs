@@ -63,6 +63,7 @@ namespace Rollocracy.Domain.Characters
         public bool IsConsumable { get; set; }
         public int Quantity { get; set; }
         public int MaxQuantityPerCharacter { get; set; }
+        public bool IsActive { get; set; } = true;
         public string Tooltip { get; set; } = string.Empty;
     }
 

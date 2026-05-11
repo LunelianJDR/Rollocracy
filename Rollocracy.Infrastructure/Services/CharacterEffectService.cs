@@ -250,9 +250,9 @@ namespace Rollocracy.Infrastructure.Services
             var characterIds = characters.Select(x => x.Id).ToList();
 
             var userAccountIds = playerSessions
-    .Select(x => x.UserAccountId)
-    .Distinct()
-    .ToList();
+                .Select(x => x.UserAccountId)
+                .Distinct()
+                .ToList();
 
             var userAccounts = await context.UserAccounts
                 .AsNoTracking()
@@ -294,6 +294,11 @@ namespace Rollocracy.Infrastructure.Services
             var metricDefinitions = await context.MetricDefinitions
                 .AsNoTracking()
                 .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var itemDefinitions = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(i => i.GameSystemId == gameSystemId || i.SessionId == sessionId)
                 .ToListAsync();
 
             var metricDefinitionIds = metricDefinitions.Select(x => x.Id).ToList();
@@ -525,6 +530,7 @@ namespace Rollocracy.Infrastructure.Services
                         attributeValues,
                         gaugeValues,
                         traitValues,
+                        itemDefinitions,
                         characterTalents,
                         characterItems,
                         choiceModifiers,
@@ -759,6 +765,7 @@ namespace Rollocracy.Infrastructure.Services
                             metricComponents,
                             metricFormulaSteps,
                             traitValues,
+                            itemDefinitions,
                             attributeValues,
                             gaugeValues,
                             characterTalents,
@@ -891,6 +898,7 @@ namespace Rollocracy.Infrastructure.Services
                                 choiceModifiers,
                                 talentModifiers,
                                 itemModifiers,
+                                itemDefinitions,
                                 attributeValues,
                                 gaugeValues,
                                 characterTalents,
@@ -922,6 +930,7 @@ namespace Rollocracy.Infrastructure.Services
                                 choiceModifiers,
                                 talentModifiers,
                                 itemModifiers,
+                                itemDefinitions,
                                 attributeValues,
                                 gaugeValues,
                                 characterTalents,
@@ -949,7 +958,8 @@ namespace Rollocracy.Infrastructure.Services
                                     Id = Guid.NewGuid(),
                                     CharacterId = character.Id,
                                     ItemDefinitionId = effect.TargetId,
-                                    Quantity = 1
+                                    Quantity = 1,
+                                    IsActive = true
                                 };
 
                                 context.CharacterItems.Add(entity);
@@ -971,7 +981,8 @@ namespace Rollocracy.Infrastructure.Services
                                     Id = Guid.NewGuid(),
                                     CharacterId = character.Id,
                                     ItemDefinitionId = effect.TargetId,
-                                    Quantity = 1
+                                    Quantity = 1,
+                                    IsActive = true
                                 };
 
                                 context.CharacterItems.Add(entity);
@@ -993,6 +1004,7 @@ namespace Rollocracy.Infrastructure.Services
                                     choiceModifiers,
                                     talentModifiers,
                                     itemModifiers,
+                                    itemDefinitions,
                                     attributeValues,
                                     gaugeValues,
                                     characterTalents,
@@ -1037,6 +1049,7 @@ namespace Rollocracy.Infrastructure.Services
                                     choiceModifiers,
                                     talentModifiers,
                                     itemModifiers,
+                                    itemDefinitions,
                                     attributeValues,
                                     gaugeValues,
                                     characterTalents,
@@ -1061,6 +1074,7 @@ namespace Rollocracy.Infrastructure.Services
                                     choiceModifiers,
                                     talentModifiers,
                                     itemModifiers,
+                                    itemDefinitions,
                                     attributeValues,
                                     gaugeValues,
                                     characterTalents,
@@ -1098,6 +1112,7 @@ namespace Rollocracy.Infrastructure.Services
             List<ChoiceOptionModifierDefinition> choiceModifiers,
             List<TalentModifierDefinition> talentModifiers,
             List<ItemModifierDefinition> itemModifiers,
+            List<ItemDefinition> itemDefinitions,
             List<CharacterAttributeValue> attributeValues,
             List<CharacterGaugeValue> gaugeValues,
             List<CharacterTalent> characterTalents,
@@ -1124,6 +1139,7 @@ namespace Rollocracy.Infrastructure.Services
                     metricComponents,
                     metricFormulaSteps,
                     traitValues,
+                    itemDefinitions,
                     choiceModifiers,
                     talentModifiers,
                     itemModifiers,
@@ -1146,6 +1162,7 @@ namespace Rollocracy.Infrastructure.Services
                     traitValues,
                     characterTalents,
                     characterItems,
+                    itemDefinitions,
                     choiceModifiers,
                     talentModifiers,
                     itemModifiers,
@@ -1169,6 +1186,7 @@ namespace Rollocracy.Infrastructure.Services
             List<ChoiceOptionModifierDefinition> choiceModifiers,
             List<TalentModifierDefinition> talentModifiers,
             List<ItemModifierDefinition> itemModifiers,
+            List<ItemDefinition> itemDefinitions,
             List<CharacterAttributeValue> attributeValues,
             List<CharacterGaugeValue> gaugeValues,
             List<CharacterTalent> characterTalents,
@@ -1195,6 +1213,7 @@ namespace Rollocracy.Infrastructure.Services
                     metricComponents,
                     metricFormulaSteps,
                     traitValues,
+                    itemDefinitions,
                     choiceModifiers,
                     talentModifiers,
                     itemModifiers,
@@ -1217,6 +1236,7 @@ namespace Rollocracy.Infrastructure.Services
                     traitValues,
                     characterTalents,
                     characterItems,
+                    itemDefinitions,
                     choiceModifiers,
                     talentModifiers,
                     itemModifiers,
@@ -1238,6 +1258,7 @@ namespace Rollocracy.Infrastructure.Services
             List<MetricComponent> metricComponents,
             List<MetricFormulaStep> metricFormulaSteps,
             List<CharacterTraitValue> traitValues,
+            List<ItemDefinition> itemDefinitions,
             List<ChoiceOptionModifierDefinition> choiceModifiers,
             List<TalentModifierDefinition> talentModifiers,
             List<ItemModifierDefinition> itemModifiers,
@@ -1264,6 +1285,7 @@ namespace Rollocracy.Infrastructure.Services
                 attributeValues,
                 gaugeValues,
                 traitValues,
+                itemDefinitions,
                 characterTalents,
                 characterItems,
                 choiceModifiers,
@@ -1282,6 +1304,7 @@ namespace Rollocracy.Infrastructure.Services
             List<CharacterTraitValue> traitValues,
             List<CharacterTalent> characterTalents,
             List<CharacterItem> characterItems,
+            List<ItemDefinition> itemDefinitions,
             List<ChoiceOptionModifierDefinition> choiceModifiers,
             List<TalentModifierDefinition> talentModifiers,
             List<ItemModifierDefinition> itemModifiers,
@@ -1315,8 +1338,16 @@ namespace Rollocracy.Infrastructure.Services
                     talentIds.Contains(x.TalentDefinitionId))
                 .Sum(x => x.AddValue);
 
-            var itemIds = characterItems
+            var ownedItemIds = characterItems
                 .Where(x => x.CharacterId == characterId)
+                .Select(x => x.ItemDefinitionId)
+                .ToHashSet();
+
+            var itemIds = characterItems
+                .Where(x =>
+                    x.CharacterId == characterId &&
+                    x.IsActive &&
+                    !(itemDefinitions.FirstOrDefault(i => i.Id == x.ItemDefinitionId)?.IsConsumable ?? false))
                 .Select(x => x.ItemDefinitionId)
                 .ToHashSet();
 
@@ -1332,7 +1363,10 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x =>
                     x.CharacterId == characterId &&
                     x.TargetType == CharacterEffectTargetType.Gauge &&
-                    x.TargetId == gaugeDefinitionId)
+                    x.TargetId == gaugeDefinitionId &&
+                    (x.SourceType != CharacterEffectSourceType.Item ||
+                     !ownedItemIds.Contains(x.SourceId) ||
+                     itemIds.Contains(x.SourceId)))
                 .Sum(x => x.AddValue);
 
             return Math.Max(definition.MinValue, definition.MaxValue + choiceBonus + talentBonus + itemBonus + persistentBonus);
@@ -1348,6 +1382,7 @@ namespace Rollocracy.Infrastructure.Services
             List<CharacterTraitValue> traitValues,
             List<CharacterTalent> characterTalents,
             List<CharacterItem> characterItems,
+            List<ItemDefinition> itemDefinitions,
             List<ChoiceOptionModifierDefinition> choiceModifiers,
             List<TalentModifierDefinition> talentModifiers,
             List<ItemModifierDefinition> itemModifiers,
@@ -1377,6 +1412,7 @@ namespace Rollocracy.Infrastructure.Services
                 traitValues,
                 characterTalents,
                 characterItems,
+                itemDefinitions,
                 choiceModifiers,
                 talentModifiers,
                 itemModifiers,
@@ -1436,6 +1472,7 @@ namespace Rollocracy.Infrastructure.Services
             List<CharacterAttributeValue> attributeValues,
             List<CharacterGaugeValue> gaugeValues,
             List<CharacterTraitValue> traitValues,
+            List<ItemDefinition> itemDefinitions,
             List<CharacterTalent> characterTalents,
             List<CharacterItem> characterItems,
             List<ChoiceOptionModifierDefinition> choiceModifiers,
@@ -1459,10 +1496,23 @@ namespace Rollocracy.Infrastructure.Services
                 characterChoiceModifiers,
                 ModifierTargetType.Talent);
 
+            var ownedItemIds = characterItems
+                .Where(ci => ci.CharacterId == characterId)
+                .Select(ci => ci.ItemDefinitionId)
+                .ToHashSet();
+
+            var activeNonConsumableItemIds = characterItems
+                .Where(ci =>
+                    ci.CharacterId == characterId &&
+                    ci.IsActive &&
+                    !(itemDefinitions.FirstOrDefault(i => i.Id == ci.ItemDefinitionId)?.IsConsumable ?? false))
+                .Select(ci => ci.ItemDefinitionId)
+                .ToList();
+
+            var activeNonConsumableItemIdSet = activeNonConsumableItemIds.ToHashSet();
+
             var characterItemIds = BuildEffectiveOwnedDefinitionIds(
-                characterItems
-                    .Where(ci => ci.CharacterId == characterId)
-                    .Select(ci => ci.ItemDefinitionId),
+                activeNonConsumableItemIds,
                 characterChoiceModifiers,
                 ModifierTargetType.Item);
 
@@ -1500,10 +1550,14 @@ namespace Rollocracy.Infrastructure.Services
                 });
 
             var persistentRuntimeModifiers = characterModifiers
-                .Where(x => x.CharacterId == characterId &&
-                            (x.TargetType == CharacterEffectTargetType.BaseAttribute ||
-                             x.TargetType == CharacterEffectTargetType.DerivedStat ||
-                             x.TargetType == CharacterEffectTargetType.Metric))
+                .Where(x =>
+                    x.CharacterId == characterId &&
+                    (x.TargetType == CharacterEffectTargetType.BaseAttribute ||
+                     x.TargetType == CharacterEffectTargetType.DerivedStat ||
+                     x.TargetType == CharacterEffectTargetType.Metric) &&
+                    (x.SourceType != CharacterEffectSourceType.Item ||
+                     !ownedItemIds.Contains(x.SourceId) ||
+                     activeNonConsumableItemIdSet.Contains(x.SourceId)))
                 .Select(x => new RuntimeModifier
                 {
                     TargetType = x.TargetType switch
@@ -1699,6 +1753,7 @@ namespace Rollocracy.Infrastructure.Services
             List<MetricComponent> metricComponents,
             List<MetricFormulaStep> metricFormulaSteps,
             List<CharacterTraitValue> traitValues,
+            List<ItemDefinition> itemDefinitions,
             List<CharacterAttributeValue> attributeValues,
             List<CharacterGaugeValue> gaugeValues,
             List<CharacterTalent> characterTalents,
@@ -1725,6 +1780,7 @@ namespace Rollocracy.Infrastructure.Services
                 attributeValues,
                 gaugeValues,
                 traitValues,
+                itemDefinitions,
                 characterTalents,
                 characterItems,
                 choiceModifiers,

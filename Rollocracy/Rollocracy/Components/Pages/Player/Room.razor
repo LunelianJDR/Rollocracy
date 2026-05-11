@@ -130,7 +130,7 @@ else
                                 <div class="rc-form-field rc-form-field--readonly">
                                     <label>@L["Test_Result"]</label>
                                     <div class="rc-player-test-outcome @(ActiveTest.Result.IsSuccess ? "success" : "failure")">
-                                        @(ActiveTest.Result.IsSuccess? L["Test_Success"] : L["Test_Failure"])
+                                        @(ActiveTest.Result.IsSuccess ? L["Test_Success"] : L["Test_Failure"])
                                     </div>
                                 </div>
                             </div>
@@ -206,7 +206,7 @@ else
                             <div class="rc-player-character-sheet__hero">
                                 <div class="rc-player-character-sheet__name">@State.AliveCharacter.Name</div>
                                 <div class="rc-player-character-sheet__status @(State.AliveCharacter.IsAlive ? "alive" : "dead")">
-                                    @(State.AliveCharacter.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                    @(State.AliveCharacter.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
                                 </div>
                             </div>
 
@@ -224,7 +224,7 @@ else
                             <div class="rc-player-character-sheet__hero">
                                 <div class="rc-player-character-sheet__name">@State.AliveCharacter.Name</div>
                                 <div class="rc-player-character-sheet__status @(State.AliveCharacter.IsAlive ? "alive" : "dead")">
-                                    @(State.AliveCharacter.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                    @(State.AliveCharacter.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
                                 </div>
                             </div>
 
@@ -670,7 +670,7 @@ else
                         @if (!ShowSessionCharactersPanel && !ShowJournalPanel)
                         {
                             <button type="button" @onclick="() => IsTwitchEnabled = !IsTwitchEnabled">
-                                @(IsTwitchEnabled? L["Session_Player_DisableStream"] : L["Session_Player_EnableStream"])
+                                @(IsTwitchEnabled ? L["Session_Player_DisableStream"] : L["Session_Player_EnableStream"])
                             </button>
                         }
 
@@ -690,11 +690,11 @@ else
                                     aria-label="@GetOtherSidePanelPopupLabel()"
                                     @onclick="OpenOtherSidePanelPopup">
                                 <svg xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 -960 960 960"
-                                        width="20"
-                                        height="20"
-                                        fill="currentColor"
-                                        aria-hidden="true">
+                                     viewBox="0 -960 960 960"
+                                     width="20"
+                                     height="20"
+                                     fill="currentColor"
+                                     aria-hidden="true">
                                     <path d="M216-144q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h240v72H216v528h528v-240h72v240q0 29.7-21.15 50.85Q773.7-144 744-144H216Zm168-216-51-51 360-360H528v-72h288v288h-72v-165L384-360Z" />
                                 </svg>
                             </button>
@@ -781,11 +781,11 @@ else
 
                                                     <div class="rc-character-card__meta-row">
                                                         <span class="rc-character-chip @(character.IsAlive ? "alive" : "dead")">
-                                                            @(character.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                                            @(character.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
                                                         </span>
 
                                                         <span class="rc-character-chip @(character.IsOnline ? "online" : "offline")">
-                                                            @(character.IsOnline? L["Common_Online"] : L["Common_Offline"])
+                                                            @(character.IsOnline ? L["Common_Online"] : L["Common_Offline"])
                                                         </span>
 
                                                         @if (character.IsNpc)
@@ -889,7 +889,7 @@ else
                                             <h5 class="rc-character-detail-panel__title">@ObservedCharacterSheet.Name</h5>
                                             <div class="rc-character-detail-panel__meta">
                                                 <span class="rc-character-chip @(ObservedCharacterSheet.IsAlive ? "alive" : "dead")">
-                                                    @(ObservedCharacterSheet.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                                    @(ObservedCharacterSheet.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
                                                 </span>
                                             </div>
                                         </div>
@@ -1290,7 +1290,7 @@ else
 
                         <div class="rc-tool-actions" style="margin-top: 0.75rem;">
                             <button type="button" @onclick="() => ShowTwitchChat = !ShowTwitchChat">
-                                @(ShowTwitchChat? L["Session_Player_HideChat"] : L["Session_Player_ShowChat"])
+                                @(ShowTwitchChat ? L["Session_Player_HideChat"] : L["Session_Player_ShowChat"])
                             </button>
                         </div>
                     }
@@ -2547,6 +2547,23 @@ else
         }
     }
 
+    private async Task ToggleCharacterItemActive(Guid itemDefinitionId, bool isActive)
+    {
+        try
+        {
+            Message = string.Empty;
+
+            await CharacterService.SetCharacterItemActiveStateAsync(PlayerSessionId, itemDefinitionId, isActive);
+            await LoadState(refreshJournal: false);
+            await LoadActiveTest(allowArrivalAlert: false);
+            await LoadLatestPoll(allowArrivalAlert: false);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
     private bool AreRequiredCreationTraitsSelected()
     {
         if (CreationTemplate is null)
@@ -2846,9 +2863,32 @@ else
         builder.AddAttribute(seq++, "class", "rc-player-pill-list");
         foreach (var item in sheet.Items)
         {
+            var itemPillClass = !item.IsConsumable && !item.IsActive
+                ? "rc-player-pill rc-player-pill--item rc-player-pill--inactive"
+                : "rc-player-pill rc-player-pill--item";
+
             Open("div");
-            AddTooltipAttributes(item.Tooltip, "rc-player-pill rc-player-pill--item");
+            AddTooltipAttributes(item.Tooltip, itemPillClass);
             Text(item.Name);
+
+            if (!isDeadView && !item.IsConsumable)
+            {
+                Open("label");
+                builder.AddAttribute(seq++, "class", "rc-filter-toggle rc-item-active-toggle");
+                builder.AddAttribute(seq++, "title", item.IsActive ? L["Character_Item_Active"] : L["Character_Item_Inactive"]);
+
+                Open("input");
+                builder.AddAttribute(seq++, "type", "checkbox");
+                builder.AddAttribute(seq++, "checked", item.IsActive);
+                builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => ToggleCharacterItemActive(item.Id, e.Value is bool value && value)));
+                Close();
+
+                Open("span");
+                Text(item.IsActive ? L["Character_Item_Active"] : L["Character_Item_Inactive"]);
+                Close();
+
+                Close();
+            }
 
             if (!isDeadView && item.IsConsumable && item.Quantity > 0)
             {

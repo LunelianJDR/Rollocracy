@@ -4149,3 +4149,22 @@ html[data-theme="dark"] .rc-journal-popup-page .rc-journal-viewer__nav > button:
 .rc-item-family-card {
     min-width: 0;
 }
+
+/* =========================================================
+   II-2 - ACTIVATION DES OBJETS DE PERSONNAGE
+   ========================================================= */
+
+.rc-player-pill--inactive {
+    opacity: 0.62;
+}
+
+.rc-item-active-toggle {
+    margin-left: 0.35rem;
+    padding: 0.25rem 0.45rem;
+    font-size: 0.82rem;
+    background: var(--rc-surface-2);
+}
+
+    .rc-item-active-toggle span {
+        white-space: nowrap;
+    }

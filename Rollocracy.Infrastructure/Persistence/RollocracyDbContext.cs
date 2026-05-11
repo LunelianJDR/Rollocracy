@@ -1,4 +1,3 @@
-
 using Microsoft.EntityFrameworkCore;
 using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.Entities;
@@ -485,6 +484,9 @@ namespace Rollocracy.Infrastructure.Persistence
                 entity.HasIndex(x => x.CharacterId);
                 entity.HasIndex(x => x.ItemDefinitionId);
                 entity.HasIndex(x => new { x.CharacterId, x.ItemDefinitionId }).IsUnique();
+
+                entity.Property(x => x.IsActive)
+                    .HasDefaultValue(true);
             });
 
             modelBuilder.Entity<SessionPollEligibleCharacter>(entity =>

@@ -627,7 +627,8 @@ namespace Rollocracy.Infrastructure.Services
                     Id = Guid.NewGuid(),
                     CharacterId = character.Id,
                     ItemDefinitionId = selectedItemId,
-                    Quantity = selectedItemDefinition.IsConsumable ? 1 : 1
+                    Quantity = selectedItemDefinition.IsConsumable ? 1 : 1,
+                    IsActive = true
                 });
             }
 
@@ -1497,7 +1498,8 @@ namespace Rollocracy.Infrastructure.Services
                     Id = Guid.NewGuid(),
                     CharacterId = row.character.Id,
                     ItemDefinitionId = itemIdToAdd,
-                    Quantity = quantity <= 0 ? 1 : quantity
+                    Quantity = quantity <= 0 ? 1 : quantity,
+                    IsActive = true
                 });
             }
 
@@ -2273,7 +2275,9 @@ namespace Rollocracy.Infrastructure.Services
                 .ToListAsync();
 
             var passiveDirectCharacterItemIds = directCharacterItems
-                .Where(x => !(ownedItemDefinitions.FirstOrDefault(i => i.Id == x.ItemDefinitionId)?.IsConsumable ?? false))
+                .Where(x =>
+                    x.IsActive &&
+                    !(ownedItemDefinitions.FirstOrDefault(i => i.Id == x.ItemDefinitionId)?.IsConsumable ?? false))
                 .Select(x => x.ItemDefinitionId)
                 .ToList();
 
@@ -2298,10 +2302,14 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(m => effectiveTalentIds.Contains(m.TalentDefinitionId))
                 .ToListAsync();
 
-            var itemModifiers = await context.ItemModifierDefinitions
+            var allOwnedItemModifiers = await context.ItemModifierDefinitions
                 .AsNoTracking()
                 .Where(m => ownedItemDefinitionIds.Contains(m.ItemDefinitionId))
                 .ToListAsync();
+
+            var itemModifiers = allOwnedItemModifiers
+                .Where(m => effectiveItemIds.Contains(m.ItemDefinitionId))
+                .ToList();
 
             var characterModifiers = await context.CharacterModifiers
                 .AsNoTracking()
@@ -2312,6 +2320,16 @@ namespace Rollocracy.Infrastructure.Services
                      m.TargetType == CharacterEffectTargetType.Metric ||
                      m.TargetType == CharacterEffectTargetType.Gauge))
                 .ToListAsync();
+
+            var ownedItemDefinitionIdSet = ownedItemDefinitionIds.ToHashSet();
+            var activePassiveDirectCharacterItemIdSet = passiveDirectCharacterItemIds.ToHashSet();
+
+            characterModifiers = characterModifiers
+                .Where(m =>
+                    m.SourceType != CharacterEffectSourceType.Item ||
+                    !ownedItemDefinitionIdSet.Contains(m.SourceId) ||
+                    activePassiveDirectCharacterItemIdSet.Contains(m.SourceId))
+                .ToList();
 
             var rawModifiers = choiceOptionModifiers
                 .Where(m => m.OperationType == ModifierOperationType.AddValue)
@@ -2658,8 +2676,9 @@ namespace Rollocracy.Infrastructure.Services
                         IsConsumable = i.IsConsumable,
                         Quantity = quantity,
                         MaxQuantityPerCharacter = i.MaxQuantityPerCharacter,
+                        IsActive = ownedItem?.IsActive ?? true,
                         Tooltip = BuildItemEffectTooltip(
-                            itemModifiers.Where(x => x.ItemDefinitionId == i.Id).ToList(),
+                            allOwnedItemModifiers.Where(x => x.ItemDefinitionId == i.Id).ToList(),
                             attributeNames,
                             derivedNames,
                             metricNames,
@@ -3267,6 +3286,71 @@ namespace Rollocracy.Infrastructure.Services
             public Dictionary<Guid, int> MetricValues { get; set; } = new();
         }
 
+
+        public async Task SetCharacterItemActiveStateAsync(Guid playerSessionId, Guid itemDefinitionId, bool isActive)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var playerSession = await context.PlayerSessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == playerSessionId);
+
+            if (playerSession == null)
+                throw new Exception(_localizer["Backend_PlayerSessionNotFound"]);
+
+            var session = await context.Sessions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == playerSession.SessionId);
+
+            if (session == null)
+                throw new Exception(_localizer["Session_NotFound"]);
+
+            if (!session.GameSystemId.HasValue)
+                throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
+
+            var character = await context.Characters
+                .FirstOrDefaultAsync(x => x.PlayerSessionId == playerSessionId && x.IsAlive);
+
+            if (character == null)
+                throw new Exception(_localizer["Backend_PlayerAlreadyHasNoAliveCharacter"]);
+
+            var itemDefinition = await context.ItemDefinitions
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x =>
+                    x.Id == itemDefinitionId &&
+                    (x.GameSystemId == session.GameSystemId.Value || x.SessionId == session.Id));
+
+            if (itemDefinition == null)
+                throw new Exception(_localizer["Backend_CharacterItemNotFound"]);
+
+            if (itemDefinition.IsConsumable)
+                throw new Exception(_localizer["Backend_ConsumableItemCannotBeActivated"]);
+
+            var characterItem = await context.CharacterItems
+                .FirstOrDefaultAsync(x => x.CharacterId == character.Id && x.ItemDefinitionId == itemDefinitionId);
+
+            if (characterItem == null)
+                throw new Exception(_localizer["Backend_CharacterItemNotFound"]);
+
+            if (characterItem.IsActive == isActive)
+                return;
+
+            characterItem.IsActive = isActive;
+
+            await context.SaveChangesAsync();
+
+            await UpdateCharacterAliveStateFromComputedHealthGaugesAsync(
+                context,
+                playerSession.Id,
+                session.GameSystemId.Value,
+                character);
+
+            await context.SaveChangesAsync();
+
+            await _sessionNotifier.NotifyCharacterStateChangedAsync(session.Id);
+            await _sessionNotifier.NotifyPresenceChangedAsync(session.Id);
+        }
+
         public async Task ConsumeItemAsync(Guid playerSessionId, Guid itemDefinitionId)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
@@ -3375,7 +3459,8 @@ namespace Rollocracy.Infrastructure.Services
                                     Id = Guid.NewGuid(),
                                     CharacterId = character.Id,
                                     ItemDefinitionId = modifier.TargetId,
-                                    Quantity = 1
+                                    Quantity = 1,
+                                    IsActive = true
                                 });
                             }
                             else if (targetItemDefinition.IsConsumable)
@@ -3586,7 +3671,8 @@ namespace Rollocracy.Infrastructure.Services
                         Id = Guid.NewGuid(),
                         CharacterId = character.Id,
                         ItemDefinitionId = itemDefinition.Id,
-                        Quantity = 1
+                        Quantity = 1,
+                        IsActive = true
                     });
 
                     grantedNonConsumableItemDefinitionId = itemDefinition.Id;
@@ -3600,7 +3686,8 @@ namespace Rollocracy.Infrastructure.Services
                             Id = Guid.NewGuid(),
                             CharacterId = character.Id,
                             ItemDefinitionId = itemDefinition.Id,
-                            Quantity = 1
+                            Quantity = 1,
+                            IsActive = true
                         });
                     }
                     else

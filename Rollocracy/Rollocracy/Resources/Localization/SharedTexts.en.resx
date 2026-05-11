@@ -4282,4 +4282,16 @@
 	<data name="TestConsequence_Target_Talent" xml:space="preserve">
 		<value>Talent</value>
 	</data>
+	<data name="Character_Item_Active" xml:space="preserve">
+  <value>Active</value>
+</data>
+	<data name="Character_Item_Inactive" xml:space="preserve">
+  <value>Inactive</value>
+</data>
+	<data name="Backend_CharacterItemNotFound" xml:space="preserve">
+  <value>Character item not found.</value>
+</data>
+	<data name="Backend_ConsumableItemCannotBeActivated" xml:space="preserve">
+  <value>A consumable item cannot be activated or deactivated.</value>
+</data>
 </root>

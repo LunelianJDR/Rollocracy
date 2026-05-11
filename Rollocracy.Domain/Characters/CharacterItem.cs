@@ -1,4 +1,3 @@
-
 using System;
 
 namespace Rollocracy.Domain.Characters
@@ -12,5 +11,7 @@ namespace Rollocracy.Domain.Characters
         public Guid ItemDefinitionId { get; set; }
 
         public int Quantity { get; set; } = 1;
+
+        public bool IsActive { get; set; } = true;
     }
 }

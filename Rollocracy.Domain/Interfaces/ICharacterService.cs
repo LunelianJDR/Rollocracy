@@ -84,5 +84,7 @@ namespace Rollocracy.Domain.Interfaces
 
         Task ConsumeItemAsync(Guid playerSessionId, Guid itemDefinitionId);
 
+        Task SetCharacterItemActiveStateAsync(Guid playerSessionId, Guid itemDefinitionId, bool isActive);
+
     }
 }
