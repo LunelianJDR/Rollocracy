@@ -1536,6 +1536,7 @@ else
                     .Select(row => new GameTestConsequenceDraftDto
                     {
                         ApplyOn = row.ApplyOn,
+                        ApplicationMode = row.ApplicationMode,
                         OperationType = row.OperationType,
                         TargetKind = row.TargetKind,
                         TargetDefinitionId = row.TargetDefinitionId,
@@ -2510,6 +2511,7 @@ else
         return new GameTestConsequenceDraftDto
         {
             ApplyOn = row.ApplyOn,
+            ApplicationMode = row.ApplicationMode,
             OperationType = row.OperationType,
             TargetKind = row.TargetKind,
             TargetDefinitionId = row.TargetDefinitionId,
@@ -2526,6 +2528,7 @@ else
         {
             RowId = Guid.NewGuid(),
             ApplyOn = dto.ApplyOn,
+            ApplicationMode = dto.ApplicationMode,
             OperationType = dto.OperationType,
             TargetKind = dto.TargetKind,
             TargetDefinitionId = dto.TargetDefinitionId,

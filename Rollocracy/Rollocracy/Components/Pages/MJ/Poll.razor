@@ -188,6 +188,9 @@ else
                                               AddButtonLabel="@L["Poll_AddOptionConsequence"]"
                                               EmptyLabel="@L["Test_NoConsequence"]"
                                               ShowApplyOn="false"
+                                              IsPollContext="true"
+                                              ShowApplicationMode="false"
+                                              AllowSuccessFailureApplicationModes="false"
                                               Rows="optionRow.Consequences"
                                               ApplyOnOptions="ConsequenceApplyOnOptions"
                                               AttributeTargets="ConsequenceAttributeTargets"
@@ -254,7 +257,7 @@ else
                             {
                                 <button @onclick="ClosePoll">@L["Poll_Close"]</button>
                                 <button @onclick="ToggleLivePollResults">
-                                    @(ShowLivePollResults? L["Poll_HideLiveResults"] : L["Poll_ShowLiveResults"])
+                                    @(ShowLivePollResults ? L["Poll_HideLiveResults"] : L["Poll_ShowLiveResults"])
                                 </button>
                             }
                         </div>
@@ -338,7 +341,7 @@ else
                                 <div class="rc-tool-subsection__title">@L["Poll_VoteDetails"]</div>
                                 <div class="rc-tool-inline-actions">
                                     <button @onclick="TogglePollVoteDetails">
-                                        @(ShowPollVoteDetails? L["Poll_HideVoteDetails"] : L["Poll_ShowVoteDetails"])
+                                        @(ShowPollVoteDetails ? L["Poll_HideVoteDetails"] : L["Poll_ShowVoteDetails"])
                                     </button>
                                 </div>
                             </div>
@@ -842,6 +845,7 @@ else
                         {
                             TargetKind = consequence.TargetKind,
                             TargetDefinitionId = consequence.TargetDefinitionId,
+                            ApplicationMode = consequence.ApplicationMode,
                             ModifierMode = consequence.ValueMode == ModifierValueMode.Metric
                                 ? consequence.ModifierMode
                                 : TestModifierMode.Bonus,
@@ -1300,6 +1304,7 @@ else
                     {
                         TargetKind = c.TargetKind,
                         TargetDefinitionId = c.TargetDefinitionId,
+                        ApplicationMode = c.ApplicationMode,
                         ModifierMode = c.ValueMode == ModifierValueMode.Metric ? c.ModifierMode : TestModifierMode.Bonus,
                         Value = c.ValueMode == ModifierValueMode.Metric ? 0 : c.Value,
                         ValueMode = c.ValueMode,
@@ -1326,6 +1331,7 @@ else
                 OperationType = c.OperationType,
                 TargetKind = c.TargetKind,
                 TargetDefinitionId = c.TargetDefinitionId,
+                ApplicationMode = c.ApplicationMode,
                 ModifierMode = c.ValueMode == ModifierValueMode.Metric ? c.ModifierMode : TestModifierMode.Bonus,
                 Value = c.Value,
                 ValueMode = c.ValueMode,

@@ -103,6 +103,9 @@ else
                               AddButtonLabel="@L["Test_AddConsequence"]"
                               EmptyLabel="@L["Test_NoConsequence"]"
                               ShowApplyOn="false"
+                              ShowApplicationMode="false"
+                              AllowSuccessFailureApplicationModes="false"
+                              AllowMetricValueModeForSessionGauge="false"
                               Rows="ConsequenceRows"
                               ApplyOnOptions="ConsequenceApplyOnOptions"
                               AttributeTargets="ConsequenceAttributeTargets"
@@ -354,12 +357,15 @@ else
                     ? (row.ModifierMode == TestModifierMode.Bonus ? 1 : -1)
                     : row.Value)
                 : 0,
-            ValueMode = row.OperationType == TestConsequenceOperationType.AddValue
+            ValueMode = row.OperationType == TestConsequenceOperationType.AddValue &&
+            row.TargetKind != TestConsequenceTargetKind.SessionGauge
                 ? row.ValueMode
                 : ModifierValueMode.Fixed,
-            SourceMetricId = row.OperationType == TestConsequenceOperationType.AddValue && row.ValueMode == ModifierValueMode.Metric
-                ? row.SourceMetricId
-                : null
+            SourceMetricId = row.OperationType == TestConsequenceOperationType.AddValue &&
+                 row.TargetKind != TestConsequenceTargetKind.SessionGauge &&
+                 row.ValueMode == ModifierValueMode.Metric
+            ? row.SourceMetricId
+            : null
         }).ToList();
     }
 

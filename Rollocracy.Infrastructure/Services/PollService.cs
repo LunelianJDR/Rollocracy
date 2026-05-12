@@ -171,6 +171,7 @@ namespace Rollocracy.Infrastructure.Services
                         SessionPollOptionId = optionId,
                         TargetKind = consequence.TargetKind,
                         TargetDefinitionId = consequence.TargetDefinitionId,
+                        ApplicationMode = TestConsequenceApplicationMode.ApplyOnce,
                         TargetNameSnapshot = targetName,
                         ModifierMode = consequence.ValueMode == ModifierValueMode.Metric ? consequence.ModifierMode : TestModifierMode.Bonus,
                         Value = consequence.Value,
@@ -564,6 +565,12 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(v => v.SessionPollId == poll.Id)
                 .ToListAsync();
 
+            var eligibleCharacterIds = await context.SessionPollEligibleCharacters
+                .AsNoTracking()
+                .Where(x => x.SessionPollId == poll.Id)
+                .Select(x => x.CharacterId)
+                .ToListAsync();
+
             var hasAppliedEffects = false;
 
             foreach (var vote in votes)
@@ -575,6 +582,7 @@ namespace Rollocracy.Infrastructure.Services
                 var voteConsequences = optionConsequences
                     .Where(x => x.option.Id == vote.SessionPollOptionId)
                     .Select(x => x.consequence)
+                    .Where(x => !IsSessionGaugeConsequence(x))
                     .ToList();
 
                 var legacyConsequences = voteConsequences
@@ -816,6 +824,33 @@ namespace Rollocracy.Infrastructure.Services
                 }
             }
 
+            foreach (var optionGroup in optionConsequences
+                .Where(x => IsSessionGaugeConsequence(x.consequence))
+                .GroupBy(x => x.option.Id))
+            {
+                var optionId = optionGroup.Key;
+                var optionVotes = votes.Where(v => v.SessionPollOptionId == optionId).ToList();
+                var optionConsequencesForSessionGauges = optionGroup.Select(x => x.consequence).ToList();
+
+                foreach (var consequence in optionConsequencesForSessionGauges)
+                {
+                    var targets = ResolvePollSessionGaugeTargets(consequence, optionVotes, eligibleCharacterIds).ToList();
+
+                    foreach (var target in targets)
+                    {
+                        var applied = await ApplyPollSessionGaugeConsequenceAsync(
+                            context,
+                            poll,
+                            consequence,
+                            target.CharacterId,
+                            target.VoteId,
+                            optionId);
+
+                        hasAppliedEffects = hasAppliedEffects || applied;
+                    }
+                }
+            }
+
             poll.IsClosed = true;
             poll.ConsequencesApplied = hasAppliedEffects;
             poll.ClosedAtUtc = DateTime.UtcNow;
@@ -825,6 +860,98 @@ namespace Rollocracy.Infrastructure.Services
             await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
             await _sessionNotifier.NotifyPollChangedAsync(sessionId);
         }
+
+        private static bool IsSessionGaugeConsequence(SessionPollOptionConsequence consequence)
+        {
+            return consequence.OperationType == TestConsequenceOperationType.AddValue &&
+                consequence.TargetKind == TestConsequenceTargetKind.SessionGauge;
+        }
+
+        private static IEnumerable<PollSessionGaugeTarget> ResolvePollSessionGaugeTargets(
+            SessionPollOptionConsequence consequence,
+            List<SessionPollVote> optionVotes,
+            List<Guid> eligibleCharacterIds)
+        {
+            // Les sondages restent strictement individuels : une conséquence de jauge de session
+            // s'applique une fois pour chaque personnage ayant voté pour cette option.
+            // Le mode d'application C-1 est réservé aux GameTests globaux.
+            return optionVotes
+                .Select(v => new PollSessionGaugeTarget(v.CharacterId, v.Id));
+        }
+
+        private async Task<bool> ApplyPollSessionGaugeConsequenceAsync(
+            RollocracyDbContext context,
+            SessionPoll poll,
+            SessionPollOptionConsequence consequence,
+            Guid characterId,
+            Guid voteId,
+            Guid optionId)
+        {
+            var character = await context.Characters.FirstOrDefaultAsync(c => c.Id == characterId);
+            if (character is null)
+                return false;
+
+            var sessionGauge = await context.SessionGauges
+                .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.SessionId == poll.SessionId);
+
+            if (sessionGauge is null)
+                return false;
+
+            var previousCharacterAlive = character.IsAlive;
+            var previousCharacterDiedAt = character.DiedAtUtc;
+            var previousValue = sessionGauge.CurrentValue;
+
+            if (consequence.ValueMode == ModifierValueMode.Metric)
+            {
+                var effectDto = ToCharacterEffectDefinitionDto(consequence);
+
+                await _characterEffectService.ApplyEffectsAsync(
+                    poll.SessionId,
+                    new List<Guid> { characterId },
+                    new List<CharacterEffectDefinitionDto> { effectDto },
+                    CharacterEffectSourceType.Poll,
+                    poll.Id,
+                    $"Poll:{poll.Id}");
+
+                await context.Entry(sessionGauge).ReloadAsync();
+            }
+            else
+            {
+                var signedValue = consequence.ModifierMode == TestModifierMode.Bonus
+                    ? consequence.Value
+                    : -consequence.Value;
+
+                sessionGauge.CurrentValue = Math.Clamp(
+                    sessionGauge.CurrentValue + signedValue,
+                    sessionGauge.MinValue,
+                    sessionGauge.MaxValue);
+            }
+
+            context.SessionPollAppliedEffects.Add(new SessionPollAppliedEffect
+            {
+                Id = Guid.NewGuid(),
+                SessionPollId = poll.Id,
+                CharacterId = characterId,
+                SessionPollVoteId = voteId,
+                SessionPollOptionId = optionId,
+                TargetKind = TestConsequenceTargetKind.SessionGauge,
+                TargetDefinitionId = consequence.TargetDefinitionId,
+                OperationType = TestConsequenceOperationType.AddValue,
+                PreviousValue = previousValue,
+                NewValue = sessionGauge.CurrentValue,
+                PreviousHasTargetLink = false,
+                NewHasTargetLink = false,
+                PreviousIsAlive = previousCharacterAlive,
+                NewIsAlive = character.IsAlive,
+                PreviousDiedAtUtc = previousCharacterDiedAt,
+                NewDiedAtUtc = character.DiedAtUtc,
+                AppliedAtUtc = DateTime.UtcNow
+            });
+
+            return true;
+        }
+
+        private readonly record struct PollSessionGaugeTarget(Guid CharacterId, Guid VoteId);
 
         public async Task<List<SessionPollPresetDto>> GetSessionPresetsAsync(Guid sessionId, Guid gameMasterUserAccountId)
         {
@@ -1601,6 +1728,35 @@ namespace Rollocracy.Infrastructure.Services
         }
 
 
+        private static bool IsPollSessionGaugeApplicationModeEligible(PollOptionConsequenceInlineDraftDto consequence)
+        {
+            return consequence.OperationType == TestConsequenceOperationType.AddValue &&
+                consequence.TargetKind == TestConsequenceTargetKind.SessionGauge;
+        }
+
+        private static TestConsequenceApplicationMode NormalizePollConsequenceApplicationMode(PollOptionConsequenceInlineDraftDto consequence)
+        {
+            if (!IsPollSessionGaugeApplicationModeEligible(consequence))
+                return TestConsequenceApplicationMode.ApplyOnce;
+
+            return consequence.ApplicationMode switch
+            {
+                TestConsequenceApplicationMode.PerEligibleCharacter => TestConsequenceApplicationMode.PerEligibleCharacter,
+                TestConsequenceApplicationMode.PerPollOptionVoter => TestConsequenceApplicationMode.PerPollOptionVoter,
+                _ => TestConsequenceApplicationMode.ApplyOnce
+            };
+        }
+
+        private static TestConsequenceApplicationMode NormalizeStoredPollApplicationMode(SessionPollOptionConsequence consequence)
+        {
+            return consequence.ApplicationMode switch
+            {
+                TestConsequenceApplicationMode.PerEligibleCharacter => TestConsequenceApplicationMode.PerEligibleCharacter,
+                TestConsequenceApplicationMode.PerPollOptionVoter => TestConsequenceApplicationMode.PerPollOptionVoter,
+                _ => TestConsequenceApplicationMode.ApplyOnce
+            };
+        }
+
         private void ValidateCreateRequest(PollCreateRequestDto request)
         {
             if (string.IsNullOrWhiteSpace(request.Question))
@@ -1814,6 +1970,7 @@ namespace Rollocracy.Infrastructure.Services
                     OptionLabel = x.option.Label,
                     TargetKind = x.consequence.TargetKind,
                     TargetDefinitionId = x.consequence.TargetDefinitionId,
+                    ApplicationMode = x.consequence.ApplicationMode,
                     TargetName = x.consequence.TargetNameSnapshot,
                     ModifierMode = x.consequence.ModifierMode,
                     Value = x.consequence.Value,

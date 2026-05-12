@@ -14,6 +14,8 @@ namespace Rollocracy.Domain.Polls
 
         public Guid TargetDefinitionId { get; set; }
 
+        public TestConsequenceApplicationMode ApplicationMode { get; set; } = TestConsequenceApplicationMode.ApplyOnce;
+
         public string TargetNameSnapshot { get; set; } = string.Empty;
 
         // Conservé pour compatibilité technique/transitoire.

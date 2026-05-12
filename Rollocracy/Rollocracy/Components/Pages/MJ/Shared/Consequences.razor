@@ -89,13 +89,29 @@
                             </select>
                         </div>
 
+                        @if (ShouldShowApplicationMode(row))
+                        {
+                            <div class="rc-form-field">
+                                <label>@L["Consequence_ApplicationMode"]</label>
+                                <select value="@((int)row.ApplicationMode)" @onchange="e => ChangeApplicationMode(row, e.Value?.ToString())">
+                                    @foreach (var mode in GetApplicationModeOptions())
+                                    {
+                                        <option value="@((int)mode)">@GetApplicationModeLabel(mode)</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+
                         @if (row.OperationType == TestConsequenceOperationType.AddValue)
                         {
                             <div class="rc-form-field">
                                 <label>@L["Test_ConsequenceValueMode"]</label>
                                 <select value="@((int)row.ValueMode)" @onchange="e => ChangeValueMode(row, e.Value?.ToString())">
                                     <option value="@((int)ModifierValueMode.Fixed)">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
-                                    <option value="@((int)ModifierValueMode.Metric)">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
+                                    @if (CanUseMetricValueMode(row))
+                                    {
+                                        <option value="@((int)ModifierValueMode.Metric)">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
+                                    }
                                 </select>
                             </div>
 
@@ -143,6 +159,10 @@
     [Parameter] public string? AddButtonLabel { get; set; }
     [Parameter] public string? EmptyLabel { get; set; }
     [Parameter] public bool ShowApplyOn { get; set; } = true;
+    [Parameter] public bool IsPollContext { get; set; }
+    [Parameter] public bool ShowApplicationMode { get; set; } = true;
+    [Parameter] public bool AllowMetricValueModeForSessionGauge { get; set; } = true;
+    [Parameter] public bool AllowSuccessFailureApplicationModes { get; set; } = true;
     [Parameter] public List<SharedConsequenceRowModel> Rows { get; set; } = new();
 
     [Parameter] public List<SharedConsequenceApplyOnOption> ApplyOnOptions { get; set; } = new();
@@ -175,6 +195,7 @@
         {
             RowId = Guid.NewGuid(),
             ApplyOn = ShowApplyOn ? GetDefaultApplyOn() : TestConsequenceApplyOn.OnSuccess,
+            ApplicationMode = TestConsequenceApplicationMode.ApplyOnce,
             OperationType = TestConsequenceOperationType.AddValue,
             TargetKind = initialTargetKind,
             TargetDefinitionId = initialTargetId,
@@ -230,6 +251,8 @@
                 row.ModifierMode = TestModifierMode.Bonus;
                 break;
         }
+
+        NormalizeApplicationMode(row);
     }
 
     private void ChangeTargetKind(SharedConsequenceRowModel row, string? rawValue)
@@ -239,6 +262,7 @@
 
         row.TargetKind = (TestConsequenceTargetKind)parsed;
         row.TargetDefinitionId = GetFirstTargetId(row.TargetKind);
+        NormalizeApplicationMode(row);
     }
 
     private void ChangeValueMode(SharedConsequenceRowModel row, string? rawValue)
@@ -247,6 +271,11 @@
             return;
 
         row.ValueMode = (ModifierValueMode)parsed;
+
+        if (row.ValueMode == ModifierValueMode.Metric && !CanUseMetricValueMode(row))
+        {
+            row.ValueMode = ModifierValueMode.Fixed;
+        }
 
         if (row.ValueMode == ModifierValueMode.Metric)
         {
@@ -262,6 +291,101 @@
                 row.Value = 1;
             row.ModifierMode = TestModifierMode.Bonus;
         }
+    }
+
+    private void ChangeApplicationMode(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.ApplicationMode = (TestConsequenceApplicationMode)parsed;
+        NormalizeApplicationMode(row);
+    }
+
+    private void NormalizeApplicationMode(SharedConsequenceRowModel row)
+    {
+        if (!ShouldShowApplicationMode(row))
+        {
+            row.ApplicationMode = TestConsequenceApplicationMode.ApplyOnce;
+        }
+        else if (!GetApplicationModeOptions().Contains(row.ApplicationMode))
+        {
+            row.ApplicationMode = TestConsequenceApplicationMode.ApplyOnce;
+        }
+
+        if (!CanUseMetricValueMode(row) && row.ValueMode == ModifierValueMode.Metric)
+        {
+            row.ValueMode = ModifierValueMode.Fixed;
+            row.SourceMetricId = MetricTargets.FirstOrDefault()?.Id;
+            row.ModifierMode = TestModifierMode.Bonus;
+            if (row.Value == 0)
+                row.Value = 1;
+        }
+    }
+
+    private bool ShouldShowApplicationMode(SharedConsequenceRowModel row)
+    {
+        return ShowApplicationMode &&
+            row.OperationType == TestConsequenceOperationType.AddValue &&
+            row.TargetKind == TestConsequenceTargetKind.SessionGauge &&
+            (!ShowApplyOn || IsGlobalApplyOn(row.ApplyOn));
+    }
+
+    private static bool IsGlobalApplyOn(TestConsequenceApplyOn applyOn)
+    {
+        return applyOn == TestConsequenceApplyOn.OnGlobalSuccess ||
+            applyOn == TestConsequenceApplyOn.OnModerateSuccess ||
+            applyOn == TestConsequenceApplyOn.OnModerateFailure ||
+            applyOn == TestConsequenceApplyOn.OnGlobalFailure;
+    }
+
+    private bool CanUseMetricValueMode(SharedConsequenceRowModel row)
+    {
+        if (row.OperationType != TestConsequenceOperationType.AddValue)
+            return false;
+
+        if (row.TargetKind == TestConsequenceTargetKind.SessionGauge &&
+            !AllowMetricValueModeForSessionGauge)
+        {
+            return false;
+        }
+
+        return !ShouldShowApplicationMode(row) ||
+            row.ApplicationMode != TestConsequenceApplicationMode.ApplyOnce;
+    }
+
+    private IEnumerable<TestConsequenceApplicationMode> GetApplicationModeOptions()
+    {
+        if (IsPollContext)
+        {
+            yield return TestConsequenceApplicationMode.ApplyOnce;
+            yield return TestConsequenceApplicationMode.PerEligibleCharacter;
+            yield return TestConsequenceApplicationMode.PerPollOptionVoter;
+            yield break;
+        }
+
+        yield return TestConsequenceApplicationMode.ApplyOnce;
+        yield return TestConsequenceApplicationMode.PerCharacter;
+
+        if (AllowSuccessFailureApplicationModes)
+        {
+            yield return TestConsequenceApplicationMode.PerSuccessfulCharacter;
+            yield return TestConsequenceApplicationMode.PerFailedCharacter;
+        }
+    }
+
+    private string GetApplicationModeLabel(TestConsequenceApplicationMode mode)
+    {
+        return mode switch
+        {
+            TestConsequenceApplicationMode.ApplyOnce => L["Consequence_ApplicationMode_Once"],
+            TestConsequenceApplicationMode.PerCharacter => L["Consequence_ApplicationMode_PerCharacter"],
+            TestConsequenceApplicationMode.PerSuccessfulCharacter => L["Consequence_ApplicationMode_PerSuccessfulCharacter"],
+            TestConsequenceApplicationMode.PerFailedCharacter => L["Consequence_ApplicationMode_PerFailedCharacter"],
+            TestConsequenceApplicationMode.PerEligibleCharacter => L["Consequence_ApplicationMode_PerEligibleCharacter"],
+            TestConsequenceApplicationMode.PerPollOptionVoter => L["Consequence_ApplicationMode_PerPollOptionVoter"],
+            _ => mode.ToString()
+        };
     }
 
     private TestConsequenceApplyOn GetDefaultApplyOn()

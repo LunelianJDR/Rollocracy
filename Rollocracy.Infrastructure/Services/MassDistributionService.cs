@@ -180,13 +180,29 @@ namespace Rollocracy.Infrastructure.Services
 
             try
             {
-                await _characterEffectService.ApplyEffectsAsync(
-                    sessionId,
-                    targetCharacterIds,
-                    request.Effects,
-                    CharacterEffectSourceType.MassDistribution,
-                    batchId,
-                    request.Name.Trim());
+                var sessionGaugeEffects = request.Effects
+                    .Where(IsMassDistributionSessionGaugeEffect)
+                    .ToList();
+
+                var characterEffects = request.Effects
+                    .Where(effect => !IsMassDistributionSessionGaugeEffect(effect))
+                    .ToList();
+
+                if (characterEffects.Count > 0)
+                {
+                    await _characterEffectService.ApplyEffectsAsync(
+                        sessionId,
+                        targetCharacterIds,
+                        characterEffects,
+                        CharacterEffectSourceType.MassDistribution,
+                        batchId,
+                        request.Name.Trim());
+                }
+
+                if (sessionGaugeEffects.Count > 0 && targetCharacterIds.Count > 0)
+                {
+                    await ApplySessionGaugeEffectsOnceAsync(context, sessionId, sessionGaugeEffects);
+                }
 
                 // L-3 :
                 // Les effets étaient bien appliqués en base, mais aucun refresh temps réel
@@ -388,6 +404,45 @@ namespace Rollocracy.Infrastructure.Services
             if (!exists)
                 throw new Exception(_localizer["Backend_SessionAccessDenied"]);
         }
+
+        private static bool IsMassDistributionSessionGaugeEffect(CharacterEffectDefinitionDto effect)
+        {
+            return effect.OperationType == CharacterEffectOperationType.AddValue &&
+                effect.TargetType == CharacterEffectTargetType.SessionGauge;
+        }
+
+        private async Task ApplySessionGaugeEffectsOnceAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            List<CharacterEffectDefinitionDto> effects)
+        {
+            if (effects.Any(effect => effect.ValueMode == ModifierValueMode.Metric))
+                throw new Exception(_localizer["Backend_ConsequenceMetricRequiresPerCharacterApplication"]);
+
+            var targetIds = effects
+                .Select(effect => effect.TargetId)
+                .Distinct()
+                .ToList();
+
+            var sessionGauges = await context.SessionGauges
+                .Where(gauge => gauge.SessionId == sessionId && targetIds.Contains(gauge.Id))
+                .ToListAsync();
+
+            foreach (var effect in effects)
+            {
+                var sessionGauge = sessionGauges.FirstOrDefault(gauge => gauge.Id == effect.TargetId);
+                if (sessionGauge is null)
+                    throw new Exception(_localizer["Backend_InvalidCharacterEffectTarget"]);
+
+                sessionGauge.CurrentValue = Math.Clamp(
+                    sessionGauge.CurrentValue + effect.Value,
+                    sessionGauge.MinValue,
+                    sessionGauge.MaxValue);
+            }
+
+            await context.SaveChangesAsync();
+        }
+
 
         private async Task<string> BuildUndoSnapshotJsonAsync(
     RollocracyDbContext context,

@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Characters;
+using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
@@ -280,6 +281,7 @@ namespace Rollocracy.Infrastructure.Services
                     Id = Guid.NewGuid(),
                     GameTestId = test.Id,
                     ApplyOn = consequence.ApplyOn,
+                    ApplicationMode = NormalizeConsequenceApplicationMode(consequence),
                     OperationType = consequence.OperationType,
                     TargetKind = consequence.TargetKind,
                     TargetDefinitionId = consequence.TargetDefinitionId,
@@ -760,6 +762,79 @@ namespace Rollocracy.Infrastructure.Services
             await _sessionNotifier.NotifyTestChangedAsync(sessionId);
         }
 
+        private async Task ApplySessionGaugeConsequenceAsync(
+            RollocracyDbContext context,
+            GameTest test,
+            Character character,
+            GameTestConsequence consequence)
+        {
+            var sessionGauge = await context.SessionGauges
+                .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.SessionId == test.SessionId);
+
+            if (sessionGauge is null)
+                return;
+
+            var signedValue = consequence.ValueMode == ModifierValueMode.Metric
+                ? await ResolveMetricConsequenceValueAsync(context, test.SessionId, character.Id, consequence)
+                : consequence.ModifierMode == TestModifierMode.Bonus
+                    ? consequence.Value
+                    : -consequence.Value;
+
+            var previousCharacterAlive = character.IsAlive;
+            var previousCharacterDiedAt = character.DiedAtUtc;
+            var previousValue = sessionGauge.CurrentValue;
+
+            sessionGauge.CurrentValue = Math.Clamp(
+                sessionGauge.CurrentValue + signedValue,
+                sessionGauge.MinValue,
+                sessionGauge.MaxValue);
+
+            context.GameTestAppliedEffects.Add(new GameTestAppliedEffect
+            {
+                Id = Guid.NewGuid(),
+                GameTestId = test.Id,
+                CharacterId = character.Id,
+                TargetKind = TestConsequenceTargetKind.SessionGauge,
+                TargetDefinitionId = consequence.TargetDefinitionId,
+                OperationType = TestConsequenceOperationType.AddValue,
+                PreviousValue = previousValue,
+                NewValue = sessionGauge.CurrentValue,
+                PreviousHasTargetLink = false,
+                NewHasTargetLink = false,
+                PreviousIsAlive = previousCharacterAlive,
+                NewIsAlive = character.IsAlive,
+                PreviousDiedAtUtc = previousCharacterDiedAt,
+                NewDiedAtUtc = character.DiedAtUtc,
+                AppliedAtUtc = DateTime.UtcNow
+            });
+        }
+
+        private async Task<int> ResolveMetricConsequenceValueAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            Guid characterId,
+            GameTestConsequence consequence)
+        {
+            if (!consequence.SourceMetricId.HasValue)
+                throw new Exception(_localizer["Backend_InvalidTestConsequenceSourceMetric"]);
+
+            var gameSystemId = await context.Sessions
+                .AsNoTracking()
+                .Where(s => s.Id == sessionId)
+                .Select(s => s.GameSystemId)
+                .FirstOrDefaultAsync();
+
+            if (!gameSystemId.HasValue)
+                throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
+
+            var metricValues = await ResolveCharacterMetricValuesAsync(context, gameSystemId.Value, characterId);
+            var metricValue = metricValues.GetValueOrDefault(consequence.SourceMetricId.Value);
+
+            return consequence.ModifierMode == TestModifierMode.Bonus
+                ? metricValue
+                : -metricValue;
+        }
+
         private async Task ApplyResolvedConsequencesAsync(
     RollocracyDbContext context,
     Guid gameTestId,
@@ -780,6 +855,17 @@ namespace Rollocracy.Infrastructure.Services
             if (character == null)
                 return;
 
+            var sessionGaugeConsequences = consequences
+                .Where(c =>
+                    c.OperationType == TestConsequenceOperationType.AddValue &&
+                    c.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                .ToList();
+
+            foreach (var consequence in sessionGaugeConsequences)
+            {
+                await ApplySessionGaugeConsequenceAsync(context, test, character, consequence);
+            }
+
             // 1) Ancien mécanisme conservé pour Attribute / Gauge,
             // afin de garder le rollback actuel entièrement fonctionnel.
             var legacyConsequences = consequences
@@ -787,8 +873,7 @@ namespace Rollocracy.Infrastructure.Services
                     c.OperationType == TestConsequenceOperationType.AddValue &&
                     c.ValueMode != ModifierValueMode.Metric &&
                     (c.TargetKind == TestConsequenceTargetKind.Attribute ||
-                     c.TargetKind == TestConsequenceTargetKind.Gauge ||
-                     c.TargetKind == TestConsequenceTargetKind.SessionGauge))
+                     c.TargetKind == TestConsequenceTargetKind.Gauge))
                 .ToList();
 
             foreach (var consequence in legacyConsequences)
@@ -911,12 +996,12 @@ namespace Rollocracy.Infrastructure.Services
 
             // 2) Nouveau moteur commun pour DerivedStat / Metric / Talent / Item.
             var commonEngineConsequences = consequences
+                .Where(c => c.TargetKind != TestConsequenceTargetKind.SessionGauge)
                 .Where(c => !(
                     c.OperationType == TestConsequenceOperationType.AddValue &&
                     c.ValueMode != ModifierValueMode.Metric &&
                     (c.TargetKind == TestConsequenceTargetKind.Attribute ||
-                     c.TargetKind == TestConsequenceTargetKind.Gauge ||
-                     c.TargetKind == TestConsequenceTargetKind.SessionGauge)))
+                     c.TargetKind == TestConsequenceTargetKind.Gauge)))
                 .ToList();
 
             if (commonEngineConsequences.Count == 0)
@@ -1290,16 +1375,26 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(c => c.TargetKind != TestConsequenceTargetKind.SessionGauge)
                 .ToList();
 
-            // Une jauge de session est une ressource commune :
-            // une conséquence globale qui la cible doit être appliquée une seule fois pour le test,
-            // et non une fois par personnage ciblé.
-            if (sessionGaugeConsequences.Count > 0)
+            foreach (var consequence in sessionGaugeConsequences)
             {
+                var targetRows = GetRowsForSessionGaugeConsequence(rows, consequence).ToList();
+                if (targetRows.Count == 0)
+                    continue;
+
                 await ApplyResolvedConsequencesAsync(
                     context,
                     test.Id,
-                    rows[0].CharacterId,
-                    sessionGaugeConsequences);
+                    targetRows[0].CharacterId,
+                    new List<GameTestConsequence> { consequence });
+
+                foreach (var row in targetRows.Skip(1))
+                {
+                    await ApplyResolvedConsequencesAsync(
+                        context,
+                        test.Id,
+                        row.CharacterId,
+                        new List<GameTestConsequence> { consequence });
+                }
             }
 
             if (characterScopedConsequences.Count > 0)
@@ -1316,6 +1411,25 @@ namespace Rollocracy.Infrastructure.Services
 
             test.GlobalConsequencesApplied = true;
             await context.SaveChangesAsync();
+        }
+
+        private static IEnumerable<PlayerTestRoll> GetRowsForSessionGaugeConsequence(
+            List<PlayerTestRoll> rows,
+            GameTestConsequence consequence)
+        {
+            return NormalizeStoredApplicationMode(consequence) switch
+            {
+                TestConsequenceApplicationMode.PerCharacter => rows,
+                TestConsequenceApplicationMode.PerSuccessfulCharacter => rows.Where(IsSuccessfulRoll),
+                TestConsequenceApplicationMode.PerFailedCharacter => rows.Where(x => !IsSuccessfulRoll(x)),
+                _ => rows.Take(1)
+            };
+        }
+
+        private static bool IsSuccessfulRoll(PlayerTestRoll row)
+        {
+            return row.Outcome == GameTestOutcome.Success ||
+                row.Outcome == GameTestOutcome.CriticalSuccess;
         }
 
         private async Task UpdateCharacterAliveStateAsync(RollocracyDbContext context, Guid characterId)
@@ -2252,6 +2366,46 @@ namespace Rollocracy.Infrastructure.Services
             };
         }
 
+        private static bool IsGlobalApplyOn(TestConsequenceApplyOn applyOn)
+        {
+            return applyOn == TestConsequenceApplyOn.OnGlobalSuccess ||
+                applyOn == TestConsequenceApplyOn.OnModerateSuccess ||
+                applyOn == TestConsequenceApplyOn.OnModerateFailure ||
+                applyOn == TestConsequenceApplyOn.OnGlobalFailure;
+        }
+
+        private static bool IsSessionGaugeApplicationModeEligible(GameTestConsequenceDraftDto consequence)
+        {
+            return consequence.OperationType == TestConsequenceOperationType.AddValue &&
+                consequence.TargetKind == TestConsequenceTargetKind.SessionGauge &&
+                IsGlobalApplyOn(consequence.ApplyOn);
+        }
+
+        private static TestConsequenceApplicationMode NormalizeConsequenceApplicationMode(GameTestConsequenceDraftDto consequence)
+        {
+            if (!IsSessionGaugeApplicationModeEligible(consequence))
+                return TestConsequenceApplicationMode.ApplyOnce;
+
+            return consequence.ApplicationMode switch
+            {
+                TestConsequenceApplicationMode.PerCharacter => TestConsequenceApplicationMode.PerCharacter,
+                TestConsequenceApplicationMode.PerSuccessfulCharacter => TestConsequenceApplicationMode.PerSuccessfulCharacter,
+                TestConsequenceApplicationMode.PerFailedCharacter => TestConsequenceApplicationMode.PerFailedCharacter,
+                _ => TestConsequenceApplicationMode.ApplyOnce
+            };
+        }
+
+        private static TestConsequenceApplicationMode NormalizeStoredApplicationMode(GameTestConsequence consequence)
+        {
+            return consequence.ApplicationMode switch
+            {
+                TestConsequenceApplicationMode.PerCharacter => TestConsequenceApplicationMode.PerCharacter,
+                TestConsequenceApplicationMode.PerSuccessfulCharacter => TestConsequenceApplicationMode.PerSuccessfulCharacter,
+                TestConsequenceApplicationMode.PerFailedCharacter => TestConsequenceApplicationMode.PerFailedCharacter,
+                _ => TestConsequenceApplicationMode.ApplyOnce
+            };
+        }
+
         private void ValidateCreateRequest(GameTestCreateRequestDto request)
         {
             if (request.TargetDefinitionId == Guid.Empty)
@@ -2355,6 +2509,13 @@ namespace Rollocracy.Infrastructure.Services
 
                 if (consequence.ValueMode == ModifierValueMode.Metric && !consequence.SourceMetricId.HasValue)
                     throw new Exception(_localizer["Backend_InvalidTestConsequenceSourceMetric"]);
+
+                if (IsSessionGaugeApplicationModeEligible(consequence) &&
+                    NormalizeConsequenceApplicationMode(consequence) == TestConsequenceApplicationMode.ApplyOnce &&
+                    consequence.ValueMode == ModifierValueMode.Metric)
+                {
+                    throw new Exception(_localizer["Backend_ConsequenceMetricRequiresPerCharacterApplication"]);
+                }
 
                 // Compatibilité transitoire :
                 // l'UI actuelle des tests n'envoie pas encore OperationType.

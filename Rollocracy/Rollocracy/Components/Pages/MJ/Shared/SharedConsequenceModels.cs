@@ -7,6 +7,7 @@ namespace Rollocracy.Components.Pages.MJ.Shared
     {
         public Guid RowId { get; set; } = Guid.NewGuid();
         public TestConsequenceApplyOn ApplyOn { get; set; } = TestConsequenceApplyOn.OnSuccess;
+        public TestConsequenceApplicationMode ApplicationMode { get; set; } = TestConsequenceApplicationMode.ApplyOnce;
         public TestConsequenceOperationType OperationType { get; set; } = TestConsequenceOperationType.AddValue;
         public TestConsequenceTargetKind TargetKind { get; set; } = TestConsequenceTargetKind.Attribute;
         public Guid TargetDefinitionId { get; set; }

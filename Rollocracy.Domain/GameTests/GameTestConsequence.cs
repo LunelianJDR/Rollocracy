@@ -12,6 +12,8 @@ namespace Rollocracy.Domain.GameTests
 
         public TestConsequenceApplyOn ApplyOn { get; set; }
 
+        public TestConsequenceApplicationMode ApplicationMode { get; set; } = TestConsequenceApplicationMode.ApplyOnce;
+
         public TestConsequenceTargetKind TargetKind { get; set; }
 
         public Guid TargetDefinitionId { get; set; }

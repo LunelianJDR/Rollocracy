@@ -181,6 +181,24 @@ namespace Rollocracy.Infrastructure.Services
 
             var orderedEffects = OrderEffectsForInventoryConstraints(effects);
 
+            var effectsAppliedOnce = orderedEffects
+                .Where(effect => ShouldApplySessionGaugeEffectOnce(sourceType, effect))
+                .ToList();
+
+            if (effectsAppliedOnce.Any(effect => effect.ValueMode == ModifierValueMode.Metric))
+                throw new Exception(_localizer["Backend_ConsequenceMetricRequiresPerCharacterApplication"]);
+
+            foreach (var effect in effectsAppliedOnce)
+            {
+                ApplySessionGaugeEffectOnce(sessionGauges, effect);
+            }
+
+            var perCharacterEffects = effectsAppliedOnce.Count == 0
+                ? orderedEffects
+                : orderedEffects
+                    .Where(effect => !ShouldApplySessionGaugeEffectOnce(sourceType, effect))
+                    .ToList();
+
             foreach (var character in characters)
             {
                 var attributeValues = allAttributeValues.Where(x => x.CharacterId == character.Id).ToList();
@@ -189,7 +207,7 @@ namespace Rollocracy.Infrastructure.Services
                 var characterItems = allCharacterItems.Where(x => x.CharacterId == character.Id).ToList();
                 var characterModifiers = allCharacterModifiers.Where(x => x.CharacterId == character.Id).ToList();
 
-                foreach (var effect in orderedEffects)
+                foreach (var effect in perCharacterEffects)
                 {
                     await ApplySingleEffectAsync(
                         context,
@@ -224,6 +242,27 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             await context.SaveChangesAsync();
+        }
+
+        private static bool ShouldApplySessionGaugeEffectOnce(
+            CharacterEffectSourceType sourceType,
+            CharacterEffectDefinitionDto effect)
+        {
+            return sourceType == CharacterEffectSourceType.MassDistribution &&
+                effect.OperationType == CharacterEffectOperationType.AddValue &&
+                effect.TargetType == CharacterEffectTargetType.SessionGauge;
+        }
+
+        private static void ApplySessionGaugeEffectOnce(
+            List<SessionGauge> sessionGauges,
+            CharacterEffectDefinitionDto effect)
+        {
+            var gauge = sessionGauges.First(x => x.Id == effect.TargetId);
+
+            gauge.CurrentValue = Math.Clamp(
+                gauge.CurrentValue + effect.Value,
+                gauge.MinValue,
+                gauge.MaxValue);
         }
 
         public async Task<List<Guid>> ResolveTargetCharacterIdsAsync(Guid sessionId, CharacterTargetFilterDto filter)

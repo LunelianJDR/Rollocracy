@@ -4315,4 +4315,28 @@
 	<data name="Character_ItemFamily_ActiveCounter" xml:space="preserve">
   <value>Actifs</value>
 </data>
+	<data name="Consequence_ApplicationMode" xml:space="preserve">
+  <value>Appliquer</value>
+</data>
+	<data name="Consequence_ApplicationMode_Once" xml:space="preserve">
+  <value>Une fois</value>
+</data>
+	<data name="Consequence_ApplicationMode_PerCharacter" xml:space="preserve">
+  <value>Pour chaque personnage</value>
+</data>
+	<data name="Consequence_ApplicationMode_PerSuccessfulCharacter" xml:space="preserve">
+  <value>Pour chaque personnage ayant réussi</value>
+</data>
+	<data name="Consequence_ApplicationMode_PerFailedCharacter" xml:space="preserve">
+  <value>Pour chaque personnage ayant échoué</value>
+</data>
+	<data name="Consequence_ApplicationMode_PerEligibleCharacter" xml:space="preserve">
+  <value>Pour chaque personnage éligible</value>
+</data>
+	<data name="Consequence_ApplicationMode_PerPollOptionVoter" xml:space="preserve">
+  <value>Pour chaque votant de cette option</value>
+</data>
+	<data name="Backend_ConsequenceMetricRequiresPerCharacterApplication" xml:space="preserve">
+  <value>Une conséquence basée sur une métrique ne peut pas être appliquée une seule fois à une jauge de session.</value>
+</data>
 </root>

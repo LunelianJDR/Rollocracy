@@ -25,6 +25,16 @@ namespace Rollocracy.Domain.GameTests
         Metric = 1
     }
 
+    public enum TestConsequenceApplicationMode
+    {
+        ApplyOnce = 0,
+        PerCharacter = 1,
+        PerSuccessfulCharacter = 2,
+        PerFailedCharacter = 3,
+        PerEligibleCharacter = 4,
+        PerPollOptionVoter = 5
+    }
+
     public class GameTestAdvancedModifierDto
     {
         public GameTestAdvancedModifierSourceType SourceType { get; set; } = GameTestAdvancedModifierSourceType.TraitOption;
@@ -52,6 +62,8 @@ namespace Rollocracy.Domain.GameTests
     public class GameTestConsequenceDraftDto
     {
         public TestConsequenceApplyOn ApplyOn { get; set; }
+
+        public TestConsequenceApplicationMode ApplicationMode { get; set; } = TestConsequenceApplicationMode.ApplyOnce;
 
         public TestConsequenceOperationType OperationType { get; set; }
 
