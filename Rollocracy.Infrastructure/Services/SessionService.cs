@@ -1247,6 +1247,27 @@ namespace Rollocracy.Infrastructure.Services
                     .ToListAsync()
                 : new List<GaugeDefinition>();
 
+            var attributeDefinitions = session.GameSystemId.HasValue
+                ? await context.AttributeDefinitions
+                    .AsNoTracking()
+                    .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                    .ToListAsync()
+                : new List<AttributeDefinition>();
+
+            var derivedDefinitions = session.GameSystemId.HasValue
+                ? await context.DerivedStatDefinitions
+                    .AsNoTracking()
+                    .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                    .ToListAsync()
+                : new List<DerivedStatDefinition>();
+
+            var metricDefinitions = session.GameSystemId.HasValue
+                ? await context.MetricDefinitions
+                    .AsNoTracking()
+                    .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                    .ToListAsync()
+                : new List<MetricDefinition>();
+
             var aliveCharacter = await context.Characters
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.PlayerSessionId == playerSessionId && x.IsAlive);
@@ -1264,6 +1285,18 @@ namespace Rollocracy.Infrastructure.Services
             var talents = await context.TalentDefinitions
                 .AsNoTracking()
                 .Where(x => talentIds.Contains(x.Id))
+                .ToListAsync();
+
+            var allTalentDefinitions = session.GameSystemId.HasValue
+                ? await context.TalentDefinitions
+                    .AsNoTracking()
+                    .Where(x => x.GameSystemId == session.GameSystemId.Value)
+                    .ToListAsync()
+                : talents;
+
+            var talentModifiers = await context.TalentModifierDefinitions
+                .AsNoTracking()
+                .Where(x => talentIds.Contains(x.TalentDefinitionId))
                 .ToListAsync();
 
             var items = await context.ItemDefinitions
@@ -1296,12 +1329,53 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x => relevantItemDefinitionIds.Contains(x.Id))
                 .ToListAsync();
 
+            var itemModifiers = await context.ItemModifierDefinitions
+                .AsNoTracking()
+                .Where(x => itemIds.Contains(x.ItemDefinitionId))
+                .ToListAsync();
+
+            var modifierTalentTargetIds = itemModifiers
+                .Where(x => x.TargetType == ModifierTargetType.Talent)
+                .Select(x => x.TargetId)
+                .Distinct()
+                .ToList();
+
+            var modifierItemTargetIds = itemModifiers
+                .Where(x => x.TargetType == ModifierTargetType.Item)
+                .Select(x => x.TargetId)
+                .Distinct()
+                .ToList();
+
+            var referencedTalentNames = await context.TalentDefinitions
+                .AsNoTracking()
+                .Where(x => modifierTalentTargetIds.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, x => x.Name);
+
+            var referencedItemNames = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(x => modifierItemTargetIds.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, x => x.Name);
+
             var itemFamilies = session.GameSystemId.HasValue
                 ? await context.ItemFamilyDefinitions
                     .AsNoTracking()
                     .Where(x => x.GameSystemId == session.GameSystemId.Value)
                     .ToListAsync()
                 : new List<ItemFamilyDefinition>();
+
+            var attributeNames = attributeDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var derivedNames = derivedDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var metricNames = metricDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var gaugeNames = gaugeDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var talentNames = allTalentDefinitions
+                .Select(x => new KeyValuePair<Guid, string>(x.Id, x.Name))
+                .Concat(referencedTalentNames.Where(x => !allTalentDefinitions.Any(t => t.Id == x.Key)))
+                .ToDictionary(x => x.Key, x => x.Value);
+            var itemNames = relevantItemDefinitions
+                .Select(x => new KeyValuePair<Guid, string>(x.Id, x.Name))
+                .Concat(referencedItemNames.Where(x => !relevantItemDefinitions.Any(i => i.Id == x.Key)))
+                .ToDictionary(x => x.Key, x => x.Value);
+            var metricValues = new Dictionary<Guid, int>();
 
             return new PlayerSessionStoreDto
             {
@@ -1342,7 +1416,14 @@ namespace Rollocracy.Infrastructure.Services
                             IsPurchasable = store.IsEnabled && aliveCharacter is not null && !owned && hasEnoughCurrency,
                             IsConsumable = false,
                             CurrentQuantity = 0,
-                            MaxQuantityPerCharacter = 1
+                            MaxQuantityPerCharacter = 1,
+                            Tooltip = BuildTalentEffectTooltip(
+                                talentModifiers.Where(x => x.TalentDefinitionId == talent.Id).ToList(),
+                                attributeNames,
+                                derivedNames,
+                                metricNames,
+                                gaugeNames,
+                                metricValues)
                         };
                     }
 
@@ -1372,6 +1453,25 @@ namespace Rollocracy.Infrastructure.Services
                                     ? ownedQuantity < item.MaxQuantityPerCharacter
                                     : ownedItem is null);
 
+                    var family = item.ItemFamilyDefinitionId.HasValue
+                        ? itemFamilies.FirstOrDefault(x => x.Id == item.ItemFamilyDefinitionId.Value)
+                        : null;
+
+                    var effectTooltip = BuildItemEffectTooltip(
+                        itemModifiers.Where(x => x.ItemDefinitionId == item.Id).ToList(),
+                        attributeNames,
+                        derivedNames,
+                        metricNames,
+                        gaugeNames,
+                        talentNames,
+                        itemNames,
+                        metricValues,
+                        item.IsConsumable);
+
+                    var familyTooltip = aliveCharacter is not null && family is not null
+                        ? BuildItemFamilyTooltipPart(aliveCharacter.Id, family, ownedItems, relevantItemDefinitions)
+                        : string.Empty;
+
                     return new PlayerSessionStoreOfferDto
                     {
                         OfferId = offer.Id,
@@ -1385,11 +1485,187 @@ namespace Rollocracy.Infrastructure.Services
                         IsPurchasable = canBuy,
                         IsConsumable = item.IsConsumable,
                         CurrentQuantity = ownedQuantity,
-                        MaxQuantityPerCharacter = item.MaxQuantityPerCharacter
+                        MaxQuantityPerCharacter = item.MaxQuantityPerCharacter,
+                        Tooltip = string.Join("\n", new[] { effectTooltip, familyTooltip }.Where(x => !string.IsNullOrWhiteSpace(x)))
                     };
                 }).ToList()
             };
         }
+
+        private int ResolveModifierValue(int value, ModifierValueMode valueMode, Guid? sourceMetricId, Dictionary<Guid, int>? metricValues)
+        {
+            if (valueMode == ModifierValueMode.Metric && sourceMetricId.HasValue && metricValues is not null && metricValues.TryGetValue(sourceMetricId.Value, out var metricValue))
+                return metricValue;
+
+            return value;
+        }
+
+        private string BuildTalentEffectTooltip(
+            List<TalentModifierDefinition> modifiers,
+            Dictionary<Guid, string> attributeNames,
+            Dictionary<Guid, string> derivedNames,
+            Dictionary<Guid, string> metricNames,
+            Dictionary<Guid, string> gaugeNames,
+            Dictionary<Guid, int> metricValues)
+        {
+            var parts = modifiers
+                .Select(modifier => FormatAddValueTooltipPart(
+                    modifier.TargetType,
+                    modifier.TargetId,
+                    ResolveModifierValue(modifier.AddValue, modifier.ValueMode, modifier.SourceMetricId, metricValues),
+                    attributeNames,
+                    derivedNames,
+                    metricNames,
+                    gaugeNames,
+                    includeGaugeMaxLabel: true))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+
+            return string.Join(", ", parts);
+        }
+
+        private string BuildItemFamilyTooltipPart(
+            Guid characterId,
+            ItemFamilyDefinition family,
+            List<CharacterItem> characterItems,
+            List<ItemDefinition> itemDefinitions)
+        {
+            var ownedCount = CharacterItemFamilyRules.GetOwnedCount(characterId, family.Id, characterItems, itemDefinitions);
+            var activeCount = CharacterItemFamilyRules.GetActiveCount(characterId, family.Id, characterItems, itemDefinitions);
+
+            return string.Join("\n", new[]
+            {
+                $"{_localizer["Character_ItemFamily_Label"]} : {family.Name}",
+                $"{_localizer["Character_ItemFamily_OwnedCounter"]} : {ownedCount}/{family.MaxOwned}",
+                $"{_localizer["Character_ItemFamily_ActiveCounter"]} : {activeCount}/{family.MaxActive}"
+            });
+        }
+
+        private string BuildItemEffectTooltip(
+            List<ItemModifierDefinition> modifiers,
+            Dictionary<Guid, string> attributeNames,
+            Dictionary<Guid, string> derivedNames,
+            Dictionary<Guid, string> metricNames,
+            Dictionary<Guid, string> gaugeNames,
+            Dictionary<Guid, string> talentNames,
+            Dictionary<Guid, string> itemNames,
+            Dictionary<Guid, int> metricValues,
+            bool isConsumable)
+        {
+            var parts = modifiers
+                .Select(modifier => FormatItemModifierTooltipPart(
+                    modifier,
+                    attributeNames,
+                    derivedNames,
+                    metricNames,
+                    gaugeNames,
+                    talentNames,
+                    itemNames,
+                    metricValues))
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+
+            if (parts.Count == 0)
+                return string.Empty;
+
+            var text = string.Join(", ", parts);
+            return isConsumable
+                ? $"{_localizer["Character_Tooltip_OnUsePrefix"]} {text}"
+                : text;
+        }
+
+        private string FormatItemModifierTooltipPart(
+            ItemModifierDefinition modifier,
+            Dictionary<Guid, string> attributeNames,
+            Dictionary<Guid, string> derivedNames,
+            Dictionary<Guid, string> metricNames,
+            Dictionary<Guid, string> gaugeNames,
+            Dictionary<Guid, string> talentNames,
+            Dictionary<Guid, string> itemNames,
+            Dictionary<Guid, int> metricValues)
+        {
+            return modifier.OperationType switch
+            {
+                ModifierOperationType.AddValue => FormatAddValueTooltipPart(
+                    modifier.TargetType,
+                    modifier.TargetId,
+                    ResolveModifierValue(modifier.AddValue, modifier.ValueMode, modifier.SourceMetricId, metricValues),
+                    attributeNames,
+                    derivedNames,
+                    metricNames,
+                    gaugeNames,
+                    includeGaugeMaxLabel: !modifier.FillGaugeCurrentValueOnly),
+                ModifierOperationType.Grant => FormatGrantRevokeTooltipPart(
+                    true,
+                    modifier.TargetType,
+                    modifier.TargetId,
+                    talentNames,
+                    itemNames),
+                ModifierOperationType.Revoke => FormatGrantRevokeTooltipPart(
+                    false,
+                    modifier.TargetType,
+                    modifier.TargetId,
+                    talentNames,
+                    itemNames),
+                _ => string.Empty
+            };
+        }
+
+        private string FormatAddValueTooltipPart(
+            ModifierTargetType targetType,
+            Guid targetId,
+            int value,
+            Dictionary<Guid, string> attributeNames,
+            Dictionary<Guid, string> derivedNames,
+            Dictionary<Guid, string> metricNames,
+            Dictionary<Guid, string> gaugeNames,
+            bool includeGaugeMaxLabel)
+        {
+            if (value == 0)
+                return string.Empty;
+
+            var targetName = targetType switch
+            {
+                ModifierTargetType.BaseAttribute => attributeNames.GetValueOrDefault(targetId, string.Empty),
+                ModifierTargetType.DerivedStat => derivedNames.GetValueOrDefault(targetId, string.Empty),
+                ModifierTargetType.Metric => metricNames.GetValueOrDefault(targetId, string.Empty),
+                ModifierTargetType.Gauge => gaugeNames.GetValueOrDefault(targetId, string.Empty),
+                _ => string.Empty
+            };
+
+            if (string.IsNullOrWhiteSpace(targetName))
+                return string.Empty;
+
+            if (targetType == ModifierTargetType.Gauge && includeGaugeMaxLabel)
+                targetName = $"{targetName} {_localizer["Common_Max"]}";
+
+            return $"{targetName} {FormatSignedValue(value)}";
+        }
+
+        private string FormatGrantRevokeTooltipPart(
+            bool isGrant,
+            ModifierTargetType targetType,
+            Guid targetId,
+            Dictionary<Guid, string> talentNames,
+            Dictionary<Guid, string> itemNames)
+        {
+            var targetName = targetType switch
+            {
+                ModifierTargetType.Talent => talentNames.GetValueOrDefault(targetId, string.Empty),
+                ModifierTargetType.Item => itemNames.GetValueOrDefault(targetId, string.Empty),
+                _ => string.Empty
+            };
+
+            if (string.IsNullOrWhiteSpace(targetName))
+                return string.Empty;
+
+            return string.Format(
+                isGrant ? _localizer["Character_Tooltip_Grant"].Value : _localizer["Character_Tooltip_Revoke"].Value,
+                targetName);
+        }
+
+        private static string FormatSignedValue(int value)
+            => value >= 0 ? $"+{value}" : value.ToString();
 
         private async Task ValidateSessionItemFamiliesAsync(
             RollocracyDbContext context,

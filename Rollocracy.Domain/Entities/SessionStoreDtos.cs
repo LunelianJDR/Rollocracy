@@ -53,6 +53,7 @@ namespace Rollocracy.Domain.Entities
         public bool IsConsumable { get; set; }
         public int CurrentQuantity { get; set; }
         public int MaxQuantityPerCharacter { get; set; }
+        public string Tooltip { get; set; } = string.Empty;
     }
 
     public class PlayerSessionStoreDto

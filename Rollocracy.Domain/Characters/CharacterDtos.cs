@@ -117,6 +117,7 @@ namespace Rollocracy.Domain.Characters
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public bool IsSelected { get; set; }
+        public string Tooltip { get; set; } = string.Empty;
     }
 
     public class CharacterCreationItemDto
@@ -127,6 +128,7 @@ namespace Rollocracy.Domain.Characters
         public bool IsSelected { get; set; }
         public bool IsConsumable { get; set; }
         public int MaxQuantityPerCharacter { get; set; }
+        public string Tooltip { get; set; } = string.Empty;
     }
 
     public class CharacterCreationTraitOptionDto
@@ -134,6 +136,7 @@ namespace Rollocracy.Domain.Characters
         public Guid TraitOptionId { get; set; }
         public string Name { get; set; } = string.Empty;
         public bool IsLockedForCharacterCreation { get; set; }
+        public string Tooltip { get; set; } = string.Empty;
     }
 
     public class CharacterCreationTraitDto

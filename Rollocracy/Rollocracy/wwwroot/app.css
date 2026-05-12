@@ -4234,3 +4234,34 @@ html[data-theme="dark"] .rc-journal-popup-page .rc-journal-viewer__nav > button:
         padding-top: 0.35rem;
         padding-bottom: 0.35rem;
     }
+
+/* =========================================================
+   ROOM - ALERTES TEST / SONDAGE
+   ========================================================= */
+
+.rc-player-action-card--highlight {
+    animation: rc-player-action-card-highlight 1.6s ease-out;
+    border-color: var(--rc-accent);
+    box-shadow: 0 0 0 3px rgba(40, 105, 131, 0.18), var(--rc-shadow);
+}
+
+html[data-theme="dark"] .rc-player-action-card--highlight {
+    box-shadow: 0 0 0 3px rgba(196, 167, 231, 0.22), var(--rc-shadow);
+}
+
+@keyframes rc-player-action-card-highlight {
+    0% {
+        transform: translateY(-2px);
+        box-shadow: 0 0 0 6px rgba(40, 105, 131, 0.30), var(--rc-shadow);
+    }
+
+    55% {
+        transform: translateY(0);
+        box-shadow: 0 0 0 4px rgba(40, 105, 131, 0.18), var(--rc-shadow);
+    }
+
+    100% {
+        transform: translateY(0);
+        box-shadow: 0 0 0 0 rgba(40, 105, 131, 0), var(--rc-shadow);
+    }
+}

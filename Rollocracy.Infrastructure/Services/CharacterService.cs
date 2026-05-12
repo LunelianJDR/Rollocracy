@@ -167,6 +167,21 @@ namespace Rollocracy.Infrastructure.Services
                 .OrderBy(t => t.Name)
                 .ToListAsync();
 
+            var traitDefinitionIds = traits.Select(x => x.Id).ToList();
+
+            var traitOptions = await context.TraitOptions
+                .AsNoTracking()
+                .Where(o => traitDefinitionIds.Contains(o.TraitDefinitionId))
+                .OrderBy(o => o.Name)
+                .ToListAsync();
+
+            var traitOptionIds = traitOptions.Select(x => x.Id).ToList();
+
+            var choiceOptionModifiers = await context.ChoiceOptionModifierDefinitions
+                .AsNoTracking()
+                .Where(x => traitOptionIds.Contains(x.ChoiceOptionDefinitionId))
+                .ToListAsync();
+
             var generatedAttributeDefaults = attributes.ToDictionary(a => a.Id, a => GenerateAttributeDefaultValue(a));
 
             var derivedDefinitions = await context.DerivedStatDefinitions
@@ -176,11 +191,36 @@ namespace Rollocracy.Infrastructure.Services
                 .ThenBy(d => d.Name)
                 .ToListAsync();
 
+            var metricDefinitions = await context.MetricDefinitions
+                .AsNoTracking()
+                .Where(m => m.GameSystemId == gameSystem.Id)
+                .OrderBy(m => m.DisplayOrder)
+                .ThenBy(m => m.Name)
+                .ToListAsync();
+
+            var gaugeDefinitions = await context.GaugeDefinitions
+                .AsNoTracking()
+                .Where(g => g.GameSystemId == gameSystem.Id)
+                .OrderBy(g => g.Name)
+                .ToListAsync();
+
             var talents = await context.TalentDefinitions
                 .AsNoTracking()
                 .Where(t => t.GameSystemId == gameSystem.Id && t.IsSelectableAtCharacterCreation)
                 .OrderBy(t => t.DisplayOrder)
                 .ThenBy(t => t.Name)
+                .ToListAsync();
+
+            var allTalentDefinitions = await context.TalentDefinitions
+                .AsNoTracking()
+                .Where(t => t.GameSystemId == gameSystem.Id)
+                .ToListAsync();
+
+            var talentIds = talents.Select(x => x.Id).ToList();
+
+            var talentModifiers = await context.TalentModifierDefinitions
+                .AsNoTracking()
+                .Where(x => talentIds.Contains(x.TalentDefinitionId))
                 .ToListAsync();
 
             var items = await context.ItemDefinitions
@@ -189,6 +229,31 @@ namespace Rollocracy.Infrastructure.Services
                 .OrderBy(i => i.DisplayOrder)
                 .ThenBy(i => i.Name)
                 .ToListAsync();
+
+            var allItemDefinitions = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(i => i.GameSystemId == gameSystem.Id || i.SessionId == session.Id)
+                .ToListAsync();
+
+            var itemIds = items.Select(x => x.Id).ToList();
+
+            var itemModifiers = await context.ItemModifierDefinitions
+                .AsNoTracking()
+                .Where(x => itemIds.Contains(x.ItemDefinitionId))
+                .ToListAsync();
+
+            var itemFamilies = await context.ItemFamilyDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystem.Id)
+                .ToListAsync();
+
+            var attributeNames = attributes.ToDictionary(x => x.Id, x => x.Name);
+            var derivedNames = derivedDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var metricNames = metricDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var gaugeNames = gaugeDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var talentNames = allTalentDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var itemNames = allItemDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var metricValues = new Dictionary<Guid, int>();
 
             var result = new CharacterCreationTemplateDto
             {
@@ -223,37 +288,73 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     TalentDefinitionId = t.Id,
                     Name = t.Name,
-                    Description = t.Description ?? string.Empty
+                    Description = t.Description ?? string.Empty,
+                    Tooltip = BuildTalentEffectTooltip(
+                        talentModifiers.Where(x => x.TalentDefinitionId == t.Id).ToList(),
+                        attributeNames,
+                        derivedNames,
+                        metricNames,
+                        gaugeNames,
+                        metricValues)
                 }).ToList(),
-                Items = items.Select(i => new CharacterCreationItemDto
+                Items = items.Select(i =>
                 {
-                    ItemDefinitionId = i.Id,
-                    Name = i.Name,
-                    Description = i.Description ?? string.Empty,
-                    IsConsumable = i.IsConsumable,
-                    MaxQuantityPerCharacter = i.MaxQuantityPerCharacter
+                    var family = i.ItemFamilyDefinitionId.HasValue
+                        ? itemFamilies.FirstOrDefault(x => x.Id == i.ItemFamilyDefinitionId.Value)
+                        : null;
+
+                    var effectTooltip = BuildItemEffectTooltip(
+                        itemModifiers.Where(x => x.ItemDefinitionId == i.Id).ToList(),
+                        attributeNames,
+                        derivedNames,
+                        metricNames,
+                        gaugeNames,
+                        talentNames,
+                        itemNames,
+                        metricValues,
+                        i.IsConsumable);
+
+                    var familyTooltip = family is null
+                        ? string.Empty
+                        : BuildItemFamilyTooltipPart(Guid.Empty, family, new List<CharacterItem>(), items);
+
+                    return new CharacterCreationItemDto
+                    {
+                        ItemDefinitionId = i.Id,
+                        Name = i.Name,
+                        Description = i.Description ?? string.Empty,
+                        IsConsumable = i.IsConsumable,
+                        MaxQuantityPerCharacter = i.MaxQuantityPerCharacter,
+                        Tooltip = string.Join("\n", new[] { effectTooltip, familyTooltip }.Where(x => !string.IsNullOrWhiteSpace(x)))
+                    };
                 }).ToList()
             };
 
             foreach (var trait in traits)
             {
-                var options = await context.TraitOptions
-                    .AsNoTracking()
-                    .Where(o => o.TraitDefinitionId == trait.Id)
-                    .OrderBy(o => o.Name)
-                    .ToListAsync();
-
                 result.Traits.Add(new CharacterCreationTraitDto
                 {
                     TraitDefinitionId = trait.Id,
                     Name = trait.Name,
                     IsRandomSelectionGroup = trait.IsRandomSelectionGroup,
-                    Options = options.Select(o => new CharacterCreationTraitOptionDto
-                    {
-                        TraitOptionId = o.Id,
-                        Name = o.Name,
-                        IsLockedForCharacterCreation = o.IsLockedForCharacterCreation
-                    }).ToList()
+                    Options = traitOptions
+                        .Where(o => o.TraitDefinitionId == trait.Id)
+                        .OrderBy(o => o.Name)
+                        .Select(o => new CharacterCreationTraitOptionDto
+                        {
+                            TraitOptionId = o.Id,
+                            Name = o.Name,
+                            IsLockedForCharacterCreation = o.IsLockedForCharacterCreation,
+                            Tooltip = BuildChoiceOptionEffectTooltip(
+                                choiceOptionModifiers.Where(x => x.ChoiceOptionDefinitionId == o.Id).ToList(),
+                                attributeNames,
+                                derivedNames,
+                                metricNames,
+                                gaugeNames,
+                                talentNames,
+                                itemNames,
+                                metricValues)
+                        }).ToList()
                 });
             }
 

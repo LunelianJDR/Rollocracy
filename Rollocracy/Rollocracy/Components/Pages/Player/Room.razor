@@ -287,7 +287,9 @@ else
                                 @foreach (var offer in GetVisibleStoreOffers())
                                 {
                                     <div class="rc-session-store-offer">
-                                        <div class="rc-session-store-offer__main">
+                                        <div class='@GetTooltipSurfaceClass(offer.Tooltip, "rc-session-store-offer__main")'
+                                             data-tooltip="@GetTooltipValue(offer.Tooltip)"
+                                             tabindex="@GetTooltipTabIndex(offer.Tooltip)">
                                             <div class="rc-session-store-offer__title">@offer.TargetName</div>
                                             <div class="rc-session-store-offer__meta">
                                                 <span>@(offer.OfferType == SessionStoreOfferType.Talent ? L["Character_Edit_Talents"] : L["Character_Edit_Items"])</span>
@@ -416,13 +418,24 @@ else
                                                 }
                                                 else
                                                 {
-                                                    <select @bind="CreationTraitSelections[trait.TraitDefinitionId]">
-                                                        <option value="">@L["CharacterCreation_SelectOptionPlaceholder"]</option>
+                                                    <div class="rc-character-inline-list">
                                                         @foreach (var option in GetSelectableCreationOptions(trait))
                                                         {
-                                                            <option value="@option.TraitOptionId">@option.Name</option>
+                                                            var isSelected = CreationTraitSelections.TryGetValue(trait.TraitDefinitionId, out var selectedOptionId)
+                                                                && selectedOptionId.HasValue
+                                                                && selectedOptionId.Value == option.TraitOptionId;
+
+                                                            <label class='@GetTooltipSurfaceClass(option.Tooltip, "rc-filter-toggle")'
+                                                                   data-tooltip="@GetTooltipValue(option.Tooltip)"
+                                                                   tabindex="@GetTooltipTabIndex(option.Tooltip)">
+                                                                <input type="radio"
+                                                                       name="@($"creation-trait-{trait.TraitDefinitionId:N}")"
+                                                                       checked="@isSelected"
+                                                                       @onchange="() => CreationTraitSelections[trait.TraitDefinitionId] = option.TraitOptionId" />
+                                                                <span>@option.Name</span>
+                                                            </label>
                                                         }
-                                                    </select>
+                                                    </div>
                                                 }
                                             </div>
                                         }
@@ -438,7 +451,9 @@ else
                                     <div class="rc-character-inline-list">
                                         @foreach (var talent in CreationTemplate.Talents)
                                         {
-                                            <label class="rc-filter-toggle">
+                                            <label class='@GetTooltipSurfaceClass(talent.Tooltip, "rc-filter-toggle")'
+                                                   data-tooltip="@GetTooltipValue(talent.Tooltip)"
+                                                   tabindex="@GetTooltipTabIndex(talent.Tooltip)">
                                                 <input type="checkbox"
                                                        checked="@SelectedCreationTalentIds.Contains(talent.TalentDefinitionId)"
                                                        disabled="@IsCreationTalentDisabled(talent.TalentDefinitionId)"
@@ -458,7 +473,9 @@ else
                                     <div class="rc-character-inline-list">
                                         @foreach (var item in CreationTemplate.Items)
                                         {
-                                            <label class="rc-filter-toggle">
+                                            <label class='@GetTooltipSurfaceClass(item.Tooltip, "rc-filter-toggle")'
+                                                   data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                   tabindex="@GetTooltipTabIndex(item.Tooltip)">
                                                 <input type="checkbox"
                                                        checked="@SelectedCreationItemIds.Contains(item.ItemDefinitionId)"
                                                        disabled="@IsCreationItemDisabled(item.ItemDefinitionId)"
@@ -1394,7 +1411,7 @@ else
     private string TwitchParentHost => new Uri(Navigation.BaseUri).Host;
 
     private bool CanAlertForCurrentTest(ActivePlayerGameTestDto? test)
-        => test is not null && !test.AlreadyRolled && test.AutoRollAtUtc >= DateTime.UtcNow;
+        => test is not null && !test.AlreadyRolled;
 
     private bool CanAlertForCurrentPoll(PollForPlayerDto? poll)
         => poll is not null && !poll.IsClosed && !poll.HasVoted;
@@ -1640,21 +1657,25 @@ else
             {
                 IsTestDismissed = false;
                 HighlightActiveTest = false;
+                return;
             }
-            else if (previousTestId != loadedTest.GameTestId)
+
+            var isNewTest = previousTestId != loadedTest.GameTestId;
+
+            if (isNewTest)
             {
                 IsTestDismissed = false;
-
-                if (allowArrivalAlert &&
-                    CanAlertForCurrentTest(loadedTest) &&
-                    LastAlertedActiveTestId != loadedTest.GameTestId)
-                {
-                    await TriggerActiveTestAlertAsync(loadedTest.GameTestId);
-                }
             }
             else
             {
                 IsTestDismissed = wasDismissed;
+            }
+
+            if (allowArrivalAlert &&
+                CanAlertForCurrentTest(loadedTest) &&
+                LastAlertedActiveTestId != loadedTest.GameTestId)
+            {
+                await TriggerActiveTestAlertAsync(loadedTest.GameTestId);
             }
         }
         catch (Exception ex)
@@ -2710,6 +2731,17 @@ else
             ?.OptionName ?? string.Empty;
     }
 
+    private static string GetTooltipSurfaceClass(string? tooltip, string baseClass)
+        => string.IsNullOrWhiteSpace(tooltip)
+            ? baseClass
+            : $"{baseClass} rc-player-tooltip-surface";
+
+    private static string? GetTooltipValue(string? tooltip)
+        => string.IsNullOrWhiteSpace(tooltip) ? null : tooltip;
+
+    private static int? GetTooltipTabIndex(string? tooltip)
+        => string.IsNullOrWhiteSpace(tooltip) ? null : 0;
+
     private RenderFragment RenderCharacterSheet(CharacterSheetDto sheet, bool isDeadView) => builder =>
 {
     var seq = 0;
@@ -3132,21 +3164,25 @@ else
             {
                 IsPollDismissed = false;
                 HighlightLatestPoll = false;
+                return;
             }
-            else if (previousPollId != loadedPoll.PollId)
+
+            var isNewPoll = previousPollId != loadedPoll.PollId;
+
+            if (isNewPoll)
             {
                 IsPollDismissed = false;
-
-                if (allowArrivalAlert &&
-                    CanAlertForCurrentPoll(loadedPoll) &&
-                    LastAlertedPollId != loadedPoll.PollId)
-                {
-                    await TriggerLatestPollAlertAsync(loadedPoll.PollId);
-                }
             }
             else
             {
                 IsPollDismissed = wasDismissed;
+            }
+
+            if (allowArrivalAlert &&
+                CanAlertForCurrentPoll(loadedPoll) &&
+                LastAlertedPollId != loadedPoll.PollId)
+            {
+                await TriggerLatestPollAlertAsync(loadedPoll.PollId);
             }
         }
         catch (Exception ex)
