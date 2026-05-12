@@ -390,7 +390,9 @@ else
                                     <div class="rc-character-inline-list">
                                         @foreach (var talentItem in SelectedEditableCharacter.Talents)
                                         {
-                                            <label class="rc-filter-toggle">
+                                            <label class='@GetTooltipSurfaceClass(talentItem.Tooltip, "rc-filter-toggle")'
+                                                   data-tooltip="@GetTooltipValue(talentItem.Tooltip)"
+                                                   tabindex="@GetTooltipTabIndex(talentItem.Tooltip)">
                                                 <input type="checkbox" @bind="talentItem.IsSelected" />
                                                 <span>@talentItem.Name</span>
                                             </label>
@@ -410,7 +412,9 @@ else
                                     <div class="rc-character-inline-list">
                                         @foreach (var item in SelectedEditableCharacter.Items)
                                         {
-                                            <div class="rc-consumable-edit-line rc-character-item-edit-line">
+                                            <div class='@GetTooltipSurfaceClass(item.Tooltip, "rc-consumable-edit-line rc-character-item-edit-line")'
+                                                 data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                 tabindex="@GetTooltipTabIndex(item.Tooltip)">
                                                 <label class="rc-filter-toggle rc-character-item-edit-line__owned">
                                                     <input type="checkbox" @bind="item.IsSelected" />
                                                     <span>@item.Name</span>
@@ -453,7 +457,11 @@ else
                                 <ul class="rc-detail-list">
                                     @foreach (var attributeLine in SelectedCharacterSheet.Attributes)
                                     {
-                                        <li>@attributeLine.Name : @attributeLine.Value</li>
+                                        <li>
+                                            <span class='@GetTooltipSurfaceClass(attributeLine.Tooltip, "rc-detail-tooltip-line")'
+                                                  data-tooltip="@GetTooltipValue(attributeLine.Tooltip)"
+                                                  tabindex="@GetTooltipTabIndex(attributeLine.Tooltip)">@attributeLine.Name : @attributeLine.Value</span>
+                                        </li>
                                     }
                                 </ul>
                             </div>
@@ -465,7 +473,11 @@ else
                                     <ul class="rc-detail-list">
                                         @foreach (var derivedLine in SelectedCharacterSheet.DerivedStats)
                                         {
-                                            <li>@derivedLine.Name : @derivedLine.Value</li>
+                                            <li>
+                                                <span class='@GetTooltipSurfaceClass(derivedLine.Tooltip, "rc-detail-tooltip-line")'
+                                                      data-tooltip="@GetTooltipValue(derivedLine.Tooltip)"
+                                                      tabindex="@GetTooltipTabIndex(derivedLine.Tooltip)">@derivedLine.Name : @derivedLine.Value</span>
+                                            </li>
                                         }
                                     </ul>
                                 </div>
@@ -476,7 +488,11 @@ else
                                 <ul class="rc-detail-list">
                                     @foreach (var traitLine in SelectedCharacterSheet.Traits)
                                     {
-                                        <li>@traitLine.TraitName : @traitLine.OptionName</li>
+                                        <li>
+                                            <span class='@GetTooltipSurfaceClass(traitLine.Tooltip, "rc-detail-tooltip-line")'
+                                                  data-tooltip="@GetTooltipValue(traitLine.Tooltip)"
+                                                  tabindex="@GetTooltipTabIndex(traitLine.Tooltip)">@traitLine.TraitName : @traitLine.OptionName</span>
+                                        </li>
                                     }
                                 </ul>
                             </div>
@@ -488,7 +504,11 @@ else
                                     <ul class="rc-detail-list">
                                         @foreach (var talentLine in SelectedCharacterSheet.Talents)
                                         {
-                                            <li>@talentLine.Name</li>
+                                            <li>
+                                                <span class='@GetTooltipSurfaceClass(talentLine.Tooltip, "rc-detail-tooltip-line")'
+                                                      data-tooltip="@GetTooltipValue(talentLine.Tooltip)"
+                                                      tabindex="@GetTooltipTabIndex(talentLine.Tooltip)">@talentLine.Name</span>
+                                            </li>
                                         }
                                     </ul>
                                 </div>
@@ -501,7 +521,11 @@ else
                                     <ul class="rc-detail-list">
                                         @foreach (var itemLine in SelectedCharacterSheet.Items)
                                         {
-                                            <li>@itemLine.Name</li>
+                                            <li>
+                                                <span class='@GetTooltipSurfaceClass(itemLine.Tooltip, "rc-detail-tooltip-line")'
+                                                      data-tooltip="@GetTooltipValue(itemLine.Tooltip)"
+                                                      tabindex="@GetTooltipTabIndex(itemLine.Tooltip)">@itemLine.Name</span>
+                                            </li>
                                         }
                                     </ul>
                                 </div>
@@ -526,6 +550,17 @@ else
 
 @code {
     [Parameter] public Guid SessionId { get; set; }
+
+    private static string GetTooltipSurfaceClass(string? tooltip, string baseClass)
+        => string.IsNullOrWhiteSpace(tooltip)
+            ? baseClass
+            : $"{baseClass} rc-player-tooltip-surface";
+
+    private static string? GetTooltipValue(string? tooltip)
+        => string.IsNullOrWhiteSpace(tooltip) ? null : tooltip;
+
+    private static int? GetTooltipTabIndex(string? tooltip)
+        => string.IsNullOrWhiteSpace(tooltip) ? null : 0;
 
     private HubConnection? hubConnection;
 

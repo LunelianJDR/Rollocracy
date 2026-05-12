@@ -1086,7 +1086,9 @@ else
                                                     <div class="rc-character-inline-list">
                                                         @foreach (var talentItem in ObservedEditableCharacter.Talents)
                                                         {
-                                                            <label class="rc-filter-toggle">
+                                                            <label class='@GetTooltipSurfaceClass(talentItem.Tooltip, "rc-filter-toggle")'
+                                                                   data-tooltip="@GetTooltipValue(talentItem.Tooltip)"
+                                                                   tabindex="@GetTooltipTabIndex(talentItem.Tooltip)">
                                                                 <input type="checkbox" @bind="talentItem.IsSelected" />
                                                                 <span>@talentItem.Name</span>
                                                             </label>
@@ -1106,7 +1108,9 @@ else
                                                     <div class="rc-character-inline-list">
                                                         @foreach (var item in ObservedEditableCharacter.Items)
                                                         {
-                                                            <div class="rc-consumable-edit-line">
+                                                            <div class='@GetTooltipSurfaceClass(item.Tooltip, "rc-consumable-edit-line")'
+                                                                 data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                                 tabindex="@GetTooltipTabIndex(item.Tooltip)">
                                                                 <label class="rc-filter-toggle">
                                                                     <input type="checkbox" @bind="item.IsSelected" />
                                                                     <span>@item.Name</span>
@@ -1161,7 +1165,11 @@ else
                                                 <ul class="rc-detail-list">
                                                     @foreach (var item in ObservedCharacterSheet.Attributes)
                                                     {
-                                                        <li>@item.Name : @item.Value</li>
+                                                        <li>
+                                                            <span class='@GetTooltipSurfaceClass(item.Tooltip, "rc-detail-tooltip-line")'
+                                                                  data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                                  tabindex="@GetTooltipTabIndex(item.Tooltip)">@item.Name : @item.Value</span>
+                                                        </li>
                                                     }
                                                 </ul>
                                             </div>
@@ -1173,7 +1181,11 @@ else
                                                     <ul class="rc-detail-list">
                                                         @foreach (var item in ObservedCharacterSheet.DerivedStats)
                                                         {
-                                                            <li>@item.Name : @item.Value</li>
+                                                            <li>
+                                                                <span class='@GetTooltipSurfaceClass(item.Tooltip, "rc-detail-tooltip-line")'
+                                                                      data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                                      tabindex="@GetTooltipTabIndex(item.Tooltip)">@item.Name : @item.Value</span>
+                                                            </li>
                                                         }
                                                     </ul>
                                                 </div>
@@ -1186,7 +1198,11 @@ else
                                                     <ul class="rc-detail-list">
                                                         @foreach (var item in ObservedCharacterSheet.Traits)
                                                         {
-                                                            <li>@item.TraitName : @item.OptionName</li>
+                                                            <li>
+                                                                <span class='@GetTooltipSurfaceClass(item.Tooltip, "rc-detail-tooltip-line")'
+                                                                      data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                                      tabindex="@GetTooltipTabIndex(item.Tooltip)">@item.TraitName : @item.OptionName</span>
+                                                            </li>
                                                         }
                                                     </ul>
                                                 </div>
@@ -1199,7 +1215,11 @@ else
                                                     <ul class="rc-detail-list">
                                                         @foreach (var item in ObservedCharacterSheet.Talents)
                                                         {
-                                                            <li>@item.Name</li>
+                                                            <li>
+                                                                <span class='@GetTooltipSurfaceClass(item.Tooltip, "rc-detail-tooltip-line")'
+                                                                      data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                                      tabindex="@GetTooltipTabIndex(item.Tooltip)">@item.Name</span>
+                                                            </li>
                                                         }
                                                     </ul>
                                                 </div>
@@ -1212,7 +1232,11 @@ else
                                                     <ul class="rc-detail-list">
                                                         @foreach (var item in ObservedCharacterSheet.Items)
                                                         {
-                                                            <li>@item.Name</li>
+                                                            <li>
+                                                                <span class='@GetTooltipSurfaceClass(item.Tooltip, "rc-detail-tooltip-line")'
+                                                                      data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                                      tabindex="@GetTooltipTabIndex(item.Tooltip)">@item.Name</span>
+                                                            </li>
                                                         }
                                                     </ul>
                                                 </div>

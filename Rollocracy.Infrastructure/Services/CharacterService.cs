@@ -2109,6 +2109,37 @@ namespace Rollocracy.Infrastructure.Services
 
             var computed = await ComputeCharacterContextAsync(context, playerSession.Id, gameSystemId, character.Id);
 
+            var derivedDefinitions = await context.DerivedStatDefinitions
+                .AsNoTracking()
+                .Where(d => d.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var metricDefinitions = await context.MetricDefinitions
+                .AsNoTracking()
+                .Where(m => m.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var talentDefinitionIds = talentDefinitions.Select(x => x.Id).ToList();
+            var itemDefinitionIds = itemDefinitions.Select(x => x.Id).ToList();
+
+            var talentModifiers = await context.TalentModifierDefinitions
+                .AsNoTracking()
+                .Where(x => talentDefinitionIds.Contains(x.TalentDefinitionId))
+                .ToListAsync();
+
+            var itemModifiers = await context.ItemModifierDefinitions
+                .AsNoTracking()
+                .Where(x => itemDefinitionIds.Contains(x.ItemDefinitionId))
+                .ToListAsync();
+
+            var attributeNames = attributeDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var derivedNames = derivedDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var metricNames = metricDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var gaugeNames = gaugeDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var talentNames = talentDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var itemNames = itemDefinitions.ToDictionary(x => x.Id, x => x.Name);
+            var metricValues = computed.MetricValues;
+
             return new EditableCharacterDto
             {
                 CharacterId = character.Id,
@@ -2181,7 +2212,14 @@ namespace Rollocracy.Infrastructure.Services
                     {
                         DefinitionId = t.Id,
                         Name = t.Name,
-                        IsSelected = characterTalentIds.Contains(t.Id)
+                        IsSelected = characterTalentIds.Contains(t.Id),
+                        Tooltip = BuildTalentEffectTooltip(
+                            talentModifiers.Where(x => x.TalentDefinitionId == t.Id).ToList(),
+                            attributeNames,
+                            derivedNames,
+                            metricNames,
+                            gaugeNames,
+                            metricValues)
                     })
                     .ToList(),
                 Items = itemDefinitions
@@ -2191,6 +2229,21 @@ namespace Rollocracy.Infrastructure.Services
                         var family = i.ItemFamilyDefinitionId.HasValue
                             ? itemFamilies.FirstOrDefault(x => x.Id == i.ItemFamilyDefinitionId.Value)
                             : null;
+
+                        var effectTooltip = BuildItemEffectTooltip(
+                            itemModifiers.Where(x => x.ItemDefinitionId == i.Id).ToList(),
+                            attributeNames,
+                            derivedNames,
+                            metricNames,
+                            gaugeNames,
+                            talentNames,
+                            itemNames,
+                            metricValues,
+                            i.IsConsumable);
+
+                        var familyTooltip = family is null
+                            ? string.Empty
+                            : BuildItemFamilyTooltipPart(character.Id, family, characterItems, itemDefinitions);
 
                         return new EditableCharacterGrantDto
                         {
@@ -2217,7 +2270,8 @@ namespace Rollocracy.Infrastructure.Services
                                 itemFamilies),
                             ActivationBlockedReason = i.ItemFamilyDefinitionId.HasValue
                                 ? _localizer["Backend_ItemFamilyActiveLimitReached"]
-                                : string.Empty
+                                : string.Empty,
+                            Tooltip = string.Join("\n", new[] { effectTooltip, familyTooltip }.Where(x => !string.IsNullOrWhiteSpace(x)))
                         };
                     })
                     .ToList()

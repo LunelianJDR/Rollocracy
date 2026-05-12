@@ -253,6 +253,7 @@ namespace Rollocracy.Domain.Characters
         public int FamilyMaxActive { get; set; }
         public bool CanActivate { get; set; } = true;
         public string ActivationBlockedReason { get; set; } = string.Empty;
+        public string Tooltip { get; set; } = string.Empty;
     }
 
     public class EditableCharacterDto
