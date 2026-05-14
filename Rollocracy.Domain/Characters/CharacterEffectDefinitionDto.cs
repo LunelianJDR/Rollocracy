@@ -1,5 +1,6 @@
 using System;
 using Rollocracy.Domain.GameRules;
+using Rollocracy.Domain.GameTests;
 
 namespace Rollocracy.Domain.Characters
 {
@@ -15,6 +16,12 @@ namespace Rollocracy.Domain.Characters
         public CharacterEffectOperationType OperationType { get; set; }
 
         public int Value { get; set; }
+
+        public ConsequenceClampMode ClampMode { get; set; } = ConsequenceClampMode.None;
+
+        public int ClampMinTotal { get; set; } = -100;
+
+        public int ClampMaxTotal { get; set; } = 100;
 
         public ModifierValueMode ValueMode { get; set; }
 

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
+using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
 using System.Text.Json;
@@ -207,7 +208,28 @@ namespace Rollocracy.Infrastructure.Services
                 var characterItems = allCharacterItems.Where(x => x.CharacterId == character.Id).ToList();
                 var characterModifiers = allCharacterModifiers.Where(x => x.CharacterId == character.Id).ToList();
 
-                foreach (var effect in perCharacterEffects)
+                var effectivePerCharacterEffects = NormalizeCharacterEffectsForCharacter(
+                    character.Id,
+                    perCharacterEffects,
+                    attributeDefinitions,
+                    gaugeDefinitions,
+                    derivedDefinitions,
+                    metricDefinitions,
+                    derivedComponents,
+                    metricComponents,
+                    metricFormulaSteps,
+                    allCharacterTraitValues.Where(x => x.CharacterId == character.Id).ToList(),
+                    itemDefinitions,
+                    attributeValues,
+                    gaugeValues,
+                    characterTalents,
+                    characterItems,
+                    choiceModifiers,
+                    talentModifiers,
+                    itemModifiers,
+                    characterModifiers);
+
+                foreach (var effect in effectivePerCharacterEffects)
                 {
                     await ApplySingleEffectAsync(
                         context,
@@ -242,6 +264,165 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             await context.SaveChangesAsync();
+        }
+
+
+        private List<CharacterEffectDefinitionDto> NormalizeCharacterEffectsForCharacter(
+            Guid characterId,
+            List<CharacterEffectDefinitionDto> effects,
+            List<AttributeDefinition> attributeDefinitions,
+            List<GaugeDefinition> gaugeDefinitions,
+            List<DerivedStatDefinition> derivedDefinitions,
+            List<MetricDefinition> metricDefinitions,
+            List<DerivedStatComponent> derivedComponents,
+            List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> metricFormulaSteps,
+            List<CharacterTraitValue> traitValues,
+            List<ItemDefinition> itemDefinitions,
+            List<CharacterAttributeValue> attributeValues,
+            List<CharacterGaugeValue> gaugeValues,
+            List<CharacterTalent> characterTalents,
+            List<CharacterItem> characterItems,
+            List<ChoiceOptionModifierDefinition> choiceModifiers,
+            List<TalentModifierDefinition> talentModifiers,
+            List<ItemModifierDefinition> itemModifiers,
+            List<CharacterModifier> characterModifiers)
+        {
+            var result = new List<CharacterEffectDefinitionDto>();
+
+            foreach (var group in effects.GroupBy(GetCharacterEffectClampGroupKey))
+            {
+                var groupEffects = group.ToList();
+
+                if (groupEffects.Count <= 1 ||
+                    group.Key is null ||
+                    groupEffects.First().ClampMode != ConsequenceClampMode.ClampTotal)
+                {
+                    result.AddRange(groupEffects);
+                    continue;
+                }
+
+                ValidateClampConfiguration(groupEffects.First());
+
+                var total = 0;
+
+                foreach (var effect in groupEffects)
+                {
+                    total += ResolveCharacterEffectSignedValue(
+                        characterId,
+                        effect,
+                        attributeDefinitions,
+                        gaugeDefinitions,
+                        derivedDefinitions,
+                        metricDefinitions,
+                        derivedComponents,
+                        metricComponents,
+                        metricFormulaSteps,
+                        traitValues,
+                        itemDefinitions,
+                        attributeValues,
+                        gaugeValues,
+                        characterTalents,
+                        characterItems,
+                        choiceModifiers,
+                        talentModifiers,
+                        itemModifiers,
+                        characterModifiers);
+                }
+
+                var template = groupEffects.First();
+
+                result.Add(new CharacterEffectDefinitionDto
+                {
+                    TargetType = template.TargetType,
+                    TargetId = template.TargetId,
+                    TargetName = template.TargetName,
+                    OperationType = CharacterEffectOperationType.AddValue,
+                    Value = Math.Clamp(total, template.ClampMinTotal, template.ClampMaxTotal),
+                    ClampMode = ConsequenceClampMode.None,
+                    ClampMinTotal = -100,
+                    ClampMaxTotal = 100,
+                    ValueMode = ModifierValueMode.Fixed,
+                    SourceMetricId = null
+                });
+            }
+
+            return result;
+        }
+
+        private static string? GetCharacterEffectClampGroupKey(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.OperationType != CharacterEffectOperationType.AddValue)
+                return null;
+
+            return $"{(int)effect.TargetType}:{effect.TargetId:N}";
+        }
+
+        private int ResolveCharacterEffectSignedValue(
+            Guid characterId,
+            CharacterEffectDefinitionDto effect,
+            List<AttributeDefinition> attributeDefinitions,
+            List<GaugeDefinition> gaugeDefinitions,
+            List<DerivedStatDefinition> derivedDefinitions,
+            List<MetricDefinition> metricDefinitions,
+            List<DerivedStatComponent> derivedComponents,
+            List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> metricFormulaSteps,
+            List<CharacterTraitValue> traitValues,
+            List<ItemDefinition> itemDefinitions,
+            List<CharacterAttributeValue> attributeValues,
+            List<CharacterGaugeValue> gaugeValues,
+            List<CharacterTalent> characterTalents,
+            List<CharacterItem> characterItems,
+            List<ChoiceOptionModifierDefinition> choiceModifiers,
+            List<TalentModifierDefinition> talentModifiers,
+            List<ItemModifierDefinition> itemModifiers,
+            List<CharacterModifier> characterModifiers)
+        {
+            if (effect.ValueMode != ModifierValueMode.Metric)
+                return effect.Value;
+
+            if (!effect.SourceMetricId.HasValue)
+                throw new Exception(_localizer["Backend_InvalidCharacterEffectSourceMetric"]);
+
+            var metricValue = ResolveCharacterValue(
+                characterId,
+                CharacterEffectTargetType.Metric,
+                effect.SourceMetricId.Value,
+                attributeDefinitions,
+                gaugeDefinitions,
+                derivedDefinitions,
+                metricDefinitions,
+                derivedComponents,
+                metricComponents,
+                metricFormulaSteps,
+                attributeValues,
+                gaugeValues,
+                traitValues,
+                itemDefinitions,
+                characterTalents,
+                characterItems,
+                choiceModifiers,
+                talentModifiers,
+                itemModifiers,
+                characterModifiers);
+
+            return effect.Value < 0
+                ? -metricValue
+                : metricValue;
+        }
+
+        private void ValidateClampConfiguration(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.ClampMode != ConsequenceClampMode.ClampTotal)
+                return;
+
+            if (effect.ClampMinTotal > 0 ||
+                effect.ClampMaxTotal < 0 ||
+                effect.ClampMinTotal > effect.ClampMaxTotal)
+            {
+                throw new Exception(_localizer["Backend_InvalidConsequenceClampConfiguration"]);
+            }
         }
 
         private static bool ShouldApplySessionGaugeEffectOnce(

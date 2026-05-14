@@ -3,6 +3,7 @@ using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
+using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
 using System.Text.Json;
@@ -428,7 +429,9 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(gauge => gauge.SessionId == sessionId && targetIds.Contains(gauge.Id))
                 .ToListAsync();
 
-            foreach (var effect in effects)
+            var normalizedEffects = NormalizeMassDistributionSessionGaugeEffects(effects);
+
+            foreach (var effect in normalizedEffects)
             {
                 var sessionGauge = sessionGauges.FirstOrDefault(gauge => gauge.Id == effect.TargetId);
                 if (sessionGauge is null)
@@ -441,6 +444,64 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             await context.SaveChangesAsync();
+        }
+
+        private List<CharacterEffectDefinitionDto> NormalizeMassDistributionSessionGaugeEffects(
+    List<CharacterEffectDefinitionDto> effects)
+        {
+            var result = new List<CharacterEffectDefinitionDto>();
+
+            foreach (var group in effects.GroupBy(effect => effect.TargetId))
+            {
+                var groupEffects = group.ToList();
+
+                if (groupEffects.Count <= 1 ||
+                    groupEffects.First().ClampMode != ConsequenceClampMode.ClampTotal)
+                {
+                    result.AddRange(groupEffects);
+                    continue;
+                }
+
+                ValidateClampConfiguration(groupEffects.First());
+
+                var template = groupEffects.First();
+                var total = groupEffects.Sum(effect => effect.Value);
+                var clampedTotal = Math.Clamp(total, template.ClampMinTotal, template.ClampMaxTotal);
+
+                // Important : 0 est une borne valide. Si le total clampé vaut 0,
+                // il n'y a aucun delta réel à appliquer.
+                if (clampedTotal == 0)
+                    continue;
+
+                result.Add(new CharacterEffectDefinitionDto
+                {
+                    TargetType = template.TargetType,
+                    TargetId = template.TargetId,
+                    TargetName = template.TargetName,
+                    OperationType = CharacterEffectOperationType.AddValue,
+                    Value = clampedTotal,
+                    ClampMode = ConsequenceClampMode.None,
+                    ClampMinTotal = -100,
+                    ClampMaxTotal = 100,
+                    ValueMode = ModifierValueMode.Fixed,
+                    SourceMetricId = null
+                });
+            }
+
+            return result;
+        }
+
+        private void ValidateClampConfiguration(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.ClampMode != ConsequenceClampMode.ClampTotal)
+                return;
+
+            if (effect.ClampMinTotal > 0 ||
+                effect.ClampMaxTotal < 0 ||
+                effect.ClampMinTotal > effect.ClampMaxTotal)
+            {
+                throw new Exception(_localizer["Backend_InvalidConsequenceClampConfiguration"]);
+            }
         }
 
 

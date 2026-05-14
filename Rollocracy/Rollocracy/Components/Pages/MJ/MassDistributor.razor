@@ -322,6 +322,9 @@ else
             Value = effect.ValueMode == ModifierValueMode.Metric
                 ? 1
                 : effect.Value,
+            ClampMode = effect.ClampMode,
+            ClampMinTotal = effect.ClampMinTotal,
+            ClampMaxTotal = effect.ClampMaxTotal,
             ValueMode = effect.ValueMode,
             SourceMetricId = effect.SourceMetricId
         }).ToList();
@@ -357,6 +360,9 @@ else
                     ? (row.ModifierMode == TestModifierMode.Bonus ? 1 : -1)
                     : row.Value)
                 : 0,
+            ClampMode = row.ClampMode,
+            ClampMinTotal = row.ClampMinTotal,
+            ClampMaxTotal = row.ClampMaxTotal,
             ValueMode = row.OperationType == TestConsequenceOperationType.AddValue &&
             row.TargetKind != TestConsequenceTargetKind.SessionGauge
                 ? row.ValueMode

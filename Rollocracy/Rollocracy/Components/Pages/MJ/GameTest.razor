@@ -1533,22 +1533,7 @@ else
                     .Where(row => row.OperationType != TestConsequenceOperationType.AddValue
                         || row.ValueMode != ModifierValueMode.Metric
                         || row.SourceMetricId.HasValue)
-                    .Select(row => new GameTestConsequenceDraftDto
-                    {
-                        ApplyOn = row.ApplyOn,
-                        ApplicationMode = row.ApplicationMode,
-                        OperationType = row.OperationType,
-                        TargetKind = row.TargetKind,
-                        TargetDefinitionId = row.TargetDefinitionId,
-                        ModifierMode = row.ValueMode == ModifierValueMode.Metric
-                            ? row.ModifierMode
-                            : TestModifierMode.Bonus,
-                        Value = row.ValueMode == ModifierValueMode.Metric ? 0 : row.Value,
-                        ValueMode = row.ValueMode,
-                        SourceMetricId = row.ValueMode == ModifierValueMode.Metric
-                            ? row.SourceMetricId
-                            : null
-                    })
+                    .Select(MapConsequenceRowToDto)
                     .ToList()
             };
 
@@ -2517,6 +2502,9 @@ else
             TargetDefinitionId = row.TargetDefinitionId,
             ModifierMode = row.ValueMode == ModifierValueMode.Metric ? row.ModifierMode : TestModifierMode.Bonus,
             Value = row.Value,
+            ClampMode = row.ClampMode,
+            ClampMinTotal = row.ClampMinTotal,
+            ClampMaxTotal = row.ClampMaxTotal,
             ValueMode = row.ValueMode,
             SourceMetricId = row.ValueMode == ModifierValueMode.Metric ? row.SourceMetricId : null
         };
@@ -2534,6 +2522,9 @@ else
             TargetDefinitionId = dto.TargetDefinitionId,
             ModifierMode = dto.ValueMode == ModifierValueMode.Metric ? dto.ModifierMode : TestModifierMode.Bonus,
             Value = dto.Value,
+            ClampMode = dto.ClampMode,
+            ClampMinTotal = dto.ClampMinTotal,
+            ClampMaxTotal = dto.ClampMaxTotal,
             ValueMode = dto.ValueMode,
             SourceMetricId = dto.ValueMode == ModifierValueMode.Metric ? dto.SourceMetricId : null
         };

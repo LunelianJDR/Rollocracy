@@ -13,6 +13,9 @@ namespace Rollocracy.Components.Pages.MJ.Shared
         public Guid TargetDefinitionId { get; set; }
         public TestModifierMode ModifierMode { get; set; } = TestModifierMode.Bonus;
         public int Value { get; set; } = 1;
+        public ConsequenceClampMode ClampMode { get; set; } = ConsequenceClampMode.None;
+        public int ClampMinTotal { get; set; } = -100;
+        public int ClampMaxTotal { get; set; } = 100;
         public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
         public Guid? SourceMetricId { get; set; }
     }

@@ -175,6 +175,9 @@ namespace Rollocracy.Infrastructure.Services
                         TargetNameSnapshot = targetName,
                         ModifierMode = consequence.ValueMode == ModifierValueMode.Metric ? consequence.ModifierMode : TestModifierMode.Bonus,
                         Value = consequence.Value,
+                        ClampMode = consequence.ClampMode,
+                        ClampMinTotal = consequence.ClampMinTotal,
+                        ClampMaxTotal = consequence.ClampMaxTotal,
                         ValueMode = consequence.ValueMode,
                         SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
                             ? consequence.SourceMetricId
@@ -585,6 +588,11 @@ namespace Rollocracy.Infrastructure.Services
                     .Where(x => !IsSessionGaugeConsequence(x))
                     .ToList();
 
+                voteConsequences = await NormalizePollConsequencesForCharacterAsync(
+                    context,
+                    vote.CharacterId,
+                    voteConsequences);
+
                 var legacyConsequences = voteConsequences
                     .Where(c =>
                         c.OperationType == TestConsequenceOperationType.AddValue &&
@@ -832,11 +840,14 @@ namespace Rollocracy.Infrastructure.Services
                 var optionVotes = votes.Where(v => v.SessionPollOptionId == optionId).ToList();
                 var optionConsequencesForSessionGauges = optionGroup.Select(x => x.consequence).ToList();
 
-                foreach (var consequence in optionConsequencesForSessionGauges)
+                foreach (var target in optionVotes.Select(v => new PollSessionGaugeTarget(v.CharacterId, v.Id)))
                 {
-                    var targets = ResolvePollSessionGaugeTargets(consequence, optionVotes, eligibleCharacterIds).ToList();
+                    var normalizedSessionGaugeConsequences = await NormalizePollConsequencesForCharacterAsync(
+                        context,
+                        target.CharacterId,
+                        optionConsequencesForSessionGauges);
 
-                    foreach (var target in targets)
+                    foreach (var consequence in normalizedSessionGaugeConsequences)
                     {
                         var applied = await ApplyPollSessionGaugeConsequenceAsync(
                             context,
@@ -859,6 +870,133 @@ namespace Rollocracy.Infrastructure.Services
 
             await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
             await _sessionNotifier.NotifyPollChangedAsync(sessionId);
+        }
+
+
+        private async Task<List<SessionPollOptionConsequence>> NormalizePollConsequencesForCharacterAsync(
+    RollocracyDbContext context,
+    Guid characterId,
+    List<SessionPollOptionConsequence> consequences)
+        {
+            var result = new List<SessionPollOptionConsequence>();
+
+            foreach (var group in consequences.GroupBy(GetPollConsequenceClampGroupKey))
+            {
+                var groupConsequences = group.ToList();
+
+                if (groupConsequences.Count <= 1 ||
+                    group.Key is null ||
+                    groupConsequences.First().ClampMode != ConsequenceClampMode.ClampTotal)
+                {
+                    result.AddRange(groupConsequences);
+                    continue;
+                }
+
+                ValidateClampConfiguration(groupConsequences.First());
+
+                var total = 0;
+
+                foreach (var consequence in groupConsequences)
+                {
+                    total += await ResolvePollConsequenceSignedValueAsync(context, characterId, consequence);
+                }
+
+                var template = groupConsequences.First();
+                var clampedTotal = Math.Clamp(total, template.ClampMinTotal, template.ClampMaxTotal);
+
+                // Important : 0 est une borne valide. Si le total clampé vaut 0,
+                // il n'y a aucun delta réel à appliquer.
+                if (clampedTotal == 0)
+                    continue;
+
+                result.Add(new SessionPollOptionConsequence
+                {
+                    Id = Guid.NewGuid(),
+                    SessionPollOptionId = template.SessionPollOptionId,
+                    TargetKind = template.TargetKind,
+                    TargetDefinitionId = template.TargetDefinitionId,
+                    ApplicationMode = template.ApplicationMode,
+                    TargetNameSnapshot = template.TargetNameSnapshot,
+                    ModifierMode = TestModifierMode.Bonus,
+                    Value = clampedTotal,
+                    ClampMode = ConsequenceClampMode.None,
+                    ClampMinTotal = -100,
+                    ClampMaxTotal = 100,
+                    ValueMode = ModifierValueMode.Fixed,
+                    SourceMetricId = null,
+                    OperationType = TestConsequenceOperationType.AddValue
+                });
+            }
+
+            return result;
+        }
+
+        private static string? GetPollConsequenceClampGroupKey(SessionPollOptionConsequence consequence)
+        {
+            if (consequence.OperationType != TestConsequenceOperationType.AddValue)
+                return null;
+
+            return $"{(int)consequence.TargetKind}:{consequence.TargetDefinitionId:N}";
+        }
+
+        private async Task<int> ResolvePollConsequenceSignedValueAsync(
+            RollocracyDbContext context,
+            Guid characterId,
+            SessionPollOptionConsequence consequence)
+        {
+            if (consequence.ValueMode == ModifierValueMode.Metric)
+            {
+                if (!consequence.SourceMetricId.HasValue)
+                    throw new Exception(_localizer["Backend_InvalidPollConsequenceSourceMetric"]);
+
+                var metricValue = await ComputeMetricVoteWeightAsync(
+                    context,
+                    consequence.SourceMetricId.Value,
+                    characterId,
+                    enforceMinimumOne: false);
+
+                var roundedMetricValue = (int)metricValue;
+
+                return consequence.ModifierMode == TestModifierMode.Bonus
+                    ? roundedMetricValue
+                    : -roundedMetricValue;
+            }
+
+            return consequence.ModifierMode == TestModifierMode.Bonus
+                ? consequence.Value
+                : -consequence.Value;
+        }
+
+        private void ValidateClampConfiguration(PollOptionConsequenceInlineDraftDto consequence)
+        {
+            ValidateClampConfiguration(
+                consequence.ClampMode,
+                consequence.ClampMinTotal,
+                consequence.ClampMaxTotal);
+        }
+
+        private void ValidateClampConfiguration(SessionPollOptionConsequence consequence)
+        {
+            ValidateClampConfiguration(
+                consequence.ClampMode,
+                consequence.ClampMinTotal,
+                consequence.ClampMaxTotal);
+        }
+
+        private void ValidateClampConfiguration(
+            ConsequenceClampMode clampMode,
+            int clampMinTotal,
+            int clampMaxTotal)
+        {
+            if (clampMode != ConsequenceClampMode.ClampTotal)
+                return;
+
+            if (clampMinTotal > 0 ||
+                clampMaxTotal < 0 ||
+                clampMinTotal > clampMaxTotal)
+            {
+                throw new Exception(_localizer["Backend_InvalidConsequenceClampConfiguration"]);
+            }
         }
 
         private static bool IsSessionGaugeConsequence(SessionPollOptionConsequence consequence)
@@ -1266,7 +1404,8 @@ namespace Rollocracy.Infrastructure.Services
         private async Task<decimal> ComputeMetricVoteWeightAsync(
     RollocracyDbContext context,
     Guid metricDefinitionId,
-    Guid characterId)
+    Guid characterId,
+    bool enforceMinimumOne = true)
         {
             var metricDefinition = await context.MetricDefinitions
                 .AsNoTracking()
@@ -1491,7 +1630,7 @@ namespace Rollocracy.Infrastructure.Services
                 }).ToList()
             }, metricDefinitionId);
 
-            if (metricValue < 1)
+            if (enforceMinimumOne && metricValue < 1)
                 metricValue = 1;
 
             return decimal.Round(metricValue, 2, MidpointRounding.AwayFromZero);
@@ -1636,6 +1775,9 @@ namespace Rollocracy.Infrastructure.Services
                 TargetId = consequence.TargetDefinitionId,
                 TargetName = consequence.TargetNameSnapshot,
                 Value = resolvedValue,
+                ClampMode = consequence.ClampMode,
+                ClampMinTotal = consequence.ClampMinTotal,
+                ClampMaxTotal = consequence.ClampMaxTotal,
                 ValueMode = consequence.ValueMode,
                 SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
                     ? consequence.SourceMetricId
@@ -1798,6 +1940,8 @@ namespace Rollocracy.Infrastructure.Services
 
                             if (consequence.ValueMode == ModifierValueMode.Fixed && consequence.Value == 0)
                                 throw new Exception(_localizer["Backend_InvalidPollConsequenceValue"]);
+
+                            ValidateClampConfiguration(consequence);
                             break;
 
                         case TestConsequenceOperationType.GrantTalent:
@@ -1974,6 +2118,9 @@ namespace Rollocracy.Infrastructure.Services
                     TargetName = x.consequence.TargetNameSnapshot,
                     ModifierMode = x.consequence.ModifierMode,
                     Value = x.consequence.Value,
+                    ClampMode = x.consequence.ClampMode,
+                    ClampMinTotal = x.consequence.ClampMinTotal,
+                    ClampMaxTotal = x.consequence.ClampMaxTotal,
                     ValueMode = x.consequence.ValueMode,
                     SourceMetricId = x.consequence.SourceMetricId,
                     SourceMetricName = x.consequence.SourceMetricId.HasValue

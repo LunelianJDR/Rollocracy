@@ -90,6 +90,18 @@ namespace Rollocracy.Infrastructure.Persistence
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<GameTestConsequence>(entity =>
+            {
+                entity.Property(x => x.ClampMode)
+                    .HasDefaultValue(ConsequenceClampMode.None);
+            });
+
+            modelBuilder.Entity<SessionPollOptionConsequence>(entity =>
+            {
+                entity.Property(x => x.ClampMode)
+                    .HasDefaultValue(ConsequenceClampMode.None);
+            });
+
             modelBuilder.Entity<UserAccount>(entity =>
             {
                 entity.HasIndex(u => u.Username)

@@ -28,10 +28,12 @@
                         {
                             <div class="rc-form-field">
                                 <label>@L["Test_When"]</label>
-                                <select @bind="row.ApplyOn" class="@GetApplyOnCssClass(row.ApplyOn)">
+                                <select value="@((int)row.ApplyOn)"
+                                        @onchange="e => ChangeApplyOn(row, e.Value?.ToString())"
+                                        class="@GetApplyOnCssClass(row.ApplyOn)">
                                     @foreach (var applyOnOption in ApplyOnOptions)
                                     {
-                                        <option value="@applyOnOption.Value">@applyOnOption.Label</option>
+                                        <option value="@((int)applyOnOption.Value)">@applyOnOption.Label</option>
                                     }
                                 </select>
                             </div>
@@ -81,7 +83,7 @@
 
                         <div class="rc-form-field">
                             <label>@L["Test_TargetDefinition"]</label>
-                            <select @bind="row.TargetDefinitionId">
+                            <select value="@row.TargetDefinitionId" @onchange="e => ChangeTargetDefinition(row, e.Value?.ToString())">
                                 @foreach (var definition in GetDefinitionOptions(row.TargetKind))
                                 {
                                     <option value="@definition.Id">@definition.Name</option>
@@ -142,6 +144,36 @@
                                     <input type="number" @bind="row.Value" class="@GetValueCssClass(row.Value)" />
                                 </div>
                             }
+
+                            @if (ShouldShowClampControls(row))
+                            {
+                                <div class="rc-form-field">
+                                    <label>@L["Consequence_ClampMode"]</label>
+                                    <select value="@((int)row.ClampMode)" @onchange="e => ChangeClampMode(row, e.Value?.ToString())">
+                                        <option value="@((int)ConsequenceClampMode.None)">@L["Consequence_ClampMode_None"]</option>
+                                        <option value="@((int)ConsequenceClampMode.ClampTotal)">@L["Consequence_ClampMode_ClampTotal"]</option>
+                                    </select>
+                                </div>
+
+                                @if (row.ClampMode == ConsequenceClampMode.ClampTotal)
+                                {
+                                    <div class="rc-form-field">
+                                        <label>@L["Consequence_ClampMinTotal"]</label>
+                                        <input type="number"
+                                               value="@row.ClampMinTotal"
+                                               @onchange="e => ChangeClampMinTotal(row, e.Value?.ToString())"
+                                               class="@GetValueCssClass(row.ClampMinTotal)" />
+                                    </div>
+
+                                    <div class="rc-form-field">
+                                        <label>@L["Consequence_ClampMaxTotal"]</label>
+                                        <input type="number"
+                                               value="@row.ClampMaxTotal"
+                                               @onchange="e => ChangeClampMaxTotal(row, e.Value?.ToString())"
+                                               class="@GetValueCssClass(row.ClampMaxTotal)" />
+                                    </div>
+                                }
+                            }
                         }
                     </div>
 
@@ -201,6 +233,9 @@
             TargetDefinitionId = initialTargetId,
             ModifierMode = TestModifierMode.Bonus,
             Value = 1,
+            ClampMode = ConsequenceClampMode.None,
+            ClampMinTotal = -100,
+            ClampMaxTotal = 100,
             ValueMode = ModifierValueMode.Fixed,
             SourceMetricId = MetricTargets.FirstOrDefault()?.Id
         });
@@ -211,6 +246,16 @@
         var row = Rows.FirstOrDefault(x => x.RowId == rowId);
         if (row is not null)
             Rows.Remove(row);
+    }
+
+    private void ChangeApplyOn(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.ApplyOn = (TestConsequenceApplyOn)parsed;
+        NormalizeApplicationMode(row);
+        SyncClampGroupFrom(row);
     }
 
     private void ChangeOperation(SharedConsequenceRowModel row, string? rawValue)
@@ -253,6 +298,7 @@
         }
 
         NormalizeApplicationMode(row);
+        SyncClampGroupFrom(row);
     }
 
     private void ChangeTargetKind(SharedConsequenceRowModel row, string? rawValue)
@@ -263,6 +309,17 @@
         row.TargetKind = (TestConsequenceTargetKind)parsed;
         row.TargetDefinitionId = GetFirstTargetId(row.TargetKind);
         NormalizeApplicationMode(row);
+        SyncClampGroupFrom(row);
+    }
+
+    private void ChangeTargetDefinition(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!Guid.TryParse(rawValue, out var parsed))
+            return;
+
+        row.TargetDefinitionId = parsed;
+        NormalizeApplicationMode(row);
+        SyncClampGroupFrom(row);
     }
 
     private void ChangeValueMode(SharedConsequenceRowModel row, string? rawValue)
@@ -300,6 +357,7 @@
 
         row.ApplicationMode = (TestConsequenceApplicationMode)parsed;
         NormalizeApplicationMode(row);
+        SyncClampGroupFrom(row);
     }
 
     private void NormalizeApplicationMode(SharedConsequenceRowModel row)
@@ -320,6 +378,98 @@
             row.ModifierMode = TestModifierMode.Bonus;
             if (row.Value == 0)
                 row.Value = 1;
+        }
+    }
+
+
+    private void ChangeClampMode(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.ClampMode = (ConsequenceClampMode)parsed;
+        NormalizeClampValues(row);
+        SyncClampGroupFrom(row);
+    }
+
+    private void ChangeClampMinTotal(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.ClampMinTotal = parsed;
+        NormalizeClampValues(row);
+        SyncClampGroupFrom(row);
+    }
+
+    private void ChangeClampMaxTotal(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.ClampMaxTotal = parsed;
+        NormalizeClampValues(row);
+        SyncClampGroupFrom(row);
+    }
+
+    private void NormalizeClampValues(SharedConsequenceRowModel row)
+    {
+        if (row.ClampMinTotal > 0)
+            row.ClampMinTotal = 0;
+
+        if (row.ClampMaxTotal < 0)
+            row.ClampMaxTotal = 0;
+
+        if (row.ClampMinTotal > row.ClampMaxTotal)
+        {
+            row.ClampMinTotal = Math.Min(row.ClampMinTotal, 0);
+            row.ClampMaxTotal = Math.Max(row.ClampMaxTotal, 0);
+
+            if (row.ClampMinTotal > row.ClampMaxTotal)
+                row.ClampMaxTotal = row.ClampMinTotal;
+        }
+    }
+
+    private bool ShouldShowClampControls(SharedConsequenceRowModel row)
+    {
+        if (!IsClampEligible(row))
+            return false;
+
+        return Rows.Count(other => IsSameClampGroup(row, other)) >= 2;
+    }
+
+    private static bool IsClampEligible(SharedConsequenceRowModel row)
+    {
+        return row.OperationType == TestConsequenceOperationType.AddValue &&
+            row.TargetDefinitionId != Guid.Empty;
+    }
+
+    private bool IsSameClampGroup(SharedConsequenceRowModel first, SharedConsequenceRowModel second)
+    {
+        if (!IsClampEligible(first) || !IsClampEligible(second))
+            return false;
+
+        if (first.TargetKind != second.TargetKind ||
+            first.TargetDefinitionId != second.TargetDefinitionId)
+        {
+            return false;
+        }
+
+        if (ShowApplyOn && first.ApplyOn != second.ApplyOn)
+            return false;
+
+        return true;
+    }
+
+    private void SyncClampGroupFrom(SharedConsequenceRowModel source)
+    {
+        NormalizeClampValues(source);
+
+        foreach (var row in Rows.Where(row => row.RowId != source.RowId && IsSameClampGroup(source, row)))
+        {
+            row.ClampMode = source.ClampMode;
+            row.ClampMinTotal = source.ClampMinTotal;
+            row.ClampMaxTotal = source.ClampMaxTotal;
         }
     }
 

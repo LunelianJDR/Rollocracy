@@ -750,6 +750,9 @@ else
             TargetDefinitionId = GetFirstConsequenceTargetId(targetKind),
             ModifierMode = TestModifierMode.Bonus,
             Value = 1,
+            ClampMode = ConsequenceClampMode.None,
+            ClampMinTotal = -100,
+            ClampMaxTotal = 100,
             ValueMode = ModifierValueMode.Fixed,
             SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id
         });
@@ -850,6 +853,9 @@ else
                                 ? consequence.ModifierMode
                                 : TestModifierMode.Bonus,
                             Value = consequence.ValueMode == ModifierValueMode.Metric ? 0 : consequence.Value,
+                            ClampMode = consequence.ClampMode,
+                            ClampMinTotal = consequence.ClampMinTotal,
+                            ClampMaxTotal = consequence.ClampMaxTotal,
                             ValueMode = consequence.ValueMode,
                             SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
                                 ? consequence.SourceMetricId
@@ -1307,6 +1313,9 @@ else
                         ApplicationMode = c.ApplicationMode,
                         ModifierMode = c.ValueMode == ModifierValueMode.Metric ? c.ModifierMode : TestModifierMode.Bonus,
                         Value = c.ValueMode == ModifierValueMode.Metric ? 0 : c.Value,
+                        ClampMode = c.ClampMode,
+                        ClampMinTotal = c.ClampMinTotal,
+                        ClampMaxTotal = c.ClampMaxTotal,
                         ValueMode = c.ValueMode,
                         SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null,
                         OperationType = c.OperationType
@@ -1334,6 +1343,9 @@ else
                 ApplicationMode = c.ApplicationMode,
                 ModifierMode = c.ValueMode == ModifierValueMode.Metric ? c.ModifierMode : TestModifierMode.Bonus,
                 Value = c.Value,
+                ClampMode = c.ClampMode,
+                ClampMinTotal = c.ClampMinTotal,
+                ClampMaxTotal = c.ClampMaxTotal,
                 ValueMode = c.ValueMode,
                 SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null
             }).ToList()

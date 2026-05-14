@@ -4339,4 +4339,22 @@
 	<data name="Backend_ConsequenceMetricRequiresPerCharacterApplication" xml:space="preserve">
   <value>A metric-based consequence cannot be applied once to a session gauge.</value>
 </data>
+	<data name="Consequence_ClampMode" xml:space="preserve">
+  <value>Limit</value>
+</data>
+	<data name="Consequence_ClampMode_None" xml:space="preserve">
+  <value>No limit</value>
+</data>
+	<data name="Consequence_ClampMode_ClampTotal" xml:space="preserve">
+  <value>Limit total</value>
+</data>
+	<data name="Consequence_ClampMinTotal" xml:space="preserve">
+  <value>Max decrease</value>
+</data>
+	<data name="Consequence_ClampMaxTotal" xml:space="preserve">
+  <value>Max increase</value>
+</data>
+	<data name="Backend_InvalidConsequenceClampConfiguration" xml:space="preserve">
+  <value>The cumulative consequence limit configuration is invalid.</value>
+</data>
 </root>

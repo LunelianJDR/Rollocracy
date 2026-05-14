@@ -28,6 +28,12 @@ namespace Rollocracy.Domain.GameTests
         // Pour Add / Remove value
         public int Value { get; set; }
 
+        public ConsequenceClampMode ClampMode { get; set; } = ConsequenceClampMode.None;
+
+        public int ClampMinTotal { get; set; } = -100;
+
+        public int ClampMaxTotal { get; set; } = 100;
+
         // 6D : valeur fixe ou metric source
         public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
 
