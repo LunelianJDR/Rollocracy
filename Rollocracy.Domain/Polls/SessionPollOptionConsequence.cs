@@ -34,6 +34,10 @@ namespace Rollocracy.Domain.Polls
 
         public Guid? SourceMetricId { get; set; }
 
+        public int RandomDiceCount { get; set; } = 1;
+
+        public int RandomDiceSides { get; set; } = 6;
+
         public TestConsequenceOperationType OperationType { get; set; }
     }
 }

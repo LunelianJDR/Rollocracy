@@ -40,6 +40,11 @@ namespace Rollocracy.Domain.GameTests
         // 6D : metric utilisée quand ValueMode = Metric
         public Guid? SourceMetricId { get; set; }
 
+        // C-3 : paramètres utilisés quand ValueMode = RandomDice.
+        public int RandomDiceCount { get; set; } = 1;
+
+        public int RandomDiceSides { get; set; } = 6;
+
         // Nouveau : type d'opération métier
         public TestConsequenceOperationType OperationType { get; set; }
     }

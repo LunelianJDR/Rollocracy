@@ -6,6 +6,7 @@ using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace Rollocracy.Infrastructure.Services
@@ -412,6 +413,39 @@ namespace Rollocracy.Infrastructure.Services
                 effect.TargetType == CharacterEffectTargetType.SessionGauge;
         }
 
+        private void ValidateRandomDiceConfiguration(int diceCount, int diceSides)
+        {
+            if (diceCount < 1 || diceCount > 5)
+                throw new Exception(_localizer["Backend_InvalidRandomDiceCount"]);
+
+            if (diceSides < 2 || diceSides > 100)
+                throw new Exception(_localizer["Backend_InvalidRandomDiceSides"]);
+        }
+
+        private static int RollRandomDice(int diceCount, int diceSides)
+        {
+            var normalizedDiceCount = NormalizeRandomDiceCount(diceCount);
+            var normalizedDiceSides = NormalizeRandomDiceSides(diceSides);
+
+            var total = 0;
+            for (var i = 0; i < normalizedDiceCount; i++)
+            {
+                total += RandomNumberGenerator.GetInt32(1, normalizedDiceSides + 1);
+            }
+
+            return total;
+        }
+
+        private static int NormalizeRandomDiceCount(int diceCount)
+        {
+            return diceCount <= 0 ? 1 : diceCount;
+        }
+
+        private static int NormalizeRandomDiceSides(int diceSides)
+        {
+            return diceSides <= 0 ? 6 : diceSides;
+        }
+
         private async Task ApplySessionGaugeEffectsOnceAsync(
             RollocracyDbContext context,
             Guid sessionId,
@@ -419,6 +453,11 @@ namespace Rollocracy.Infrastructure.Services
         {
             if (effects.Any(effect => effect.ValueMode == ModifierValueMode.Metric))
                 throw new Exception(_localizer["Backend_ConsequenceMetricRequiresPerCharacterApplication"]);
+
+            foreach (var effect in effects.Where(effect => effect.ValueMode == ModifierValueMode.RandomDice))
+            {
+                ValidateRandomDiceConfiguration(effect.RandomDiceCount, effect.RandomDiceSides);
+            }
 
             var targetIds = effects
                 .Select(effect => effect.TargetId)
@@ -458,14 +497,14 @@ namespace Rollocracy.Infrastructure.Services
                 if (groupEffects.Count <= 1 ||
                     groupEffects.First().ClampMode != ConsequenceClampMode.ClampTotal)
                 {
-                    result.AddRange(groupEffects);
+                    result.AddRange(groupEffects.Select(ResolveMassDistributionSessionGaugeEffect));
                     continue;
                 }
 
                 ValidateClampConfiguration(groupEffects.First());
 
                 var template = groupEffects.First();
-                var total = groupEffects.Sum(effect => effect.Value);
+                var total = groupEffects.Sum(ResolveMassDistributionSessionGaugeSignedValue);
                 var clampedTotal = Math.Clamp(total, template.ClampMinTotal, template.ClampMaxTotal);
 
                 // Important : 0 est une borne valide. Si le total clampé vaut 0,
@@ -484,11 +523,49 @@ namespace Rollocracy.Infrastructure.Services
                     ClampMinTotal = -100,
                     ClampMaxTotal = 100,
                     ValueMode = ModifierValueMode.Fixed,
-                    SourceMetricId = null
+                    SourceMetricId = null,
+                    RandomDiceCount = 1,
+                    RandomDiceSides = 6
                 });
             }
 
             return result;
+        }
+
+        private static CharacterEffectDefinitionDto ResolveMassDistributionSessionGaugeEffect(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.ValueMode != ModifierValueMode.RandomDice)
+                return effect;
+
+            return new CharacterEffectDefinitionDto
+            {
+                TargetType = effect.TargetType,
+                TargetId = effect.TargetId,
+                TargetName = effect.TargetName,
+                OperationType = effect.OperationType,
+                Value = ResolveMassDistributionSessionGaugeSignedValue(effect),
+                ClampMode = effect.ClampMode,
+                ClampMinTotal = effect.ClampMinTotal,
+                ClampMaxTotal = effect.ClampMaxTotal,
+                ValueMode = ModifierValueMode.Fixed,
+                SourceMetricId = null,
+                RandomDiceCount = 1,
+                RandomDiceSides = 6
+            };
+        }
+
+        private static int ResolveMassDistributionSessionGaugeSignedValue(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.ValueMode == ModifierValueMode.RandomDice)
+            {
+                var rollValue = RollRandomDice(effect.RandomDiceCount, effect.RandomDiceSides);
+
+                return effect.Value < 0
+                    ? -rollValue
+                    : rollValue;
+            }
+
+            return effect.Value;
         }
 
         private void ValidateClampConfiguration(CharacterEffectDefinitionDto effect)

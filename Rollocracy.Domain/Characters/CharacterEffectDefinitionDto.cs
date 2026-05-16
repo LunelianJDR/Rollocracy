@@ -26,5 +26,9 @@ namespace Rollocracy.Domain.Characters
         public ModifierValueMode ValueMode { get; set; }
 
         public Guid? SourceMetricId { get; set; }
+
+        public int RandomDiceCount { get; set; } = 1;
+
+        public int RandomDiceSides { get; set; } = 6;
     }
 }

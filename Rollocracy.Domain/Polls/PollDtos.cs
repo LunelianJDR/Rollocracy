@@ -31,6 +31,8 @@ namespace Rollocracy.Domain.Polls
 
         public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
         public Guid? SourceMetricId { get; set; }
+        public int RandomDiceCount { get; set; } = 1;
+        public int RandomDiceSides { get; set; } = 6;
         public TestConsequenceOperationType OperationType { get; set; }
     }
 
@@ -55,6 +57,8 @@ namespace Rollocracy.Domain.Polls
 
         public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
         public Guid? SourceMetricId { get; set; }
+        public int RandomDiceCount { get; set; } = 1;
+        public int RandomDiceSides { get; set; } = 6;
         public TestConsequenceOperationType OperationType { get; set; }
     }
 
@@ -121,6 +125,8 @@ namespace Rollocracy.Domain.Polls
         public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
         public Guid? SourceMetricId { get; set; }
         public string SourceMetricName { get; set; } = string.Empty;
+        public int RandomDiceCount { get; set; } = 1;
+        public int RandomDiceSides { get; set; } = 6;
         public TestConsequenceOperationType OperationType { get; set; }
     }
 

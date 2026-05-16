@@ -3,6 +3,7 @@
     public enum ModifierValueMode
     {
         Fixed = 0,
-        Metric = 1
+        Metric = 1,
+        RandomDice = 2
     }
 }

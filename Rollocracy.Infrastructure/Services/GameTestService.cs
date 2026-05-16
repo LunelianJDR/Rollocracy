@@ -286,7 +286,7 @@ namespace Rollocracy.Infrastructure.Services
                     TargetKind = consequence.TargetKind,
                     TargetDefinitionId = consequence.TargetDefinitionId,
                     TargetNameSnapshot = resolvedTargetName,
-                    ModifierMode = consequence.ValueMode == ModifierValueMode.Metric ? consequence.ModifierMode : TestModifierMode.Bonus,
+                    ModifierMode = consequence.ValueMode == ModifierValueMode.Metric || consequence.ValueMode == ModifierValueMode.RandomDice ? consequence.ModifierMode : TestModifierMode.Bonus,
                     Value = consequence.Value,
                     ClampMode = consequence.ClampMode,
                     ClampMinTotal = consequence.ClampMinTotal,
@@ -294,7 +294,9 @@ namespace Rollocracy.Infrastructure.Services
                     ValueMode = consequence.ValueMode,
                     SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
                         ? consequence.SourceMetricId
-                        : null
+                        : null,
+                    RandomDiceCount = consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceCount(consequence.RandomDiceCount) : 1,
+                    RandomDiceSides = consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceSides(consequence.RandomDiceSides) : 6
                 });
             }
 
@@ -823,7 +825,9 @@ namespace Rollocracy.Infrastructure.Services
                     ClampMinTotal = -100,
                     ClampMaxTotal = 100,
                     ValueMode = ModifierValueMode.Fixed,
-                    SourceMetricId = null
+                    SourceMetricId = null,
+                    RandomDiceCount = 1,
+                    RandomDiceSides = 6
                 });
             }
 
@@ -851,6 +855,15 @@ namespace Rollocracy.Infrastructure.Services
                     sessionId,
                     characterId,
                     consequence);
+            }
+
+            if (consequence.ValueMode == ModifierValueMode.RandomDice)
+            {
+                var rollValue = RollRandomDice(consequence.RandomDiceCount, consequence.RandomDiceSides);
+
+                return consequence.ModifierMode == TestModifierMode.Bonus
+                    ? rollValue
+                    : -rollValue;
             }
 
             return consequence.ModifierMode == TestModifierMode.Bonus
@@ -902,11 +915,11 @@ namespace Rollocracy.Infrastructure.Services
             if (sessionGauge is null)
                 return;
 
-            var signedValue = consequence.ValueMode == ModifierValueMode.Metric
-                ? await ResolveMetricConsequenceValueAsync(context, test.SessionId, character.Id, consequence)
-                : consequence.ModifierMode == TestModifierMode.Bonus
-                    ? consequence.Value
-                    : -consequence.Value;
+            var signedValue = await ResolveSignedGameTestConsequenceValueAsync(
+                context,
+                test.SessionId,
+                character.Id,
+                consequence);
 
             var previousCharacterAlive = character.IsAlive;
             var previousCharacterDiedAt = character.DiedAtUtc;
@@ -1012,9 +1025,11 @@ namespace Rollocracy.Infrastructure.Services
 
             foreach (var consequence in legacyConsequences)
             {
-                var signedValue = consequence.ModifierMode == TestModifierMode.Bonus
-                    ? consequence.Value
-                    : -consequence.Value;
+                var signedValue = await ResolveSignedGameTestConsequenceValueAsync(
+                    context,
+                    test.SessionId,
+                    characterId,
+                    consequence);
 
                 if (consequence.TargetKind == TestConsequenceTargetKind.Gauge)
                 {
@@ -1803,7 +1818,8 @@ namespace Rollocracy.Infrastructure.Services
                 ? consequence.Value
                 : -consequence.Value;
 
-            var resolvedValue = consequence.ValueMode == ModifierValueMode.Metric
+            var resolvedValue = consequence.ValueMode == ModifierValueMode.Metric ||
+                consequence.ValueMode == ModifierValueMode.RandomDice
                 ? (consequence.ModifierMode == TestModifierMode.Bonus ? 1 : -1)
                 : signedValue;
 
@@ -1828,7 +1844,9 @@ namespace Rollocracy.Infrastructure.Services
                 ValueMode = consequence.ValueMode,
                 SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
                     ? consequence.SourceMetricId
-                    : null
+                    : null,
+                RandomDiceCount = consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceCount(consequence.RandomDiceCount) : 1,
+                RandomDiceSides = consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceSides(consequence.RandomDiceSides) : 6
             };
         }
 
@@ -2487,9 +2505,12 @@ namespace Rollocracy.Infrastructure.Services
         {
             return consequence.OperationType switch
             {
-                TestConsequenceOperationType.AddValue => consequence.ValueMode == ModifierValueMode.Metric
-                    ? consequence.SourceMetricId.HasValue
-                    : consequence.Value != 0,
+                TestConsequenceOperationType.AddValue => consequence.ValueMode switch
+                {
+                    ModifierValueMode.Metric => consequence.SourceMetricId.HasValue,
+                    ModifierValueMode.RandomDice => true,
+                    _ => consequence.Value != 0
+                },
                 TestConsequenceOperationType.GrantTalent => consequence.TargetDefinitionId != Guid.Empty,
                 TestConsequenceOperationType.RevokeTalent => consequence.TargetDefinitionId != Guid.Empty,
                 TestConsequenceOperationType.GrantItem => consequence.TargetDefinitionId != Guid.Empty,
@@ -2642,6 +2663,9 @@ namespace Rollocracy.Infrastructure.Services
                 if (consequence.ValueMode == ModifierValueMode.Metric && !consequence.SourceMetricId.HasValue)
                     throw new Exception(_localizer["Backend_InvalidTestConsequenceSourceMetric"]);
 
+                if (consequence.ValueMode == ModifierValueMode.RandomDice)
+                    ValidateRandomDiceConfiguration(consequence.RandomDiceCount, consequence.RandomDiceSides);
+
                 if (IsSessionGaugeApplicationModeEligible(consequence) &&
                     NormalizeConsequenceApplicationMode(consequence) == TestConsequenceApplicationMode.ApplyOnce &&
                     consequence.ValueMode == ModifierValueMode.Metric)
@@ -2698,6 +2722,35 @@ namespace Rollocracy.Infrastructure.Services
             return mode == TestModifierMode.Bonus
                 ? baseValue + difficultyValue
                 : baseValue - difficultyValue;
+        }
+
+        private void ValidateRandomDiceConfiguration(int diceCount, int diceSides)
+        {
+            if (diceCount < 1 || diceCount > 5)
+                throw new Exception(_localizer["Backend_InvalidRandomDiceCount"]);
+
+            if (diceSides < 2 || diceSides > 100)
+                throw new Exception(_localizer["Backend_InvalidRandomDiceSides"]);
+        }
+
+        private int RollRandomDice(int diceCount, int diceSides)
+        {
+            var normalizedDiceCount = NormalizeRandomDiceCount(diceCount);
+            var normalizedDiceSides = NormalizeRandomDiceSides(diceSides);
+
+            ValidateRandomDiceConfiguration(normalizedDiceCount, normalizedDiceSides);
+
+            return RollDice(normalizedDiceCount, normalizedDiceSides).Sum();
+        }
+
+        private static int NormalizeRandomDiceCount(int diceCount)
+        {
+            return diceCount <= 0 ? 1 : diceCount;
+        }
+
+        private static int NormalizeRandomDiceSides(int diceSides)
+        {
+            return diceSides <= 0 ? 6 : diceSides;
         }
 
         private PlayerGameTestResultDto BuildPlayerResult(PlayerTestRoll row)

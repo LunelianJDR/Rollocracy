@@ -94,12 +94,24 @@ namespace Rollocracy.Infrastructure.Persistence
             {
                 entity.Property(x => x.ClampMode)
                     .HasDefaultValue(ConsequenceClampMode.None);
+
+                entity.Property(x => x.RandomDiceCount)
+                    .HasDefaultValue(1);
+
+                entity.Property(x => x.RandomDiceSides)
+                    .HasDefaultValue(6);
             });
 
             modelBuilder.Entity<SessionPollOptionConsequence>(entity =>
             {
                 entity.Property(x => x.ClampMode)
                     .HasDefaultValue(ConsequenceClampMode.None);
+
+                entity.Property(x => x.RandomDiceCount)
+                    .HasDefaultValue(1);
+
+                entity.Property(x => x.RandomDiceSides)
+                    .HasDefaultValue(6);
             });
 
             modelBuilder.Entity<UserAccount>(entity =>

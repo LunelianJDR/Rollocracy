@@ -4357,4 +4357,19 @@
 	<data name="Backend_InvalidConsequenceClampConfiguration" xml:space="preserve">
   <value>The cumulative consequence limit configuration is invalid.</value>
 </data>
+  <data name="GameSystem_Editor_ModifierValueMode_RandomDice" xml:space="preserve">
+  <value>Random dice</value>
+</data>
+  <data name="Consequence_RandomDiceCount" xml:space="preserve">
+  <value>Dice count</value>
+</data>
+  <data name="Consequence_RandomDiceSides" xml:space="preserve">
+  <value>Dice sides</value>
+</data>
+  <data name="Backend_InvalidRandomDiceCount" xml:space="preserve">
+  <value>Random dice count must be between 1 and 5.</value>
+</data>
+  <data name="Backend_InvalidRandomDiceSides" xml:space="preserve">
+  <value>Random dice sides must be between 2 and 100.</value>
+</data>
 </root>

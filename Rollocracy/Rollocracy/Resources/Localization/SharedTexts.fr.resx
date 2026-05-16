@@ -4357,4 +4357,19 @@
 	<data name="Backend_InvalidConsequenceClampConfiguration" xml:space="preserve">
   <value>La configuration de limite cumulée des conséquences est invalide.</value>
 </data>
+  <data name="GameSystem_Editor_ModifierValueMode_RandomDice" xml:space="preserve">
+  <value>Dés aléatoires</value>
+</data>
+  <data name="Consequence_RandomDiceCount" xml:space="preserve">
+  <value>Nombre de dés</value>
+</data>
+  <data name="Consequence_RandomDiceSides" xml:space="preserve">
+  <value>Faces du dé</value>
+</data>
+  <data name="Backend_InvalidRandomDiceCount" xml:space="preserve">
+  <value>Le nombre de dés aléatoires doit être compris entre 1 et 5.</value>
+</data>
+  <data name="Backend_InvalidRandomDiceSides" xml:space="preserve">
+  <value>Le nombre de faces des dés aléatoires doit être compris entre 2 et 100.</value>
+</data>
 </root>

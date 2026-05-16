@@ -411,6 +411,10 @@ else
                                                     {
                                                         @($"{L["Common_SourceMetric"]} : {consequence.SourceMetricName}")
                                                     }
+                                                    else if (consequence.ValueMode == ModifierValueMode.RandomDice)
+                                                    {
+                                                        @($"{(consequence.ModifierMode == TestModifierMode.Bonus ? "+" : "-")}{Math.Clamp(consequence.RandomDiceCount <= 0 ? 1 : consequence.RandomDiceCount, 1, 5)}d{Math.Clamp(consequence.RandomDiceSides <= 0 ? 6 : consequence.RandomDiceSides, 2, 100)}")
+                                                    }
                                                     else
                                                     {
                                                         @($"{(consequence.Value >= 0 ? "+" : string.Empty)}{consequence.Value}")
@@ -754,7 +758,9 @@ else
             ClampMinTotal = -100,
             ClampMaxTotal = 100,
             ValueMode = ModifierValueMode.Fixed,
-            SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id
+            SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id,
+            RandomDiceCount = 1,
+            RandomDiceSides = 6
         });
 
         return Task.CompletedTask;
@@ -849,10 +855,10 @@ else
                             TargetKind = consequence.TargetKind,
                             TargetDefinitionId = consequence.TargetDefinitionId,
                             ApplicationMode = consequence.ApplicationMode,
-                            ModifierMode = consequence.ValueMode == ModifierValueMode.Metric
+                            ModifierMode = consequence.ValueMode == ModifierValueMode.Metric || consequence.ValueMode == ModifierValueMode.RandomDice
                                 ? consequence.ModifierMode
                                 : TestModifierMode.Bonus,
-                            Value = consequence.ValueMode == ModifierValueMode.Metric ? 0 : consequence.Value,
+                            Value = consequence.ValueMode == ModifierValueMode.Metric || consequence.ValueMode == ModifierValueMode.RandomDice ? 0 : consequence.Value,
                             ClampMode = consequence.ClampMode,
                             ClampMinTotal = consequence.ClampMinTotal,
                             ClampMaxTotal = consequence.ClampMaxTotal,
@@ -860,6 +866,8 @@ else
                             SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
                                 ? consequence.SourceMetricId
                                 : null,
+                            RandomDiceCount = consequence.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(consequence.RandomDiceCount <= 0 ? 1 : consequence.RandomDiceCount, 1, 5) : 1,
+                            RandomDiceSides = consequence.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(consequence.RandomDiceSides <= 0 ? 6 : consequence.RandomDiceSides, 2, 100) : 6,
                             OperationType = consequence.OperationType
                         })
                     .ToList()
@@ -1311,13 +1319,15 @@ else
                         TargetKind = c.TargetKind,
                         TargetDefinitionId = c.TargetDefinitionId,
                         ApplicationMode = c.ApplicationMode,
-                        ModifierMode = c.ValueMode == ModifierValueMode.Metric ? c.ModifierMode : TestModifierMode.Bonus,
-                        Value = c.ValueMode == ModifierValueMode.Metric ? 0 : c.Value,
+                        ModifierMode = c.ValueMode == ModifierValueMode.Metric || c.ValueMode == ModifierValueMode.RandomDice ? c.ModifierMode : TestModifierMode.Bonus,
+                        Value = c.ValueMode == ModifierValueMode.Metric || c.ValueMode == ModifierValueMode.RandomDice ? 0 : c.Value,
                         ClampMode = c.ClampMode,
                         ClampMinTotal = c.ClampMinTotal,
                         ClampMaxTotal = c.ClampMaxTotal,
                         ValueMode = c.ValueMode,
                         SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null,
+                        RandomDiceCount = c.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(c.RandomDiceCount <= 0 ? 1 : c.RandomDiceCount, 1, 5) : 1,
+                        RandomDiceSides = c.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(c.RandomDiceSides <= 0 ? 6 : c.RandomDiceSides, 2, 100) : 6,
                         OperationType = c.OperationType
                     })
                     .ToList()
@@ -1341,13 +1351,15 @@ else
                 TargetKind = c.TargetKind,
                 TargetDefinitionId = c.TargetDefinitionId,
                 ApplicationMode = c.ApplicationMode,
-                ModifierMode = c.ValueMode == ModifierValueMode.Metric ? c.ModifierMode : TestModifierMode.Bonus,
+                ModifierMode = c.ValueMode == ModifierValueMode.Metric || c.ValueMode == ModifierValueMode.RandomDice ? c.ModifierMode : TestModifierMode.Bonus,
                 Value = c.Value,
                 ClampMode = c.ClampMode,
                 ClampMinTotal = c.ClampMinTotal,
                 ClampMaxTotal = c.ClampMaxTotal,
                 ValueMode = c.ValueMode,
-                SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null
+                SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null,
+                RandomDiceCount = c.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(c.RandomDiceCount <= 0 ? 1 : c.RandomDiceCount, 1, 5) : 1,
+                RandomDiceSides = c.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(c.RandomDiceSides <= 0 ? 6 : c.RandomDiceSides, 2, 100) : 6
             }).ToList()
         }).ToList();
 
