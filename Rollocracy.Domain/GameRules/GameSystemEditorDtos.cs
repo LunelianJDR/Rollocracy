@@ -149,12 +149,23 @@ namespace Rollocracy.Domain.GameRules
         public List<EditableModifierDefinitionDto> Modifiers { get; set; } = new();
     }
 
+    public class EditableItemFamilyDefinitionDto
+    {
+        public Guid? ItemFamilyDefinitionId { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public int MaxOwned { get; set; } = 1;
+        public int MaxActive { get; set; }
+        public int DisplayOrder { get; set; }
+        public bool IsDeleted { get; set; }
+    }
+
     public class EditableItemDefinitionDto
     {
         public Guid? ItemDefinitionId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public int DisplayOrder { get; set; }
+        public Guid? ItemFamilyDefinitionId { get; set; }
         public bool IsSelectableAtCharacterCreation { get; set; }
         public bool IsConsumable { get; set; }
         public int MaxQuantityPerCharacter { get; set; }
@@ -190,6 +201,7 @@ namespace Rollocracy.Domain.GameRules
         public List<EditableTraitDefinitionDto> Traits { get; set; } = new();
         public List<EditableGaugeDefinitionDto> Gauges { get; set; } = new();
         public List<EditableTalentDefinitionDto> Talents { get; set; } = new();
+        public List<EditableItemFamilyDefinitionDto> ItemFamilies { get; set; } = new();
         public List<EditableItemDefinitionDto> Items { get; set; } = new();
     }
 
@@ -215,6 +227,7 @@ namespace Rollocracy.Domain.GameRules
         public List<EditableTraitDefinitionDto> Traits { get; set; } = new();
         public List<EditableGaugeDefinitionDto> Gauges { get; set; } = new();
         public List<EditableTalentDefinitionDto> Talents { get; set; } = new();
+        public List<EditableItemFamilyDefinitionDto> ItemFamilies { get; set; } = new();
         public List<EditableItemDefinitionDto> Items { get; set; } = new();
     }
 }

@@ -188,6 +188,9 @@ else
                                               AddButtonLabel="@L["Poll_AddOptionConsequence"]"
                                               EmptyLabel="@L["Test_NoConsequence"]"
                                               ShowApplyOn="false"
+                                              IsPollContext="true"
+                                              ShowApplicationMode="false"
+                                              AllowSuccessFailureApplicationModes="false"
                                               Rows="optionRow.Consequences"
                                               ApplyOnOptions="ConsequenceApplyOnOptions"
                                               AttributeTargets="ConsequenceAttributeTargets"
@@ -254,7 +257,7 @@ else
                             {
                                 <button @onclick="ClosePoll">@L["Poll_Close"]</button>
                                 <button @onclick="ToggleLivePollResults">
-                                    @(ShowLivePollResults? L["Poll_HideLiveResults"] : L["Poll_ShowLiveResults"])
+                                    @(ShowLivePollResults ? L["Poll_HideLiveResults"] : L["Poll_ShowLiveResults"])
                                 </button>
                             }
                         </div>
@@ -338,7 +341,7 @@ else
                                 <div class="rc-tool-subsection__title">@L["Poll_VoteDetails"]</div>
                                 <div class="rc-tool-inline-actions">
                                     <button @onclick="TogglePollVoteDetails">
-                                        @(ShowPollVoteDetails? L["Poll_HideVoteDetails"] : L["Poll_ShowVoteDetails"])
+                                        @(ShowPollVoteDetails ? L["Poll_HideVoteDetails"] : L["Poll_ShowVoteDetails"])
                                     </button>
                                 </div>
                             </div>
@@ -407,6 +410,10 @@ else
                                                     @if (consequence.ValueMode == ModifierValueMode.Metric)
                                                     {
                                                         @($"{L["Common_SourceMetric"]} : {consequence.SourceMetricName}")
+                                                    }
+                                                    else if (consequence.ValueMode == ModifierValueMode.RandomDice)
+                                                    {
+                                                        @($"{(consequence.ModifierMode == TestModifierMode.Bonus ? "+" : "-")}{Math.Clamp(consequence.RandomDiceCount <= 0 ? 1 : consequence.RandomDiceCount, 1, 5)}d{Math.Clamp(consequence.RandomDiceSides <= 0 ? 6 : consequence.RandomDiceSides, 2, 100)}")
                                                     }
                                                     else
                                                     {
@@ -747,8 +754,13 @@ else
             TargetDefinitionId = GetFirstConsequenceTargetId(targetKind),
             ModifierMode = TestModifierMode.Bonus,
             Value = 1,
+            ClampMode = ConsequenceClampMode.None,
+            ClampMinTotal = -100,
+            ClampMaxTotal = 100,
             ValueMode = ModifierValueMode.Fixed,
-            SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id
+            SourceMetricId = AvailableMetrics.FirstOrDefault()?.Id,
+            RandomDiceCount = 1,
+            RandomDiceSides = 6
         });
 
         return Task.CompletedTask;
@@ -842,14 +854,20 @@ else
                         {
                             TargetKind = consequence.TargetKind,
                             TargetDefinitionId = consequence.TargetDefinitionId,
-                            ModifierMode = consequence.ValueMode == ModifierValueMode.Metric
+                            ApplicationMode = consequence.ApplicationMode,
+                            ModifierMode = consequence.ValueMode == ModifierValueMode.Metric || consequence.ValueMode == ModifierValueMode.RandomDice
                                 ? consequence.ModifierMode
                                 : TestModifierMode.Bonus,
-                            Value = consequence.ValueMode == ModifierValueMode.Metric ? 0 : consequence.Value,
+                            Value = consequence.ValueMode == ModifierValueMode.Metric || consequence.ValueMode == ModifierValueMode.RandomDice ? 0 : consequence.Value,
+                            ClampMode = consequence.ClampMode,
+                            ClampMinTotal = consequence.ClampMinTotal,
+                            ClampMaxTotal = consequence.ClampMaxTotal,
                             ValueMode = consequence.ValueMode,
                             SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
                                 ? consequence.SourceMetricId
                                 : null,
+                            RandomDiceCount = consequence.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(consequence.RandomDiceCount <= 0 ? 1 : consequence.RandomDiceCount, 1, 5) : 1,
+                            RandomDiceSides = consequence.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(consequence.RandomDiceSides <= 0 ? 6 : consequence.RandomDiceSides, 2, 100) : 6,
                             OperationType = consequence.OperationType
                         })
                     .ToList()
@@ -1300,10 +1318,16 @@ else
                     {
                         TargetKind = c.TargetKind,
                         TargetDefinitionId = c.TargetDefinitionId,
-                        ModifierMode = c.ValueMode == ModifierValueMode.Metric ? c.ModifierMode : TestModifierMode.Bonus,
-                        Value = c.ValueMode == ModifierValueMode.Metric ? 0 : c.Value,
+                        ApplicationMode = c.ApplicationMode,
+                        ModifierMode = c.ValueMode == ModifierValueMode.Metric || c.ValueMode == ModifierValueMode.RandomDice ? c.ModifierMode : TestModifierMode.Bonus,
+                        Value = c.ValueMode == ModifierValueMode.Metric || c.ValueMode == ModifierValueMode.RandomDice ? 0 : c.Value,
+                        ClampMode = c.ClampMode,
+                        ClampMinTotal = c.ClampMinTotal,
+                        ClampMaxTotal = c.ClampMaxTotal,
                         ValueMode = c.ValueMode,
                         SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null,
+                        RandomDiceCount = c.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(c.RandomDiceCount <= 0 ? 1 : c.RandomDiceCount, 1, 5) : 1,
+                        RandomDiceSides = c.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(c.RandomDiceSides <= 0 ? 6 : c.RandomDiceSides, 2, 100) : 6,
                         OperationType = c.OperationType
                     })
                     .ToList()
@@ -1326,10 +1350,16 @@ else
                 OperationType = c.OperationType,
                 TargetKind = c.TargetKind,
                 TargetDefinitionId = c.TargetDefinitionId,
-                ModifierMode = c.ValueMode == ModifierValueMode.Metric ? c.ModifierMode : TestModifierMode.Bonus,
+                ApplicationMode = c.ApplicationMode,
+                ModifierMode = c.ValueMode == ModifierValueMode.Metric || c.ValueMode == ModifierValueMode.RandomDice ? c.ModifierMode : TestModifierMode.Bonus,
                 Value = c.Value,
+                ClampMode = c.ClampMode,
+                ClampMinTotal = c.ClampMinTotal,
+                ClampMaxTotal = c.ClampMaxTotal,
                 ValueMode = c.ValueMode,
-                SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null
+                SourceMetricId = c.ValueMode == ModifierValueMode.Metric ? c.SourceMetricId : null,
+                RandomDiceCount = c.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(c.RandomDiceCount <= 0 ? 1 : c.RandomDiceCount, 1, 5) : 1,
+                RandomDiceSides = c.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(c.RandomDiceSides <= 0 ? 6 : c.RandomDiceSides, 2, 100) : 6
             }).ToList()
         }).ToList();
 

@@ -12,6 +12,8 @@ namespace Rollocracy.Domain.GameTests
 
         public TestConsequenceApplyOn ApplyOn { get; set; }
 
+        public TestConsequenceApplicationMode ApplicationMode { get; set; } = TestConsequenceApplicationMode.ApplyOnce;
+
         public TestConsequenceTargetKind TargetKind { get; set; }
 
         public Guid TargetDefinitionId { get; set; }
@@ -26,11 +28,22 @@ namespace Rollocracy.Domain.GameTests
         // Pour Add / Remove value
         public int Value { get; set; }
 
+        public ConsequenceClampMode ClampMode { get; set; } = ConsequenceClampMode.None;
+
+        public int ClampMinTotal { get; set; } = -100;
+
+        public int ClampMaxTotal { get; set; } = 100;
+
         // 6D : valeur fixe ou metric source
         public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
 
         // 6D : metric utilisée quand ValueMode = Metric
         public Guid? SourceMetricId { get; set; }
+
+        // C-3 : paramètres utilisés quand ValueMode = RandomDice.
+        public int RandomDiceCount { get; set; } = 1;
+
+        public int RandomDiceSides { get; set; } = 6;
 
         // Nouveau : type d'opération métier
         public TestConsequenceOperationType OperationType { get; set; }

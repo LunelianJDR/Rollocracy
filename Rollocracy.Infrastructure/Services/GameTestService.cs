@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Characters;
+using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
 using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
@@ -280,16 +281,22 @@ namespace Rollocracy.Infrastructure.Services
                     Id = Guid.NewGuid(),
                     GameTestId = test.Id,
                     ApplyOn = consequence.ApplyOn,
+                    ApplicationMode = NormalizeConsequenceApplicationMode(consequence),
                     OperationType = consequence.OperationType,
                     TargetKind = consequence.TargetKind,
                     TargetDefinitionId = consequence.TargetDefinitionId,
                     TargetNameSnapshot = resolvedTargetName,
-                    ModifierMode = consequence.ValueMode == ModifierValueMode.Metric ? consequence.ModifierMode : TestModifierMode.Bonus,
+                    ModifierMode = consequence.ValueMode == ModifierValueMode.Metric || consequence.ValueMode == ModifierValueMode.RandomDice ? consequence.ModifierMode : TestModifierMode.Bonus,
                     Value = consequence.Value,
+                    ClampMode = consequence.ClampMode,
+                    ClampMinTotal = consequence.ClampMinTotal,
+                    ClampMaxTotal = consequence.ClampMaxTotal,
                     ValueMode = consequence.ValueMode,
                     SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
                         ? consequence.SourceMetricId
-                        : null
+                        : null,
+                    RandomDiceCount = consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceCount(consequence.RandomDiceCount) : 1,
+                    RandomDiceSides = consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceSides(consequence.RandomDiceSides) : 6
                 });
             }
 
@@ -760,6 +767,215 @@ namespace Rollocracy.Infrastructure.Services
             await _sessionNotifier.NotifyTestChangedAsync(sessionId);
         }
 
+
+        private async Task<List<GameTestConsequence>> NormalizeGameTestConsequencesForCharacterAsync(
+    RollocracyDbContext context,
+    Guid sessionId,
+    Guid characterId,
+    List<GameTestConsequence> consequences)
+        {
+            var result = new List<GameTestConsequence>();
+
+            foreach (var group in consequences.GroupBy(GetGameTestConsequenceClampGroupKey))
+            {
+                var groupConsequences = group.ToList();
+
+                if (groupConsequences.Count <= 1 ||
+                    group.Key is null ||
+                    groupConsequences.First().ClampMode != ConsequenceClampMode.ClampTotal)
+                {
+                    result.AddRange(groupConsequences);
+                    continue;
+                }
+
+                ValidateClampConfiguration(groupConsequences.First());
+
+                var total = 0;
+
+                foreach (var consequence in groupConsequences)
+                {
+                    total += await ResolveSignedGameTestConsequenceValueAsync(
+                        context,
+                        sessionId,
+                        characterId,
+                        consequence);
+                }
+
+                var template = groupConsequences.First();
+                var clampedTotal = Math.Clamp(total, template.ClampMinTotal, template.ClampMaxTotal);
+
+                // Important : 0 est une borne valide. Si le total clampé vaut 0,
+                // il n'y a aucun delta réel à appliquer.
+                if (clampedTotal == 0)
+                    continue;
+
+                result.Add(new GameTestConsequence
+                {
+                    Id = Guid.NewGuid(),
+                    GameTestId = template.GameTestId,
+                    ApplyOn = template.ApplyOn,
+                    ApplicationMode = template.ApplicationMode,
+                    OperationType = TestConsequenceOperationType.AddValue,
+                    TargetKind = template.TargetKind,
+                    TargetDefinitionId = template.TargetDefinitionId,
+                    TargetNameSnapshot = template.TargetNameSnapshot,
+                    ModifierMode = TestModifierMode.Bonus,
+                    Value = clampedTotal,
+                    ClampMode = ConsequenceClampMode.None,
+                    ClampMinTotal = -100,
+                    ClampMaxTotal = 100,
+                    ValueMode = ModifierValueMode.Fixed,
+                    SourceMetricId = null,
+                    RandomDiceCount = 1,
+                    RandomDiceSides = 6
+                });
+            }
+
+            return result;
+        }
+
+        private static string? GetGameTestConsequenceClampGroupKey(GameTestConsequence consequence)
+        {
+            if (consequence.OperationType != TestConsequenceOperationType.AddValue)
+                return null;
+
+            return $"{(int)consequence.ApplyOn}:{(int)consequence.TargetKind}:{consequence.TargetDefinitionId:N}";
+        }
+
+        private async Task<int> ResolveSignedGameTestConsequenceValueAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            Guid characterId,
+            GameTestConsequence consequence)
+        {
+            if (consequence.ValueMode == ModifierValueMode.Metric)
+            {
+                return await ResolveMetricConsequenceValueAsync(
+                    context,
+                    sessionId,
+                    characterId,
+                    consequence);
+            }
+
+            if (consequence.ValueMode == ModifierValueMode.RandomDice)
+            {
+                var rollValue = RollRandomDice(consequence.RandomDiceCount, consequence.RandomDiceSides);
+
+                return consequence.ModifierMode == TestModifierMode.Bonus
+                    ? rollValue
+                    : -rollValue;
+            }
+
+            return consequence.ModifierMode == TestModifierMode.Bonus
+                ? consequence.Value
+                : -consequence.Value;
+        }
+
+        private void ValidateClampConfiguration(GameTestConsequenceDraftDto consequence)
+        {
+            ValidateClampConfiguration(
+                consequence.ClampMode,
+                consequence.ClampMinTotal,
+                consequence.ClampMaxTotal);
+        }
+
+        private void ValidateClampConfiguration(GameTestConsequence consequence)
+        {
+            ValidateClampConfiguration(
+                consequence.ClampMode,
+                consequence.ClampMinTotal,
+                consequence.ClampMaxTotal);
+        }
+
+        private void ValidateClampConfiguration(
+            ConsequenceClampMode clampMode,
+            int clampMinTotal,
+            int clampMaxTotal)
+        {
+            if (clampMode != ConsequenceClampMode.ClampTotal)
+                return;
+
+            if (clampMinTotal > 0 ||
+                clampMaxTotal < 0 ||
+                clampMinTotal > clampMaxTotal)
+            {
+                throw new Exception(_localizer["Backend_InvalidConsequenceClampConfiguration"]);
+            }
+        }
+
+        private async Task ApplySessionGaugeConsequenceAsync(
+            RollocracyDbContext context,
+            GameTest test,
+            Character character,
+            GameTestConsequence consequence)
+        {
+            var sessionGauge = await context.SessionGauges
+                .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.SessionId == test.SessionId);
+
+            if (sessionGauge is null)
+                return;
+
+            var signedValue = await ResolveSignedGameTestConsequenceValueAsync(
+                context,
+                test.SessionId,
+                character.Id,
+                consequence);
+
+            var previousCharacterAlive = character.IsAlive;
+            var previousCharacterDiedAt = character.DiedAtUtc;
+            var previousValue = sessionGauge.CurrentValue;
+
+            sessionGauge.CurrentValue = Math.Clamp(
+                sessionGauge.CurrentValue + signedValue,
+                sessionGauge.MinValue,
+                sessionGauge.MaxValue);
+
+            context.GameTestAppliedEffects.Add(new GameTestAppliedEffect
+            {
+                Id = Guid.NewGuid(),
+                GameTestId = test.Id,
+                CharacterId = character.Id,
+                TargetKind = TestConsequenceTargetKind.SessionGauge,
+                TargetDefinitionId = consequence.TargetDefinitionId,
+                OperationType = TestConsequenceOperationType.AddValue,
+                PreviousValue = previousValue,
+                NewValue = sessionGauge.CurrentValue,
+                PreviousHasTargetLink = false,
+                NewHasTargetLink = false,
+                PreviousIsAlive = previousCharacterAlive,
+                NewIsAlive = character.IsAlive,
+                PreviousDiedAtUtc = previousCharacterDiedAt,
+                NewDiedAtUtc = character.DiedAtUtc,
+                AppliedAtUtc = DateTime.UtcNow
+            });
+        }
+
+        private async Task<int> ResolveMetricConsequenceValueAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            Guid characterId,
+            GameTestConsequence consequence)
+        {
+            if (!consequence.SourceMetricId.HasValue)
+                throw new Exception(_localizer["Backend_InvalidTestConsequenceSourceMetric"]);
+
+            var gameSystemId = await context.Sessions
+                .AsNoTracking()
+                .Where(s => s.Id == sessionId)
+                .Select(s => s.GameSystemId)
+                .FirstOrDefaultAsync();
+
+            if (!gameSystemId.HasValue)
+                throw new Exception(_localizer["Backend_SessionHasNoGameSystem"]);
+
+            var metricValues = await ResolveCharacterMetricValuesAsync(context, gameSystemId.Value, characterId);
+            var metricValue = metricValues.GetValueOrDefault(consequence.SourceMetricId.Value);
+
+            return consequence.ModifierMode == TestModifierMode.Bonus
+                ? metricValue
+                : -metricValue;
+        }
+
         private async Task ApplyResolvedConsequencesAsync(
     RollocracyDbContext context,
     Guid gameTestId,
@@ -780,6 +996,23 @@ namespace Rollocracy.Infrastructure.Services
             if (character == null)
                 return;
 
+            consequences = await NormalizeGameTestConsequencesForCharacterAsync(
+                context,
+                test.SessionId,
+                characterId,
+                consequences);
+
+            var sessionGaugeConsequences = consequences
+                .Where(c =>
+                    c.OperationType == TestConsequenceOperationType.AddValue &&
+                    c.TargetKind == TestConsequenceTargetKind.SessionGauge)
+                .ToList();
+
+            foreach (var consequence in sessionGaugeConsequences)
+            {
+                await ApplySessionGaugeConsequenceAsync(context, test, character, consequence);
+            }
+
             // 1) Ancien mécanisme conservé pour Attribute / Gauge,
             // afin de garder le rollback actuel entièrement fonctionnel.
             var legacyConsequences = consequences
@@ -787,15 +1020,16 @@ namespace Rollocracy.Infrastructure.Services
                     c.OperationType == TestConsequenceOperationType.AddValue &&
                     c.ValueMode != ModifierValueMode.Metric &&
                     (c.TargetKind == TestConsequenceTargetKind.Attribute ||
-                     c.TargetKind == TestConsequenceTargetKind.Gauge ||
-                     c.TargetKind == TestConsequenceTargetKind.SessionGauge))
+                     c.TargetKind == TestConsequenceTargetKind.Gauge))
                 .ToList();
 
             foreach (var consequence in legacyConsequences)
             {
-                var signedValue = consequence.ModifierMode == TestModifierMode.Bonus
-                    ? consequence.Value
-                    : -consequence.Value;
+                var signedValue = await ResolveSignedGameTestConsequenceValueAsync(
+                    context,
+                    test.SessionId,
+                    characterId,
+                    consequence);
 
                 if (consequence.TargetKind == TestConsequenceTargetKind.Gauge)
                 {
@@ -911,12 +1145,12 @@ namespace Rollocracy.Infrastructure.Services
 
             // 2) Nouveau moteur commun pour DerivedStat / Metric / Talent / Item.
             var commonEngineConsequences = consequences
+                .Where(c => c.TargetKind != TestConsequenceTargetKind.SessionGauge)
                 .Where(c => !(
                     c.OperationType == TestConsequenceOperationType.AddValue &&
                     c.ValueMode != ModifierValueMode.Metric &&
                     (c.TargetKind == TestConsequenceTargetKind.Attribute ||
-                     c.TargetKind == TestConsequenceTargetKind.Gauge ||
-                     c.TargetKind == TestConsequenceTargetKind.SessionGauge)))
+                     c.TargetKind == TestConsequenceTargetKind.Gauge)))
                 .ToList();
 
             if (commonEngineConsequences.Count == 0)
@@ -1290,16 +1524,21 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(c => c.TargetKind != TestConsequenceTargetKind.SessionGauge)
                 .ToList();
 
-            // Une jauge de session est une ressource commune :
-            // une conséquence globale qui la cible doit être appliquée une seule fois pour le test,
-            // et non une fois par personnage ciblé.
-            if (sessionGaugeConsequences.Count > 0)
+            foreach (var consequenceGroup in sessionGaugeConsequences.GroupBy(NormalizeStoredApplicationMode))
             {
-                await ApplyResolvedConsequencesAsync(
-                    context,
-                    test.Id,
-                    rows[0].CharacterId,
-                    sessionGaugeConsequences);
+                var groupConsequences = consequenceGroup.ToList();
+                var targetRows = GetRowsForSessionGaugeApplicationMode(rows, consequenceGroup.Key).ToList();
+                if (targetRows.Count == 0)
+                    continue;
+
+                foreach (var row in targetRows)
+                {
+                    await ApplyResolvedConsequencesAsync(
+                        context,
+                        test.Id,
+                        row.CharacterId,
+                        groupConsequences);
+                }
             }
 
             if (characterScopedConsequences.Count > 0)
@@ -1316,6 +1555,25 @@ namespace Rollocracy.Infrastructure.Services
 
             test.GlobalConsequencesApplied = true;
             await context.SaveChangesAsync();
+        }
+
+        private static IEnumerable<PlayerTestRoll> GetRowsForSessionGaugeApplicationMode(
+            List<PlayerTestRoll> rows,
+            TestConsequenceApplicationMode applicationMode)
+        {
+            return applicationMode switch
+            {
+                TestConsequenceApplicationMode.PerCharacter => rows,
+                TestConsequenceApplicationMode.PerSuccessfulCharacter => rows.Where(IsSuccessfulRoll),
+                TestConsequenceApplicationMode.PerFailedCharacter => rows.Where(x => !IsSuccessfulRoll(x)),
+                _ => rows.Take(1)
+            };
+        }
+
+        private static bool IsSuccessfulRoll(PlayerTestRoll row)
+        {
+            return row.Outcome == GameTestOutcome.Success ||
+                row.Outcome == GameTestOutcome.CriticalSuccess;
         }
 
         private async Task UpdateCharacterAliveStateAsync(RollocracyDbContext context, Guid characterId)
@@ -1560,7 +1818,8 @@ namespace Rollocracy.Infrastructure.Services
                 ? consequence.Value
                 : -consequence.Value;
 
-            var resolvedValue = consequence.ValueMode == ModifierValueMode.Metric
+            var resolvedValue = consequence.ValueMode == ModifierValueMode.Metric ||
+                consequence.ValueMode == ModifierValueMode.RandomDice
                 ? (consequence.ModifierMode == TestModifierMode.Bonus ? 1 : -1)
                 : signedValue;
 
@@ -1579,10 +1838,15 @@ namespace Rollocracy.Infrastructure.Services
                 TargetId = consequence.TargetDefinitionId,
                 TargetName = consequence.TargetNameSnapshot,
                 Value = resolvedValue,
+                ClampMode = consequence.ClampMode,
+                ClampMinTotal = consequence.ClampMinTotal,
+                ClampMaxTotal = consequence.ClampMaxTotal,
                 ValueMode = consequence.ValueMode,
                 SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
                     ? consequence.SourceMetricId
-                    : null
+                    : null,
+                RandomDiceCount = consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceCount(consequence.RandomDiceCount) : 1,
+                RandomDiceSides = consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceSides(consequence.RandomDiceSides) : 6
             };
         }
 
@@ -2241,14 +2505,57 @@ namespace Rollocracy.Infrastructure.Services
         {
             return consequence.OperationType switch
             {
-                TestConsequenceOperationType.AddValue => consequence.ValueMode == ModifierValueMode.Metric
-                    ? consequence.SourceMetricId.HasValue
-                    : consequence.Value != 0,
+                TestConsequenceOperationType.AddValue => consequence.ValueMode switch
+                {
+                    ModifierValueMode.Metric => consequence.SourceMetricId.HasValue,
+                    ModifierValueMode.RandomDice => true,
+                    _ => consequence.Value != 0
+                },
                 TestConsequenceOperationType.GrantTalent => consequence.TargetDefinitionId != Guid.Empty,
                 TestConsequenceOperationType.RevokeTalent => consequence.TargetDefinitionId != Guid.Empty,
                 TestConsequenceOperationType.GrantItem => consequence.TargetDefinitionId != Guid.Empty,
                 TestConsequenceOperationType.RevokeItem => consequence.TargetDefinitionId != Guid.Empty,
                 _ => false
+            };
+        }
+
+        private static bool IsGlobalApplyOn(TestConsequenceApplyOn applyOn)
+        {
+            return applyOn == TestConsequenceApplyOn.OnGlobalSuccess ||
+                applyOn == TestConsequenceApplyOn.OnModerateSuccess ||
+                applyOn == TestConsequenceApplyOn.OnModerateFailure ||
+                applyOn == TestConsequenceApplyOn.OnGlobalFailure;
+        }
+
+        private static bool IsSessionGaugeApplicationModeEligible(GameTestConsequenceDraftDto consequence)
+        {
+            return consequence.OperationType == TestConsequenceOperationType.AddValue &&
+                consequence.TargetKind == TestConsequenceTargetKind.SessionGauge &&
+                IsGlobalApplyOn(consequence.ApplyOn);
+        }
+
+        private static TestConsequenceApplicationMode NormalizeConsequenceApplicationMode(GameTestConsequenceDraftDto consequence)
+        {
+            if (!IsSessionGaugeApplicationModeEligible(consequence))
+                return TestConsequenceApplicationMode.ApplyOnce;
+
+            return consequence.ApplicationMode switch
+            {
+                TestConsequenceApplicationMode.PerCharacter => TestConsequenceApplicationMode.PerCharacter,
+                TestConsequenceApplicationMode.PerSuccessfulCharacter => TestConsequenceApplicationMode.PerSuccessfulCharacter,
+                TestConsequenceApplicationMode.PerFailedCharacter => TestConsequenceApplicationMode.PerFailedCharacter,
+                _ => TestConsequenceApplicationMode.ApplyOnce
+            };
+        }
+
+        private static TestConsequenceApplicationMode NormalizeStoredApplicationMode(GameTestConsequence consequence)
+        {
+            return consequence.ApplicationMode switch
+            {
+                TestConsequenceApplicationMode.PerCharacter => TestConsequenceApplicationMode.PerCharacter,
+                TestConsequenceApplicationMode.PerSuccessfulCharacter => TestConsequenceApplicationMode.PerSuccessfulCharacter,
+                TestConsequenceApplicationMode.PerFailedCharacter => TestConsequenceApplicationMode.PerFailedCharacter,
+                _ => TestConsequenceApplicationMode.ApplyOnce
             };
         }
 
@@ -2356,6 +2663,16 @@ namespace Rollocracy.Infrastructure.Services
                 if (consequence.ValueMode == ModifierValueMode.Metric && !consequence.SourceMetricId.HasValue)
                     throw new Exception(_localizer["Backend_InvalidTestConsequenceSourceMetric"]);
 
+                if (consequence.ValueMode == ModifierValueMode.RandomDice)
+                    ValidateRandomDiceConfiguration(consequence.RandomDiceCount, consequence.RandomDiceSides);
+
+                if (IsSessionGaugeApplicationModeEligible(consequence) &&
+                    NormalizeConsequenceApplicationMode(consequence) == TestConsequenceApplicationMode.ApplyOnce &&
+                    consequence.ValueMode == ModifierValueMode.Metric)
+                {
+                    throw new Exception(_localizer["Backend_ConsequenceMetricRequiresPerCharacterApplication"]);
+                }
+
                 // Compatibilité transitoire :
                 // l'UI actuelle des tests n'envoie pas encore OperationType.
                 // On considère donc qu'une conséquence legacy est un AddValue.
@@ -2378,6 +2695,8 @@ namespace Rollocracy.Infrastructure.Services
 
                         if (consequence.ValueMode == ModifierValueMode.Fixed && consequence.Value == 0)
                             throw new Exception(_localizer["Backend_InvalidTestConsequenceValue"]);
+
+                        ValidateClampConfiguration(consequence);
                         break;
 
                     case TestConsequenceOperationType.GrantTalent:
@@ -2403,6 +2722,35 @@ namespace Rollocracy.Infrastructure.Services
             return mode == TestModifierMode.Bonus
                 ? baseValue + difficultyValue
                 : baseValue - difficultyValue;
+        }
+
+        private void ValidateRandomDiceConfiguration(int diceCount, int diceSides)
+        {
+            if (diceCount < 1 || diceCount > 5)
+                throw new Exception(_localizer["Backend_InvalidRandomDiceCount"]);
+
+            if (diceSides < 2 || diceSides > 100)
+                throw new Exception(_localizer["Backend_InvalidRandomDiceSides"]);
+        }
+
+        private int RollRandomDice(int diceCount, int diceSides)
+        {
+            var normalizedDiceCount = NormalizeRandomDiceCount(diceCount);
+            var normalizedDiceSides = NormalizeRandomDiceSides(diceSides);
+
+            ValidateRandomDiceConfiguration(normalizedDiceCount, normalizedDiceSides);
+
+            return RollDice(normalizedDiceCount, normalizedDiceSides).Sum();
+        }
+
+        private static int NormalizeRandomDiceCount(int diceCount)
+        {
+            return diceCount <= 0 ? 1 : diceCount;
+        }
+
+        private static int NormalizeRandomDiceSides(int diceSides)
+        {
+            return diceSides <= 0 ? 6 : diceSides;
         }
 
         private PlayerGameTestResultDto BuildPlayerResult(PlayerTestRoll row)
@@ -2578,7 +2926,8 @@ namespace Rollocracy.Infrastructure.Services
                                 Id = Guid.NewGuid(),
                                 CharacterId = effect.CharacterId,
                                 ItemDefinitionId = effect.TargetDefinitionId,
-                                Quantity = 1
+                                Quantity = 1,
+                                IsActive = true
                             });
                         }
                     }

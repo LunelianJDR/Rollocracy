@@ -14,6 +14,8 @@ namespace Rollocracy.Domain.Polls
 
         public Guid TargetDefinitionId { get; set; }
 
+        public TestConsequenceApplicationMode ApplicationMode { get; set; } = TestConsequenceApplicationMode.ApplyOnce;
+
         public string TargetNameSnapshot { get; set; } = string.Empty;
 
         // Conservé pour compatibilité technique/transitoire.
@@ -22,9 +24,19 @@ namespace Rollocracy.Domain.Polls
 
         public int Value { get; set; }
 
+        public ConsequenceClampMode ClampMode { get; set; } = ConsequenceClampMode.None;
+
+        public int ClampMinTotal { get; set; } = -100;
+
+        public int ClampMaxTotal { get; set; } = 100;
+
         public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
 
         public Guid? SourceMetricId { get; set; }
+
+        public int RandomDiceCount { get; set; } = 1;
+
+        public int RandomDiceSides { get; set; } = 6;
 
         public TestConsequenceOperationType OperationType { get; set; }
     }

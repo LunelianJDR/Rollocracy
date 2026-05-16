@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Rollocracy.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Rollocracy.Infrastructure.Persistence;
 namespace Rollocracy.Infrastructure.Migrations
 {
     [DbContext(typeof(RollocracyDbContext))]
-    partial class RollocracyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260514201155_AddConsequenceClamp")]
+    partial class AddConsequenceClamp
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1636,10 +1639,14 @@ namespace Rollocracy.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("ClampMaxTotal")
-                        .HasColumnType("integer");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(100);
 
                     b.Property<int>("ClampMinTotal")
-                        .HasColumnType("integer");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(-100);
 
                     b.Property<int>("ClampMode")
                         .ValueGeneratedOnAdd()
@@ -1654,16 +1661,6 @@ namespace Rollocracy.Infrastructure.Migrations
 
                     b.Property<int>("OperationType")
                         .HasColumnType("integer");
-
-                    b.Property<int>("RandomDiceCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
-
-                    b.Property<int>("RandomDiceSides")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(6);
 
                     b.Property<Guid?>("SourceMetricId")
                         .HasColumnType("uuid");
@@ -1958,10 +1955,14 @@ namespace Rollocracy.Infrastructure.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("ClampMaxTotal")
-                        .HasColumnType("integer");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(100);
 
                     b.Property<int>("ClampMinTotal")
-                        .HasColumnType("integer");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(-100);
 
                     b.Property<int>("ClampMode")
                         .ValueGeneratedOnAdd()
@@ -1973,16 +1974,6 @@ namespace Rollocracy.Infrastructure.Migrations
 
                     b.Property<int>("OperationType")
                         .HasColumnType("integer");
-
-                    b.Property<int>("RandomDiceCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
-
-                    b.Property<int>("RandomDiceSides")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(6);
 
                     b.Property<Guid>("SessionPollOptionId")
                         .HasColumnType("uuid");

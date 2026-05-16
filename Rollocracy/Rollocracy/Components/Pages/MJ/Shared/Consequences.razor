@@ -28,10 +28,12 @@
                         {
                             <div class="rc-form-field">
                                 <label>@L["Test_When"]</label>
-                                <select @bind="row.ApplyOn" class="@GetApplyOnCssClass(row.ApplyOn)">
+                                <select value="@((int)row.ApplyOn)"
+                                        @onchange="e => ChangeApplyOn(row, e.Value?.ToString())"
+                                        class="@GetApplyOnCssClass(row.ApplyOn)">
                                     @foreach (var applyOnOption in ApplyOnOptions)
                                     {
-                                        <option value="@applyOnOption.Value">@applyOnOption.Label</option>
+                                        <option value="@((int)applyOnOption.Value)">@applyOnOption.Label</option>
                                     }
                                 </select>
                             </div>
@@ -81,7 +83,7 @@
 
                         <div class="rc-form-field">
                             <label>@L["Test_TargetDefinition"]</label>
-                            <select @bind="row.TargetDefinitionId">
+                            <select value="@row.TargetDefinitionId" @onchange="e => ChangeTargetDefinition(row, e.Value?.ToString())">
                                 @foreach (var definition in GetDefinitionOptions(row.TargetKind))
                                 {
                                     <option value="@definition.Id">@definition.Name</option>
@@ -89,13 +91,30 @@
                             </select>
                         </div>
 
+                        @if (ShouldShowApplicationMode(row))
+                        {
+                            <div class="rc-form-field">
+                                <label>@L["Consequence_ApplicationMode"]</label>
+                                <select value="@((int)row.ApplicationMode)" @onchange="e => ChangeApplicationMode(row, e.Value?.ToString())">
+                                    @foreach (var mode in GetApplicationModeOptions())
+                                    {
+                                        <option value="@((int)mode)">@GetApplicationModeLabel(mode)</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+
                         @if (row.OperationType == TestConsequenceOperationType.AddValue)
                         {
                             <div class="rc-form-field">
                                 <label>@L["Test_ConsequenceValueMode"]</label>
                                 <select value="@((int)row.ValueMode)" @onchange="e => ChangeValueMode(row, e.Value?.ToString())">
                                     <option value="@((int)ModifierValueMode.Fixed)">@L["GameSystem_Editor_ModifierValueMode_Fixed"]</option>
-                                    <option value="@((int)ModifierValueMode.Metric)">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
+                                    @if (CanUseMetricValueMode(row))
+                                    {
+                                        <option value="@((int)ModifierValueMode.Metric)">@L["GameSystem_Editor_ModifierValueMode_Metric"]</option>
+                                    }
+                                    <option value="@((int)ModifierValueMode.RandomDice)">@L["GameSystem_Editor_ModifierValueMode_RandomDice"]</option>
                                 </select>
                             </div>
 
@@ -119,12 +138,74 @@
                                     </select>
                                 </div>
                             }
+                            else if (row.ValueMode == ModifierValueMode.RandomDice)
+                            {
+                                <div class="rc-form-field">
+                                    <label>@L["Consequence_RandomDiceCount"]</label>
+                                    <input type="number"
+                                           min="1"
+                                           max="5"
+                                           step="1"
+                                           value="@row.RandomDiceCount"
+                                           @onchange="e => ChangeRandomDiceCount(row, e.Value?.ToString())"
+                                           class="rc-consequence-pill rc-consequence-pill--positive" />
+                                </div>
+
+                                <div class="rc-form-field">
+                                    <label>@L["Consequence_RandomDiceSides"]</label>
+                                    <input type="number"
+                                           min="2"
+                                           max="100"
+                                           step="1"
+                                           value="@row.RandomDiceSides"
+                                           @onchange="e => ChangeRandomDiceSides(row, e.Value?.ToString())"
+                                           class="rc-consequence-pill rc-consequence-pill--positive" />
+                                </div>
+
+                                <div class="rc-form-field">
+                                    <label>@L["Test_DifficultyMode"]</label>
+                                    <select @bind="row.ModifierMode" class="@GetModifierModeCssClass(row.ModifierMode)">
+                                        <option value="@TestModifierMode.Bonus">@L["Test_Bonus"]</option>
+                                        <option value="@TestModifierMode.Malus">@L["Test_Malus"]</option>
+                                    </select>
+                                </div>
+                            }
                             else
                             {
                                 <div class="rc-form-field">
                                     <label>@L["Test_DifficultyValue"]</label>
                                     <input type="number" @bind="row.Value" class="@GetValueCssClass(row.Value)" />
                                 </div>
+                            }
+
+                            @if (ShouldShowClampControls(row))
+                            {
+                                <div class="rc-form-field">
+                                    <label>@L["Consequence_ClampMode"]</label>
+                                    <select value="@((int)row.ClampMode)" @onchange="e => ChangeClampMode(row, e.Value?.ToString())">
+                                        <option value="@((int)ConsequenceClampMode.None)">@L["Consequence_ClampMode_None"]</option>
+                                        <option value="@((int)ConsequenceClampMode.ClampTotal)">@L["Consequence_ClampMode_ClampTotal"]</option>
+                                    </select>
+                                </div>
+
+                                @if (row.ClampMode == ConsequenceClampMode.ClampTotal)
+                                {
+                                    <div class="rc-form-field">
+                                        <label>@L["Consequence_ClampMinTotal"]</label>
+                                        <input type="number"
+                                               value="@row.ClampMinTotal"
+                                               @onchange="e => ChangeClampMinTotal(row, e.Value?.ToString())"
+                                               class="@GetValueCssClass(row.ClampMinTotal)" />
+                                    </div>
+
+                                    <div class="rc-form-field">
+                                        <label>@L["Consequence_ClampMaxTotal"]</label>
+                                        <input type="number"
+                                               value="@row.ClampMaxTotal"
+                                               @onchange="e => ChangeClampMaxTotal(row, e.Value?.ToString())"
+                                               class="@GetValueCssClass(row.ClampMaxTotal)" />
+                                    </div>
+                                }
                             }
                         }
                     </div>
@@ -143,6 +224,10 @@
     [Parameter] public string? AddButtonLabel { get; set; }
     [Parameter] public string? EmptyLabel { get; set; }
     [Parameter] public bool ShowApplyOn { get; set; } = true;
+    [Parameter] public bool IsPollContext { get; set; }
+    [Parameter] public bool ShowApplicationMode { get; set; } = true;
+    [Parameter] public bool AllowMetricValueModeForSessionGauge { get; set; } = true;
+    [Parameter] public bool AllowSuccessFailureApplicationModes { get; set; } = true;
     [Parameter] public List<SharedConsequenceRowModel> Rows { get; set; } = new();
 
     [Parameter] public List<SharedConsequenceApplyOnOption> ApplyOnOptions { get; set; } = new();
@@ -175,13 +260,19 @@
         {
             RowId = Guid.NewGuid(),
             ApplyOn = ShowApplyOn ? GetDefaultApplyOn() : TestConsequenceApplyOn.OnSuccess,
+            ApplicationMode = TestConsequenceApplicationMode.ApplyOnce,
             OperationType = TestConsequenceOperationType.AddValue,
             TargetKind = initialTargetKind,
             TargetDefinitionId = initialTargetId,
             ModifierMode = TestModifierMode.Bonus,
             Value = 1,
+            ClampMode = ConsequenceClampMode.None,
+            ClampMinTotal = -100,
+            ClampMaxTotal = 100,
             ValueMode = ModifierValueMode.Fixed,
-            SourceMetricId = MetricTargets.FirstOrDefault()?.Id
+            SourceMetricId = MetricTargets.FirstOrDefault()?.Id,
+            RandomDiceCount = 1,
+            RandomDiceSides = 6
         });
     }
 
@@ -190,6 +281,16 @@
         var row = Rows.FirstOrDefault(x => x.RowId == rowId);
         if (row is not null)
             Rows.Remove(row);
+    }
+
+    private void ChangeApplyOn(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.ApplyOn = (TestConsequenceApplyOn)parsed;
+        NormalizeApplicationMode(row);
+        SyncClampGroupFrom(row);
     }
 
     private void ChangeOperation(SharedConsequenceRowModel row, string? rawValue)
@@ -206,6 +307,7 @@
                 row.TargetDefinitionId = GetFirstTargetId(row.TargetKind);
                 row.ModifierMode = TestModifierMode.Bonus;
                 row.SourceMetricId = MetricTargets.FirstOrDefault()?.Id;
+                NormalizeRandomDiceValues(row);
                 if (row.Value == 0)
                     row.Value = 1;
                 break;
@@ -217,6 +319,8 @@
                 row.Value = 0;
                 row.ValueMode = ModifierValueMode.Fixed;
                 row.SourceMetricId = MetricTargets.FirstOrDefault()?.Id;
+                row.RandomDiceCount = 1;
+                row.RandomDiceSides = 6;
                 row.ModifierMode = TestModifierMode.Bonus;
                 break;
 
@@ -227,9 +331,14 @@
                 row.Value = 0;
                 row.ValueMode = ModifierValueMode.Fixed;
                 row.SourceMetricId = MetricTargets.FirstOrDefault()?.Id;
+                row.RandomDiceCount = 1;
+                row.RandomDiceSides = 6;
                 row.ModifierMode = TestModifierMode.Bonus;
                 break;
         }
+
+        NormalizeApplicationMode(row);
+        SyncClampGroupFrom(row);
     }
 
     private void ChangeTargetKind(SharedConsequenceRowModel row, string? rawValue)
@@ -239,6 +348,18 @@
 
         row.TargetKind = (TestConsequenceTargetKind)parsed;
         row.TargetDefinitionId = GetFirstTargetId(row.TargetKind);
+        NormalizeApplicationMode(row);
+        SyncClampGroupFrom(row);
+    }
+
+    private void ChangeTargetDefinition(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!Guid.TryParse(rawValue, out var parsed))
+            return;
+
+        row.TargetDefinitionId = parsed;
+        NormalizeApplicationMode(row);
+        SyncClampGroupFrom(row);
     }
 
     private void ChangeValueMode(SharedConsequenceRowModel row, string? rawValue)
@@ -248,12 +369,27 @@
 
         row.ValueMode = (ModifierValueMode)parsed;
 
+        if (row.ValueMode == ModifierValueMode.Metric && !CanUseMetricValueMode(row))
+        {
+            row.ValueMode = ModifierValueMode.Fixed;
+        }
+
         if (row.ValueMode == ModifierValueMode.Metric)
         {
             row.SourceMetricId = MetricTargets.FirstOrDefault()?.Id;
             row.ModifierMode = row.ModifierMode == TestModifierMode.Malus
                 ? TestModifierMode.Malus
                 : TestModifierMode.Bonus;
+        }
+        else if (row.ValueMode == ModifierValueMode.RandomDice)
+        {
+            row.SourceMetricId = null;
+            row.ModifierMode = row.ModifierMode == TestModifierMode.Malus
+                ? TestModifierMode.Malus
+                : TestModifierMode.Bonus;
+            NormalizeRandomDiceValues(row);
+            if (row.Value == 0)
+                row.Value = 1;
         }
         else
         {
@@ -262,6 +398,224 @@
                 row.Value = 1;
             row.ModifierMode = TestModifierMode.Bonus;
         }
+    }
+
+    private void ChangeApplicationMode(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.ApplicationMode = (TestConsequenceApplicationMode)parsed;
+        NormalizeApplicationMode(row);
+        SyncClampGroupFrom(row);
+    }
+
+    private void NormalizeApplicationMode(SharedConsequenceRowModel row)
+    {
+        if (!ShouldShowApplicationMode(row))
+        {
+            row.ApplicationMode = TestConsequenceApplicationMode.ApplyOnce;
+        }
+        else if (!GetApplicationModeOptions().Contains(row.ApplicationMode))
+        {
+            row.ApplicationMode = TestConsequenceApplicationMode.ApplyOnce;
+        }
+
+        if (!CanUseMetricValueMode(row) && row.ValueMode == ModifierValueMode.Metric)
+        {
+            row.ValueMode = ModifierValueMode.Fixed;
+            row.SourceMetricId = MetricTargets.FirstOrDefault()?.Id;
+            row.ModifierMode = TestModifierMode.Bonus;
+            if (row.Value == 0)
+                row.Value = 1;
+        }
+
+        if (row.ValueMode == ModifierValueMode.RandomDice)
+        {
+            row.SourceMetricId = null;
+            NormalizeRandomDiceValues(row);
+        }
+    }
+
+    private void ChangeRandomDiceCount(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            parsed = 1;
+
+        row.RandomDiceCount = parsed;
+        NormalizeRandomDiceValues(row);
+    }
+
+    private void ChangeRandomDiceSides(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            parsed = 6;
+
+        row.RandomDiceSides = parsed;
+        NormalizeRandomDiceValues(row);
+    }
+
+    private static void NormalizeRandomDiceValues(SharedConsequenceRowModel row)
+    {
+        row.RandomDiceCount = Math.Clamp(row.RandomDiceCount <= 0 ? 1 : row.RandomDiceCount, 1, 5);
+        row.RandomDiceSides = Math.Clamp(row.RandomDiceSides <= 0 ? 6 : row.RandomDiceSides, 2, 100);
+    }
+
+
+    private void ChangeClampMode(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.ClampMode = (ConsequenceClampMode)parsed;
+        NormalizeClampValues(row);
+        SyncClampGroupFrom(row);
+    }
+
+    private void ChangeClampMinTotal(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.ClampMinTotal = parsed;
+        NormalizeClampValues(row);
+        SyncClampGroupFrom(row);
+    }
+
+    private void ChangeClampMaxTotal(SharedConsequenceRowModel row, string? rawValue)
+    {
+        if (!int.TryParse(rawValue, out var parsed))
+            return;
+
+        row.ClampMaxTotal = parsed;
+        NormalizeClampValues(row);
+        SyncClampGroupFrom(row);
+    }
+
+    private void NormalizeClampValues(SharedConsequenceRowModel row)
+    {
+        if (row.ClampMinTotal > 0)
+            row.ClampMinTotal = 0;
+
+        if (row.ClampMaxTotal < 0)
+            row.ClampMaxTotal = 0;
+
+        if (row.ClampMinTotal > row.ClampMaxTotal)
+        {
+            row.ClampMinTotal = Math.Min(row.ClampMinTotal, 0);
+            row.ClampMaxTotal = Math.Max(row.ClampMaxTotal, 0);
+
+            if (row.ClampMinTotal > row.ClampMaxTotal)
+                row.ClampMaxTotal = row.ClampMinTotal;
+        }
+    }
+
+    private bool ShouldShowClampControls(SharedConsequenceRowModel row)
+    {
+        if (!IsClampEligible(row))
+            return false;
+
+        return Rows.Count(other => IsSameClampGroup(row, other)) >= 2;
+    }
+
+    private static bool IsClampEligible(SharedConsequenceRowModel row)
+    {
+        return row.OperationType == TestConsequenceOperationType.AddValue &&
+            row.TargetDefinitionId != Guid.Empty;
+    }
+
+    private bool IsSameClampGroup(SharedConsequenceRowModel first, SharedConsequenceRowModel second)
+    {
+        if (!IsClampEligible(first) || !IsClampEligible(second))
+            return false;
+
+        if (first.TargetKind != second.TargetKind ||
+            first.TargetDefinitionId != second.TargetDefinitionId)
+        {
+            return false;
+        }
+
+        if (ShowApplyOn && first.ApplyOn != second.ApplyOn)
+            return false;
+
+        return true;
+    }
+
+    private void SyncClampGroupFrom(SharedConsequenceRowModel source)
+    {
+        NormalizeClampValues(source);
+
+        foreach (var row in Rows.Where(row => row.RowId != source.RowId && IsSameClampGroup(source, row)))
+        {
+            row.ClampMode = source.ClampMode;
+            row.ClampMinTotal = source.ClampMinTotal;
+            row.ClampMaxTotal = source.ClampMaxTotal;
+        }
+    }
+
+    private bool ShouldShowApplicationMode(SharedConsequenceRowModel row)
+    {
+        return ShowApplicationMode &&
+            row.OperationType == TestConsequenceOperationType.AddValue &&
+            row.TargetKind == TestConsequenceTargetKind.SessionGauge &&
+            (!ShowApplyOn || IsGlobalApplyOn(row.ApplyOn));
+    }
+
+    private static bool IsGlobalApplyOn(TestConsequenceApplyOn applyOn)
+    {
+        return applyOn == TestConsequenceApplyOn.OnGlobalSuccess ||
+            applyOn == TestConsequenceApplyOn.OnModerateSuccess ||
+            applyOn == TestConsequenceApplyOn.OnModerateFailure ||
+            applyOn == TestConsequenceApplyOn.OnGlobalFailure;
+    }
+
+    private bool CanUseMetricValueMode(SharedConsequenceRowModel row)
+    {
+        if (row.OperationType != TestConsequenceOperationType.AddValue)
+            return false;
+
+        if (row.TargetKind == TestConsequenceTargetKind.SessionGauge &&
+            !AllowMetricValueModeForSessionGauge)
+        {
+            return false;
+        }
+
+        return !ShouldShowApplicationMode(row) ||
+            row.ApplicationMode != TestConsequenceApplicationMode.ApplyOnce;
+    }
+
+    private IEnumerable<TestConsequenceApplicationMode> GetApplicationModeOptions()
+    {
+        if (IsPollContext)
+        {
+            yield return TestConsequenceApplicationMode.ApplyOnce;
+            yield return TestConsequenceApplicationMode.PerEligibleCharacter;
+            yield return TestConsequenceApplicationMode.PerPollOptionVoter;
+            yield break;
+        }
+
+        yield return TestConsequenceApplicationMode.ApplyOnce;
+        yield return TestConsequenceApplicationMode.PerCharacter;
+
+        if (AllowSuccessFailureApplicationModes)
+        {
+            yield return TestConsequenceApplicationMode.PerSuccessfulCharacter;
+            yield return TestConsequenceApplicationMode.PerFailedCharacter;
+        }
+    }
+
+    private string GetApplicationModeLabel(TestConsequenceApplicationMode mode)
+    {
+        return mode switch
+        {
+            TestConsequenceApplicationMode.ApplyOnce => L["Consequence_ApplicationMode_Once"],
+            TestConsequenceApplicationMode.PerCharacter => L["Consequence_ApplicationMode_PerCharacter"],
+            TestConsequenceApplicationMode.PerSuccessfulCharacter => L["Consequence_ApplicationMode_PerSuccessfulCharacter"],
+            TestConsequenceApplicationMode.PerFailedCharacter => L["Consequence_ApplicationMode_PerFailedCharacter"],
+            TestConsequenceApplicationMode.PerEligibleCharacter => L["Consequence_ApplicationMode_PerEligibleCharacter"],
+            TestConsequenceApplicationMode.PerPollOptionVoter => L["Consequence_ApplicationMode_PerPollOptionVoter"],
+            _ => mode.ToString()
+        };
     }
 
     private TestConsequenceApplyOn GetDefaultApplyOn()
@@ -377,6 +731,10 @@
             TestConsequenceOperationType.AddValue when row.ValueMode == ModifierValueMode.Metric && row.ModifierMode == TestModifierMode.Bonus
                 => "rc-consequence-pill rc-consequence-pill--positive",
             TestConsequenceOperationType.AddValue when row.ValueMode == ModifierValueMode.Metric && row.ModifierMode == TestModifierMode.Malus
+                => "rc-consequence-pill rc-consequence-pill--negative",
+            TestConsequenceOperationType.AddValue when row.ValueMode == ModifierValueMode.RandomDice && row.ModifierMode == TestModifierMode.Bonus
+                => "rc-consequence-pill rc-consequence-pill--positive",
+            TestConsequenceOperationType.AddValue when row.ValueMode == ModifierValueMode.RandomDice && row.ModifierMode == TestModifierMode.Malus
                 => "rc-consequence-pill rc-consequence-pill--negative",
             TestConsequenceOperationType.AddValue when row.Value >= 0
                 => "rc-consequence-pill rc-consequence-pill--positive",

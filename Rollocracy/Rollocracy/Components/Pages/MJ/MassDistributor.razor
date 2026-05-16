@@ -83,7 +83,7 @@ else
                                               OnlyAliveChanged="@(value => { Request.Filter.OnlyAlive = true; if (!value) Request.Filter.OnlyOnline = false; })"
                                               IncludeNpcsChanged="@(value => Request.Filter.IncludeNpcs = value)"
                                               BiographyNotEmptyChanged="@(value => Request.Filter.BiographyNotEmpty = value)" />
-                        
+
                     <CharacterAdvancedFilters Filter="Request.Filter"
                                               TraitOptionGroups="AdvancedTraitOptionGroups"
                                               TalentOptions="AdvancedTalentOptions"
@@ -103,6 +103,9 @@ else
                               AddButtonLabel="@L["Test_AddConsequence"]"
                               EmptyLabel="@L["Test_NoConsequence"]"
                               ShowApplyOn="false"
+                              ShowApplicationMode="false"
+                              AllowSuccessFailureApplicationModes="false"
+                              AllowMetricValueModeForSessionGauge="false"
                               Rows="ConsequenceRows"
                               ApplyOnOptions="ConsequenceApplyOnOptions"
                               AttributeTargets="ConsequenceAttributeTargets"
@@ -313,14 +316,19 @@ else
                 _ => TestConsequenceTargetKind.Attribute
             },
             TargetDefinitionId = effect.TargetId,
-            ModifierMode = effect.ValueMode == ModifierValueMode.Metric && effect.Value < 0
+            ModifierMode = (effect.ValueMode == ModifierValueMode.Metric || effect.ValueMode == ModifierValueMode.RandomDice) && effect.Value < 0
                 ? TestModifierMode.Malus
                 : TestModifierMode.Bonus,
-            Value = effect.ValueMode == ModifierValueMode.Metric
+            Value = effect.ValueMode == ModifierValueMode.Metric || effect.ValueMode == ModifierValueMode.RandomDice
                 ? 1
                 : effect.Value,
+            ClampMode = effect.ClampMode,
+            ClampMinTotal = effect.ClampMinTotal,
+            ClampMaxTotal = effect.ClampMaxTotal,
             ValueMode = effect.ValueMode,
-            SourceMetricId = effect.SourceMetricId
+            SourceMetricId = effect.ValueMode == ModifierValueMode.Metric ? effect.SourceMetricId : null,
+            RandomDiceCount = effect.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(effect.RandomDiceCount <= 0 ? 1 : effect.RandomDiceCount, 1, 5) : 1,
+            RandomDiceSides = effect.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(effect.RandomDiceSides <= 0 ? 6 : effect.RandomDiceSides, 2, 100) : 6
         }).ToList();
     }
 
@@ -350,16 +358,28 @@ else
             },
             TargetId = row.TargetDefinitionId,
             Value = row.OperationType == TestConsequenceOperationType.AddValue
-                ? (row.ValueMode == ModifierValueMode.Metric
+                ? (row.ValueMode == ModifierValueMode.Metric || row.ValueMode == ModifierValueMode.RandomDice
                     ? (row.ModifierMode == TestModifierMode.Bonus ? 1 : -1)
                     : row.Value)
                 : 0,
-            ValueMode = row.OperationType == TestConsequenceOperationType.AddValue
+            ClampMode = row.ClampMode,
+            ClampMinTotal = row.ClampMinTotal,
+            ClampMaxTotal = row.ClampMaxTotal,
+            ValueMode = row.OperationType == TestConsequenceOperationType.AddValue &&
+                (row.TargetKind != TestConsequenceTargetKind.SessionGauge || row.ValueMode == ModifierValueMode.RandomDice)
                 ? row.ValueMode
                 : ModifierValueMode.Fixed,
-            SourceMetricId = row.OperationType == TestConsequenceOperationType.AddValue && row.ValueMode == ModifierValueMode.Metric
-                ? row.SourceMetricId
-                : null
+            SourceMetricId = row.OperationType == TestConsequenceOperationType.AddValue &&
+                 row.TargetKind != TestConsequenceTargetKind.SessionGauge &&
+                 row.ValueMode == ModifierValueMode.Metric
+            ? row.SourceMetricId
+            : null,
+            RandomDiceCount = row.OperationType == TestConsequenceOperationType.AddValue && row.ValueMode == ModifierValueMode.RandomDice
+                ? Math.Clamp(row.RandomDiceCount <= 0 ? 1 : row.RandomDiceCount, 1, 5)
+                : 1,
+            RandomDiceSides = row.OperationType == TestConsequenceOperationType.AddValue && row.ValueMode == ModifierValueMode.RandomDice
+                ? Math.Clamp(row.RandomDiceSides <= 0 ? 6 : row.RandomDiceSides, 2, 100)
+                : 6
         }).ToList();
     }
 

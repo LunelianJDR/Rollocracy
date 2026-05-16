@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Rollocracy.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Rollocracy.Infrastructure.Persistence;
 namespace Rollocracy.Infrastructure.Migrations
 {
     [DbContext(typeof(RollocracyDbContext))]
-    partial class RollocracyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260510195323_AddItemFamilies")]
+    partial class AddItemFamilies
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -30,11 +33,6 @@ namespace Rollocracy.Infrastructure.Migrations
 
                     b.Property<Guid>("CharacterId")
                         .HasColumnType("uuid");
-
-                    b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(true);
 
                     b.Property<Guid>("ItemDefinitionId")
                         .HasColumnType("uuid");
@@ -1629,22 +1627,8 @@ namespace Rollocracy.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int>("ApplicationMode")
-                        .HasColumnType("integer");
-
                     b.Property<int>("ApplyOn")
                         .HasColumnType("integer");
-
-                    b.Property<int>("ClampMaxTotal")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ClampMinTotal")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ClampMode")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0);
 
                     b.Property<Guid>("GameTestId")
                         .HasColumnType("uuid");
@@ -1654,16 +1638,6 @@ namespace Rollocracy.Infrastructure.Migrations
 
                     b.Property<int>("OperationType")
                         .HasColumnType("integer");
-
-                    b.Property<int>("RandomDiceCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
-
-                    b.Property<int>("RandomDiceSides")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(6);
 
                     b.Property<Guid?>("SourceMetricId")
                         .HasColumnType("uuid");
@@ -1954,35 +1928,11 @@ namespace Rollocracy.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<int>("ApplicationMode")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ClampMaxTotal")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ClampMinTotal")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("ClampMode")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0);
-
                     b.Property<int>("ModifierMode")
                         .HasColumnType("integer");
 
                     b.Property<int>("OperationType")
                         .HasColumnType("integer");
-
-                    b.Property<int>("RandomDiceCount")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
-
-                    b.Property<int>("RandomDiceSides")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(6);
 
                     b.Property<Guid>("SessionPollOptionId")
                         .HasColumnType("uuid");

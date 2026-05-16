@@ -3,8 +3,10 @@ using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
+using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace Rollocracy.Infrastructure.Services
@@ -180,13 +182,29 @@ namespace Rollocracy.Infrastructure.Services
 
             try
             {
-                await _characterEffectService.ApplyEffectsAsync(
-                    sessionId,
-                    targetCharacterIds,
-                    request.Effects,
-                    CharacterEffectSourceType.MassDistribution,
-                    batchId,
-                    request.Name.Trim());
+                var sessionGaugeEffects = request.Effects
+                    .Where(IsMassDistributionSessionGaugeEffect)
+                    .ToList();
+
+                var characterEffects = request.Effects
+                    .Where(effect => !IsMassDistributionSessionGaugeEffect(effect))
+                    .ToList();
+
+                if (characterEffects.Count > 0)
+                {
+                    await _characterEffectService.ApplyEffectsAsync(
+                        sessionId,
+                        targetCharacterIds,
+                        characterEffects,
+                        CharacterEffectSourceType.MassDistribution,
+                        batchId,
+                        request.Name.Trim());
+                }
+
+                if (sessionGaugeEffects.Count > 0 && targetCharacterIds.Count > 0)
+                {
+                    await ApplySessionGaugeEffectsOnceAsync(context, sessionId, sessionGaugeEffects);
+                }
 
                 // L-3 :
                 // Les effets étaient bien appliqués en base, mais aucun refresh temps réel
@@ -346,7 +364,9 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     Id = value.Id,
                     CharacterId = value.CharacterId,
-                    ItemDefinitionId = value.ItemDefinitionId
+                    ItemDefinitionId = value.ItemDefinitionId,
+                    Quantity = value.Quantity,
+                    IsActive = value.IsActive
                 });
             }
 
@@ -386,6 +406,181 @@ namespace Rollocracy.Infrastructure.Services
             if (!exists)
                 throw new Exception(_localizer["Backend_SessionAccessDenied"]);
         }
+
+        private static bool IsMassDistributionSessionGaugeEffect(CharacterEffectDefinitionDto effect)
+        {
+            return effect.OperationType == CharacterEffectOperationType.AddValue &&
+                effect.TargetType == CharacterEffectTargetType.SessionGauge;
+        }
+
+        private void ValidateRandomDiceConfiguration(int diceCount, int diceSides)
+        {
+            if (diceCount < 1 || diceCount > 5)
+                throw new Exception(_localizer["Backend_InvalidRandomDiceCount"]);
+
+            if (diceSides < 2 || diceSides > 100)
+                throw new Exception(_localizer["Backend_InvalidRandomDiceSides"]);
+        }
+
+        private static int RollRandomDice(int diceCount, int diceSides)
+        {
+            var normalizedDiceCount = NormalizeRandomDiceCount(diceCount);
+            var normalizedDiceSides = NormalizeRandomDiceSides(diceSides);
+
+            var total = 0;
+            for (var i = 0; i < normalizedDiceCount; i++)
+            {
+                total += RandomNumberGenerator.GetInt32(1, normalizedDiceSides + 1);
+            }
+
+            return total;
+        }
+
+        private static int NormalizeRandomDiceCount(int diceCount)
+        {
+            return diceCount <= 0 ? 1 : diceCount;
+        }
+
+        private static int NormalizeRandomDiceSides(int diceSides)
+        {
+            return diceSides <= 0 ? 6 : diceSides;
+        }
+
+        private async Task ApplySessionGaugeEffectsOnceAsync(
+            RollocracyDbContext context,
+            Guid sessionId,
+            List<CharacterEffectDefinitionDto> effects)
+        {
+            if (effects.Any(effect => effect.ValueMode == ModifierValueMode.Metric))
+                throw new Exception(_localizer["Backend_ConsequenceMetricRequiresPerCharacterApplication"]);
+
+            foreach (var effect in effects.Where(effect => effect.ValueMode == ModifierValueMode.RandomDice))
+            {
+                ValidateRandomDiceConfiguration(effect.RandomDiceCount, effect.RandomDiceSides);
+            }
+
+            var targetIds = effects
+                .Select(effect => effect.TargetId)
+                .Distinct()
+                .ToList();
+
+            var sessionGauges = await context.SessionGauges
+                .Where(gauge => gauge.SessionId == sessionId && targetIds.Contains(gauge.Id))
+                .ToListAsync();
+
+            var normalizedEffects = NormalizeMassDistributionSessionGaugeEffects(effects);
+
+            foreach (var effect in normalizedEffects)
+            {
+                var sessionGauge = sessionGauges.FirstOrDefault(gauge => gauge.Id == effect.TargetId);
+                if (sessionGauge is null)
+                    throw new Exception(_localizer["Backend_InvalidCharacterEffectTarget"]);
+
+                sessionGauge.CurrentValue = Math.Clamp(
+                    sessionGauge.CurrentValue + effect.Value,
+                    sessionGauge.MinValue,
+                    sessionGauge.MaxValue);
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        private List<CharacterEffectDefinitionDto> NormalizeMassDistributionSessionGaugeEffects(
+    List<CharacterEffectDefinitionDto> effects)
+        {
+            var result = new List<CharacterEffectDefinitionDto>();
+
+            foreach (var group in effects.GroupBy(effect => effect.TargetId))
+            {
+                var groupEffects = group.ToList();
+
+                if (groupEffects.Count <= 1 ||
+                    groupEffects.First().ClampMode != ConsequenceClampMode.ClampTotal)
+                {
+                    result.AddRange(groupEffects.Select(ResolveMassDistributionSessionGaugeEffect));
+                    continue;
+                }
+
+                ValidateClampConfiguration(groupEffects.First());
+
+                var template = groupEffects.First();
+                var total = groupEffects.Sum(ResolveMassDistributionSessionGaugeSignedValue);
+                var clampedTotal = Math.Clamp(total, template.ClampMinTotal, template.ClampMaxTotal);
+
+                // Important : 0 est une borne valide. Si le total clampé vaut 0,
+                // il n'y a aucun delta réel à appliquer.
+                if (clampedTotal == 0)
+                    continue;
+
+                result.Add(new CharacterEffectDefinitionDto
+                {
+                    TargetType = template.TargetType,
+                    TargetId = template.TargetId,
+                    TargetName = template.TargetName,
+                    OperationType = CharacterEffectOperationType.AddValue,
+                    Value = clampedTotal,
+                    ClampMode = ConsequenceClampMode.None,
+                    ClampMinTotal = -100,
+                    ClampMaxTotal = 100,
+                    ValueMode = ModifierValueMode.Fixed,
+                    SourceMetricId = null,
+                    RandomDiceCount = 1,
+                    RandomDiceSides = 6
+                });
+            }
+
+            return result;
+        }
+
+        private static CharacterEffectDefinitionDto ResolveMassDistributionSessionGaugeEffect(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.ValueMode != ModifierValueMode.RandomDice)
+                return effect;
+
+            return new CharacterEffectDefinitionDto
+            {
+                TargetType = effect.TargetType,
+                TargetId = effect.TargetId,
+                TargetName = effect.TargetName,
+                OperationType = effect.OperationType,
+                Value = ResolveMassDistributionSessionGaugeSignedValue(effect),
+                ClampMode = effect.ClampMode,
+                ClampMinTotal = effect.ClampMinTotal,
+                ClampMaxTotal = effect.ClampMaxTotal,
+                ValueMode = ModifierValueMode.Fixed,
+                SourceMetricId = null,
+                RandomDiceCount = 1,
+                RandomDiceSides = 6
+            };
+        }
+
+        private static int ResolveMassDistributionSessionGaugeSignedValue(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.ValueMode == ModifierValueMode.RandomDice)
+            {
+                var rollValue = RollRandomDice(effect.RandomDiceCount, effect.RandomDiceSides);
+
+                return effect.Value < 0
+                    ? -rollValue
+                    : rollValue;
+            }
+
+            return effect.Value;
+        }
+
+        private void ValidateClampConfiguration(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.ClampMode != ConsequenceClampMode.ClampTotal)
+                return;
+
+            if (effect.ClampMinTotal > 0 ||
+                effect.ClampMaxTotal < 0 ||
+                effect.ClampMinTotal > effect.ClampMaxTotal)
+            {
+                throw new Exception(_localizer["Backend_InvalidConsequenceClampConfiguration"]);
+            }
+        }
+
 
         private async Task<string> BuildUndoSnapshotJsonAsync(
     RollocracyDbContext context,
@@ -465,7 +660,9 @@ namespace Rollocracy.Infrastructure.Services
                 {
                     Id = x.Id,
                     CharacterId = x.CharacterId,
-                    ItemDefinitionId = x.ItemDefinitionId
+                    ItemDefinitionId = x.ItemDefinitionId,
+                    Quantity = x.Quantity,
+                    IsActive = x.IsActive
                 }).ToList(),
                 CharacterModifiers = characterModifiers.Select(x => new CharacterModifierUndoState
                 {
@@ -537,6 +734,8 @@ namespace Rollocracy.Infrastructure.Services
             public Guid Id { get; set; }
             public Guid CharacterId { get; set; }
             public Guid ItemDefinitionId { get; set; }
+            public int Quantity { get; set; } = 1;
+            public bool IsActive { get; set; } = true;
         }
 
         private sealed class CharacterModifierUndoState

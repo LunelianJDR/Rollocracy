@@ -25,6 +25,22 @@ namespace Rollocracy.Domain.GameTests
         Metric = 1
     }
 
+    public enum TestConsequenceApplicationMode
+    {
+        ApplyOnce = 0,
+        PerCharacter = 1,
+        PerSuccessfulCharacter = 2,
+        PerFailedCharacter = 3,
+        PerEligibleCharacter = 4,
+        PerPollOptionVoter = 5
+    }
+
+    public enum ConsequenceClampMode
+    {
+        None = 0,
+        ClampTotal = 1
+    }
+
     public class GameTestAdvancedModifierDto
     {
         public GameTestAdvancedModifierSourceType SourceType { get; set; } = GameTestAdvancedModifierSourceType.TraitOption;
@@ -53,6 +69,8 @@ namespace Rollocracy.Domain.GameTests
     {
         public TestConsequenceApplyOn ApplyOn { get; set; }
 
+        public TestConsequenceApplicationMode ApplicationMode { get; set; } = TestConsequenceApplicationMode.ApplyOnce;
+
         public TestConsequenceOperationType OperationType { get; set; }
 
         public TestConsequenceTargetKind TargetKind { get; set; }
@@ -69,11 +87,22 @@ namespace Rollocracy.Domain.GameTests
         // Utilisé uniquement pour AddValue
         public int Value { get; set; }
 
+        public ConsequenceClampMode ClampMode { get; set; } = ConsequenceClampMode.None;
+
+        public int ClampMinTotal { get; set; } = -100;
+
+        public int ClampMaxTotal { get; set; } = 100;
+
         // 6D : valeur fixe ou metric source
         public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
 
         // 6D : metric utilisée quand ValueMode = Metric
         public Guid? SourceMetricId { get; set; }
+
+        // C-3 : paramètres utilisés quand ValueMode = RandomDice.
+        public int RandomDiceCount { get; set; } = 1;
+
+        public int RandomDiceSides { get; set; } = 6;
     }
 
     public class GameTestCreateRequestDto

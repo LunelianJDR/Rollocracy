@@ -171,13 +171,19 @@ namespace Rollocracy.Infrastructure.Services
                         SessionPollOptionId = optionId,
                         TargetKind = consequence.TargetKind,
                         TargetDefinitionId = consequence.TargetDefinitionId,
+                        ApplicationMode = TestConsequenceApplicationMode.ApplyOnce,
                         TargetNameSnapshot = targetName,
-                        ModifierMode = consequence.ValueMode == ModifierValueMode.Metric ? consequence.ModifierMode : TestModifierMode.Bonus,
+                        ModifierMode = consequence.ValueMode == ModifierValueMode.Metric || consequence.ValueMode == ModifierValueMode.RandomDice ? consequence.ModifierMode : TestModifierMode.Bonus,
                         Value = consequence.Value,
+                        ClampMode = consequence.ClampMode,
+                        ClampMinTotal = consequence.ClampMinTotal,
+                        ClampMaxTotal = consequence.ClampMaxTotal,
                         ValueMode = consequence.ValueMode,
                         SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
                             ? consequence.SourceMetricId
                             : null,
+                        RandomDiceCount = consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceCount(consequence.RandomDiceCount) : 1,
+                        RandomDiceSides = consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceSides(consequence.RandomDiceSides) : 6,
                         OperationType = consequence.OperationType
                     });
                 }
@@ -564,6 +570,12 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(v => v.SessionPollId == poll.Id)
                 .ToListAsync();
 
+            var eligibleCharacterIds = await context.SessionPollEligibleCharacters
+                .AsNoTracking()
+                .Where(x => x.SessionPollId == poll.Id)
+                .Select(x => x.CharacterId)
+                .ToListAsync();
+
             var hasAppliedEffects = false;
 
             foreach (var vote in votes)
@@ -575,7 +587,13 @@ namespace Rollocracy.Infrastructure.Services
                 var voteConsequences = optionConsequences
                     .Where(x => x.option.Id == vote.SessionPollOptionId)
                     .Select(x => x.consequence)
+                    .Where(x => !IsSessionGaugeConsequence(x))
                     .ToList();
+
+                voteConsequences = await NormalizePollConsequencesForCharacterAsync(
+                    context,
+                    vote.CharacterId,
+                    voteConsequences);
 
                 var legacyConsequences = voteConsequences
                     .Where(c =>
@@ -588,9 +606,10 @@ namespace Rollocracy.Infrastructure.Services
 
                 foreach (var consequence in legacyConsequences)
                 {
-                    var signedValue = consequence.ModifierMode == TestModifierMode.Bonus
-                        ? consequence.Value
-                        : -consequence.Value;
+                    var signedValue = await ResolvePollConsequenceSignedValueAsync(
+                        context,
+                        vote.CharacterId,
+                        consequence);
 
                     if (consequence.TargetKind == TestConsequenceTargetKind.Gauge)
                     {
@@ -816,6 +835,36 @@ namespace Rollocracy.Infrastructure.Services
                 }
             }
 
+            foreach (var optionGroup in optionConsequences
+                .Where(x => IsSessionGaugeConsequence(x.consequence))
+                .GroupBy(x => x.option.Id))
+            {
+                var optionId = optionGroup.Key;
+                var optionVotes = votes.Where(v => v.SessionPollOptionId == optionId).ToList();
+                var optionConsequencesForSessionGauges = optionGroup.Select(x => x.consequence).ToList();
+
+                foreach (var target in optionVotes.Select(v => new PollSessionGaugeTarget(v.CharacterId, v.Id)))
+                {
+                    var normalizedSessionGaugeConsequences = await NormalizePollConsequencesForCharacterAsync(
+                        context,
+                        target.CharacterId,
+                        optionConsequencesForSessionGauges);
+
+                    foreach (var consequence in normalizedSessionGaugeConsequences)
+                    {
+                        var applied = await ApplyPollSessionGaugeConsequenceAsync(
+                            context,
+                            poll,
+                            consequence,
+                            target.CharacterId,
+                            target.VoteId,
+                            optionId);
+
+                        hasAppliedEffects = hasAppliedEffects || applied;
+                    }
+                }
+            }
+
             poll.IsClosed = true;
             poll.ConsequencesApplied = hasAppliedEffects;
             poll.ClosedAtUtc = DateTime.UtcNow;
@@ -825,6 +874,220 @@ namespace Rollocracy.Infrastructure.Services
             await _sessionNotifier.NotifyCharacterStateChangedAsync(sessionId);
             await _sessionNotifier.NotifyPollChangedAsync(sessionId);
         }
+
+
+        private async Task<List<SessionPollOptionConsequence>> NormalizePollConsequencesForCharacterAsync(
+    RollocracyDbContext context,
+    Guid characterId,
+    List<SessionPollOptionConsequence> consequences)
+        {
+            var result = new List<SessionPollOptionConsequence>();
+
+            foreach (var group in consequences.GroupBy(GetPollConsequenceClampGroupKey))
+            {
+                var groupConsequences = group.ToList();
+
+                if (groupConsequences.Count <= 1 ||
+                    group.Key is null ||
+                    groupConsequences.First().ClampMode != ConsequenceClampMode.ClampTotal)
+                {
+                    result.AddRange(groupConsequences);
+                    continue;
+                }
+
+                ValidateClampConfiguration(groupConsequences.First());
+
+                var total = 0;
+
+                foreach (var consequence in groupConsequences)
+                {
+                    total += await ResolvePollConsequenceSignedValueAsync(context, characterId, consequence);
+                }
+
+                var template = groupConsequences.First();
+                var clampedTotal = Math.Clamp(total, template.ClampMinTotal, template.ClampMaxTotal);
+
+                // Important : 0 est une borne valide. Si le total clampé vaut 0,
+                // il n'y a aucun delta réel à appliquer.
+                if (clampedTotal == 0)
+                    continue;
+
+                result.Add(new SessionPollOptionConsequence
+                {
+                    Id = Guid.NewGuid(),
+                    SessionPollOptionId = template.SessionPollOptionId,
+                    TargetKind = template.TargetKind,
+                    TargetDefinitionId = template.TargetDefinitionId,
+                    ApplicationMode = template.ApplicationMode,
+                    TargetNameSnapshot = template.TargetNameSnapshot,
+                    ModifierMode = TestModifierMode.Bonus,
+                    Value = clampedTotal,
+                    ClampMode = ConsequenceClampMode.None,
+                    ClampMinTotal = -100,
+                    ClampMaxTotal = 100,
+                    ValueMode = ModifierValueMode.Fixed,
+                    SourceMetricId = null,
+                    RandomDiceCount = 1,
+                    RandomDiceSides = 6,
+                    OperationType = TestConsequenceOperationType.AddValue
+                });
+            }
+
+            return result;
+        }
+
+        private static string? GetPollConsequenceClampGroupKey(SessionPollOptionConsequence consequence)
+        {
+            if (consequence.OperationType != TestConsequenceOperationType.AddValue)
+                return null;
+
+            return $"{(int)consequence.TargetKind}:{consequence.TargetDefinitionId:N}";
+        }
+
+        private async Task<int> ResolvePollConsequenceSignedValueAsync(
+            RollocracyDbContext context,
+            Guid characterId,
+            SessionPollOptionConsequence consequence)
+        {
+            if (consequence.ValueMode == ModifierValueMode.Metric)
+            {
+                if (!consequence.SourceMetricId.HasValue)
+                    throw new Exception(_localizer["Backend_InvalidPollConsequenceSourceMetric"]);
+
+                var metricValue = await ComputeMetricVoteWeightAsync(
+                    context,
+                    consequence.SourceMetricId.Value,
+                    characterId,
+                    enforceMinimumOne: false);
+
+                var roundedMetricValue = (int)metricValue;
+
+                return consequence.ModifierMode == TestModifierMode.Bonus
+                    ? roundedMetricValue
+                    : -roundedMetricValue;
+            }
+
+            if (consequence.ValueMode == ModifierValueMode.RandomDice)
+            {
+                var rollValue = RollRandomDice(consequence.RandomDiceCount, consequence.RandomDiceSides);
+
+                return consequence.ModifierMode == TestModifierMode.Bonus
+                    ? rollValue
+                    : -rollValue;
+            }
+
+            return consequence.ModifierMode == TestModifierMode.Bonus
+                ? consequence.Value
+                : -consequence.Value;
+        }
+
+        private void ValidateClampConfiguration(PollOptionConsequenceInlineDraftDto consequence)
+        {
+            ValidateClampConfiguration(
+                consequence.ClampMode,
+                consequence.ClampMinTotal,
+                consequence.ClampMaxTotal);
+        }
+
+        private void ValidateClampConfiguration(SessionPollOptionConsequence consequence)
+        {
+            ValidateClampConfiguration(
+                consequence.ClampMode,
+                consequence.ClampMinTotal,
+                consequence.ClampMaxTotal);
+        }
+
+        private void ValidateClampConfiguration(
+            ConsequenceClampMode clampMode,
+            int clampMinTotal,
+            int clampMaxTotal)
+        {
+            if (clampMode != ConsequenceClampMode.ClampTotal)
+                return;
+
+            if (clampMinTotal > 0 ||
+                clampMaxTotal < 0 ||
+                clampMinTotal > clampMaxTotal)
+            {
+                throw new Exception(_localizer["Backend_InvalidConsequenceClampConfiguration"]);
+            }
+        }
+
+        private static bool IsSessionGaugeConsequence(SessionPollOptionConsequence consequence)
+        {
+            return consequence.OperationType == TestConsequenceOperationType.AddValue &&
+                consequence.TargetKind == TestConsequenceTargetKind.SessionGauge;
+        }
+
+        private static IEnumerable<PollSessionGaugeTarget> ResolvePollSessionGaugeTargets(
+            SessionPollOptionConsequence consequence,
+            List<SessionPollVote> optionVotes,
+            List<Guid> eligibleCharacterIds)
+        {
+            // Les sondages restent strictement individuels : une conséquence de jauge de session
+            // s'applique une fois pour chaque personnage ayant voté pour cette option.
+            // Le mode d'application C-1 est réservé aux GameTests globaux.
+            return optionVotes
+                .Select(v => new PollSessionGaugeTarget(v.CharacterId, v.Id));
+        }
+
+        private async Task<bool> ApplyPollSessionGaugeConsequenceAsync(
+            RollocracyDbContext context,
+            SessionPoll poll,
+            SessionPollOptionConsequence consequence,
+            Guid characterId,
+            Guid voteId,
+            Guid optionId)
+        {
+            var character = await context.Characters.FirstOrDefaultAsync(c => c.Id == characterId);
+            if (character is null)
+                return false;
+
+            var sessionGauge = await context.SessionGauges
+                .FirstOrDefaultAsync(g => g.Id == consequence.TargetDefinitionId && g.SessionId == poll.SessionId);
+
+            if (sessionGauge is null)
+                return false;
+
+            var previousCharacterAlive = character.IsAlive;
+            var previousCharacterDiedAt = character.DiedAtUtc;
+            var previousValue = sessionGauge.CurrentValue;
+
+            var signedValue = await ResolvePollConsequenceSignedValueAsync(
+                context,
+                characterId,
+                consequence);
+
+            sessionGauge.CurrentValue = Math.Clamp(
+                sessionGauge.CurrentValue + signedValue,
+                sessionGauge.MinValue,
+                sessionGauge.MaxValue);
+
+            context.SessionPollAppliedEffects.Add(new SessionPollAppliedEffect
+            {
+                Id = Guid.NewGuid(),
+                SessionPollId = poll.Id,
+                CharacterId = characterId,
+                SessionPollVoteId = voteId,
+                SessionPollOptionId = optionId,
+                TargetKind = TestConsequenceTargetKind.SessionGauge,
+                TargetDefinitionId = consequence.TargetDefinitionId,
+                OperationType = TestConsequenceOperationType.AddValue,
+                PreviousValue = previousValue,
+                NewValue = sessionGauge.CurrentValue,
+                PreviousHasTargetLink = false,
+                NewHasTargetLink = false,
+                PreviousIsAlive = previousCharacterAlive,
+                NewIsAlive = character.IsAlive,
+                PreviousDiedAtUtc = previousCharacterDiedAt,
+                NewDiedAtUtc = character.DiedAtUtc,
+                AppliedAtUtc = DateTime.UtcNow
+            });
+
+            return true;
+        }
+
+        private readonly record struct PollSessionGaugeTarget(Guid CharacterId, Guid VoteId);
 
         public async Task<List<SessionPollPresetDto>> GetSessionPresetsAsync(Guid sessionId, Guid gameMasterUserAccountId)
         {
@@ -1067,7 +1330,9 @@ namespace Rollocracy.Infrastructure.Services
                             {
                                 Id = Guid.NewGuid(),
                                 CharacterId = effect.CharacterId,
-                                ItemDefinitionId = effect.TargetDefinitionId
+                                ItemDefinitionId = effect.TargetDefinitionId,
+                                Quantity = 1,
+                                IsActive = true
                             });
                         }
                     }
@@ -1137,7 +1402,8 @@ namespace Rollocracy.Infrastructure.Services
         private async Task<decimal> ComputeMetricVoteWeightAsync(
     RollocracyDbContext context,
     Guid metricDefinitionId,
-    Guid characterId)
+    Guid characterId,
+    bool enforceMinimumOne = true)
         {
             var metricDefinition = await context.MetricDefinitions
                 .AsNoTracking()
@@ -1362,7 +1628,7 @@ namespace Rollocracy.Infrastructure.Services
                 }).ToList()
             }, metricDefinitionId);
 
-            if (metricValue < 1)
+            if (enforceMinimumOne && metricValue < 1)
                 metricValue = 1;
 
             return decimal.Round(metricValue, 2, MidpointRounding.AwayFromZero);
@@ -1488,7 +1754,8 @@ namespace Rollocracy.Infrastructure.Services
                 ? consequence.Value
                 : -consequence.Value;
 
-            var resolvedValue = consequence.ValueMode == ModifierValueMode.Metric
+            var resolvedValue = consequence.ValueMode == ModifierValueMode.Metric ||
+                consequence.ValueMode == ModifierValueMode.RandomDice
                 ? (consequence.ModifierMode == TestModifierMode.Bonus ? 1 : -1)
                 : signedValue;
 
@@ -1507,10 +1774,15 @@ namespace Rollocracy.Infrastructure.Services
                 TargetId = consequence.TargetDefinitionId,
                 TargetName = consequence.TargetNameSnapshot,
                 Value = resolvedValue,
+                ClampMode = consequence.ClampMode,
+                ClampMinTotal = consequence.ClampMinTotal,
+                ClampMaxTotal = consequence.ClampMaxTotal,
                 ValueMode = consequence.ValueMode,
                 SourceMetricId = consequence.ValueMode == ModifierValueMode.Metric
                     ? consequence.SourceMetricId
-                    : null
+                    : null,
+                RandomDiceCount = consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceCount(consequence.RandomDiceCount) : 1,
+                RandomDiceSides = consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceSides(consequence.RandomDiceSides) : 6
             };
         }
 
@@ -1599,6 +1871,68 @@ namespace Rollocracy.Infrastructure.Services
         }
 
 
+        private static bool IsPollSessionGaugeApplicationModeEligible(PollOptionConsequenceInlineDraftDto consequence)
+        {
+            return consequence.OperationType == TestConsequenceOperationType.AddValue &&
+                consequence.TargetKind == TestConsequenceTargetKind.SessionGauge;
+        }
+
+        private static TestConsequenceApplicationMode NormalizePollConsequenceApplicationMode(PollOptionConsequenceInlineDraftDto consequence)
+        {
+            if (!IsPollSessionGaugeApplicationModeEligible(consequence))
+                return TestConsequenceApplicationMode.ApplyOnce;
+
+            return consequence.ApplicationMode switch
+            {
+                TestConsequenceApplicationMode.PerEligibleCharacter => TestConsequenceApplicationMode.PerEligibleCharacter,
+                TestConsequenceApplicationMode.PerPollOptionVoter => TestConsequenceApplicationMode.PerPollOptionVoter,
+                _ => TestConsequenceApplicationMode.ApplyOnce
+            };
+        }
+
+        private static TestConsequenceApplicationMode NormalizeStoredPollApplicationMode(SessionPollOptionConsequence consequence)
+        {
+            return consequence.ApplicationMode switch
+            {
+                TestConsequenceApplicationMode.PerEligibleCharacter => TestConsequenceApplicationMode.PerEligibleCharacter,
+                TestConsequenceApplicationMode.PerPollOptionVoter => TestConsequenceApplicationMode.PerPollOptionVoter,
+                _ => TestConsequenceApplicationMode.ApplyOnce
+            };
+        }
+
+        private void ValidateRandomDiceConfiguration(int diceCount, int diceSides)
+        {
+            if (diceCount < 1 || diceCount > 5)
+                throw new Exception(_localizer["Backend_InvalidRandomDiceCount"]);
+
+            if (diceSides < 2 || diceSides > 100)
+                throw new Exception(_localizer["Backend_InvalidRandomDiceSides"]);
+        }
+
+        private static int RollRandomDice(int diceCount, int diceSides)
+        {
+            var normalizedDiceCount = NormalizeRandomDiceCount(diceCount);
+            var normalizedDiceSides = NormalizeRandomDiceSides(diceSides);
+
+            var total = 0;
+            for (var i = 0; i < normalizedDiceCount; i++)
+            {
+                total += System.Security.Cryptography.RandomNumberGenerator.GetInt32(1, normalizedDiceSides + 1);
+            }
+
+            return total;
+        }
+
+        private static int NormalizeRandomDiceCount(int diceCount)
+        {
+            return diceCount <= 0 ? 1 : diceCount;
+        }
+
+        private static int NormalizeRandomDiceSides(int diceSides)
+        {
+            return diceSides <= 0 ? 6 : diceSides;
+        }
+
         private void ValidateCreateRequest(PollCreateRequestDto request)
         {
             if (string.IsNullOrWhiteSpace(request.Question))
@@ -1620,6 +1954,9 @@ namespace Rollocracy.Infrastructure.Services
                     if (consequence.ValueMode == ModifierValueMode.Metric && !consequence.SourceMetricId.HasValue)
                         throw new Exception(_localizer["Backend_InvalidPollConsequenceSourceMetric"]);
 
+                    if (consequence.ValueMode == ModifierValueMode.RandomDice)
+                        ValidateRandomDiceConfiguration(consequence.RandomDiceCount, consequence.RandomDiceSides);
+
                     // Compatibilité transitoire : l'UI legacy n'envoie pas encore OperationType.
                     if ((int)consequence.OperationType == 0)
                     {
@@ -1640,6 +1977,8 @@ namespace Rollocracy.Infrastructure.Services
 
                             if (consequence.ValueMode == ModifierValueMode.Fixed && consequence.Value == 0)
                                 throw new Exception(_localizer["Backend_InvalidPollConsequenceValue"]);
+
+                            ValidateClampConfiguration(consequence);
                             break;
 
                         case TestConsequenceOperationType.GrantTalent:
@@ -1812,14 +2151,20 @@ namespace Rollocracy.Infrastructure.Services
                     OptionLabel = x.option.Label,
                     TargetKind = x.consequence.TargetKind,
                     TargetDefinitionId = x.consequence.TargetDefinitionId,
+                    ApplicationMode = x.consequence.ApplicationMode,
                     TargetName = x.consequence.TargetNameSnapshot,
                     ModifierMode = x.consequence.ModifierMode,
                     Value = x.consequence.Value,
+                    ClampMode = x.consequence.ClampMode,
+                    ClampMinTotal = x.consequence.ClampMinTotal,
+                    ClampMaxTotal = x.consequence.ClampMaxTotal,
                     ValueMode = x.consequence.ValueMode,
                     SourceMetricId = x.consequence.SourceMetricId,
                     SourceMetricName = x.consequence.SourceMetricId.HasValue
                         ? metricDefinitions.FirstOrDefault(m => m.Id == x.consequence.SourceMetricId.Value)?.Name ?? string.Empty
                         : string.Empty,
+                    RandomDiceCount = x.consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceCount(x.consequence.RandomDiceCount) : 1,
+                    RandomDiceSides = x.consequence.ValueMode == ModifierValueMode.RandomDice ? NormalizeRandomDiceSides(x.consequence.RandomDiceSides) : 6,
                     OperationType = x.consequence.OperationType
                 }).ToList()
             };
@@ -1879,9 +2224,12 @@ namespace Rollocracy.Infrastructure.Services
         {
             return consequence.OperationType switch
             {
-                TestConsequenceOperationType.AddValue => consequence.ValueMode == ModifierValueMode.Metric
-                    ? consequence.SourceMetricId.HasValue
-                    : consequence.Value != 0,
+                TestConsequenceOperationType.AddValue => consequence.ValueMode switch
+                {
+                    ModifierValueMode.Metric => consequence.SourceMetricId.HasValue,
+                    ModifierValueMode.RandomDice => true,
+                    _ => consequence.Value != 0
+                },
                 TestConsequenceOperationType.GrantTalent => consequence.TargetDefinitionId != Guid.Empty,
                 TestConsequenceOperationType.RevokeTalent => consequence.TargetDefinitionId != Guid.Empty,
                 TestConsequenceOperationType.GrantItem => consequence.TargetDefinitionId != Guid.Empty,

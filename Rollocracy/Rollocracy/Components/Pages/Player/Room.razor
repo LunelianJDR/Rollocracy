@@ -130,7 +130,7 @@ else
                                 <div class="rc-form-field rc-form-field--readonly">
                                     <label>@L["Test_Result"]</label>
                                     <div class="rc-player-test-outcome @(ActiveTest.Result.IsSuccess ? "success" : "failure")">
-                                        @(ActiveTest.Result.IsSuccess? L["Test_Success"] : L["Test_Failure"])
+                                        @(ActiveTest.Result.IsSuccess ? L["Test_Success"] : L["Test_Failure"])
                                     </div>
                                 </div>
                             </div>
@@ -206,7 +206,7 @@ else
                             <div class="rc-player-character-sheet__hero">
                                 <div class="rc-player-character-sheet__name">@State.AliveCharacter.Name</div>
                                 <div class="rc-player-character-sheet__status @(State.AliveCharacter.IsAlive ? "alive" : "dead")">
-                                    @(State.AliveCharacter.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                    @(State.AliveCharacter.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
                                 </div>
                             </div>
 
@@ -224,7 +224,7 @@ else
                             <div class="rc-player-character-sheet__hero">
                                 <div class="rc-player-character-sheet__name">@State.AliveCharacter.Name</div>
                                 <div class="rc-player-character-sheet__status @(State.AliveCharacter.IsAlive ? "alive" : "dead")">
-                                    @(State.AliveCharacter.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                    @(State.AliveCharacter.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
                                 </div>
                             </div>
 
@@ -287,7 +287,9 @@ else
                                 @foreach (var offer in GetVisibleStoreOffers())
                                 {
                                     <div class="rc-session-store-offer">
-                                        <div class="rc-session-store-offer__main">
+                                        <div class='@GetTooltipSurfaceClass(offer.Tooltip, "rc-session-store-offer__main")'
+                                             data-tooltip="@GetTooltipValue(offer.Tooltip)"
+                                             tabindex="@GetTooltipTabIndex(offer.Tooltip)">
                                             <div class="rc-session-store-offer__title">@offer.TargetName</div>
                                             <div class="rc-session-store-offer__meta">
                                                 <span>@(offer.OfferType == SessionStoreOfferType.Talent ? L["Character_Edit_Talents"] : L["Character_Edit_Items"])</span>
@@ -416,13 +418,24 @@ else
                                                 }
                                                 else
                                                 {
-                                                    <select @bind="CreationTraitSelections[trait.TraitDefinitionId]">
-                                                        <option value="">@L["CharacterCreation_SelectOptionPlaceholder"]</option>
+                                                    <div class="rc-character-inline-list">
                                                         @foreach (var option in GetSelectableCreationOptions(trait))
                                                         {
-                                                            <option value="@option.TraitOptionId">@option.Name</option>
+                                                            var isSelected = CreationTraitSelections.TryGetValue(trait.TraitDefinitionId, out var selectedOptionId)
+                                                                && selectedOptionId.HasValue
+                                                                && selectedOptionId.Value == option.TraitOptionId;
+
+                                                            <label class='@GetTooltipSurfaceClass(option.Tooltip, "rc-filter-toggle")'
+                                                                   data-tooltip="@GetTooltipValue(option.Tooltip)"
+                                                                   tabindex="@GetTooltipTabIndex(option.Tooltip)">
+                                                                <input type="radio"
+                                                                       name="@($"creation-trait-{trait.TraitDefinitionId:N}")"
+                                                                       checked="@isSelected"
+                                                                       @onchange="() => CreationTraitSelections[trait.TraitDefinitionId] = option.TraitOptionId" />
+                                                                <span>@option.Name</span>
+                                                            </label>
                                                         }
-                                                    </select>
+                                                    </div>
                                                 }
                                             </div>
                                         }
@@ -438,7 +451,9 @@ else
                                     <div class="rc-character-inline-list">
                                         @foreach (var talent in CreationTemplate.Talents)
                                         {
-                                            <label class="rc-filter-toggle">
+                                            <label class='@GetTooltipSurfaceClass(talent.Tooltip, "rc-filter-toggle")'
+                                                   data-tooltip="@GetTooltipValue(talent.Tooltip)"
+                                                   tabindex="@GetTooltipTabIndex(talent.Tooltip)">
                                                 <input type="checkbox"
                                                        checked="@SelectedCreationTalentIds.Contains(talent.TalentDefinitionId)"
                                                        disabled="@IsCreationTalentDisabled(talent.TalentDefinitionId)"
@@ -458,7 +473,9 @@ else
                                     <div class="rc-character-inline-list">
                                         @foreach (var item in CreationTemplate.Items)
                                         {
-                                            <label class="rc-filter-toggle">
+                                            <label class='@GetTooltipSurfaceClass(item.Tooltip, "rc-filter-toggle")'
+                                                   data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                   tabindex="@GetTooltipTabIndex(item.Tooltip)">
                                                 <input type="checkbox"
                                                        checked="@SelectedCreationItemIds.Contains(item.ItemDefinitionId)"
                                                        disabled="@IsCreationItemDisabled(item.ItemDefinitionId)"
@@ -670,7 +687,7 @@ else
                         @if (!ShowSessionCharactersPanel && !ShowJournalPanel)
                         {
                             <button type="button" @onclick="() => IsTwitchEnabled = !IsTwitchEnabled">
-                                @(IsTwitchEnabled? L["Session_Player_DisableStream"] : L["Session_Player_EnableStream"])
+                                @(IsTwitchEnabled ? L["Session_Player_DisableStream"] : L["Session_Player_EnableStream"])
                             </button>
                         }
 
@@ -690,11 +707,11 @@ else
                                     aria-label="@GetOtherSidePanelPopupLabel()"
                                     @onclick="OpenOtherSidePanelPopup">
                                 <svg xmlns="http://www.w3.org/2000/svg"
-                                        viewBox="0 -960 960 960"
-                                        width="20"
-                                        height="20"
-                                        fill="currentColor"
-                                        aria-hidden="true">
+                                     viewBox="0 -960 960 960"
+                                     width="20"
+                                     height="20"
+                                     fill="currentColor"
+                                     aria-hidden="true">
                                     <path d="M216-144q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h240v72H216v528h528v-240h72v240q0 29.7-21.15 50.85Q773.7-144 744-144H216Zm168-216-51-51 360-360H528v-72h288v288h-72v-165L384-360Z" />
                                 </svg>
                             </button>
@@ -781,11 +798,11 @@ else
 
                                                     <div class="rc-character-card__meta-row">
                                                         <span class="rc-character-chip @(character.IsAlive ? "alive" : "dead")">
-                                                            @(character.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                                            @(character.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
                                                         </span>
 
                                                         <span class="rc-character-chip @(character.IsOnline ? "online" : "offline")">
-                                                            @(character.IsOnline? L["Common_Online"] : L["Common_Offline"])
+                                                            @(character.IsOnline ? L["Common_Online"] : L["Common_Offline"])
                                                         </span>
 
                                                         @if (character.IsNpc)
@@ -889,7 +906,7 @@ else
                                             <h5 class="rc-character-detail-panel__title">@ObservedCharacterSheet.Name</h5>
                                             <div class="rc-character-detail-panel__meta">
                                                 <span class="rc-character-chip @(ObservedCharacterSheet.IsAlive ? "alive" : "dead")">
-                                                    @(ObservedCharacterSheet.IsAlive? L["Common_Alive"] : L["Common_Dead"])
+                                                    @(ObservedCharacterSheet.IsAlive ? L["Common_Alive"] : L["Common_Dead"])
                                                 </span>
                                             </div>
                                         </div>
@@ -1069,7 +1086,9 @@ else
                                                     <div class="rc-character-inline-list">
                                                         @foreach (var talentItem in ObservedEditableCharacter.Talents)
                                                         {
-                                                            <label class="rc-filter-toggle">
+                                                            <label class='@GetTooltipSurfaceClass(talentItem.Tooltip, "rc-filter-toggle")'
+                                                                   data-tooltip="@GetTooltipValue(talentItem.Tooltip)"
+                                                                   tabindex="@GetTooltipTabIndex(talentItem.Tooltip)">
                                                                 <input type="checkbox" @bind="talentItem.IsSelected" />
                                                                 <span>@talentItem.Name</span>
                                                             </label>
@@ -1089,7 +1108,9 @@ else
                                                     <div class="rc-character-inline-list">
                                                         @foreach (var item in ObservedEditableCharacter.Items)
                                                         {
-                                                            <div class="rc-consumable-edit-line">
+                                                            <div class='@GetTooltipSurfaceClass(item.Tooltip, "rc-consumable-edit-line")'
+                                                                 data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                                 tabindex="@GetTooltipTabIndex(item.Tooltip)">
                                                                 <label class="rc-filter-toggle">
                                                                     <input type="checkbox" @bind="item.IsSelected" />
                                                                     <span>@item.Name</span>
@@ -1144,7 +1165,11 @@ else
                                                 <ul class="rc-detail-list">
                                                     @foreach (var item in ObservedCharacterSheet.Attributes)
                                                     {
-                                                        <li>@item.Name : @item.Value</li>
+                                                        <li>
+                                                            <span class='@GetTooltipSurfaceClass(item.Tooltip, "rc-detail-tooltip-line")'
+                                                                  data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                                  tabindex="@GetTooltipTabIndex(item.Tooltip)">@item.Name : @item.Value</span>
+                                                        </li>
                                                     }
                                                 </ul>
                                             </div>
@@ -1156,7 +1181,11 @@ else
                                                     <ul class="rc-detail-list">
                                                         @foreach (var item in ObservedCharacterSheet.DerivedStats)
                                                         {
-                                                            <li>@item.Name : @item.Value</li>
+                                                            <li>
+                                                                <span class='@GetTooltipSurfaceClass(item.Tooltip, "rc-detail-tooltip-line")'
+                                                                      data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                                      tabindex="@GetTooltipTabIndex(item.Tooltip)">@item.Name : @item.Value</span>
+                                                            </li>
                                                         }
                                                     </ul>
                                                 </div>
@@ -1169,7 +1198,11 @@ else
                                                     <ul class="rc-detail-list">
                                                         @foreach (var item in ObservedCharacterSheet.Traits)
                                                         {
-                                                            <li>@item.TraitName : @item.OptionName</li>
+                                                            <li>
+                                                                <span class='@GetTooltipSurfaceClass(item.Tooltip, "rc-detail-tooltip-line")'
+                                                                      data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                                      tabindex="@GetTooltipTabIndex(item.Tooltip)">@item.TraitName : @item.OptionName</span>
+                                                            </li>
                                                         }
                                                     </ul>
                                                 </div>
@@ -1182,7 +1215,11 @@ else
                                                     <ul class="rc-detail-list">
                                                         @foreach (var item in ObservedCharacterSheet.Talents)
                                                         {
-                                                            <li>@item.Name</li>
+                                                            <li>
+                                                                <span class='@GetTooltipSurfaceClass(item.Tooltip, "rc-detail-tooltip-line")'
+                                                                      data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                                      tabindex="@GetTooltipTabIndex(item.Tooltip)">@item.Name</span>
+                                                            </li>
                                                         }
                                                     </ul>
                                                 </div>
@@ -1195,7 +1232,11 @@ else
                                                     <ul class="rc-detail-list">
                                                         @foreach (var item in ObservedCharacterSheet.Items)
                                                         {
-                                                            <li>@item.Name</li>
+                                                            <li>
+                                                                <span class='@GetTooltipSurfaceClass(item.Tooltip, "rc-detail-tooltip-line")'
+                                                                      data-tooltip="@GetTooltipValue(item.Tooltip)"
+                                                                      tabindex="@GetTooltipTabIndex(item.Tooltip)">@item.Name</span>
+                                                            </li>
                                                         }
                                                     </ul>
                                                 </div>
@@ -1290,7 +1331,7 @@ else
 
                         <div class="rc-tool-actions" style="margin-top: 0.75rem;">
                             <button type="button" @onclick="() => ShowTwitchChat = !ShowTwitchChat">
-                                @(ShowTwitchChat? L["Session_Player_HideChat"] : L["Session_Player_ShowChat"])
+                                @(ShowTwitchChat ? L["Session_Player_HideChat"] : L["Session_Player_ShowChat"])
                             </button>
                         </div>
                     }
@@ -1394,7 +1435,7 @@ else
     private string TwitchParentHost => new Uri(Navigation.BaseUri).Host;
 
     private bool CanAlertForCurrentTest(ActivePlayerGameTestDto? test)
-        => test is not null && !test.AlreadyRolled && test.AutoRollAtUtc >= DateTime.UtcNow;
+        => test is not null && !test.AlreadyRolled;
 
     private bool CanAlertForCurrentPoll(PollForPlayerDto? poll)
         => poll is not null && !poll.IsClosed && !poll.HasVoted;
@@ -1640,21 +1681,25 @@ else
             {
                 IsTestDismissed = false;
                 HighlightActiveTest = false;
+                return;
             }
-            else if (previousTestId != loadedTest.GameTestId)
+
+            var isNewTest = previousTestId != loadedTest.GameTestId;
+
+            if (isNewTest)
             {
                 IsTestDismissed = false;
-
-                if (allowArrivalAlert &&
-                    CanAlertForCurrentTest(loadedTest) &&
-                    LastAlertedActiveTestId != loadedTest.GameTestId)
-                {
-                    await TriggerActiveTestAlertAsync(loadedTest.GameTestId);
-                }
             }
             else
             {
                 IsTestDismissed = wasDismissed;
+            }
+
+            if (allowArrivalAlert &&
+                CanAlertForCurrentTest(loadedTest) &&
+                LastAlertedActiveTestId != loadedTest.GameTestId)
+            {
+                await TriggerActiveTestAlertAsync(loadedTest.GameTestId);
             }
         }
         catch (Exception ex)
@@ -2547,6 +2592,23 @@ else
         }
     }
 
+    private async Task ToggleCharacterItemActive(Guid itemDefinitionId, bool isActive)
+    {
+        try
+        {
+            Message = string.Empty;
+
+            await CharacterService.SetCharacterItemActiveStateAsync(PlayerSessionId, itemDefinitionId, isActive);
+            await LoadState(refreshJournal: false);
+            await LoadActiveTest(allowArrivalAlert: false);
+            await LoadLatestPoll(allowArrivalAlert: false);
+        }
+        catch (Exception ex)
+        {
+            Message = $"{L["Common_Error"]} : {ex.Message}";
+        }
+    }
+
     private bool AreRequiredCreationTraitsSelected()
     {
         if (CreationTemplate is null)
@@ -2692,6 +2754,17 @@ else
             .FirstOrDefault(x => string.Equals(x.TraitName, traitName, StringComparison.CurrentCultureIgnoreCase))
             ?.OptionName ?? string.Empty;
     }
+
+    private static string GetTooltipSurfaceClass(string? tooltip, string baseClass)
+        => string.IsNullOrWhiteSpace(tooltip)
+            ? baseClass
+            : $"{baseClass} rc-player-tooltip-surface";
+
+    private static string? GetTooltipValue(string? tooltip)
+        => string.IsNullOrWhiteSpace(tooltip) ? null : tooltip;
+
+    private static int? GetTooltipTabIndex(string? tooltip)
+        => string.IsNullOrWhiteSpace(tooltip) ? null : 0;
 
     private RenderFragment RenderCharacterSheet(CharacterSheetDto sheet, bool isDeadView) => builder =>
 {
@@ -2846,9 +2919,40 @@ else
         builder.AddAttribute(seq++, "class", "rc-player-pill-list");
         foreach (var item in sheet.Items)
         {
+            var itemPillClass = !item.IsConsumable && !item.IsActive
+                ? "rc-player-pill rc-player-pill--item rc-player-pill--inactive"
+                : "rc-player-pill rc-player-pill--item";
+
             Open("div");
-            AddTooltipAttributes(item.Tooltip, "rc-player-pill rc-player-pill--item");
+            AddTooltipAttributes(item.Tooltip, itemPillClass);
             Text(item.Name);
+
+            if (!isDeadView && !item.IsConsumable)
+            {
+                Open("label");
+                var activationDisabled = !item.IsActive && !item.CanActivate;
+
+                builder.AddAttribute(seq++, "class", activationDisabled
+                    ? "rc-filter-toggle rc-item-active-toggle rc-item-active-toggle--disabled"
+                    : "rc-filter-toggle rc-item-active-toggle");
+                builder.AddAttribute(seq++, "title", activationDisabled && !string.IsNullOrWhiteSpace(item.ActivationBlockedReason)
+                    ? item.ActivationBlockedReason
+                    : item.IsActive ? L["Character_Item_Active"] : L["Character_Item_Inactive"]);
+
+                Open("input");
+                builder.AddAttribute(seq++, "type", "checkbox");
+                builder.AddAttribute(seq++, "checked", item.IsActive);
+                if (activationDisabled)
+                    builder.AddAttribute(seq++, "disabled", true);
+                builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => ToggleCharacterItemActive(item.Id, e.Value is bool value && value)));
+                Close();
+
+                Open("span");
+                Text(item.IsActive ? L["Character_Item_Active"] : L["Character_Item_Inactive"]);
+                Close();
+
+                Close();
+            }
 
             if (!isDeadView && item.IsConsumable && item.Quantity > 0)
             {
@@ -3084,21 +3188,25 @@ else
             {
                 IsPollDismissed = false;
                 HighlightLatestPoll = false;
+                return;
             }
-            else if (previousPollId != loadedPoll.PollId)
+
+            var isNewPoll = previousPollId != loadedPoll.PollId;
+
+            if (isNewPoll)
             {
                 IsPollDismissed = false;
-
-                if (allowArrivalAlert &&
-                    CanAlertForCurrentPoll(loadedPoll) &&
-                    LastAlertedPollId != loadedPoll.PollId)
-                {
-                    await TriggerLatestPollAlertAsync(loadedPoll.PollId);
-                }
             }
             else
             {
                 IsPollDismissed = wasDismissed;
+            }
+
+            if (allowArrivalAlert &&
+                CanAlertForCurrentPoll(loadedPoll) &&
+                LastAlertedPollId != loadedPoll.PollId)
+            {
+                await TriggerLatestPollAlertAsync(loadedPoll.PollId);
             }
         }
         catch (Exception ex)

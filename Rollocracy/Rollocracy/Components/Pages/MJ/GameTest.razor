@@ -304,7 +304,7 @@ else
                                 </div>
                             }
                         }
-                        
+
                         <div class="rc-form-field">
                             <label>@L["Test_AutoRollDelay"]</label>
                             <div class="rc-difficulty-slider">
@@ -344,7 +344,7 @@ else
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="rc-form-field rc-form-field--full">
                             <div class="rc-tool-subsection__header">
                                 <label>@L["Test_GlobalThresholds"]</label>
@@ -391,7 +391,7 @@ else
                         </div>
                     </div>
                     <hr />
-                    
+
                     <CharacterAudienceFilters Title="@L["Test_TargetScope"]"
                                               OnlyOnline="@(NewTargetScope == TestTargetScope.OnlineLivingCharacters)"
                                               OnlyAlive="@(NewTargetScope == TestTargetScope.AllLivingCharacters)"
@@ -401,7 +401,7 @@ else
                                               OnlyAliveChanged="@(value => NewTargetScope = value ? TestTargetScope.AllLivingCharacters : NewTargetScope)"
                                               IncludeNpcsChanged="@(value => IncludeNpcsInTest = value)"
                                               BiographyNotEmptyChanged="@(value => AdvancedFilter.BiographyNotEmpty = value)" />
-                            
+
                     <CharacterAdvancedFilters Filter="AdvancedFilter"
                                               TraitOptionGroups="AdvancedTraitOptionGroups"
                                               TalentOptions="AdvancedTalentOptions"
@@ -620,7 +620,7 @@ else
                             </div>
                         }
                     </div>
-                    
+
                     <Consequences Title="@L["Test_Consequences"]"
                                   AddButtonLabel="@L["Test_AddConsequence"]"
                                   EmptyLabel="@L["Test_NoConsequence"]"
@@ -1533,21 +1533,7 @@ else
                     .Where(row => row.OperationType != TestConsequenceOperationType.AddValue
                         || row.ValueMode != ModifierValueMode.Metric
                         || row.SourceMetricId.HasValue)
-                    .Select(row => new GameTestConsequenceDraftDto
-                    {
-                        ApplyOn = row.ApplyOn,
-                        OperationType = row.OperationType,
-                        TargetKind = row.TargetKind,
-                        TargetDefinitionId = row.TargetDefinitionId,
-                        ModifierMode = row.ValueMode == ModifierValueMode.Metric
-                            ? row.ModifierMode
-                            : TestModifierMode.Bonus,
-                        Value = row.ValueMode == ModifierValueMode.Metric ? 0 : row.Value,
-                        ValueMode = row.ValueMode,
-                        SourceMetricId = row.ValueMode == ModifierValueMode.Metric
-                            ? row.SourceMetricId
-                            : null
-                    })
+                    .Select(MapConsequenceRowToDto)
                     .ToList()
             };
 
@@ -2510,13 +2496,19 @@ else
         return new GameTestConsequenceDraftDto
         {
             ApplyOn = row.ApplyOn,
+            ApplicationMode = row.ApplicationMode,
             OperationType = row.OperationType,
             TargetKind = row.TargetKind,
             TargetDefinitionId = row.TargetDefinitionId,
-            ModifierMode = row.ValueMode == ModifierValueMode.Metric ? row.ModifierMode : TestModifierMode.Bonus,
+            ModifierMode = row.ValueMode == ModifierValueMode.Metric || row.ValueMode == ModifierValueMode.RandomDice ? row.ModifierMode : TestModifierMode.Bonus,
             Value = row.Value,
+            ClampMode = row.ClampMode,
+            ClampMinTotal = row.ClampMinTotal,
+            ClampMaxTotal = row.ClampMaxTotal,
             ValueMode = row.ValueMode,
-            SourceMetricId = row.ValueMode == ModifierValueMode.Metric ? row.SourceMetricId : null
+            SourceMetricId = row.ValueMode == ModifierValueMode.Metric ? row.SourceMetricId : null,
+            RandomDiceCount = row.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(row.RandomDiceCount <= 0 ? 1 : row.RandomDiceCount, 1, 5) : 1,
+            RandomDiceSides = row.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(row.RandomDiceSides <= 0 ? 6 : row.RandomDiceSides, 2, 100) : 6
         };
     }
 
@@ -2526,13 +2518,19 @@ else
         {
             RowId = Guid.NewGuid(),
             ApplyOn = dto.ApplyOn,
+            ApplicationMode = dto.ApplicationMode,
             OperationType = dto.OperationType,
             TargetKind = dto.TargetKind,
             TargetDefinitionId = dto.TargetDefinitionId,
-            ModifierMode = dto.ValueMode == ModifierValueMode.Metric ? dto.ModifierMode : TestModifierMode.Bonus,
+            ModifierMode = dto.ValueMode == ModifierValueMode.Metric || dto.ValueMode == ModifierValueMode.RandomDice ? dto.ModifierMode : TestModifierMode.Bonus,
             Value = dto.Value,
+            ClampMode = dto.ClampMode,
+            ClampMinTotal = dto.ClampMinTotal,
+            ClampMaxTotal = dto.ClampMaxTotal,
             ValueMode = dto.ValueMode,
-            SourceMetricId = dto.ValueMode == ModifierValueMode.Metric ? dto.SourceMetricId : null
+            SourceMetricId = dto.ValueMode == ModifierValueMode.Metric ? dto.SourceMetricId : null,
+            RandomDiceCount = dto.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(dto.RandomDiceCount <= 0 ? 1 : dto.RandomDiceCount, 1, 5) : 1,
+            RandomDiceSides = dto.ValueMode == ModifierValueMode.RandomDice ? Math.Clamp(dto.RandomDiceSides <= 0 ? 6 : dto.RandomDiceSides, 2, 100) : 6
         };
     }
 

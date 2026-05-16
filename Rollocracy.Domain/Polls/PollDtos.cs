@@ -18,12 +18,21 @@ namespace Rollocracy.Domain.Polls
         public Guid SessionPollOptionId { get; set; }
         public TestConsequenceTargetKind TargetKind { get; set; }
         public Guid TargetDefinitionId { get; set; }
+        public TestConsequenceApplicationMode ApplicationMode { get; set; } = TestConsequenceApplicationMode.ApplyOnce;
         // Conservé pour compatibilité technique/transitoire.
         // En L-2, l'UI ne l'expose plus et on force Bonus.
         public TestModifierMode ModifierMode { get; set; } = TestModifierMode.Bonus;
         public int Value { get; set; }
+        public ConsequenceClampMode ClampMode { get; set; } = ConsequenceClampMode.None;
+
+        public int ClampMinTotal { get; set; } = -100;
+
+        public int ClampMaxTotal { get; set; } = 100;
+
         public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
         public Guid? SourceMetricId { get; set; }
+        public int RandomDiceCount { get; set; } = 1;
+        public int RandomDiceSides { get; set; } = 6;
         public TestConsequenceOperationType OperationType { get; set; }
     }
 
@@ -37,10 +46,19 @@ namespace Rollocracy.Domain.Polls
     {
         public TestConsequenceTargetKind TargetKind { get; set; }
         public Guid TargetDefinitionId { get; set; }
+        public TestConsequenceApplicationMode ApplicationMode { get; set; } = TestConsequenceApplicationMode.ApplyOnce;
         public TestModifierMode ModifierMode { get; set; }
         public int Value { get; set; }
+        public ConsequenceClampMode ClampMode { get; set; } = ConsequenceClampMode.None;
+
+        public int ClampMinTotal { get; set; } = -100;
+
+        public int ClampMaxTotal { get; set; } = 100;
+
         public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
         public Guid? SourceMetricId { get; set; }
+        public int RandomDiceCount { get; set; } = 1;
+        public int RandomDiceSides { get; set; } = 6;
         public TestConsequenceOperationType OperationType { get; set; }
     }
 
@@ -95,11 +113,20 @@ namespace Rollocracy.Domain.Polls
         public TestConsequenceTargetKind TargetKind { get; set; }
         public Guid TargetDefinitionId { get; set; }
         public string TargetName { get; set; } = string.Empty;
+        public TestConsequenceApplicationMode ApplicationMode { get; set; } = TestConsequenceApplicationMode.ApplyOnce;
         public TestModifierMode ModifierMode { get; set; }
         public int Value { get; set; }
+        public ConsequenceClampMode ClampMode { get; set; } = ConsequenceClampMode.None;
+
+        public int ClampMinTotal { get; set; } = -100;
+
+        public int ClampMaxTotal { get; set; } = 100;
+
         public ModifierValueMode ValueMode { get; set; } = ModifierValueMode.Fixed;
         public Guid? SourceMetricId { get; set; }
         public string SourceMetricName { get; set; } = string.Empty;
+        public int RandomDiceCount { get; set; } = 1;
+        public int RandomDiceSides { get; set; } = 6;
         public TestConsequenceOperationType OperationType { get; set; }
     }
 

@@ -3,8 +3,10 @@ using Microsoft.Extensions.Localization;
 using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.Entities;
 using Rollocracy.Domain.GameRules;
+using Rollocracy.Domain.GameTests;
 using Rollocracy.Domain.Interfaces;
 using Rollocracy.Infrastructure.Persistence;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace Rollocracy.Infrastructure.Services
@@ -102,6 +104,11 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(i => i.GameSystemId == gameSystemId || i.SessionId == sessionId)
                 .ToListAsync();
 
+            var itemFamilies = await context.ItemFamilyDefinitions
+                .AsNoTracking()
+                .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
             ValidateEffects(
                 effects,
                 attributeDefinitions,
@@ -174,6 +181,28 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(v => normalizedCharacterIds.Contains(v.CharacterId))
                 .ToListAsync();
 
+            var orderedEffects = OrderEffectsForInventoryConstraints(effects);
+
+            var effectsAppliedOnce = orderedEffects
+                .Where(effect => ShouldApplySessionGaugeEffectOnce(sourceType, effect))
+                .ToList();
+
+            if (effectsAppliedOnce.Any(effect => effect.ValueMode == ModifierValueMode.Metric))
+                throw new Exception(_localizer["Backend_ConsequenceMetricRequiresPerCharacterApplication"]);
+
+            var normalizedApplyOnceSessionGaugeEffects = NormalizeSessionGaugeEffectsAppliedOnce(effectsAppliedOnce);
+
+            foreach (var effect in normalizedApplyOnceSessionGaugeEffects)
+            {
+                ApplySessionGaugeEffectOnce(sessionGauges, effect);
+            }
+
+            var perCharacterEffects = effectsAppliedOnce.Count == 0
+                ? orderedEffects
+                : orderedEffects
+                    .Where(effect => !ShouldApplySessionGaugeEffectOnce(sourceType, effect))
+                    .ToList();
+
             foreach (var character in characters)
             {
                 var attributeValues = allAttributeValues.Where(x => x.CharacterId == character.Id).ToList();
@@ -182,7 +211,28 @@ namespace Rollocracy.Infrastructure.Services
                 var characterItems = allCharacterItems.Where(x => x.CharacterId == character.Id).ToList();
                 var characterModifiers = allCharacterModifiers.Where(x => x.CharacterId == character.Id).ToList();
 
-                foreach (var effect in effects)
+                var effectivePerCharacterEffects = NormalizeCharacterEffectsForCharacter(
+                    character.Id,
+                    perCharacterEffects,
+                    attributeDefinitions,
+                    gaugeDefinitions,
+                    derivedDefinitions,
+                    metricDefinitions,
+                    derivedComponents,
+                    metricComponents,
+                    metricFormulaSteps,
+                    allCharacterTraitValues.Where(x => x.CharacterId == character.Id).ToList(),
+                    itemDefinitions,
+                    attributeValues,
+                    gaugeValues,
+                    characterTalents,
+                    characterItems,
+                    choiceModifiers,
+                    talentModifiers,
+                    itemModifiers,
+                    characterModifiers);
+
+                foreach (var effect in effectivePerCharacterEffects)
                 {
                     await ApplySingleEffectAsync(
                         context,
@@ -202,6 +252,7 @@ namespace Rollocracy.Infrastructure.Services
                         itemModifiers,
                         talentDefinitions,
                         itemDefinitions,
+                        itemFamilies,
                         attributeValues,
                         gaugeValues,
                         characterTalents,
@@ -216,6 +267,277 @@ namespace Rollocracy.Infrastructure.Services
             }
 
             await context.SaveChangesAsync();
+        }
+
+
+        private List<CharacterEffectDefinitionDto> NormalizeCharacterEffectsForCharacter(
+            Guid characterId,
+            List<CharacterEffectDefinitionDto> effects,
+            List<AttributeDefinition> attributeDefinitions,
+            List<GaugeDefinition> gaugeDefinitions,
+            List<DerivedStatDefinition> derivedDefinitions,
+            List<MetricDefinition> metricDefinitions,
+            List<DerivedStatComponent> derivedComponents,
+            List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> metricFormulaSteps,
+            List<CharacterTraitValue> traitValues,
+            List<ItemDefinition> itemDefinitions,
+            List<CharacterAttributeValue> attributeValues,
+            List<CharacterGaugeValue> gaugeValues,
+            List<CharacterTalent> characterTalents,
+            List<CharacterItem> characterItems,
+            List<ChoiceOptionModifierDefinition> choiceModifiers,
+            List<TalentModifierDefinition> talentModifiers,
+            List<ItemModifierDefinition> itemModifiers,
+            List<CharacterModifier> characterModifiers)
+        {
+            var result = new List<CharacterEffectDefinitionDto>();
+
+            foreach (var group in effects.GroupBy(GetCharacterEffectClampGroupKey))
+            {
+                var groupEffects = group.ToList();
+
+                if (groupEffects.Count <= 1 ||
+                    group.Key is null ||
+                    groupEffects.First().ClampMode != ConsequenceClampMode.ClampTotal)
+                {
+                    result.AddRange(groupEffects);
+                    continue;
+                }
+
+                ValidateClampConfiguration(groupEffects.First());
+
+                var total = 0;
+
+                foreach (var effect in groupEffects)
+                {
+                    total += ResolveCharacterEffectSignedValue(
+                        characterId,
+                        effect,
+                        attributeDefinitions,
+                        gaugeDefinitions,
+                        derivedDefinitions,
+                        metricDefinitions,
+                        derivedComponents,
+                        metricComponents,
+                        metricFormulaSteps,
+                        traitValues,
+                        itemDefinitions,
+                        attributeValues,
+                        gaugeValues,
+                        characterTalents,
+                        characterItems,
+                        choiceModifiers,
+                        talentModifiers,
+                        itemModifiers,
+                        characterModifiers);
+                }
+
+                var template = groupEffects.First();
+
+                result.Add(new CharacterEffectDefinitionDto
+                {
+                    TargetType = template.TargetType,
+                    TargetId = template.TargetId,
+                    TargetName = template.TargetName,
+                    OperationType = CharacterEffectOperationType.AddValue,
+                    Value = Math.Clamp(total, template.ClampMinTotal, template.ClampMaxTotal),
+                    ClampMode = ConsequenceClampMode.None,
+                    ClampMinTotal = -100,
+                    ClampMaxTotal = 100,
+                    ValueMode = ModifierValueMode.Fixed,
+                    SourceMetricId = null,
+                    RandomDiceCount = 1,
+                    RandomDiceSides = 6
+                });
+            }
+
+            return result;
+        }
+
+        private static string? GetCharacterEffectClampGroupKey(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.OperationType != CharacterEffectOperationType.AddValue)
+                return null;
+
+            return $"{(int)effect.TargetType}:{effect.TargetId:N}";
+        }
+
+        private int ResolveCharacterEffectSignedValue(
+            Guid characterId,
+            CharacterEffectDefinitionDto effect,
+            List<AttributeDefinition> attributeDefinitions,
+            List<GaugeDefinition> gaugeDefinitions,
+            List<DerivedStatDefinition> derivedDefinitions,
+            List<MetricDefinition> metricDefinitions,
+            List<DerivedStatComponent> derivedComponents,
+            List<MetricComponent> metricComponents,
+            List<MetricFormulaStep> metricFormulaSteps,
+            List<CharacterTraitValue> traitValues,
+            List<ItemDefinition> itemDefinitions,
+            List<CharacterAttributeValue> attributeValues,
+            List<CharacterGaugeValue> gaugeValues,
+            List<CharacterTalent> characterTalents,
+            List<CharacterItem> characterItems,
+            List<ChoiceOptionModifierDefinition> choiceModifiers,
+            List<TalentModifierDefinition> talentModifiers,
+            List<ItemModifierDefinition> itemModifiers,
+            List<CharacterModifier> characterModifiers)
+        {
+            if (effect.ValueMode == ModifierValueMode.RandomDice)
+            {
+                var rollValue = RollRandomDice(effect.RandomDiceCount, effect.RandomDiceSides);
+
+                return effect.Value < 0
+                    ? -rollValue
+                    : rollValue;
+            }
+
+            if (effect.ValueMode != ModifierValueMode.Metric)
+                return effect.Value;
+
+            if (!effect.SourceMetricId.HasValue)
+                throw new Exception(_localizer["Backend_InvalidCharacterEffectSourceMetric"]);
+
+            var metricValue = ResolveCharacterValue(
+                characterId,
+                CharacterEffectTargetType.Metric,
+                effect.SourceMetricId.Value,
+                attributeDefinitions,
+                gaugeDefinitions,
+                derivedDefinitions,
+                metricDefinitions,
+                derivedComponents,
+                metricComponents,
+                metricFormulaSteps,
+                attributeValues,
+                gaugeValues,
+                traitValues,
+                itemDefinitions,
+                characterTalents,
+                characterItems,
+                choiceModifiers,
+                talentModifiers,
+                itemModifiers,
+                characterModifiers);
+
+            return effect.Value < 0
+                ? -metricValue
+                : metricValue;
+        }
+
+        private void ValidateClampConfiguration(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.ClampMode != ConsequenceClampMode.ClampTotal)
+                return;
+
+            if (effect.ClampMinTotal > 0 ||
+                effect.ClampMaxTotal < 0 ||
+                effect.ClampMinTotal > effect.ClampMaxTotal)
+            {
+                throw new Exception(_localizer["Backend_InvalidConsequenceClampConfiguration"]);
+            }
+        }
+
+        private List<CharacterEffectDefinitionDto> NormalizeSessionGaugeEffectsAppliedOnce(List<CharacterEffectDefinitionDto> effects)
+        {
+            var result = new List<CharacterEffectDefinitionDto>();
+
+            foreach (var group in effects.GroupBy(effect => effect.TargetId))
+            {
+                var groupEffects = group.ToList();
+
+                if (groupEffects.Count <= 1 ||
+                    groupEffects.First().ClampMode != ConsequenceClampMode.ClampTotal)
+                {
+                    result.AddRange(groupEffects.Select(ResolveSessionGaugeEffectAppliedOnce));
+                    continue;
+                }
+
+                ValidateClampConfiguration(groupEffects.First());
+
+                var template = groupEffects.First();
+                var total = groupEffects.Sum(effect => ResolveSessionGaugeEffectSignedValueAppliedOnce(effect));
+                var clampedTotal = Math.Clamp(total, template.ClampMinTotal, template.ClampMaxTotal);
+
+                if (clampedTotal == 0)
+                    continue;
+
+                result.Add(new CharacterEffectDefinitionDto
+                {
+                    TargetType = template.TargetType,
+                    TargetId = template.TargetId,
+                    TargetName = template.TargetName,
+                    OperationType = CharacterEffectOperationType.AddValue,
+                    Value = clampedTotal,
+                    ClampMode = ConsequenceClampMode.None,
+                    ClampMinTotal = -100,
+                    ClampMaxTotal = 100,
+                    ValueMode = ModifierValueMode.Fixed,
+                    SourceMetricId = null,
+                    RandomDiceCount = 1,
+                    RandomDiceSides = 6
+                });
+            }
+
+            return result;
+        }
+
+        private CharacterEffectDefinitionDto ResolveSessionGaugeEffectAppliedOnce(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.ValueMode != ModifierValueMode.RandomDice)
+                return effect;
+
+            return new CharacterEffectDefinitionDto
+            {
+                TargetType = effect.TargetType,
+                TargetId = effect.TargetId,
+                TargetName = effect.TargetName,
+                OperationType = effect.OperationType,
+                Value = ResolveSessionGaugeEffectSignedValueAppliedOnce(effect),
+                ClampMode = effect.ClampMode,
+                ClampMinTotal = effect.ClampMinTotal,
+                ClampMaxTotal = effect.ClampMaxTotal,
+                ValueMode = ModifierValueMode.Fixed,
+                SourceMetricId = null,
+                RandomDiceCount = 1,
+                RandomDiceSides = 6
+            };
+        }
+
+        private int ResolveSessionGaugeEffectSignedValueAppliedOnce(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.ValueMode == ModifierValueMode.RandomDice)
+            {
+                var rollValue = RollRandomDice(effect.RandomDiceCount, effect.RandomDiceSides);
+
+                return effect.Value < 0
+                    ? -rollValue
+                    : rollValue;
+            }
+
+            return effect.Value;
+        }
+
+        private static bool ShouldApplySessionGaugeEffectOnce(
+            CharacterEffectSourceType sourceType,
+            CharacterEffectDefinitionDto effect)
+        {
+            return sourceType == CharacterEffectSourceType.MassDistribution &&
+                effect.OperationType == CharacterEffectOperationType.AddValue &&
+                effect.TargetType == CharacterEffectTargetType.SessionGauge;
+        }
+
+        private static void ApplySessionGaugeEffectOnce(
+            List<SessionGauge> sessionGauges,
+            CharacterEffectDefinitionDto effect)
+        {
+            var gauge = sessionGauges.First(x => x.Id == effect.TargetId);
+
+            gauge.CurrentValue = Math.Clamp(
+                gauge.CurrentValue + effect.Value,
+                gauge.MinValue,
+                gauge.MaxValue);
         }
 
         public async Task<List<Guid>> ResolveTargetCharacterIdsAsync(Guid sessionId, CharacterTargetFilterDto filter)
@@ -250,9 +572,9 @@ namespace Rollocracy.Infrastructure.Services
             var characterIds = characters.Select(x => x.Id).ToList();
 
             var userAccountIds = playerSessions
-    .Select(x => x.UserAccountId)
-    .Distinct()
-    .ToList();
+                .Select(x => x.UserAccountId)
+                .Distinct()
+                .ToList();
 
             var userAccounts = await context.UserAccounts
                 .AsNoTracking()
@@ -294,6 +616,11 @@ namespace Rollocracy.Infrastructure.Services
             var metricDefinitions = await context.MetricDefinitions
                 .AsNoTracking()
                 .Where(x => x.GameSystemId == gameSystemId)
+                .ToListAsync();
+
+            var itemDefinitions = await context.ItemDefinitions
+                .AsNoTracking()
+                .Where(i => i.GameSystemId == gameSystemId || i.SessionId == sessionId)
                 .ToListAsync();
 
             var metricDefinitionIds = metricDefinitions.Select(x => x.Id).ToList();
@@ -525,6 +852,7 @@ namespace Rollocracy.Infrastructure.Services
                         attributeValues,
                         gaugeValues,
                         traitValues,
+                        itemDefinitions,
                         characterTalents,
                         characterItems,
                         choiceModifiers,
@@ -641,6 +969,39 @@ namespace Rollocracy.Infrastructure.Services
             return targetCharacterIds.Count;
         }
 
+        private void ValidateRandomDiceConfiguration(int diceCount, int diceSides)
+        {
+            if (diceCount < 1 || diceCount > 5)
+                throw new Exception(_localizer["Backend_InvalidRandomDiceCount"]);
+
+            if (diceSides < 2 || diceSides > 100)
+                throw new Exception(_localizer["Backend_InvalidRandomDiceSides"]);
+        }
+
+        private static int RollRandomDice(int diceCount, int diceSides)
+        {
+            var normalizedDiceCount = NormalizeRandomDiceCount(diceCount);
+            var normalizedDiceSides = NormalizeRandomDiceSides(diceSides);
+
+            var total = 0;
+            for (var i = 0; i < normalizedDiceCount; i++)
+            {
+                total += RandomNumberGenerator.GetInt32(1, normalizedDiceSides + 1);
+            }
+
+            return total;
+        }
+
+        private static int NormalizeRandomDiceCount(int diceCount)
+        {
+            return diceCount <= 0 ? 1 : diceCount;
+        }
+
+        private static int NormalizeRandomDiceSides(int diceSides)
+        {
+            return diceSides <= 0 ? 6 : diceSides;
+        }
+
         private void ValidateEffects(
             List<CharacterEffectDefinitionDto> effects,
             List<AttributeDefinition> attributeDefinitions,
@@ -715,6 +1076,43 @@ namespace Rollocracy.Infrastructure.Services
             {
                 throw new Exception(_localizer["Backend_InvalidCharacterEffectSourceMetric"]);
             }
+
+            if (effect.ValueMode == ModifierValueMode.RandomDice)
+            {
+                ValidateRandomDiceConfiguration(effect.RandomDiceCount, effect.RandomDiceSides);
+            }
+        }
+
+        private static List<CharacterEffectDefinitionDto> OrderEffectsForInventoryConstraints(
+            List<CharacterEffectDefinitionDto> effects)
+        {
+            return effects
+                .Select((effect, index) => new
+                {
+                    Effect = effect,
+                    Index = index
+                })
+                .OrderBy(x => GetEffectApplicationPriority(x.Effect))
+                .ThenBy(x => x.Index)
+                .Select(x => x.Effect)
+                .ToList();
+        }
+
+        private static int GetEffectApplicationPriority(CharacterEffectDefinitionDto effect)
+        {
+            if (effect.TargetType == CharacterEffectTargetType.Item &&
+                effect.OperationType == CharacterEffectOperationType.RevokeItem)
+            {
+                return 0;
+            }
+
+            if (effect.TargetType == CharacterEffectTargetType.Item &&
+                effect.OperationType == CharacterEffectOperationType.GrantItem)
+            {
+                return 2;
+            }
+
+            return 1;
         }
 
         private async Task ApplySingleEffectAsync(
@@ -735,6 +1133,7 @@ namespace Rollocracy.Infrastructure.Services
             List<ItemModifierDefinition> itemModifiers,
             List<TalentDefinition> talentDefinitions,
             List<ItemDefinition> itemDefinitions,
+            List<ItemFamilyDefinition> itemFamilies,
             List<CharacterAttributeValue> attributeValues,
             List<CharacterGaugeValue> gaugeValues,
             List<CharacterTalent> characterTalents,
@@ -759,6 +1158,7 @@ namespace Rollocracy.Infrastructure.Services
                             metricComponents,
                             metricFormulaSteps,
                             traitValues,
+                            itemDefinitions,
                             attributeValues,
                             gaugeValues,
                             characterTalents,
@@ -891,6 +1291,7 @@ namespace Rollocracy.Infrastructure.Services
                                 choiceModifiers,
                                 talentModifiers,
                                 itemModifiers,
+                                itemDefinitions,
                                 attributeValues,
                                 gaugeValues,
                                 characterTalents,
@@ -922,6 +1323,7 @@ namespace Rollocracy.Infrastructure.Services
                                 choiceModifiers,
                                 talentModifiers,
                                 itemModifiers,
+                                itemDefinitions,
                                 attributeValues,
                                 gaugeValues,
                                 characterTalents,
@@ -940,6 +1342,19 @@ namespace Rollocracy.Infrastructure.Services
                         var itemDefinition = itemDefinitions.First(x => x.Id == effect.TargetId);
                         var existingItem = characterItems.FirstOrDefault(x => x.ItemDefinitionId == effect.TargetId);
 
+                        if (!CharacterItemFamilyRules.CanAddItem(
+                                character.Id,
+                                itemDefinition,
+                                1,
+                                characterItems,
+                                itemDefinitions,
+                                itemFamilies,
+                                out _))
+                        {
+                            // II-3 : un effet item impossible est ignoré sans annuler les autres effets du lot.
+                            break;
+                        }
+
                         if (itemDefinition.IsConsumable)
                         {
                             if (existingItem is null)
@@ -949,7 +1364,8 @@ namespace Rollocracy.Infrastructure.Services
                                     Id = Guid.NewGuid(),
                                     CharacterId = character.Id,
                                     ItemDefinitionId = effect.TargetId,
-                                    Quantity = 1
+                                    Quantity = 1,
+                                    IsActive = true
                                 };
 
                                 context.CharacterItems.Add(entity);
@@ -957,47 +1373,57 @@ namespace Rollocracy.Infrastructure.Services
                             }
                             else
                             {
-                                existingItem.Quantity = Math.Min(
-                                    existingItem.Quantity + 1,
-                                    Math.Max(1, itemDefinition.MaxQuantityPerCharacter));
+                                existingItem.Quantity += 1;
                             }
                         }
                         else
                         {
                             if (existingItem is null)
                             {
+                                var shouldActivate = CharacterItemFamilyRules.ShouldActivateNewNonConsumableItem(
+                                    character.Id,
+                                    itemDefinition,
+                                    characterItems,
+                                    itemDefinitions,
+                                    itemFamilies);
+
                                 var entity = new CharacterItem
                                 {
                                     Id = Guid.NewGuid(),
                                     CharacterId = character.Id,
                                     ItemDefinitionId = effect.TargetId,
-                                    Quantity = 1
+                                    Quantity = 1,
+                                    IsActive = shouldActivate
                                 };
 
                                 context.CharacterItems.Add(entity);
                                 characterItems.Add(entity);
 
-                                await ApplyGaugeModifiersFromItemAsync(
-                                    context,
-                                    character,
-                                    effect.TargetId,
-                                    true,
-                                    gaugeDefinitions,
-                                    attributeDefinitions,
-                                    derivedDefinitions,
-                                    metricDefinitions,
-                                    derivedComponents,
-                                    metricComponents,
-                                    metricFormulaSteps,
-                                    traitValues,
-                                    choiceModifiers,
-                                    talentModifiers,
-                                    itemModifiers,
-                                    attributeValues,
-                                    gaugeValues,
-                                    characterTalents,
-                                    characterItems,
-                                    characterModifiers);
+                                if (shouldActivate)
+                                {
+                                    await ApplyGaugeModifiersFromItemAsync(
+                                        context,
+                                        character,
+                                        effect.TargetId,
+                                        true,
+                                        gaugeDefinitions,
+                                        attributeDefinitions,
+                                        derivedDefinitions,
+                                        metricDefinitions,
+                                        derivedComponents,
+                                        metricComponents,
+                                        metricFormulaSteps,
+                                        traitValues,
+                                        choiceModifiers,
+                                        talentModifiers,
+                                        itemModifiers,
+                                        itemDefinitions,
+                                        attributeValues,
+                                        gaugeValues,
+                                        characterTalents,
+                                        characterItems,
+                                        characterModifiers);
+                                }
                             }
                         }
 
@@ -1037,6 +1463,7 @@ namespace Rollocracy.Infrastructure.Services
                                     choiceModifiers,
                                     talentModifiers,
                                     itemModifiers,
+                                    itemDefinitions,
                                     attributeValues,
                                     gaugeValues,
                                     characterTalents,
@@ -1061,6 +1488,7 @@ namespace Rollocracy.Infrastructure.Services
                                     choiceModifiers,
                                     talentModifiers,
                                     itemModifiers,
+                                    itemDefinitions,
                                     attributeValues,
                                     gaugeValues,
                                     characterTalents,
@@ -1098,6 +1526,7 @@ namespace Rollocracy.Infrastructure.Services
             List<ChoiceOptionModifierDefinition> choiceModifiers,
             List<TalentModifierDefinition> talentModifiers,
             List<ItemModifierDefinition> itemModifiers,
+            List<ItemDefinition> itemDefinitions,
             List<CharacterAttributeValue> attributeValues,
             List<CharacterGaugeValue> gaugeValues,
             List<CharacterTalent> characterTalents,
@@ -1124,6 +1553,7 @@ namespace Rollocracy.Infrastructure.Services
                     metricComponents,
                     metricFormulaSteps,
                     traitValues,
+                    itemDefinitions,
                     choiceModifiers,
                     talentModifiers,
                     itemModifiers,
@@ -1146,6 +1576,7 @@ namespace Rollocracy.Infrastructure.Services
                     traitValues,
                     characterTalents,
                     characterItems,
+                    itemDefinitions,
                     choiceModifiers,
                     talentModifiers,
                     itemModifiers,
@@ -1169,6 +1600,7 @@ namespace Rollocracy.Infrastructure.Services
             List<ChoiceOptionModifierDefinition> choiceModifiers,
             List<TalentModifierDefinition> talentModifiers,
             List<ItemModifierDefinition> itemModifiers,
+            List<ItemDefinition> itemDefinitions,
             List<CharacterAttributeValue> attributeValues,
             List<CharacterGaugeValue> gaugeValues,
             List<CharacterTalent> characterTalents,
@@ -1195,6 +1627,7 @@ namespace Rollocracy.Infrastructure.Services
                     metricComponents,
                     metricFormulaSteps,
                     traitValues,
+                    itemDefinitions,
                     choiceModifiers,
                     talentModifiers,
                     itemModifiers,
@@ -1217,6 +1650,7 @@ namespace Rollocracy.Infrastructure.Services
                     traitValues,
                     characterTalents,
                     characterItems,
+                    itemDefinitions,
                     choiceModifiers,
                     talentModifiers,
                     itemModifiers,
@@ -1238,6 +1672,7 @@ namespace Rollocracy.Infrastructure.Services
             List<MetricComponent> metricComponents,
             List<MetricFormulaStep> metricFormulaSteps,
             List<CharacterTraitValue> traitValues,
+            List<ItemDefinition> itemDefinitions,
             List<ChoiceOptionModifierDefinition> choiceModifiers,
             List<TalentModifierDefinition> talentModifiers,
             List<ItemModifierDefinition> itemModifiers,
@@ -1264,6 +1699,7 @@ namespace Rollocracy.Infrastructure.Services
                 attributeValues,
                 gaugeValues,
                 traitValues,
+                itemDefinitions,
                 characterTalents,
                 characterItems,
                 choiceModifiers,
@@ -1282,6 +1718,7 @@ namespace Rollocracy.Infrastructure.Services
             List<CharacterTraitValue> traitValues,
             List<CharacterTalent> characterTalents,
             List<CharacterItem> characterItems,
+            List<ItemDefinition> itemDefinitions,
             List<ChoiceOptionModifierDefinition> choiceModifiers,
             List<TalentModifierDefinition> talentModifiers,
             List<ItemModifierDefinition> itemModifiers,
@@ -1315,8 +1752,16 @@ namespace Rollocracy.Infrastructure.Services
                     talentIds.Contains(x.TalentDefinitionId))
                 .Sum(x => x.AddValue);
 
-            var itemIds = characterItems
+            var ownedItemIds = characterItems
                 .Where(x => x.CharacterId == characterId)
+                .Select(x => x.ItemDefinitionId)
+                .ToHashSet();
+
+            var itemIds = characterItems
+                .Where(x =>
+                    x.CharacterId == characterId &&
+                    x.IsActive &&
+                    !(itemDefinitions.FirstOrDefault(i => i.Id == x.ItemDefinitionId)?.IsConsumable ?? false))
                 .Select(x => x.ItemDefinitionId)
                 .ToHashSet();
 
@@ -1332,7 +1777,10 @@ namespace Rollocracy.Infrastructure.Services
                 .Where(x =>
                     x.CharacterId == characterId &&
                     x.TargetType == CharacterEffectTargetType.Gauge &&
-                    x.TargetId == gaugeDefinitionId)
+                    x.TargetId == gaugeDefinitionId &&
+                    (x.SourceType != CharacterEffectSourceType.Item ||
+                     !ownedItemIds.Contains(x.SourceId) ||
+                     itemIds.Contains(x.SourceId)))
                 .Sum(x => x.AddValue);
 
             return Math.Max(definition.MinValue, definition.MaxValue + choiceBonus + talentBonus + itemBonus + persistentBonus);
@@ -1348,6 +1796,7 @@ namespace Rollocracy.Infrastructure.Services
             List<CharacterTraitValue> traitValues,
             List<CharacterTalent> characterTalents,
             List<CharacterItem> characterItems,
+            List<ItemDefinition> itemDefinitions,
             List<ChoiceOptionModifierDefinition> choiceModifiers,
             List<TalentModifierDefinition> talentModifiers,
             List<ItemModifierDefinition> itemModifiers,
@@ -1377,6 +1826,7 @@ namespace Rollocracy.Infrastructure.Services
                 traitValues,
                 characterTalents,
                 characterItems,
+                itemDefinitions,
                 choiceModifiers,
                 talentModifiers,
                 itemModifiers,
@@ -1436,6 +1886,7 @@ namespace Rollocracy.Infrastructure.Services
             List<CharacterAttributeValue> attributeValues,
             List<CharacterGaugeValue> gaugeValues,
             List<CharacterTraitValue> traitValues,
+            List<ItemDefinition> itemDefinitions,
             List<CharacterTalent> characterTalents,
             List<CharacterItem> characterItems,
             List<ChoiceOptionModifierDefinition> choiceModifiers,
@@ -1459,10 +1910,23 @@ namespace Rollocracy.Infrastructure.Services
                 characterChoiceModifiers,
                 ModifierTargetType.Talent);
 
+            var ownedItemIds = characterItems
+                .Where(ci => ci.CharacterId == characterId)
+                .Select(ci => ci.ItemDefinitionId)
+                .ToHashSet();
+
+            var activeNonConsumableItemIds = characterItems
+                .Where(ci =>
+                    ci.CharacterId == characterId &&
+                    ci.IsActive &&
+                    !(itemDefinitions.FirstOrDefault(i => i.Id == ci.ItemDefinitionId)?.IsConsumable ?? false))
+                .Select(ci => ci.ItemDefinitionId)
+                .ToList();
+
+            var activeNonConsumableItemIdSet = activeNonConsumableItemIds.ToHashSet();
+
             var characterItemIds = BuildEffectiveOwnedDefinitionIds(
-                characterItems
-                    .Where(ci => ci.CharacterId == characterId)
-                    .Select(ci => ci.ItemDefinitionId),
+                activeNonConsumableItemIds,
                 characterChoiceModifiers,
                 ModifierTargetType.Item);
 
@@ -1500,10 +1964,14 @@ namespace Rollocracy.Infrastructure.Services
                 });
 
             var persistentRuntimeModifiers = characterModifiers
-                .Where(x => x.CharacterId == characterId &&
-                            (x.TargetType == CharacterEffectTargetType.BaseAttribute ||
-                             x.TargetType == CharacterEffectTargetType.DerivedStat ||
-                             x.TargetType == CharacterEffectTargetType.Metric))
+                .Where(x =>
+                    x.CharacterId == characterId &&
+                    (x.TargetType == CharacterEffectTargetType.BaseAttribute ||
+                     x.TargetType == CharacterEffectTargetType.DerivedStat ||
+                     x.TargetType == CharacterEffectTargetType.Metric) &&
+                    (x.SourceType != CharacterEffectSourceType.Item ||
+                     !ownedItemIds.Contains(x.SourceId) ||
+                     activeNonConsumableItemIdSet.Contains(x.SourceId)))
                 .Select(x => new RuntimeModifier
                 {
                     TargetType = x.TargetType switch
@@ -1699,6 +2167,7 @@ namespace Rollocracy.Infrastructure.Services
             List<MetricComponent> metricComponents,
             List<MetricFormulaStep> metricFormulaSteps,
             List<CharacterTraitValue> traitValues,
+            List<ItemDefinition> itemDefinitions,
             List<CharacterAttributeValue> attributeValues,
             List<CharacterGaugeValue> gaugeValues,
             List<CharacterTalent> characterTalents,
@@ -1708,6 +2177,12 @@ namespace Rollocracy.Infrastructure.Services
             List<ItemModifierDefinition> itemModifiers,
             List<CharacterModifier> characterModifiers)
         {
+            if (effect.ValueMode == ModifierValueMode.RandomDice)
+            {
+                var rollValue = RollRandomDice(effect.RandomDiceCount, effect.RandomDiceSides);
+                return effect.Value < 0 ? -rollValue : rollValue;
+            }
+
             if (effect.ValueMode != ModifierValueMode.Metric || !effect.SourceMetricId.HasValue)
                 return effect.Value;
 
@@ -1725,6 +2200,7 @@ namespace Rollocracy.Infrastructure.Services
                 attributeValues,
                 gaugeValues,
                 traitValues,
+                itemDefinitions,
                 characterTalents,
                 characterItems,
                 choiceModifiers,

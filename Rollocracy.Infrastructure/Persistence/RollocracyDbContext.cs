@@ -1,4 +1,3 @@
-
 using Microsoft.EntityFrameworkCore;
 using Rollocracy.Domain.Characters;
 using Rollocracy.Domain.Entities;
@@ -71,6 +70,7 @@ namespace Rollocracy.Infrastructure.Persistence
         public DbSet<TalentDefinition> TalentDefinitions => Set<TalentDefinition>();
         public DbSet<TalentModifierDefinition> TalentModifierDefinitions => Set<TalentModifierDefinition>();
 
+        public DbSet<ItemFamilyDefinition> ItemFamilyDefinitions => Set<ItemFamilyDefinition>();
         public DbSet<ItemDefinition> ItemDefinitions => Set<ItemDefinition>();
         public DbSet<ItemModifierDefinition> ItemModifierDefinitions => Set<ItemModifierDefinition>();
 
@@ -89,6 +89,30 @@ namespace Rollocracy.Infrastructure.Persistence
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<GameTestConsequence>(entity =>
+            {
+                entity.Property(x => x.ClampMode)
+                    .HasDefaultValue(ConsequenceClampMode.None);
+
+                entity.Property(x => x.RandomDiceCount)
+                    .HasDefaultValue(1);
+
+                entity.Property(x => x.RandomDiceSides)
+                    .HasDefaultValue(6);
+            });
+
+            modelBuilder.Entity<SessionPollOptionConsequence>(entity =>
+            {
+                entity.Property(x => x.ClampMode)
+                    .HasDefaultValue(ConsequenceClampMode.None);
+
+                entity.Property(x => x.RandomDiceCount)
+                    .HasDefaultValue(1);
+
+                entity.Property(x => x.RandomDiceSides)
+                    .HasDefaultValue(6);
+            });
 
             modelBuilder.Entity<UserAccount>(entity =>
             {
@@ -427,10 +451,31 @@ namespace Rollocracy.Infrastructure.Persistence
                     .HasColumnType("timestamp with time zone");
             });
 
+            modelBuilder.Entity<ItemFamilyDefinition>(entity =>
+            {
+                entity.HasIndex(x => x.GameSystemId);
+                entity.HasIndex(x => new { x.GameSystemId, x.DisplayOrder });
+
+                entity.Property(x => x.Name)
+                    .HasColumnType("text");
+
+                entity.ToTable(table =>
+                {
+                    table.HasCheckConstraint(
+                        "CK_ItemFamilyDefinitions_MaxOwned_Range",
+                        "\"MaxOwned\" >= 1 AND \"MaxOwned\" <= 99");
+
+                    table.HasCheckConstraint(
+                        "CK_ItemFamilyDefinitions_MaxActive_Range",
+                        "\"MaxActive\" >= 0 AND \"MaxActive\" <= \"MaxOwned\"");
+                });
+            });
+
             modelBuilder.Entity<ItemDefinition>(entity =>
             {
                 entity.HasIndex(x => x.GameSystemId);
                 entity.HasIndex(x => x.SessionId);
+                entity.HasIndex(x => x.ItemFamilyDefinitionId);
                 entity.HasIndex(x => new { x.GameSystemId, x.DisplayOrder });
                 entity.HasIndex(x => new { x.SessionId, x.DisplayOrder });
 
@@ -439,6 +484,11 @@ namespace Rollocracy.Infrastructure.Persistence
 
                 entity.Property(x => x.Description)
                     .HasColumnType("text");
+
+                entity.HasOne<ItemFamilyDefinition>()
+                    .WithMany()
+                    .HasForeignKey(x => x.ItemFamilyDefinitionId)
+                    .OnDelete(DeleteBehavior.SetNull);
 
                 entity.ToTable(table =>
                 {
@@ -458,6 +508,9 @@ namespace Rollocracy.Infrastructure.Persistence
                 entity.HasIndex(x => x.CharacterId);
                 entity.HasIndex(x => x.ItemDefinitionId);
                 entity.HasIndex(x => new { x.CharacterId, x.ItemDefinitionId }).IsUnique();
+
+                entity.Property(x => x.IsActive)
+                    .HasDefaultValue(true);
             });
 
             modelBuilder.Entity<SessionPollEligibleCharacter>(entity =>
